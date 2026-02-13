@@ -30,8 +30,9 @@ import Image from "next/image";
 
 // Email validation schema with comprehensive rules
 const emailSchema = z
-    .email("Please enter a valid email address (e.g., name@domain.com)")
-    .nonempty("Email address is required");
+    .string()
+    .min(1, "Email address is required")
+    .email("Please enter a valid email address (e.g., name@domain.com)");
 
 const formSchema = z.object({
     email: emailSchema,
@@ -61,11 +62,15 @@ export function SignInForm() {
                         const { error } = await authClient.twoFactor.sendOtp({});
 
                         if (error) {
-                            toast.error(error.message);
+                            // User doesn't have 2FA enabled or OTP send failed
+                            // Redirect to dashboard instead
+                            router.push("/dashboard");
+                            toast.success("Signed in successfully");
+                        } else {
+                            // OTP sent successfully, redirect to 2FA page
+                            router.push("/two-factor");
+                            toast.success("OTP sent. Please check your email.");
                         }
-
-                        router.push("/two-factor");
-                        toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
                         toast.error(ctx.error.message || "Invalid email or password");

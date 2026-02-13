@@ -1,13 +1,11 @@
 import { auth } from "@/lib/auth";
-import { authIsRequired, authSession } from "@/lib/auth-utils";
+import { authIsRequired } from "@/lib/auth-utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import UserManagementForm, { Role } from "./user-client";
 
 export default async function UserManagementPage() {
-    await authIsRequired();
-
-    const session = await authSession();
+    const session = await authIsRequired();
 
     const { users } = await auth.api.listUsers({
         query: {},
@@ -22,6 +20,9 @@ export default async function UserManagementPage() {
             },
         },
     });
+
+    if (!users) redirect("/sign-in");
+    
     const formattedUsers = users
         .map((user) => {
             return {
@@ -34,8 +35,6 @@ export default async function UserManagementPage() {
             };
         })
         .filter((f) => ["user", "admin"].includes(f.role as Role));
-
-    if (!users) redirect("/sign-in");
 
     return (
         <div className="w-full p-6 shadow-lg mx-auto max-w-7xl min-h-dvh rounded-2xl h-full flex gap-6 justify-center items-start">
