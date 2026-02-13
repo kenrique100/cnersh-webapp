@@ -14,7 +14,7 @@ import { Spinner } from "./ui/spinner";
 
 const formSchema = z
     .object({
-        newPassword: z.z.string().min(6, "Invalid password"),
+        newPassword: z.string().min(6, "Invalid password"),
         confirmNewPassword: z.string(),
     })
     .refine((data) => data.newPassword === data.confirmNewPassword, {
@@ -49,7 +49,7 @@ export function ResetPasswordForm() {
                 }
             );
         } catch {
-            throw new Error("Something went wrong");
+            toast.error("Something went wrong");
         }
     };
 

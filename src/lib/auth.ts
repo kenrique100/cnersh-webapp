@@ -18,9 +18,12 @@ export const auth = betterAuth({
         requireEmailVerification: true,
 
         // ✅ FIXED: removed invalid `_`
-        sendResetPassword: async ({ url }) => {
+        sendResetPassword: async ({ user, url }) => {
+            if (!user?.email) {
+                throw new Error("User email is required for password reset");
+            }
             await sendResetPasswordEmail({
-                to: "kenriqueanyere@gmail.com",
+                to: user.email,
                 subject: "Reset your password",
                 url,
             });
@@ -29,8 +32,8 @@ export const auth = betterAuth({
 
     rateLimit: {
         enabled: true,
-        window: 10,
-        max: 2,
+        window: 60,
+        max: 10,
     },
 
     emailVerification: {
@@ -38,8 +41,11 @@ export const auth = betterAuth({
         autoSignInAfterVerification: true,
 
         sendVerificationEmail: async ({ user, url }) => {
+            if (!user?.email) {
+                throw new Error("User email is required for verification");
+            }
             await sendVerificationEmail({
-                to: "kenriqueanyere@gmail.com",
+                to: user.email,
                 verificationUrl: url,
                 userName: user.name,
             });
@@ -78,12 +84,15 @@ export const auth = betterAuth({
         nextCookies(),
 
         twoFactor({
-            skipVerificationOnEnable: true,
+            skipVerificationOnEnable: false,
             otpOptions: {
 
-                async sendOTP({ otp }) {
+                async sendOTP({ user, otp }) {
+                    if (!user?.email) {
+                        throw new Error("User email is required for OTP");
+                    }
                     await sendOtpEmail({
-                        to: "kenriqueanyere@gmail.com",
+                        to: user.email,
                         otp,
                     });
                 },
