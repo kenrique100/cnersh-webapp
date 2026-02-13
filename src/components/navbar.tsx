@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { MenuIcon, UserIcon, SettingsIcon, LogOutIcon, HomeIcon, UsersIcon } from "lucide-react";
+import { MenuIcon, SettingsIcon, LogOutIcon, HomeIcon, UsersIcon } from "lucide-react";
 import Image from "next/image";
 
 interface NavbarProps {
@@ -114,14 +114,8 @@ export default function Navbar({ user }: NavbarProps) {
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem asChild>
                                                 <Link href="/update-profile" className="cursor-pointer">
-                                                    <UserIcon className="mr-2 h-4 w-4" />
-                                                    <span>Profile</span>
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <Link href="/update-profile" className="cursor-pointer">
                                                     <SettingsIcon className="mr-2 h-4 w-4" />
-                                                    <span>Settings</span>
+                                                    <span>Profile Settings</span>
                                                 </Link>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
