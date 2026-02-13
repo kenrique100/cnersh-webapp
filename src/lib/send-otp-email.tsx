@@ -9,10 +9,15 @@ type EmailProps = {
 };
 
 export const sendOtpEmail = async ({ to, otp }: EmailProps) => {
-    await resend.emails.send({
-        from: process.env.EMAIL_FROM!,
-        to,
-        subject: "Your login code",
-        react: <OtpEmail otp={otp} />,
-    });
+    try {
+        await resend.emails.send({
+            from: process.env.EMAIL_FROM!,
+            to,
+            subject: "Your login code",
+            react: <OtpEmail otp={otp} />,
+        });
+    } catch (error) {
+        console.error("Failed to send OTP email:", error);
+        throw new Error("Failed to send OTP email. Please try again.");
+    }
 };

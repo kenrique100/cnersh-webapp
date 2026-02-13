@@ -39,7 +39,7 @@ export function OtpCodeForm() {
                 }
             );
         } catch {
-            throw new Error("Something went wrong");
+            toast.error("Something went wrong");
         }
     };
 

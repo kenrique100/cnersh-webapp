@@ -57,7 +57,7 @@ export function UpdateProfile({ name, email, image}: ProfileFormProps) {
                 }
             );
         } catch {
-            throw new Error("Something went wrong");
+            toast.error("Something went wrong");
         }
     };
 

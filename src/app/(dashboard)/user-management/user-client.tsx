@@ -75,10 +75,16 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
             if (!user.id) {
+                // Creating new user - password is required
+                if (!values.password) {
+                    toast.error("Password is required for new user");
+                    return;
+                }
+                
                 await authClient.admin.createUser({
                     name: values.name,
                     email: values.email,
-                    password: values.password as string,
+                    password: values.password,
                     role: values.role as Role,
                 });
 
@@ -95,9 +101,8 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
 
                 toast.success("User updated successfully");
             }
-        } catch {
-            toast.error("Something went wrong");
-        } finally {
+            
+            // Only cleanup on success
             setIsOpen(false);
             form.reset();
 
@@ -111,6 +116,8 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
             });
 
             router.refresh();
+        } catch {
+            toast.error("Something went wrong");
         }
     };
 
