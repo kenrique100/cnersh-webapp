@@ -38,7 +38,7 @@ export default function Navbar({ user }: NavbarProps) {
     const navLinks = user ? [
         { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
         { href: "/user-management", label: "Users", icon: UsersIcon },
-        { href: "/update-profile", label: "Profile", icon: UserIcon },
+        { href: "/update-profile", label: "Profile", icon: SettingsIcon },
     ] : [];
 
     const userInitials = user?.name
