@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { authIsRequired, authSession } from "@/lib/auth-utils";
+import { authIsRequired } from "@/lib/auth-utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import UserManagementForm, { Role } from "./user-client";
