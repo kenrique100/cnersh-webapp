@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -10,29 +8,38 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  emailVerified Boolean   @default(false)
-  image         String?
-  sessions      Session[]
-  accounts      Account[]
+  id                  String      @id @default(uuid())
+  email               String      @unique
+  name                String?
+  role                String?
+  hasDeletePermission Boolean     @default(false)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  emailVerified       Boolean     @default(false)
+  image               String?
+  gender              Gender?
+  sessions            Session[]
+  accounts            Account[]
+  twoFactorEnabled    Boolean     @default(false)
+  twoFactor           TwoFactor[]
+  banned              Boolean?
+  banReason           String?
+  banExpires          DateTime?
 
   @@map("user")
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
 
   @@unique([token])
   @@index([userId])
@@ -69,4 +76,21 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum Gender {
+  male
+  female
+
+  @@map("gender")
+}
+
+model TwoFactor {
+  id          String @id
+  userId      String
+  secret      String
+  backupCodes String
+  user        User   @relation(references: [id], fields: [userId], onDelete: Cascade)
+
+  @@map("twoFactor")
 }
