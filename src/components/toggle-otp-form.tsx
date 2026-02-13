@@ -69,7 +69,7 @@ export function ToggleOtpForm({ twoFactorEnabled }: ToggleOtpProps) {
                 router.refresh();
             }
         } catch {
-            throw new Error("Something went wrong");
+            toast.error("Something went wrong");
         } finally {
             setIsOpen(false);
         }

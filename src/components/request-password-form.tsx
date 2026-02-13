@@ -46,7 +46,7 @@ export function RequestPasswordForm() {
                 setIsEmailSent(false);
             }
         } catch {
-            throw new Error("Something went wrong");
+            toast.error("Something went wrong");
         }
     };
 

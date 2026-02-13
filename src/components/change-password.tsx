@@ -55,7 +55,7 @@ export function ChangePasswordForm() {
                 }
             );
         } catch {
-            throw new Error("Something went wrong");
+            toast.error("Something went wrong");
         }
     };
 
