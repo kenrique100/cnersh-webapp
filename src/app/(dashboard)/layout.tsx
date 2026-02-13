@@ -1,31 +1,26 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { authIsRequired } from "@/lib/auth-utils";
+import { updateProfile } from "@/app/actions/user";
+import Navbar from "@/components/navbar";
 import React from "react";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
                                             children,
                                         }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const router = useRouter();
+    await authIsRequired();
+    const user = await updateProfile();
 
     return (
-        <div className="w-full min-h-dvh min-w-dvw bg-white overflow-hidden">
-            <nav className="w-full flex justify-end items-center pr-6 h-16 shadow-lg mx-auto max-w-7xl mb-6 overflow-hidden bg-neutral-50 rounded-md">
-                <Button
-                    className="cursor-pointer"
-                    onClick={async () => {
-                        await authClient.signOut();
-                        router.push("/sign-in");
-                    }}
-                >
-                    Sign out
-                </Button>
-            </nav>
-            {children}
+        <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
+            <Navbar user={user ? {
+                name: user.name,
+                email: user.email,
+                image: user.image
+            } : null} />
+            <main className="w-full">
+                {children}
+            </main>
         </div>
     );
 }
