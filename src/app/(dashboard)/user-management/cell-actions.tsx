@@ -32,18 +32,25 @@ export const CellActions = ({
     const [isLoading, setIsLoading] = useState(false);
 
     const onRemoveUser = async () => {
+        setIsLoading(true);
+        
         try {
             const { error } = await authClient.admin.removeUser({ userId: id });
 
             if (error) {
                 toast.error(error.message);
+                setIsLoading(false);
+                return;
             }
-        } catch {
-            throw new Error("Something went wrong");
-        } finally {
+            
+            // Only cleanup on success
+            toast.success("User removed successfully");
             router.refresh();
             setIsLoading(false);
             setIsDeleteModalOpen(false);
+        } catch {
+            toast.error("Something went wrong");
+            setIsLoading(false);
         }
     };
     return (
