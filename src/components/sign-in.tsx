@@ -69,7 +69,7 @@ export function SignInForm() {
                         } else {
                             // OTP sent successfully, redirect to 2FA page
                             router.push("/two-factor");
-                            toast.success("Signed in successfully");
+                            toast.success("OTP sent. Please check your email.");
                         }
                     },
                     onError: (ctx) => {
