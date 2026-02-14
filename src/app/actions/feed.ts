@@ -59,6 +59,27 @@ export async function toggleLike(postId: string) {
         await db.like.create({
             data: { postId, userId: session.user.id },
         });
+
+        // Notify post owner of the like
+        try {
+            const post = await db.post.findUnique({
+                where: { id: postId },
+                select: { userId: true },
+            });
+            if (post && post.userId !== session.user.id) {
+                await db.notification.create({
+                    data: {
+                        type: "LIKE",
+                        message: `${session.user.name || "Someone"} liked your post`,
+                        link: "/feeds",
+                        userId: post.userId,
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Error creating like notification:", error);
+        }
+
         return { liked: true };
     }
 }
@@ -77,6 +98,26 @@ export async function addComment(postId: string, content: string) {
             user: { select: { id: true, name: true, image: true } },
         },
     });
+
+    // Notify post owner of the comment
+    try {
+        const post = await db.post.findUnique({
+            where: { id: postId },
+            select: { userId: true },
+        });
+        if (post && post.userId !== session.user.id) {
+            await db.notification.create({
+                data: {
+                    type: "COMMENT",
+                    message: `${session.user.name || "Someone"} commented on your post`,
+                    link: "/feeds",
+                    userId: post.userId,
+                },
+            });
+        }
+    } catch (error) {
+        console.error("Error creating comment notification:", error);
+    }
 
     return comment;
 }

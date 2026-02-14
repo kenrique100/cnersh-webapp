@@ -88,7 +88,7 @@ export async function addReply(data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    return db.communityReply.create({
+    const reply = await db.communityReply.create({
         data: {
             content: data.content,
             topicId: data.topicId,
@@ -100,6 +100,55 @@ export async function addReply(data: {
             user: { select: { id: true, name: true, image: true } },
         },
     });
+
+    // Create notifications asynchronously (don't block the reply)
+    try {
+        const notifications: { type: "MENTION" | "COMMENT"; message: string; link: string; userId: string }[] = [];
+
+        // Notify @mentioned users
+        const mentionMatches = data.content.match(/@(\w+(?:\s\w+)?)/g);
+        if (mentionMatches) {
+            const mentionedNames = mentionMatches.map(m => m.slice(1).trim());
+            const mentionedUsers = await db.user.findMany({
+                where: { name: { in: mentionedNames }, banned: { not: true } },
+                select: { id: true },
+            });
+            for (const u of mentionedUsers) {
+                if (u.id !== session.user.id) {
+                    notifications.push({
+                        type: "MENTION",
+                        message: `${session.user.name || "Someone"} mentioned you in the community`,
+                        link: `/community`,
+                        userId: u.id,
+                    });
+                }
+            }
+        }
+
+        // Notify parent reply author when someone replies to their message
+        if (data.parentId) {
+            const parentReply = await db.communityReply.findUnique({
+                where: { id: data.parentId },
+                select: { userId: true },
+            });
+            if (parentReply && parentReply.userId !== session.user.id) {
+                notifications.push({
+                    type: "COMMENT",
+                    message: `${session.user.name || "Someone"} replied to your message in the community`,
+                    link: `/community`,
+                    userId: parentReply.userId,
+                });
+            }
+        }
+
+        if (notifications.length > 0) {
+            await db.notification.createMany({ data: notifications });
+        }
+    } catch (error) {
+        console.error("Error creating community notifications:", error);
+    }
+
+    return reply;
 }
 
 export async function getCommunityUsers() {
