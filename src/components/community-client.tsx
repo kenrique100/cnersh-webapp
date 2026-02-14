@@ -403,7 +403,7 @@ export default function CommunityClient({
                     <HashIcon className="h-5 w-5" />
                 </button>
                 <HashIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 hidden md:block" />
-                <h3 className="font-semibold text-white text-sm truncate">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
                     {selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
                 </h3>
                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
