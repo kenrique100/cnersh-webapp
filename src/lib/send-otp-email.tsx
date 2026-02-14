@@ -17,11 +17,12 @@ export const sendOtpEmail = async ({ to, otp }: EmailProps) => {
             react: <OtpEmail otp={otp} />,
         });
     } catch (error) {
-        console.error("Failed to send OTP email:", error);
-        // Log the full error for debugging but throw a generic message to users
-        if (error instanceof Error) {
-            console.error("Error details:", error.message, error.stack);
-        }
+        // Log the full error for debugging
+        console.error("Failed to send OTP email:", {
+            error,
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+        });
         throw new Error("Failed to send OTP email. Please check your email configuration and try again.");
     }
 };
