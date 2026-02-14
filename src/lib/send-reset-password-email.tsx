@@ -14,10 +14,15 @@ export const sendResetPasswordEmail = async ({
                                                  url,
                                                  subject,
                                              }: EmailProps) => {
-    await resend.emails.send({
-        from: process.env.EMAIL_FROM!,
-        to,
-        subject,
-        react: <RequestPasswordEmail url={url} to={to} />,
-    });
+    try {
+        await resend.emails.send({
+            from: process.env.EMAIL_FROM!,
+            to,
+            subject,
+            react: <RequestPasswordEmail url={url} to={to} />,
+        });
+    } catch (error) {
+        console.error("Failed to send reset password email:", error);
+        throw new Error("Failed to send reset password email. Please try again.");
+    }
 };
