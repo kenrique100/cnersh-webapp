@@ -3,9 +3,10 @@ import { updateProfile } from "@/app/actions/user";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { SettingsIcon } from "lucide-react";
+import { SettingsIcon, PaletteIcon } from "lucide-react";
 import { ChangePasswordForm } from "@/components/change-password";
 import { ToggleOtpForm } from "@/components/toggle-otp-form";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export default async function SettingsPage() {
                     </p>
                 </div>
 
-                {/* Security Settings Grid */}
+                {/* Settings Grid */}
                 <div className="grid gap-6 lg:grid-cols-2">
                     {/* Two-Factor Authentication Card */}
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
@@ -60,6 +61,23 @@ export default async function SettingsPage() {
                         <Separator className="bg-gray-200 dark:bg-gray-800" />
                         <CardContent className="pt-6">
                             <ChangePasswordForm />
+                        </CardContent>
+                    </Card>
+
+                    {/* Appearance Card */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg lg:col-span-2">
+                        <CardHeader className="space-y-1 pb-4">
+                            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <PaletteIcon className="w-5 h-5" />
+                                Appearance
+                            </CardTitle>
+                            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                                Customize the look and feel of the application
+                            </CardDescription>
+                        </CardHeader>
+                        <Separator className="bg-gray-200 dark:bg-gray-800" />
+                        <CardContent className="pt-6">
+                            <ThemeToggle />
                         </CardContent>
                     </Card>
                 </div>

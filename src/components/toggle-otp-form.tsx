@@ -80,7 +80,7 @@ export function ToggleOtpForm({ twoFactorEnabled }: ToggleOtpProps) {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="flex items-start justify-between p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="flex items-start gap-3 flex-1">
                     {twoFactorEnabled ? (
                         <ShieldCheckIcon className="h-5 w-5 text-green-600 dark:text-green-500 mt-0.5 flex-shrink-0" />
