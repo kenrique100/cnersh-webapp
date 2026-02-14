@@ -70,7 +70,11 @@ export function OtpCodeForm() {
                 {
                     onSuccess: async () => {
                         toast.success("Verification successful");
-                        router.push("/dashboard");
+                        // Check user role for redirect
+                        const session = await authClient.getSession();
+                        const role = session?.data?.user?.role;
+                        const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
+                        router.push(redirectPath);
                     },
                     onError: (ctx) => {
                         toast.error(ctx.error.message || "Invalid verification code");
