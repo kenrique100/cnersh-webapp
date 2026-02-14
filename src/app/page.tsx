@@ -124,7 +124,6 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* CTA Buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
                         <Link href="/sign-up">
                             <Button size="lg" className="bg-blue-700 hover:bg-blue-800 text-white px-8 py-6 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all">
