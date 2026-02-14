@@ -27,10 +27,14 @@ export const authIsRequired = async () => {
     return session;
 };
 
+/** Get the appropriate dashboard path for a user role */
+export const getDashboardPath = (role?: string | null): string =>
+    (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
+
 export const authIsNotRequired = async () => {
     const session = await authSession();
 
     if (session) {
-        redirect("/");
+        redirect(getDashboardPath(session.user?.role));
     }
 };

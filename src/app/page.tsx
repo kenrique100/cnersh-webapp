@@ -3,8 +3,16 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldCheckIcon, UsersIcon, FileTextIcon, SettingsIcon, MegaphoneIcon, FolderIcon } from "lucide-react";
+import { redirect } from "next/navigation";
+import { authSession, getDashboardPath } from "@/lib/auth-utils";
 
-export default function Home() {
+export default async function Home() {
+    // Redirect authenticated users to their dashboard
+    const session = await authSession();
+    if (session) {
+        redirect(getDashboardPath(session.user?.role));
+    }
+
     return (
         <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
             {/* Navbar */}
