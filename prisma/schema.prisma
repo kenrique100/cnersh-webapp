@@ -21,7 +21,6 @@ model User {
   gender              Gender?
   sessions            Session[]
   accounts            Account[]
-  twoFactorEnabled    Boolean     @default(false)
   banned              Boolean?
   banReason           String?
   banExpires          DateTime?
