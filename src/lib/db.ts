@@ -18,7 +18,7 @@ const createPool = () => {
 
     const pool = new Pool({
         connectionString: process.env.DATABASE_URL!,
-        max: 20, // Increased from 10
+        max: 20, // Increased to handle concurrent requests in cloud environments
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 20000, // ✅ Increased from 5000 to 20000
         allowExitOnIdle: false,
@@ -62,7 +62,14 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // ✅ Graceful shutdown handlers
+let isCleaningUp = false;
+
 const cleanup = async () => {
+    if (isCleaningUp) {
+        return;
+    }
+    isCleaningUp = true;
+    
     console.log("🔄 Shutting down database connections...");
     try {
         await db.$disconnect();
@@ -74,5 +81,11 @@ const cleanup = async () => {
 };
 
 process.on("beforeExit", cleanup);
-process.on("SIGINT", cleanup); // Handle Ctrl+C
-process.on("SIGTERM", cleanup); // Handle kill command
+process.on("SIGINT", async () => {
+    await cleanup();
+    process.exit(0);
+});
+process.on("SIGTERM", async () => {
+    await cleanup();
+    process.exit(0);
+});
