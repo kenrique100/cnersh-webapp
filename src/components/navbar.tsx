@@ -46,7 +46,7 @@ export default function Navbar({ user }: NavbarProps) {
 
     const navLinks = user ? [
         { href: "/update-profile", label: "Profile", icon: UserIcon },
-        { href: "/", label: "Community", icon: UsersIcon },
+        { href: "/", label: "Community", icon: HomeIcon },
         { href: "/user-management", label: "Users", icon: UsersIcon },
     ] : [];
 
