@@ -42,9 +42,13 @@ export const auth = betterAuth({
             if (!user?.email) {
                 throw new Error("User email is required for verification");
             }
+            // Redirect to dashboard after verification instead of homepage
+            const parsed = new URL(url);
+            parsed.searchParams.set("callbackURL", "/dashboard");
+            const verificationUrl = parsed.toString();
             await sendVerificationEmail({
                 to: user.email,
-                verificationUrl: url,
+                verificationUrl,
                 userName: user.name,
             });
         },

@@ -92,7 +92,7 @@ export default async function Home() {
                                 Secure Access
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Two-factor authentication and role-based access control
+                                Secure authentication and role-based access control
                             </p>
                         </div>
 

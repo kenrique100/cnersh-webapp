@@ -194,7 +194,7 @@ export function SignUpForm() {
         try {
             await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/",
+                callbackURL: "/dashboard",
             });
         } catch {
             toast.error("Unable to sign in with Google. Please try again.");
