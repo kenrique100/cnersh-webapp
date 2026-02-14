@@ -25,6 +25,12 @@ import {
     MessageSquareIcon,
     BellIcon,
     FolderPlusIcon,
+    UsersIcon,
+    CheckSquareIcon,
+    ShieldIcon,
+    BarChart3Icon,
+    ScrollTextIcon,
+    FlagIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -34,19 +40,46 @@ interface NavbarProps {
         name: string | null;
         email: string;
         image: string | null;
+        role?: string | null;
     } | null;
+    notificationCount?: number;
 }
 
-const mobileNavItems = [
+interface NavItem {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+}
+
+const userMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
+    { href: "/update-profile", label: "My Profile", icon: UserIcon },
     { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
-    { href: "/projects", label: "My Projects", icon: FolderIcon },
     { href: "/projects/submit", label: "Submit Project", icon: FolderPlusIcon },
+    { href: "/projects", label: "My Projects", icon: FolderIcon },
     { href: "/community", label: "Community", icon: MessageSquareIcon },
     { href: "/notifications", label: "Notifications", icon: BellIcon },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export default function Navbar({ user }: NavbarProps) {
+const adminMobileNavItems: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
+    { href: "/admin", label: "Admin Overview", icon: BarChart3Icon },
+    { href: "/user-management", label: "User Management", icon: UsersIcon },
+    { href: "/admin/project-review", label: "Project Review", icon: CheckSquareIcon },
+    { href: "/admin/feed-moderation", label: "Feed Moderation", icon: ShieldIcon },
+    { href: "/admin/community-moderation", label: "Community Moderation", icon: MessageSquareIcon },
+    { href: "/admin/reports", label: "Reports", icon: FlagIcon },
+    { href: "/admin/audit-logs", label: "Audit Logs", icon: ScrollTextIcon },
+    { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
+    { href: "/projects", label: "Projects", icon: FolderIcon },
+    { href: "/community", label: "Community", icon: MessageSquareIcon },
+    { href: "/notifications", label: "Notifications", icon: BellIcon },
+    { href: "/update-profile", label: "My Profile", icon: UserIcon },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
+];
+
+export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -59,6 +92,9 @@ export default function Navbar({ user }: NavbarProps) {
     const userInitials = user?.name
         ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
         : user?.email?.slice(0, 2).toUpperCase() || "U";
+
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    const mobileNavItems = isAdmin ? adminMobileNavItems : userMobileNavItems;
 
     return (
         <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white dark:bg-gray-950 dark:border-gray-800 shadow-sm">
@@ -84,9 +120,23 @@ export default function Navbar({ user }: NavbarProps) {
                     </div>
 
                     {/* Right Side */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
                         {user ? (
                             <>
+                                {/* Notification Bell - visible on all screen sizes */}
+                                <Link
+                                    href="/notifications"
+                                    className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                    title="Notifications"
+                                >
+                                    <BellIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                                    {notificationCount > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold leading-none text-white bg-red-600 rounded-full">
+                                            {notificationCount > 99 ? "99+" : notificationCount}
+                                        </span>
+                                    )}
+                                </Link>
+
                                 {/* Desktop: User Avatar Dropdown */}
                                 <div className="hidden md:block">
                                     <DropdownMenu>
@@ -141,16 +191,16 @@ export default function Navbar({ user }: NavbarProps) {
                                     </DropdownMenu>
                                 </div>
 
-                                {/* Mobile Menu Toggle */}
+                                {/* Mobile Menu Toggle - opens from RIGHT */}
                                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                                     <SheetTrigger asChild className="md:hidden">
                                         <Button variant="ghost" size="icon">
                                             <MenuIcon className="h-6 w-6" />
                                         </Button>
                                     </SheetTrigger>
-                                    <SheetContent side="right" className="w-75 sm:w-100">
-                                        <div className="flex flex-col gap-4 mt-6">
-                                            {/* User Info */}
+                                    <SheetContent side="right" className="w-[280px] sm:w-[320px] p-0 overflow-y-auto">
+                                        <div className="flex flex-col gap-2 p-4 pt-8">
+                                            {/* User Info Header */}
                                             <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
                                                 <Avatar className="h-12 w-12 border-2 border-gray-200 dark:border-gray-700">
                                                     <AvatarImage src={user.image || undefined} alt={user.name || ""} />
@@ -158,77 +208,53 @@ export default function Navbar({ user }: NavbarProps) {
                                                         {userInitials}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div className="flex flex-col">
-                                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                <div className="flex flex-col min-w-0">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                                         {user.name || "User"}
                                                     </p>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                                         {user.email}
                                                     </p>
+                                                    {isAdmin && (
+                                                        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 w-fit">
+                                                            Admin
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* Main Navigation Links */}
-                                            <div className="flex flex-col gap-1">
-                                                <p className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                    Navigation
-                                                </p>
+                                            {/* All Navigation Links */}
+                                            <div className="flex flex-col gap-0.5 py-2">
                                                 {mobileNavItems.map((item) => {
                                                     const Icon = item.icon;
                                                     const isActive = pathname === item.href;
+                                                    const isNotification = item.href === "/notifications";
                                                     return (
                                                         <Link
-                                                            key={item.href}
+                                                            key={`${item.href}-${item.label}`}
                                                             href={item.href}
                                                             onClick={() => setIsMobileMenuOpen(false)}
                                                             className={cn(
                                                                 "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
                                                                 isActive
                                                                     ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                                                    : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950"
+                                                                    : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
                                                             )}
                                                         >
-                                                            <Icon className="h-5 w-5" />
-                                                            {item.label}
+                                                            <Icon className="h-5 w-5 shrink-0" />
+                                                            <span className="flex-1">{item.label}</span>
+                                                            {isNotification && notificationCount > 0 && (
+                                                                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-bold leading-none text-white bg-red-600 rounded-full">
+                                                                    {notificationCount > 99 ? "99+" : notificationCount}
+                                                                </span>
+                                                            )}
                                                         </Link>
                                                     );
                                                 })}
                                             </div>
 
-                                            {/* Account Links */}
-                                            <div className="flex flex-col gap-1 border-t border-gray-200 dark:border-gray-800 pt-4">
-                                                <p className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                    Account
-                                                </p>
-                                                <Link
-                                                    href="/update-profile"
-                                                    onClick={() => setIsMobileMenuOpen(false)}
-                                                    className={cn(
-                                                        "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
-                                                        pathname === "/update-profile"
-                                                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950"
-                                                    )}
-                                                >
-                                                    <UserIcon className="h-5 w-5" />
-                                                    View Profile
-                                                </Link>
-                                                <Link
-                                                    href="/settings"
-                                                    onClick={() => setIsMobileMenuOpen(false)}
-                                                    className={cn(
-                                                        "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
-                                                        pathname === "/settings"
-                                                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950"
-                                                    )}
-                                                >
-                                                    <SettingsIcon className="h-5 w-5" />
-                                                    Settings
-                                                </Link>
-                                            </div>
-
-                                            <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
+                                            {/* Logout */}
+                                            <div className="border-t border-gray-200 dark:border-gray-800 pt-2">
                                                 <Button
                                                     onClick={handleSignOut}
                                                     variant="ghost"

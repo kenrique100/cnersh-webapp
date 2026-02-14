@@ -3,6 +3,20 @@
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 
+export async function getUnreadNotificationCount(): Promise<number> {
+    const session = await authSession();
+    if (!session) return 0;
+
+    try {
+        return await db.notification.count({
+            where: { userId: session.user.id, read: false },
+        });
+    } catch (error) {
+        console.error("Error fetching unread notification count:", error);
+        return 0;
+    }
+}
+
 export async function getNotifications(page: number = 1, limit: number = 20) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");

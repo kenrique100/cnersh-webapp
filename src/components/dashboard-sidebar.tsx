@@ -10,7 +10,6 @@ import {
     FolderPlusIcon,
     FolderIcon,
     MessageSquareIcon,
-    BellIcon,
     SettingsIcon,
     LogOutIcon,
     UsersIcon,
@@ -46,7 +45,6 @@ const userNavItems: NavItem[] = [
     { href: "/projects/submit", label: "Submit Project", icon: FolderPlusIcon },
     { href: "/projects", label: "My Projects", icon: FolderIcon },
     { href: "/community", label: "Community", icon: MessageSquareIcon },
-    { href: "/notifications", label: "Notifications", icon: BellIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -62,7 +60,6 @@ const adminNavItems: NavItem[] = [
     { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
     { href: "/projects", label: "Projects", icon: FolderIcon },
     { href: "/community", label: "Community", icon: MessageSquareIcon },
-    { href: "/notifications", label: "Notifications", icon: BellIcon },
     { href: "/update-profile", label: "My Profile", icon: UserIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
