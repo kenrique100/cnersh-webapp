@@ -9,12 +9,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
-    DropdownMenuSub,
-    DropdownMenuSubTrigger,
-    DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -58,47 +53,26 @@ export default function Navbar({ user }: NavbarProps) {
         <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white dark:bg-gray-950 dark:border-gray-800 shadow-sm">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                    {/* Left Side - User Avatar (for dashboard) or Logo (for landing) */}
+                    {/* Left Side - Logo (always at top left) */}
                     <div className="flex items-center gap-2">
-                        {user ? (
-                            // Dashboard: Profile picture at top left
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
-                                    <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-                                    <AvatarFallback className="bg-blue-700 text-white dark:bg-blue-600">
-                                        {userInitials}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="hidden md:block">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                        {user.name || "User"}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {user.email}
-                                    </p>
-                                </div>
+                        <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                <Image
+                                    src="/logo.png"
+                                    alt="CNEC"
+                                    width={32}
+                                    height={32}
+                                    className="w-8 h-8 object-contain"
+                                    priority
+                                />
                             </div>
-                        ) : (
-                            // Landing: Logo at top left
-                            <Link href="/" className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-700 dark:bg-blue-600">
-                                    <Image
-                                        src="/logo.png"
-                                        alt="CNEC"
-                                        width={32}
-                                        height={32}
-                                        className="w-8 h-8 object-contain"
-                                        priority
-                                    />
-                                </div>
-                                <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    CNEC
-                                </span>
-                            </Link>
-                        )}
+                            <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
+                                CNEC
+                            </span>
+                        </Link>
                     </div>
 
-                    {/* Desktop Navigation - Center/Left */}
+                    {/* Desktop Navigation - Center (only when logged in) */}
                     {user && (
                         <div className="hidden md:flex items-center gap-6">
                             {navLinks.map((link) => (
@@ -110,7 +84,7 @@ export default function Navbar({ user }: NavbarProps) {
                                     {link.label}
                                 </Link>
                             ))}
-                            
+
                             {/* Forms Dropdown */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -119,7 +93,7 @@ export default function Navbar({ user }: NavbarProps) {
                                         <ChevronDownIcon className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
+                                <DropdownMenuContent align="center">
                                     <DropdownMenuItem asChild>
                                         <Link href="/forms/add" className="cursor-pointer">
                                             <FilePlusIcon className="mr-2 h-4 w-4" />
@@ -134,7 +108,7 @@ export default function Navbar({ user }: NavbarProps) {
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            
+
                             <Link
                                 href="/settings"
                                 className="text-sm font-medium text-gray-700 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-500 transition-colors"
@@ -144,26 +118,27 @@ export default function Navbar({ user }: NavbarProps) {
                         </div>
                     )}
 
-                    {/* Right Side - Logo (for dashboard) or Auth buttons (for landing) */}
+                    {/* Right Side - User Avatar + Logout (when logged in) or Auth buttons (when logged out) */}
                     <div className="flex items-center gap-4">
                         {user ? (
                             <>
-                                {/* Dashboard: Logo at top right */}
-                                <Link href="/dashboard" className="hidden md:flex items-center gap-2">
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-700 dark:bg-blue-600">
-                                        <Image
-                                            src="/logo.png"
-                                            alt="CNEC"
-                                            width={32}
-                                            height={32}
-                                            className="w-8 h-8 object-contain"
-                                            priority
-                                        />
+                                {/* User Avatar and Info */}
+                                <div className="hidden md:flex items-center gap-3">
+                                    <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
+                                        <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                                        <AvatarFallback className="bg-blue-700 text-white dark:bg-blue-600">
+                                            {userInitials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="hidden lg:block">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                            {user.name || "User"}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            {user.email}
+                                        </p>
                                     </div>
-                                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                        CNEC
-                                    </span>
-                                </Link>
+                                </div>
 
                                 {/* Desktop Logout Button */}
                                 <div className="hidden md:block">
@@ -184,7 +159,7 @@ export default function Navbar({ user }: NavbarProps) {
                                             <MenuIcon className="h-6 w-6" />
                                         </Button>
                                     </SheetTrigger>
-                                    <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                                    <SheetContent side="right" className="w-75 sm:w-100">
                                         <div className="flex flex-col gap-6 mt-6">
                                             {/* User Info */}
                                             <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">

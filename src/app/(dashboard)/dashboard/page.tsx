@@ -18,7 +18,7 @@ export default async function DashboardPage() {
                         Dashboard
                     </h1>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Welcome back, {user?.name || user?.email}! Here's your overview.
+                        Welcome back, {user?.name || user?.email}! Here&#39;s your overview.
                     </p>
                 </div>
 
@@ -180,7 +180,7 @@ export default async function DashboardPage() {
                         <Card className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 shadow-lg">
                             <CardContent className="pt-6">
                                 <div className="flex items-start gap-3">
-                                    <ShieldCheckIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+                                    <ShieldCheckIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
                                     <div>
                                         <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100 mb-1">
                                             Enhance Your Account Security

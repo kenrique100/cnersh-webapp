@@ -5,14 +5,14 @@ import { ShieldCheckIcon, UsersIcon, FileTextIcon, SettingsIcon } from "lucide-r
 
 export default function Home() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
             {/* Navbar */}
             <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:bg-gray-950/80 dark:border-gray-800 shadow-sm">
                 <div className="container mx-auto max-w-7xl">
                     <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                         {/* Logo at Top Left */}
                         <Link href="/" className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-700 dark:bg-blue-600">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                                 <Image
                                     src="/logo.png"
                                     alt="CNEC"
@@ -50,7 +50,7 @@ export default function Home() {
                     {/* Logo and Title */}
                     <div className="text-center space-y-6 mb-12">
                         <div className="flex justify-center mb-6">
-                            <div className="flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-blue-700 dark:bg-blue-600 shadow-2xl">
+                            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                                 <Image
                                     src="/logo.png"
                                     alt="CNEC Logo"
