@@ -205,6 +205,7 @@ export default function FeedClient({
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
                                     <ImageUpload
                                         endpoint="imageUploader"
+                                        variant="feed"
                                         defaultUrl={newPostImage}
                                         onChange={(url) => setNewPostImage(url)}
                                     />

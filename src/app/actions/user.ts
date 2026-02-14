@@ -17,7 +17,6 @@ export async function updateProfile() {
             name: true,
             image: true,
             role: true,
-            twoFactorEnabled: true,
         },
     });
 }

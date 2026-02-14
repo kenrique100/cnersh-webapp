@@ -21,8 +21,6 @@ model User {
   gender              Gender?
   sessions            Session[]
   accounts            Account[]
-  twoFactorEnabled    Boolean     @default(false)
-  twoFactor           TwoFactor[]
   banned              Boolean?
   banReason           String?
   banExpires          DateTime?
@@ -94,17 +92,6 @@ enum Gender {
   female
 
   @@map("gender")
-}
-
-model TwoFactor {
-  id          String @id
-  userId      String
-  secret      String
-  backupCodes String
-  user        User   @relation(references: [id], fields: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("twoFactor")
 }
 
 // ─── Feed System ───────────────────────────────────────────

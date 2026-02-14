@@ -2,7 +2,7 @@ import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShieldCheckIcon, PenSquareIcon, FolderIcon, MessageSquareIcon, BellIcon } from "lucide-react";
+import { PenSquareIcon, FolderIcon, MessageSquareIcon, BellIcon } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
@@ -98,29 +98,6 @@ export default async function DashboardPage() {
                         </Card>
                     </Link>
                 </div>
-
-                {/* Security Reminder */}
-                {user && !user.twoFactorEnabled && (
-                    <Card className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 shadow-lg">
-                        <CardContent className="pt-6">
-                            <div className="flex items-start gap-3">
-                                <ShieldCheckIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100 mb-1">
-                                        Enhance Your Account Security
-                                    </p>
-                                    <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                                        We recommend enabling two-factor authentication to protect your account. 
-                                        You can enable it in your{" "}
-                                        <Link href="/update-profile" className="underline font-medium">
-                                            profile page
-                                        </Link>.
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
             </div>
         </div>
     );
