@@ -62,23 +62,32 @@ export function SignInForm() {
                         const { error } = await authClient.twoFactor.sendOtp({});
 
                         if (error) {
-                            // User doesn't have 2FA enabled or OTP send failed
-                            // Redirect to dashboard instead
                             router.push("/dashboard");
                             toast.success("Signed in successfully");
                         } else {
-                            // OTP sent successfully, redirect to 2FA page
                             router.push("/two-factor");
                             toast.success("OTP sent. Please check your email.");
                         }
                     },
                     onError: (ctx) => {
-                        toast.error(ctx.error.message || "Invalid email or password");
+                        // ✅ Better error handling
+                        const errorMessage = ctx.error.message || "Invalid email or password";
+
+                        if (errorMessage.includes("verify") || errorMessage.includes("verification")) {
+                            toast.error("Please verify your email before signing in. Check your inbox.");
+                        } else if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+                            toast.error("Access denied. Please check your credentials or verify your email.");
+                        } else {
+                            toast.error(errorMessage);
+                        }
                     },
                 }
             );
-        } catch {
-            toast.error("Unable to sign in. Please try again later.");
+        } catch (error) {
+            console.error("Sign-in error:", error);
+            toast.error("An unexpected error occurred. Please try again.");
+        } finally {
+            form.reset();
         }
     };
 
