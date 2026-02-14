@@ -283,10 +283,10 @@ export default function CommunityClient({
     /* ─── Channel Sidebar ──────────────────────────────── */
 
     const channelSidebar = (
-        <div className="flex flex-col h-full bg-[#2b2d31] dark:bg-[#2b2d31]">
+        <div className="flex flex-col h-full bg-gray-100 dark:bg-gray-900">
             {/* Server Header */}
-            <div className="h-12 px-4 flex items-center border-b border-[#1f2023] shadow-sm">
-                <h2 className="font-semibold text-white truncate text-sm">
+            <div className="h-12 px-4 flex items-center border-b border-gray-200 dark:border-gray-800 shadow-sm">
+                <h2 className="font-semibold text-gray-900 dark:text-white truncate text-sm">
                     CNEC Community
                 </h2>
             </div>
@@ -295,7 +295,7 @@ export default function CommunityClient({
             <div className="px-2 pt-3 pb-1">
                 <button
                     onClick={() => setShowCreate(true)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-[#949ba4] hover:text-white hover:bg-[#35373c] transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800 transition-colors"
                 >
                     <PlusIcon className="h-4 w-4" />
                     <span>Create Channel</span>
@@ -312,10 +312,10 @@ export default function CommunityClient({
                     return (
                         <div key={cat}>
                             <div className="flex items-center gap-1 px-1 mb-0.5">
-                                <span className="text-[10px] font-bold uppercase tracking-wide text-[#949ba4]">
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     {cat}
                                 </span>
-                                <span className="text-[10px] text-[#6d6f78]">
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500">
                                     — {catTopics.length}
                                 </span>
                             </div>
@@ -327,16 +327,16 @@ export default function CommunityClient({
                                     }
                                     className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors group ${
                                         selectedTopic?.id === topic.id
-                                            ? "bg-[#404249] text-white"
-                                            : "text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#35373c]"
+                                            ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800"
                                     }`}
                                 >
-                                    <HashIcon className="h-4 w-4 shrink-0 text-[#6d6f78]" />
+                                    <HashIcon className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
                                     <span className="truncate text-left flex-1">
                                         {topic.title.toLowerCase().replace(/\s+/g, "-")}
                                     </span>
                                     {topic._count.replies > 0 && (
-                                        <span className="text-[10px] text-[#6d6f78]">
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
                                             {topic._count.replies}
                                         </span>
                                     )}
@@ -351,7 +351,7 @@ export default function CommunityClient({
                 ).length > 0 && (
                     <div>
                         <div className="flex items-center gap-1 px-1 mb-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-[#949ba4]">
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Other
                             </span>
                         </div>
@@ -365,11 +365,11 @@ export default function CommunityClient({
                                     }
                                     className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
                                         selectedTopic?.id === topic.id
-                                            ? "bg-[#404249] text-white"
-                                            : "text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#35373c]"
+                                            ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800"
                                     }`}
                                 >
-                                    <HashIcon className="h-4 w-4 shrink-0 text-[#6d6f78]" />
+                                    <HashIcon className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
                                     <span className="truncate text-left flex-1">
                                         {topic.title.toLowerCase().replace(/\s+/g, "-")}
                                     </span>
@@ -380,9 +380,9 @@ export default function CommunityClient({
             </div>
 
             {/* Members Count */}
-            <div className="h-12 px-3 flex items-center gap-2 border-t border-[#1f2023] bg-[#232428]">
-                <UsersIcon className="h-4 w-4 text-[#949ba4]" />
-                <span className="text-xs text-[#949ba4]">
+            <div className="h-12 px-3 flex items-center gap-2 border-t border-gray-200 dark:border-gray-800 bg-gray-200 dark:bg-gray-950">
+                <UsersIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                     {users.length} members
                 </span>
             </div>
@@ -392,22 +392,22 @@ export default function CommunityClient({
     /* ─── Message Area ─────────────────────────────────── */
 
     const messageArea = selectedTopic ? (
-        <div className="flex flex-col h-full bg-[#313338] dark:bg-[#313338]">
+        <div className="flex flex-col h-full bg-white dark:bg-gray-950">
             {/* Channel Header */}
-            <div className="h-12 px-4 flex items-center gap-2 border-b border-[#1f2023] shadow-sm shrink-0">
+            <div className="h-12 px-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 shadow-sm shrink-0">
                 {/* Mobile channel toggle */}
                 <button
                     onClick={() => setShowMobileChannels(true)}
-                    className="md:hidden p-1 rounded hover:bg-[#404249] text-[#b5bac1]"
+                    className="md:hidden p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
                 >
                     <HashIcon className="h-5 w-5" />
                 </button>
-                <HashIcon className="h-5 w-5 text-[#6d6f78] hidden md:block" />
+                <HashIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 hidden md:block" />
                 <h3 className="font-semibold text-white text-sm truncate">
                     {selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
                 </h3>
-                <div className="h-6 w-px bg-[#3f4147] mx-1 hidden sm:block" />
-                <p className="text-xs text-[#949ba4] truncate hidden sm:block flex-1">
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate hidden sm:block flex-1">
                     {selectedTopic.content.slice(0, 100)}
                     {selectedTopic.content.length > 100 ? "…" : ""}
                 </p>
@@ -421,25 +421,25 @@ export default function CommunityClient({
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
                 {/* Welcome Message */}
-                <div className="mb-6 pb-4 border-b border-[#3f4147]">
-                    <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center mb-3">
+                <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center mb-3">
                         <HashIcon className="h-8 w-8 text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-1">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                         Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!
                     </h2>
-                    <p className="text-sm text-[#949ba4]">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                         This is the start of the{" "}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-gray-900 dark:text-white">
                             #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
                         </span>{" "}
                         channel. Created by{" "}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-gray-900 dark:text-white">
                             {selectedTopic.user.name}
                         </span>{" "}
                         on {formatDate(selectedTopic.createdAt)}.
                     </p>
-                    <p className="text-sm text-[#949ba4] mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {selectedTopic.content}
                     </p>
                 </div>
@@ -464,12 +464,12 @@ export default function CommunityClient({
                     return (
                         <div
                             key={reply.id}
-                            className="group hover:bg-[#2e3035] rounded px-2 py-0.5 -mx-2 relative"
+                            className="group hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded px-2 py-0.5 -mx-2 relative"
                         >
                             {/* Reply reference */}
                             {parentReply && (
-                                <div className="flex items-center gap-1.5 ml-12 mb-0.5 text-xs text-[#949ba4]">
-                                    <div className="w-6 h-3 border-l-2 border-t-2 border-[#4e5058] rounded-tl ml-1" />
+                                <div className="flex items-center gap-1.5 ml-12 mb-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="w-6 h-3 border-l-2 border-t-2 border-gray-300 dark:border-gray-600 rounded-tl ml-1" />
                                     <Avatar className="h-4 w-4">
                                         <AvatarImage
                                             src={
@@ -477,13 +477,13 @@ export default function CommunityClient({
                                                 undefined
                                             }
                                         />
-                                        <AvatarFallback className="text-[8px] bg-[#5865f2] text-white">
+                                        <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
                                             {parentReply.user.name
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <span className="font-semibold text-[#b5bac1] hover:underline cursor-pointer">
+                                    <span className="font-semibold text-gray-600 dark:text-gray-300 hover:underline cursor-pointer">
                                         {parentReply.user.name}
                                     </span>
                                     <span className="truncate max-w-[200px]">
@@ -500,7 +500,7 @@ export default function CommunityClient({
                                                 reply.user.image || undefined
                                             }
                                         />
-                                        <AvatarFallback className="bg-[#5865f2] text-white text-sm">
+                                        <AvatarFallback className="bg-indigo-500 text-white text-sm">
                                             {reply.user.name
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
@@ -508,7 +508,7 @@ export default function CommunityClient({
                                     </Avatar>
                                 ) : (
                                     <div className="w-10 shrink-0 flex items-center justify-center">
-                                        <span className="text-[10px] text-[#949ba4] opacity-0 group-hover:opacity-100">
+                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100">
                                             {formatTime(reply.createdAt)}
                                         </span>
                                     </div>
@@ -516,16 +516,16 @@ export default function CommunityClient({
                                 <div className="flex-1 min-w-0">
                                     {showHeader && (
                                         <div className="flex items-baseline gap-2">
-                                            <span className="font-semibold text-sm text-white hover:underline cursor-pointer">
+                                            <span className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer">
                                                 {reply.user.name}
                                             </span>
-                                            <span className="text-[11px] text-[#949ba4]">
+                                            <span className="text-[11px] text-gray-500 dark:text-gray-400">
                                                 {formatDate(reply.createdAt)}{" "}
                                                 {formatTime(reply.createdAt)}
                                             </span>
                                         </div>
                                     )}
-                                    <p className="text-sm text-[#dbdee1] break-words whitespace-pre-wrap">
+                                    <p className="text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
                                         {renderMessageContent(reply.content)}
                                     </p>
                                     {reply.image && (
@@ -536,14 +536,14 @@ export default function CommunityClient({
                                                 width={400}
                                                 height={300}
                                                 unoptimized
-                                                className="rounded-lg max-h-[300px] w-auto object-contain border border-[#1f2023] cursor-pointer hover:opacity-90"
+                                                className="rounded-lg max-h-[300px] w-auto object-contain border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90"
                                             />
                                         </div>
                                     )}
                                     {/* Nested replies inline */}
                                     {reply.children &&
                                         reply.children.length > 0 && (
-                                            <div className="mt-1 ml-2 pl-3 border-l-2 border-[#4e5058] space-y-1">
+                                            <div className="mt-1 ml-2 pl-3 border-l-2 border-gray-300 dark:border-gray-600 space-y-1">
                                                 {reply.children.map(
                                                     (child) => (
                                                         <div
@@ -559,7 +559,7 @@ export default function CommunityClient({
                                                                         undefined
                                                                     }
                                                                 />
-                                                                <AvatarFallback className="text-[8px] bg-[#5865f2] text-white">
+                                                                <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
                                                                     {child.user.name
                                                                         ?.charAt(
                                                                             0
@@ -569,19 +569,19 @@ export default function CommunityClient({
                                                                 </AvatarFallback>
                                                             </Avatar>
                                                             <div>
-                                                                <span className="text-xs font-semibold text-[#b5bac1]">
+                                                                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
                                                                     {
                                                                         child
                                                                             .user
                                                                             .name
                                                                     }
                                                                 </span>
-                                                                <span className="text-[10px] text-[#6d6f78] ml-2">
+                                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-2">
                                                                     {formatTime(
                                                                         child.createdAt
                                                                     )}
                                                                 </span>
-                                                                <p className="text-xs text-[#dbdee1]">
+                                                                <p className="text-xs text-gray-800 dark:text-gray-200">
                                                                     {renderMessageContent(
                                                                         child.content
                                                                     )}
@@ -605,10 +605,10 @@ export default function CommunityClient({
                                 </div>
 
                                 {/* Message Actions (hover) */}
-                                <div className="opacity-0 group-hover:opacity-100 absolute top-0 right-2 -translate-y-1/2 flex bg-[#2b2d31] border border-[#1f2023] rounded shadow-lg">
+                                <div className="opacity-0 group-hover:opacity-100 absolute top-0 right-2 -translate-y-1/2 flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg">
                                     <button
                                         onClick={() => setReplyingTo(reply)}
-                                        className="p-1.5 hover:bg-[#404249] rounded text-[#b5bac1] hover:text-white"
+                                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                         title="Reply"
                                     >
                                         <ReplyIcon className="h-4 w-4" />
@@ -625,17 +625,17 @@ export default function CommunityClient({
             <div className="px-4 pb-4 pt-1 shrink-0">
                 {/* Reply indicator */}
                 {replyingTo && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 mb-1 rounded-t-lg bg-[#2b2d31] text-xs text-[#b5bac1]">
+                    <div className="flex items-center gap-2 px-3 py-1.5 mb-1 rounded-t-lg bg-gray-100 dark:bg-gray-900 text-xs text-gray-600 dark:text-gray-300">
                         <ReplyIcon className="h-3 w-3" />
                         <span>
                             Replying to{" "}
-                            <span className="font-semibold text-white">
+                            <span className="font-semibold text-gray-900 dark:text-white">
                                 {replyingTo.user.name}
                             </span>
                         </span>
                         <button
                             onClick={() => setReplyingTo(null)}
-                            className="ml-auto hover:text-white"
+                            className="ml-auto hover:text-gray-900 dark:hover:text-white"
                         >
                             <XIcon className="h-3 w-3" />
                         </button>
@@ -644,7 +644,7 @@ export default function CommunityClient({
 
                 {/* Pending image preview */}
                 {pendingImage && (
-                    <div className="relative inline-block mb-1 px-3 py-2 rounded-t-lg bg-[#2b2d31]">
+                    <div className="relative inline-block mb-1 px-3 py-2 rounded-t-lg bg-gray-100 dark:bg-gray-900">
                         <Image
                             src={pendingImage}
                             alt="Upload preview"
@@ -663,7 +663,7 @@ export default function CommunityClient({
                 )}
 
                 <div
-                    className={`flex items-end gap-1 bg-[#383a40] rounded-lg px-3 py-2 ${
+                    className={`flex items-end gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 ${
                         replyingTo || pendingImage
                             ? "rounded-t-none"
                             : ""
@@ -674,7 +674,7 @@ export default function CommunityClient({
                         <UploadButton
                             endpoint="communityImage"
                             appearance={{
-                                button: "!bg-transparent !text-[#b5bac1] hover:!text-white !p-1 !h-8 !w-8 !rounded-full !ring-0 !shadow-none !border-0 ut-uploading:!text-blue-400",
+                                button: "!bg-transparent !text-gray-600 hover:!text-gray-900 dark:hover:!text-white !p-1 !h-8 !w-8 !rounded-full !ring-0 !shadow-none !border-0 ut-uploading:!text-blue-400",
                                 allowedContent: "hidden",
                                 container: "!p-0 !m-0 !min-w-0",
                             }}
@@ -719,7 +719,7 @@ export default function CommunityClient({
                         onKeyDown={handleKeyDown}
                         placeholder={`Message #${selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}`}
                         rows={1}
-                        className="flex-1 bg-transparent text-sm text-[#dbdee1] placeholder-[#6d6f78] resize-none outline-none max-h-[120px] py-1"
+                        className="flex-1 bg-transparent text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 resize-none outline-none max-h-[120px] py-1"
                         style={{
                             height: "auto",
                             minHeight: "24px",
@@ -732,13 +732,13 @@ export default function CommunityClient({
                             onClick={() =>
                                 setShowEmojiPicker(!showEmojiPicker)
                             }
-                            className="p-1.5 rounded-full text-[#b5bac1] hover:text-white transition-colors"
+                            className="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
                             <SmileIcon className="h-5 w-5" />
                         </button>
 
                         {showEmojiPicker && (
-                            <div className="absolute bottom-full right-0 mb-2 bg-[#2b2d31] border border-[#1f2023] rounded-lg shadow-xl p-3 w-64 z-50">
+                            <div className="absolute bottom-full right-0 mb-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-3 w-64 z-50">
                                 <div className="grid grid-cols-8 gap-1">
                                     {EMOJI_LIST.map((emoji) => (
                                         <button
@@ -746,7 +746,7 @@ export default function CommunityClient({
                                             onClick={() =>
                                                 handleEmoji(emoji)
                                             }
-                                            className="h-8 w-8 flex items-center justify-center rounded hover:bg-[#404249] text-lg"
+                                            className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-lg"
                                         >
                                             {emoji}
                                         </button>
@@ -763,28 +763,28 @@ export default function CommunityClient({
                                 setShowMentions(!showMentions);
                                 setMentionFilter("");
                             }}
-                            className="p-1.5 rounded-full text-[#b5bac1] hover:text-white transition-colors"
+                            className="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
                             <AtSignIcon className="h-5 w-5" />
                         </button>
 
                         {showMentions && (
-                            <div className="absolute bottom-full right-0 mb-2 bg-[#2b2d31] border border-[#1f2023] rounded-lg shadow-xl w-56 max-h-48 overflow-y-auto z-50">
-                                <div className="p-2 border-b border-[#1f2023]">
+                            <div className="absolute bottom-full right-0 mb-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl w-56 max-h-48 overflow-y-auto z-50">
+                                <div className="p-2 border-b border-gray-200 dark:border-gray-800">
                                     <Input
                                         placeholder="Search members..."
                                         value={mentionFilter}
                                         onChange={(e) =>
                                             setMentionFilter(e.target.value)
                                         }
-                                        className="h-7 text-xs bg-[#1e1f22] border-[#1e1f22] text-white"
+                                        className="h-7 text-xs bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white"
                                     />
                                 </div>
                                 {filteredUsers.slice(0, 10).map((u) => (
                                     <button
                                         key={u.id}
                                         onClick={() => handleMention(u)}
-                                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[#404249] text-sm text-[#dbdee1]"
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200"
                                     >
                                         <Avatar className="h-6 w-6">
                                             <AvatarImage
@@ -792,7 +792,7 @@ export default function CommunityClient({
                                                     u.image || undefined
                                                 }
                                             />
-                                            <AvatarFallback className="text-[9px] bg-[#5865f2] text-white">
+                                            <AvatarFallback className="text-[9px] bg-indigo-500 text-white">
                                                 {u.name
                                                     ?.charAt(0)
                                                     ?.toUpperCase() || "U"}
@@ -814,7 +814,7 @@ export default function CommunityClient({
                     <button
                         onClick={handleSendMessage}
                         disabled={!messageText.trim() && !pendingImage}
-                        className="p-1.5 rounded-full text-[#b5bac1] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0 mb-0.5"
+                        className="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0 mb-0.5"
                     >
                         <SendIcon className="h-5 w-5" />
                     </button>
@@ -823,27 +823,27 @@ export default function CommunityClient({
         </div>
     ) : (
         /* No channel selected */
-        <div className="flex flex-col items-center justify-center h-full bg-[#313338] dark:bg-[#313338] text-center">
+        <div className="flex flex-col items-center justify-center h-full bg-white dark:bg-gray-950 text-center">
             {/* Mobile channel toggle */}
             <button
                 onClick={() => setShowMobileChannels(true)}
-                className="md:hidden absolute top-3 left-3 p-2 rounded-lg bg-[#2b2d31] text-[#b5bac1]"
+                className="md:hidden absolute top-3 left-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300"
             >
                 <HashIcon className="h-5 w-5" />
             </button>
-            <div className="w-24 h-24 rounded-full bg-[#5865f2]/20 flex items-center justify-center mb-4">
-                <HashIcon className="h-12 w-12 text-[#5865f2]" />
+            <div className="w-24 h-24 rounded-full bg-indigo-500/20 flex items-center justify-center mb-4">
+                <HashIcon className="h-12 w-12 text-indigo-500" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome to CNEC Community
             </h2>
-            <p className="text-sm text-[#949ba4] max-w-sm mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">
                 Select a channel from the sidebar to start chatting, or
                 create a new one.
             </p>
             <Button
                 onClick={() => setShowCreate(true)}
-                className="bg-[#5865f2] hover:bg-[#4752c4] text-white"
+                className="bg-indigo-500 hover:bg-indigo-600 text-white"
             >
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Create Channel
@@ -854,9 +854,9 @@ export default function CommunityClient({
     /* ─── Main Layout ──────────────────────────────────── */
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex overflow-hidden rounded-lg border border-[#1f2023]">
+        <div className="h-[calc(100vh-4rem)] flex overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
             {/* Desktop Sidebar */}
-            <div className="hidden md:block w-60 shrink-0 border-r border-[#1f2023]">
+            <div className="hidden md:block w-60 shrink-0 border-r border-gray-200 dark:border-gray-800">
                 {channelSidebar}
             </div>
 
@@ -878,19 +878,19 @@ export default function CommunityClient({
 
             {/* Create Topic Dialog */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent className="bg-[#313338] border-[#1f2023] text-white">
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white">
                     <DialogHeader>
-                        <DialogTitle className="text-white">
+                        <DialogTitle className="text-gray-900 dark:text-white">
                             Create Channel
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-1.5 block">
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
                                 Channel Name
                             </label>
-                            <div className="flex items-center gap-1 bg-[#1e1f22] rounded-md px-3 py-2">
-                                <HashIcon className="h-4 w-4 text-[#6d6f78]" />
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <HashIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                                 <Input
                                     placeholder="new-channel"
                                     value={newTopic.title}
@@ -900,12 +900,12 @@ export default function CommunityClient({
                                             title: e.target.value,
                                         }))
                                     }
-                                    className="bg-transparent border-0 text-white placeholder-[#6d6f78] h-auto p-0 focus-visible:ring-0"
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-1.5 block">
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
                                 Category
                             </label>
                             <Select
@@ -917,15 +917,15 @@ export default function CommunityClient({
                                     }))
                                 }
                             >
-                                <SelectTrigger className="bg-[#1e1f22] border-0 text-white">
+                                <SelectTrigger className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white">
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-[#2b2d31] border-[#1f2023]">
+                                <SelectContent className="bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
                                     {CATEGORIES.map((cat) => (
                                         <SelectItem
                                             key={cat}
                                             value={cat}
-                                            className="text-[#dbdee1] focus:bg-[#404249] focus:text-white"
+                                            className="text-gray-800 dark:text-gray-200 focus:bg-gray-200 dark:focus:bg-gray-700 focus:text-gray-900 dark:focus:text-white"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div
@@ -939,7 +939,7 @@ export default function CommunityClient({
                             </Select>
                         </div>
                         <div>
-                            <label className="text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-1.5 block">
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
                                 Description
                             </label>
                             <Textarea
@@ -951,12 +951,12 @@ export default function CommunityClient({
                                         content: e.target.value,
                                     }))
                                 }
-                                className="bg-[#1e1f22] border-0 text-white placeholder-[#6d6f78] min-h-[80px]"
+                                className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 min-h-[80px]"
                             />
                         </div>
                         <Button
                             onClick={handleCreateTopic}
-                            className="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white"
+                            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white"
                         >
                             Create Channel
                         </Button>
