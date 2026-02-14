@@ -55,29 +55,41 @@ npm run db:push
 > **Important**: `prisma generate` only creates the TypeScript client. You must run `db:push` (or `db:migrate`) to actually create/update the database tables. Without this step, you will see errors like:
 > `The column (not available) does not exist in the current database.`
 
-### 4. Start the Development Server
+### 4. Create Admin User
+
+Run the seed script to create your admin account:
+
+```bash
+npm run db:seed
+```
+
+**Default admin credentials:**
+- Email: `admin@cnec.cm`
+- Password: `Admin@CNEC2026`
+
+To use custom credentials, set these in your `.env` before seeding:
+
+```env
+ADMIN_EMAIL="your-email@example.com"
+ADMIN_PASSWORD="YourSecurePassword123"
+ADMIN_NAME="Your Name"
+```
+
+Or run setup + seed together:
+
+```bash
+npm run db:setup
+```
+
+> **Tip**: You can also promote any existing user to admin via Prisma Studio (`npm run db:studio`) by changing the `role` field to `admin`.
+
+### 5. Start the Development Server
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Creating an Admin User
-
-After signing up through the application, you can promote a user to admin by updating the database directly:
-
-```sql
-UPDATE "user" SET role = 'admin' WHERE email = 'your-email@example.com';
-```
-
-Or use Prisma Studio:
-
-```bash
-npm run db:studio
-```
-
-Navigate to the `User` table and change the `role` field to `admin`.
 
 ## Available Scripts
 
@@ -92,7 +104,8 @@ Navigate to the `User` table and change the `role` field to `admin`.
 | `npm run db:migrate` | Run pending migrations (production) |
 | `npm run db:migrate:dev` | Create and run migrations (development) |
 | `npm run db:studio` | Open Prisma Studio (database GUI) |
-| `npm run db:setup` | Generate client + push schema (first-time setup) |
+| `npm run db:seed` | Create admin user (configurable via env vars) |
+| `npm run db:setup` | Generate client + push schema + seed admin (first-time setup) |
 
 ## Troubleshooting
 
