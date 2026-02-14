@@ -17,13 +17,12 @@ export const auth = betterAuth({
         enabled: true,
         requireEmailVerification: true,
 
-        // ✅ FIXED: removed invalid `_`
         sendResetPassword: async ({ user, url }) => {
             if (!user?.email) {
                 throw new Error("User email is required for password reset");
             }
             await sendResetPasswordEmail({
-                to: "kenriqueanyere@gmail.com",
+                to: user.email,
                 subject: "Reset your password",
                 url,
             });
@@ -45,7 +44,7 @@ export const auth = betterAuth({
                 throw new Error("User email is required for verification");
             }
             await sendVerificationEmail({
-                to: "kenriqueanyere@gmail.com",
+                to: user.email,
                 verificationUrl: url,
                 userName: user.name,
             });
@@ -92,7 +91,7 @@ export const auth = betterAuth({
                         throw new Error("User email is required for OTP");
                     }
                     await sendOtpEmail({
-                        to: "kenriqueanyere@gmail.com",
+                        to: user.email,
                         otp,
                     });
                 },

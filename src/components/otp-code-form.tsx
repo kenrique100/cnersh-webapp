@@ -13,7 +13,6 @@ import { Spinner } from "./ui/spinner";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "./ui/input-otp";
 import { useState, useEffect } from "react";
 import { ShieldCheckIcon } from "lucide-react";
-import Image from "next/image";
 
 const formSchema = z.object({
     code: z.string().length(6, "Code must be exactly 6 digits"),

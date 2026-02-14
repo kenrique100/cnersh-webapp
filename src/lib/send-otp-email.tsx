@@ -1,7 +1,13 @@
 import OtpEmail from "@/emails/otp-email";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+function getResend() {
+    if (!resend) {
+        resend = new Resend(process.env.RESEND_API_KEY);
+    }
+    return resend;
+}
 
 type EmailProps = {
     to: string;
@@ -10,7 +16,7 @@ type EmailProps = {
 
 export const sendOtpEmail = async ({ to, otp }: EmailProps) => {
     try {
-        await resend.emails.send({
+        await getResend().emails.send({
             from: process.env.EMAIL_FROM!,
             to,
             subject: "Your login code",
