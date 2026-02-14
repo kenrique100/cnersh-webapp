@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import UserManagementForm, { Role } from "./user-client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function UserManagementPage() {
     const session = await authIsRequired();
 

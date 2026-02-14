@@ -7,6 +7,8 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
+export const dynamic = 'force-dynamic';
+
 export default async function UpdateProfilePage() {
     await authIsRequired();
     const user = await updateProfile();
