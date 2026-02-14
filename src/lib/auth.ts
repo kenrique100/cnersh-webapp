@@ -5,8 +5,7 @@ import { nextCookies } from "better-auth/next-js";
 import { sendVerificationEmail } from "@/lib/send-verification-email";
 import { sendResetPasswordEmail } from "./send-reset-password-email";
 import { ac, roles } from "./permissions";
-import { sendOtpEmail } from "./send-otp-email";
-import { admin, twoFactor } from "better-auth/plugins";
+import { admin } from "better-auth/plugins";
 
 export const auth = betterAuth({
     database: prismaAdapter(db, {
@@ -81,21 +80,5 @@ export const auth = betterAuth({
         }),
 
         nextCookies(),
-
-        twoFactor({
-            skipVerificationOnEnable: false,
-            otpOptions: {
-
-                async sendOTP({ user, otp }) {
-                    if (!user?.email) {
-                        throw new Error("User email is required for OTP");
-                    }
-                    await sendOtpEmail({
-                        to: user.email,
-                        otp,
-                    });
-                },
-            },
-        }),
     ],
 });

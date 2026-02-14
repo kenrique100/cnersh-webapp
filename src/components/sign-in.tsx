@@ -59,35 +59,20 @@ export function SignInForm() {
                 },
                 {
                     onSuccess: async () => {
-                        // Fetch session to check 2FA status and user role
+                        // Fetch session to check user role for redirect
                         const session = await authClient.getSession();
                         const user = session?.data?.user;
 
                         if (!user) {
-                            // Session fetch failed — fall back to default redirect
                             router.push("/dashboard");
                             toast.success("Signed in successfully");
                             return;
                         }
 
                         const role = user.role;
-                        const twoFactorEnabled = user.twoFactorEnabled;
-
-                        if (twoFactorEnabled) {
-                            // 2FA is enabled — send OTP and redirect to verification page
-                            const { error } = await authClient.twoFactor.sendOtp({});
-                            if (error) {
-                                toast.error(error.message || "Failed to send OTP");
-                            } else {
-                                router.push("/two-factor");
-                                toast.success("OTP sent. Please check your email.");
-                            }
-                        } else {
-                            // 2FA is disabled — redirect directly to dashboard
-                            const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
-                            router.push(redirectPath);
-                            toast.success("Signed in successfully");
-                        }
+                        const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
+                        router.push(redirectPath);
+                        toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
                         // ✅ Better error handling

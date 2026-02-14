@@ -1,6 +1,5 @@
 import { updateProfile } from "@/app/actions/user";
 import { ChangePasswordForm } from "@/components/change-password";
-import { ToggleOtpForm } from "@/components/toggle-otp-form";
 import { UpdateProfile } from "@/components/update-profile";
 import { authIsRequired } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
@@ -24,7 +23,7 @@ export default async function UpdateProfilePage() {
                         Profile Settings
                     </h1>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Manage your account settings and security preferences
+                        Manage your account settings and preferences
                     </p>
                 </div>
 
@@ -50,40 +49,21 @@ export default async function UpdateProfilePage() {
                         </CardContent>
                     </Card>
 
-                    {/* Security Settings Card */}
-                    <div className="space-y-6">
-                        {/* Change Password Card */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
-                            <CardHeader className="space-y-1 pb-4">
-                                <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                                    Change Password
-                                </CardTitle>
-                                <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-                                    Update your password to keep your account secure
-                                </CardDescription>
-                            </CardHeader>
-                            <Separator className="bg-gray-200 dark:bg-gray-800" />
-                            <CardContent className="pt-6">
-                                <ChangePasswordForm />
-                            </CardContent>
-                        </Card>
-
-                        {/* Two-Factor Authentication Card */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
-                            <CardHeader className="space-y-1 pb-4">
-                                <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                                    Two-Factor Authentication
-                                </CardTitle>
-                                <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-                                    Add an extra layer of security to your account
-                                </CardDescription>
-                            </CardHeader>
-                            <Separator className="bg-gray-200 dark:bg-gray-800" />
-                            <CardContent className="pt-6">
-                                <ToggleOtpForm twoFactorEnabled={user.twoFactorEnabled} />
-                            </CardContent>
-                        </Card>
-                    </div>
+                    {/* Change Password Card */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
+                        <CardHeader className="space-y-1 pb-4">
+                            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                Change Password
+                            </CardTitle>
+                            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                                Update your password to keep your account secure
+                            </CardDescription>
+                        </CardHeader>
+                        <Separator className="bg-gray-200 dark:bg-gray-800" />
+                        <CardContent className="pt-6">
+                            <ChangePasswordForm />
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>

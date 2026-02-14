@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { MenuIcon, LogOutIcon, UserIcon, SettingsIcon } from "lucide-react";
+import {
+    MenuIcon,
+    LogOutIcon,
+    UserIcon,
+    SettingsIcon,
+    LayoutDashboardIcon,
+    PenSquareIcon,
+    FolderIcon,
+    MessageSquareIcon,
+    BellIcon,
+    FolderPlusIcon,
+} from "lucide-react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface NavbarProps {
     user?: {
@@ -25,8 +37,18 @@ interface NavbarProps {
     } | null;
 }
 
+const mobileNavItems = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
+    { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
+    { href: "/projects", label: "My Projects", icon: FolderIcon },
+    { href: "/projects/submit", label: "Submit Project", icon: FolderPlusIcon },
+    { href: "/community", label: "Community", icon: MessageSquareIcon },
+    { href: "/notifications", label: "Notifications", icon: BellIcon },
+];
+
 export default function Navbar({ user }: NavbarProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleSignOut = async () => {
@@ -127,7 +149,7 @@ export default function Navbar({ user }: NavbarProps) {
                                         </Button>
                                     </SheetTrigger>
                                     <SheetContent side="right" className="w-75 sm:w-100">
-                                        <div className="flex flex-col gap-6 mt-6">
+                                        <div className="flex flex-col gap-4 mt-6">
                                             {/* User Info */}
                                             <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
                                                 <Avatar className="h-12 w-12 border-2 border-gray-200 dark:border-gray-700">
@@ -146,12 +168,47 @@ export default function Navbar({ user }: NavbarProps) {
                                                 </div>
                                             </div>
 
-                                            {/* Navigation Links */}
-                                            <div className="flex flex-col gap-2">
+                                            {/* Main Navigation Links */}
+                                            <div className="flex flex-col gap-1">
+                                                <p className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                    Navigation
+                                                </p>
+                                                {mobileNavItems.map((item) => {
+                                                    const Icon = item.icon;
+                                                    const isActive = pathname === item.href;
+                                                    return (
+                                                        <Link
+                                                            key={item.href}
+                                                            href={item.href}
+                                                            onClick={() => setIsMobileMenuOpen(false)}
+                                                            className={cn(
+                                                                "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
+                                                                isActive
+                                                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                                                    : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950"
+                                                            )}
+                                                        >
+                                                            <Icon className="h-5 w-5" />
+                                                            {item.label}
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Account Links */}
+                                            <div className="flex flex-col gap-1 border-t border-gray-200 dark:border-gray-800 pt-4">
+                                                <p className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                    Account
+                                                </p>
                                                 <Link
                                                     href="/update-profile"
                                                     onClick={() => setIsMobileMenuOpen(false)}
-                                                    className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors"
+                                                    className={cn(
+                                                        "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
+                                                        pathname === "/update-profile"
+                                                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950"
+                                                    )}
                                                 >
                                                     <UserIcon className="h-5 w-5" />
                                                     View Profile
@@ -159,7 +216,12 @@ export default function Navbar({ user }: NavbarProps) {
                                                 <Link
                                                     href="/settings"
                                                     onClick={() => setIsMobileMenuOpen(false)}
-                                                    className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors"
+                                                    className={cn(
+                                                        "flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors",
+                                                        pathname === "/settings"
+                                                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950"
+                                                    )}
                                                 >
                                                     <SettingsIcon className="h-5 w-5" />
                                                     Settings
