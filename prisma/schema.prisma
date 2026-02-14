@@ -229,6 +229,7 @@ model CommunityTopic {
 model CommunityReply {
   id        String          @id @default(uuid())
   content   String
+  image     String?
   topicId   String
   topic     CommunityTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
   parentId  String?

@@ -1,23 +1,58 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquareIcon, PlusIcon, SendIcon } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    HashIcon,
+    PlusIcon,
+    SendIcon,
+    SmileIcon,
+    ImageIcon,
+    ReplyIcon,
+    XIcon,
+    UsersIcon,
+    AtSignIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { createTopic, addReply, getTopicWithReplies } from "@/app/actions/community";
+import {
+    createTopic,
+    addReply,
+    getTopicWithReplies,
+} from "@/app/actions/community";
+import { UploadButton } from "@/lib/uploadthing";
+
+/* ─── Types ───────────────────────────────────────────── */
 
 interface TopicUser {
     id: string;
     name: string | null;
     image: string | null;
+}
+
+interface CommunityUser {
+    id: string;
+    name: string | null;
+    image: string | null;
+    role: string | null;
 }
 
 interface TopicData {
@@ -33,8 +68,10 @@ interface TopicData {
 interface ReplyData {
     id: string;
     content: string;
+    image?: string | null;
     createdAt: Date;
     user: TopicUser;
+    parentId?: string | null;
     children?: ReplyData[];
 }
 
@@ -48,26 +85,80 @@ interface TopicDetail {
     replies: ReplyData[];
 }
 
-const CATEGORIES = ["General", "Ethics", "Research", "Policy", "Technology", "Health", "Education"];
+const CATEGORIES = [
+    "General",
+    "Ethics",
+    "Research",
+    "Policy",
+    "Technology",
+    "Health",
+    "Education",
+];
+
+const MESSAGE_GROUP_THRESHOLD_MS = 5 * 60 * 1000;
+
+const EMOJI_LIST = [
+    "😀", "😂", "😍", "🤔", "👍", "👎", "🎉", "🔥",
+    "❤️", "💯", "🙏", "👏", "🤝", "💪", "✅", "⭐",
+    "🚀", "💡", "📌", "🎯", "👀", "✨", "⚡", "🌟",
+];
+
+const CATEGORY_COLORS: Record<string, string> = {
+    General: "bg-gray-500",
+    Ethics: "bg-purple-500",
+    Research: "bg-blue-500",
+    Policy: "bg-amber-500",
+    Technology: "bg-green-500",
+    Health: "bg-red-500",
+    Education: "bg-indigo-500",
+};
+
+/* ─── Component ────────────────────────────────────────── */
 
 interface CommunityClientProps {
     initialTopics: TopicData[];
+    users: CommunityUser[];
 }
 
-export default function CommunityClient({ initialTopics }: CommunityClientProps) {
+export default function CommunityClient({
+    initialTopics,
+    users,
+}: CommunityClientProps) {
     const router = useRouter();
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
     const [topics] = React.useState(initialTopics);
+    const [selectedTopic, setSelectedTopic] =
+        React.useState<TopicDetail | null>(null);
+    const [messageText, setMessageText] = React.useState("");
+    const [pendingImage, setPendingImage] = React.useState<string | null>(null);
+    const [replyingTo, setReplyingTo] = React.useState<ReplyData | null>(null);
     const [showCreate, setShowCreate] = React.useState(false);
-    const [selectedTopic, setSelectedTopic] = React.useState<TopicDetail | null>(null);
-    const [replyText, setReplyText] = React.useState("");
+    const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
+    const [showMentions, setShowMentions] = React.useState(false);
+    const [mentionFilter, setMentionFilter] = React.useState("");
+    const [showMobileChannels, setShowMobileChannels] = React.useState(false);
     const [newTopic, setNewTopic] = React.useState({
         title: "",
         content: "",
         category: "",
     });
 
+    const scrollToBottom = useCallback(() => {
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+    }, []);
+
+    /* ─── Handlers ──────────────────────────────────────── */
+
     const handleCreateTopic = async () => {
-        if (!newTopic.title.trim() || !newTopic.content.trim() || !newTopic.category) {
+        if (
+            !newTopic.title.trim() ||
+            !newTopic.content.trim() ||
+            !newTopic.category
+        ) {
             toast.error("Please fill in all fields");
             return;
         }
@@ -75,261 +166,803 @@ export default function CommunityClient({ initialTopics }: CommunityClientProps)
             await createTopic(newTopic);
             setShowCreate(false);
             setNewTopic({ title: "", content: "", category: "" });
-            toast.success("Discussion created!");
+            toast.success("Channel created!");
             router.refresh();
         } catch {
-            toast.error("Failed to create discussion");
+            toast.error("Failed to create channel");
         }
     };
 
-    const handleViewTopic = async (topicId: string) => {
+    const handleSelectTopic = async (topicId: string) => {
         try {
             const topic = await getTopicWithReplies(topicId);
             if (topic) {
                 setSelectedTopic(JSON.parse(JSON.stringify(topic)));
+                setShowMobileChannels(false);
+                scrollToBottom();
             }
         } catch {
-            toast.error("Failed to load discussion");
+            toast.error("Failed to load channel");
         }
     };
 
-    const handleReply = async () => {
-        if (!replyText.trim() || !selectedTopic) return;
+    const handleSendMessage = async () => {
+        if ((!messageText.trim() && !pendingImage) || !selectedTopic) return;
         try {
             const reply = await addReply({
                 topicId: selectedTopic.id,
-                content: replyText,
+                content: messageText.trim(),
+                parentId: replyingTo?.id,
+                image: pendingImage || undefined,
             });
             setSelectedTopic((prev) =>
-                prev ? { ...prev, replies: [...prev.replies, { ...reply, children: [] }] } : prev
+                prev
+                    ? {
+                          ...prev,
+                          replies: [
+                              ...prev.replies,
+                              { ...reply, children: [] },
+                          ],
+                      }
+                    : prev
             );
-            setReplyText("");
+            setMessageText("");
+            setPendingImage(null);
+            setReplyingTo(null);
+            scrollToBottom();
         } catch {
-            toast.error("Failed to add reply");
+            toast.error("Failed to send message");
         }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
+        if (e.key === "@") {
+            setShowMentions(true);
+            setMentionFilter("");
+        }
+        if (e.key === "Escape") {
+            setShowMentions(false);
+            setShowEmojiPicker(false);
+        }
+    };
+
+    const handleMention = (user: CommunityUser) => {
+        const name = user.name || "Unknown";
+        setMessageText((prev) => prev + `@${name} `);
+        setShowMentions(false);
+        inputRef.current?.focus();
+    };
+
+    const handleEmoji = (emoji: string) => {
+        setMessageText((prev) => prev + emoji);
+        setShowEmojiPicker(false);
+        inputRef.current?.focus();
+    };
+
+    const formatTime = (date: Date) =>
+        new Date(date).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+        });
+
     const formatDate = (date: Date) =>
         new Date(date).toLocaleDateString("en-US", {
-            month: "short",
+            weekday: "long",
+            month: "long",
             day: "numeric",
             year: "numeric",
         });
 
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-end">
-                <Button onClick={() => setShowCreate(true)}>
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    New Discussion
-                </Button>
+    const renderMessageContent = (content: string) => {
+        const parts = content.split(/(@\w+)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith("@") && part.length > 1) {
+                return (
+                    <span
+                        key={i}
+                        className="bg-blue-500/20 text-blue-400 rounded px-0.5 cursor-pointer hover:bg-blue-500/30"
+                    >
+                        {part}
+                    </span>
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
+
+    const filteredUsers = users.filter(
+        (u) =>
+            u.name &&
+            u.name.toLowerCase().includes(mentionFilter.toLowerCase())
+    );
+
+    /* ─── Channel Sidebar ──────────────────────────────── */
+
+    const channelSidebar = (
+        <div className="flex flex-col h-full bg-[#2b2d31] dark:bg-[#2b2d31]">
+            {/* Server Header */}
+            <div className="h-12 px-4 flex items-center border-b border-[#1f2023] shadow-sm">
+                <h2 className="font-semibold text-white truncate text-sm">
+                    CNEC Community
+                </h2>
             </div>
+
+            {/* New Channel */}
+            <div className="px-2 pt-3 pb-1">
+                <button
+                    onClick={() => setShowCreate(true)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-[#949ba4] hover:text-white hover:bg-[#35373c] transition-colors"
+                >
+                    <PlusIcon className="h-4 w-4" />
+                    <span>Create Channel</span>
+                </button>
+            </div>
+
+            {/* Category Groups */}
+            <div className="flex-1 overflow-y-auto px-2 py-1 space-y-3">
+                {CATEGORIES.map((cat) => {
+                    const catTopics = topics.filter(
+                        (t) => t.category === cat
+                    );
+                    if (catTopics.length === 0) return null;
+                    return (
+                        <div key={cat}>
+                            <div className="flex items-center gap-1 px-1 mb-0.5">
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-[#949ba4]">
+                                    {cat}
+                                </span>
+                                <span className="text-[10px] text-[#6d6f78]">
+                                    — {catTopics.length}
+                                </span>
+                            </div>
+                            {catTopics.map((topic) => (
+                                <button
+                                    key={topic.id}
+                                    onClick={() =>
+                                        handleSelectTopic(topic.id)
+                                    }
+                                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors group ${
+                                        selectedTopic?.id === topic.id
+                                            ? "bg-[#404249] text-white"
+                                            : "text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#35373c]"
+                                    }`}
+                                >
+                                    <HashIcon className="h-4 w-4 shrink-0 text-[#6d6f78]" />
+                                    <span className="truncate text-left flex-1">
+                                        {topic.title.toLowerCase().replace(/\s+/g, "-")}
+                                    </span>
+                                    {topic._count.replies > 0 && (
+                                        <span className="text-[10px] text-[#6d6f78]">
+                                            {topic._count.replies}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    );
+                })}
+                {/* Uncategorized topics */}
+                {topics.filter(
+                    (t) => !CATEGORIES.includes(t.category)
+                ).length > 0 && (
+                    <div>
+                        <div className="flex items-center gap-1 px-1 mb-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-[#949ba4]">
+                                Other
+                            </span>
+                        </div>
+                        {topics
+                            .filter((t) => !CATEGORIES.includes(t.category))
+                            .map((topic) => (
+                                <button
+                                    key={topic.id}
+                                    onClick={() =>
+                                        handleSelectTopic(topic.id)
+                                    }
+                                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
+                                        selectedTopic?.id === topic.id
+                                            ? "bg-[#404249] text-white"
+                                            : "text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#35373c]"
+                                    }`}
+                                >
+                                    <HashIcon className="h-4 w-4 shrink-0 text-[#6d6f78]" />
+                                    <span className="truncate text-left flex-1">
+                                        {topic.title.toLowerCase().replace(/\s+/g, "-")}
+                                    </span>
+                                </button>
+                            ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Members Count */}
+            <div className="h-12 px-3 flex items-center gap-2 border-t border-[#1f2023] bg-[#232428]">
+                <UsersIcon className="h-4 w-4 text-[#949ba4]" />
+                <span className="text-xs text-[#949ba4]">
+                    {users.length} members
+                </span>
+            </div>
+        </div>
+    );
+
+    /* ─── Message Area ─────────────────────────────────── */
+
+    const messageArea = selectedTopic ? (
+        <div className="flex flex-col h-full bg-[#313338] dark:bg-[#313338]">
+            {/* Channel Header */}
+            <div className="h-12 px-4 flex items-center gap-2 border-b border-[#1f2023] shadow-sm shrink-0">
+                {/* Mobile channel toggle */}
+                <button
+                    onClick={() => setShowMobileChannels(true)}
+                    className="md:hidden p-1 rounded hover:bg-[#404249] text-[#b5bac1]"
+                >
+                    <HashIcon className="h-5 w-5" />
+                </button>
+                <HashIcon className="h-5 w-5 text-[#6d6f78] hidden md:block" />
+                <h3 className="font-semibold text-white text-sm truncate">
+                    {selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
+                </h3>
+                <div className="h-6 w-px bg-[#3f4147] mx-1 hidden sm:block" />
+                <p className="text-xs text-[#949ba4] truncate hidden sm:block flex-1">
+                    {selectedTopic.content.slice(0, 100)}
+                    {selectedTopic.content.length > 100 ? "…" : ""}
+                </p>
+                <Badge
+                    className={`${CATEGORY_COLORS[selectedTopic.category] || "bg-gray-500"} text-white text-[10px] border-0 shrink-0`}
+                >
+                    {selectedTopic.category}
+                </Badge>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+                {/* Welcome Message */}
+                <div className="mb-6 pb-4 border-b border-[#3f4147]">
+                    <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center mb-3">
+                        <HashIcon className="h-8 w-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-1">
+                        Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!
+                    </h2>
+                    <p className="text-sm text-[#949ba4]">
+                        This is the start of the{" "}
+                        <span className="font-semibold text-white">
+                            #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
+                        </span>{" "}
+                        channel. Created by{" "}
+                        <span className="font-semibold text-white">
+                            {selectedTopic.user.name}
+                        </span>{" "}
+                        on {formatDate(selectedTopic.createdAt)}.
+                    </p>
+                    <p className="text-sm text-[#949ba4] mt-1">
+                        {selectedTopic.content}
+                    </p>
+                </div>
+
+                {/* Messages List */}
+                {selectedTopic.replies.map((reply, idx) => {
+                    const prevReply =
+                        idx > 0 ? selectedTopic.replies[idx - 1] : null;
+                    const showHeader =
+                        !prevReply ||
+                        prevReply.user.id !== reply.user.id ||
+                        new Date(reply.createdAt).getTime() -
+                            new Date(prevReply.createdAt).getTime() >
+                            MESSAGE_GROUP_THRESHOLD_MS;
+
+                    const parentReply = reply.parentId
+                        ? selectedTopic.replies.find(
+                              (r) => r.id === reply.parentId
+                          )
+                        : null;
+
+                    return (
+                        <div
+                            key={reply.id}
+                            className="group hover:bg-[#2e3035] rounded px-2 py-0.5 -mx-2 relative"
+                        >
+                            {/* Reply reference */}
+                            {parentReply && (
+                                <div className="flex items-center gap-1.5 ml-12 mb-0.5 text-xs text-[#949ba4]">
+                                    <div className="w-6 h-3 border-l-2 border-t-2 border-[#4e5058] rounded-tl ml-1" />
+                                    <Avatar className="h-4 w-4">
+                                        <AvatarImage
+                                            src={
+                                                parentReply.user.image ||
+                                                undefined
+                                            }
+                                        />
+                                        <AvatarFallback className="text-[8px] bg-[#5865f2] text-white">
+                                            {parentReply.user.name
+                                                ?.charAt(0)
+                                                ?.toUpperCase() || "U"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-semibold text-[#b5bac1] hover:underline cursor-pointer">
+                                        {parentReply.user.name}
+                                    </span>
+                                    <span className="truncate max-w-[200px]">
+                                        {parentReply.content}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                {showHeader ? (
+                                    <Avatar className="h-10 w-10 mt-0.5 shrink-0">
+                                        <AvatarImage
+                                            src={
+                                                reply.user.image || undefined
+                                            }
+                                        />
+                                        <AvatarFallback className="bg-[#5865f2] text-white text-sm">
+                                            {reply.user.name
+                                                ?.charAt(0)
+                                                ?.toUpperCase() || "U"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                ) : (
+                                    <div className="w-10 shrink-0 flex items-center justify-center">
+                                        <span className="text-[10px] text-[#949ba4] opacity-0 group-hover:opacity-100">
+                                            {formatTime(reply.createdAt)}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    {showHeader && (
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="font-semibold text-sm text-white hover:underline cursor-pointer">
+                                                {reply.user.name}
+                                            </span>
+                                            <span className="text-[11px] text-[#949ba4]">
+                                                {formatDate(reply.createdAt)}{" "}
+                                                {formatTime(reply.createdAt)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <p className="text-sm text-[#dbdee1] break-words whitespace-pre-wrap">
+                                        {renderMessageContent(reply.content)}
+                                    </p>
+                                    {reply.image && (
+                                        <div className="mt-1 max-w-sm">
+                                            <Image
+                                                src={reply.image}
+                                                alt="Attachment"
+                                                width={400}
+                                                height={300}
+                                                unoptimized
+                                                className="rounded-lg max-h-[300px] w-auto object-contain border border-[#1f2023] cursor-pointer hover:opacity-90"
+                                            />
+                                        </div>
+                                    )}
+                                    {/* Nested replies inline */}
+                                    {reply.children &&
+                                        reply.children.length > 0 && (
+                                            <div className="mt-1 ml-2 pl-3 border-l-2 border-[#4e5058] space-y-1">
+                                                {reply.children.map(
+                                                    (child) => (
+                                                        <div
+                                                            key={child.id}
+                                                            className="flex items-start gap-2"
+                                                        >
+                                                            <Avatar className="h-5 w-5 mt-0.5">
+                                                                <AvatarImage
+                                                                    src={
+                                                                        child
+                                                                            .user
+                                                                            .image ||
+                                                                        undefined
+                                                                    }
+                                                                />
+                                                                <AvatarFallback className="text-[8px] bg-[#5865f2] text-white">
+                                                                    {child.user.name
+                                                                        ?.charAt(
+                                                                            0
+                                                                        )
+                                                                        ?.toUpperCase() ||
+                                                                        "U"}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <div>
+                                                                <span className="text-xs font-semibold text-[#b5bac1]">
+                                                                    {
+                                                                        child
+                                                                            .user
+                                                                            .name
+                                                                    }
+                                                                </span>
+                                                                <span className="text-[10px] text-[#6d6f78] ml-2">
+                                                                    {formatTime(
+                                                                        child.createdAt
+                                                                    )}
+                                                                </span>
+                                                                <p className="text-xs text-[#dbdee1]">
+                                                                    {renderMessageContent(
+                                                                        child.content
+                                                                    )}
+                                                                </p>
+                                                                {child.image && (
+                                                                    <Image
+                                                                        src={child.image}
+                                                                        alt="Attachment"
+                                                                        width={200}
+                                                                        height={150}
+                                                                        unoptimized
+                                                                        className="mt-1 rounded max-h-[150px] w-auto object-contain"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        )}
+                                </div>
+
+                                {/* Message Actions (hover) */}
+                                <div className="opacity-0 group-hover:opacity-100 absolute top-0 right-2 -translate-y-1/2 flex bg-[#2b2d31] border border-[#1f2023] rounded shadow-lg">
+                                    <button
+                                        onClick={() => setReplyingTo(reply)}
+                                        className="p-1.5 hover:bg-[#404249] rounded text-[#b5bac1] hover:text-white"
+                                        title="Reply"
+                                    >
+                                        <ReplyIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* Message Input */}
+            <div className="px-4 pb-4 pt-1 shrink-0">
+                {/* Reply indicator */}
+                {replyingTo && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 mb-1 rounded-t-lg bg-[#2b2d31] text-xs text-[#b5bac1]">
+                        <ReplyIcon className="h-3 w-3" />
+                        <span>
+                            Replying to{" "}
+                            <span className="font-semibold text-white">
+                                {replyingTo.user.name}
+                            </span>
+                        </span>
+                        <button
+                            onClick={() => setReplyingTo(null)}
+                            className="ml-auto hover:text-white"
+                        >
+                            <XIcon className="h-3 w-3" />
+                        </button>
+                    </div>
+                )}
+
+                {/* Pending image preview */}
+                {pendingImage && (
+                    <div className="relative inline-block mb-1 px-3 py-2 rounded-t-lg bg-[#2b2d31]">
+                        <Image
+                            src={pendingImage}
+                            alt="Upload preview"
+                            width={200}
+                            height={120}
+                            unoptimized
+                            className="max-h-[120px] w-auto rounded"
+                        />
+                        <button
+                            onClick={() => setPendingImage(null)}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
+                        >
+                            <XIcon className="h-3 w-3" />
+                        </button>
+                    </div>
+                )}
+
+                <div
+                    className={`flex items-end gap-1 bg-[#383a40] rounded-lg px-3 py-2 ${
+                        replyingTo || pendingImage
+                            ? "rounded-t-none"
+                            : ""
+                    }`}
+                >
+                    {/* Upload button */}
+                    <div className="shrink-0 mb-0.5">
+                        <UploadButton
+                            endpoint="communityImage"
+                            appearance={{
+                                button: "!bg-transparent !text-[#b5bac1] hover:!text-white !p-1 !h-8 !w-8 !rounded-full !ring-0 !shadow-none !border-0 ut-uploading:!text-blue-400",
+                                allowedContent: "hidden",
+                                container: "!p-0 !m-0 !min-w-0",
+                            }}
+                            content={{
+                                button: <ImageIcon className="h-5 w-5" />,
+                            }}
+                            onClientUploadComplete={(res) => {
+                                if (res?.[0]) {
+                                    setPendingImage(res[0].ufsUrl);
+                                }
+                            }}
+                            onUploadError={(error) => {
+                                toast.error(
+                                    `Upload failed: ${error.message}`
+                                );
+                            }}
+                        />
+                    </div>
+
+                    {/* Text input */}
+                    <textarea
+                        ref={inputRef}
+                        value={messageText}
+                        onChange={(e) => {
+                            setMessageText(e.target.value);
+                            // Detect @mention typing
+                            const val = e.target.value;
+                            const lastAt = val.lastIndexOf("@");
+                            if (lastAt >= 0) {
+                                const afterAt = val.slice(lastAt + 1);
+                                if (
+                                    afterAt.length < 20 &&
+                                    !afterAt.includes(" ")
+                                ) {
+                                    setShowMentions(true);
+                                    setMentionFilter(afterAt);
+                                } else {
+                                    setShowMentions(false);
+                                }
+                            }
+                        }}
+                        onKeyDown={handleKeyDown}
+                        placeholder={`Message #${selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}`}
+                        rows={1}
+                        className="flex-1 bg-transparent text-sm text-[#dbdee1] placeholder-[#6d6f78] resize-none outline-none max-h-[120px] py-1"
+                        style={{
+                            height: "auto",
+                            minHeight: "24px",
+                        }}
+                    />
+
+                    {/* Emoji picker toggle */}
+                    <div className="relative shrink-0 mb-0.5">
+                        <button
+                            onClick={() =>
+                                setShowEmojiPicker(!showEmojiPicker)
+                            }
+                            className="p-1.5 rounded-full text-[#b5bac1] hover:text-white transition-colors"
+                        >
+                            <SmileIcon className="h-5 w-5" />
+                        </button>
+
+                        {showEmojiPicker && (
+                            <div className="absolute bottom-full right-0 mb-2 bg-[#2b2d31] border border-[#1f2023] rounded-lg shadow-xl p-3 w-64 z-50">
+                                <div className="grid grid-cols-8 gap-1">
+                                    {EMOJI_LIST.map((emoji) => (
+                                        <button
+                                            key={emoji}
+                                            onClick={() =>
+                                                handleEmoji(emoji)
+                                            }
+                                            className="h-8 w-8 flex items-center justify-center rounded hover:bg-[#404249] text-lg"
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* @mention button */}
+                    <div className="relative shrink-0 mb-0.5">
+                        <button
+                            onClick={() => {
+                                setShowMentions(!showMentions);
+                                setMentionFilter("");
+                            }}
+                            className="p-1.5 rounded-full text-[#b5bac1] hover:text-white transition-colors"
+                        >
+                            <AtSignIcon className="h-5 w-5" />
+                        </button>
+
+                        {showMentions && (
+                            <div className="absolute bottom-full right-0 mb-2 bg-[#2b2d31] border border-[#1f2023] rounded-lg shadow-xl w-56 max-h-48 overflow-y-auto z-50">
+                                <div className="p-2 border-b border-[#1f2023]">
+                                    <Input
+                                        placeholder="Search members..."
+                                        value={mentionFilter}
+                                        onChange={(e) =>
+                                            setMentionFilter(e.target.value)
+                                        }
+                                        className="h-7 text-xs bg-[#1e1f22] border-[#1e1f22] text-white"
+                                    />
+                                </div>
+                                {filteredUsers.slice(0, 10).map((u) => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => handleMention(u)}
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[#404249] text-sm text-[#dbdee1]"
+                                    >
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage
+                                                src={
+                                                    u.image || undefined
+                                                }
+                                            />
+                                            <AvatarFallback className="text-[9px] bg-[#5865f2] text-white">
+                                                {u.name
+                                                    ?.charAt(0)
+                                                    ?.toUpperCase() || "U"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span>{u.name}</span>
+                                        {u.role === "admin" && (
+                                            <Badge className="text-[9px] bg-red-500/20 text-red-400 border-0 ml-auto">
+                                                Admin
+                                            </Badge>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Send button */}
+                    <button
+                        onClick={handleSendMessage}
+                        disabled={!messageText.trim() && !pendingImage}
+                        className="p-1.5 rounded-full text-[#b5bac1] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0 mb-0.5"
+                    >
+                        <SendIcon className="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    ) : (
+        /* No channel selected */
+        <div className="flex flex-col items-center justify-center h-full bg-[#313338] dark:bg-[#313338] text-center">
+            {/* Mobile channel toggle */}
+            <button
+                onClick={() => setShowMobileChannels(true)}
+                className="md:hidden absolute top-3 left-3 p-2 rounded-lg bg-[#2b2d31] text-[#b5bac1]"
+            >
+                <HashIcon className="h-5 w-5" />
+            </button>
+            <div className="w-24 h-24 rounded-full bg-[#5865f2]/20 flex items-center justify-center mb-4">
+                <HashIcon className="h-12 w-12 text-[#5865f2]" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">
+                Welcome to CNEC Community
+            </h2>
+            <p className="text-sm text-[#949ba4] max-w-sm mb-4">
+                Select a channel from the sidebar to start chatting, or
+                create a new one.
+            </p>
+            <Button
+                onClick={() => setShowCreate(true)}
+                className="bg-[#5865f2] hover:bg-[#4752c4] text-white"
+            >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Create Channel
+            </Button>
+        </div>
+    );
+
+    /* ─── Main Layout ──────────────────────────────────── */
+
+    return (
+        <div className="h-[calc(100vh-4rem)] flex overflow-hidden rounded-lg border border-[#1f2023]">
+            {/* Desktop Sidebar */}
+            <div className="hidden md:block w-60 shrink-0 border-r border-[#1f2023]">
+                {channelSidebar}
+            </div>
+
+            {/* Mobile Sidebar Overlay */}
+            {showMobileChannels && (
+                <div className="fixed inset-0 z-50 md:hidden">
+                    <div
+                        className="absolute inset-0 bg-black/50"
+                        onClick={() => setShowMobileChannels(false)}
+                    />
+                    <div className="absolute left-0 top-0 bottom-0 w-64">
+                        {channelSidebar}
+                    </div>
+                </div>
+            )}
+
+            {/* Message Area */}
+            <div className="flex-1 min-w-0 relative">{messageArea}</div>
 
             {/* Create Topic Dialog */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent>
+                <DialogContent className="bg-[#313338] border-[#1f2023] text-white">
                     <DialogHeader>
-                        <DialogTitle>Start a Discussion</DialogTitle>
+                        <DialogTitle className="text-white">
+                            Create Channel
+                        </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <Input
-                            placeholder="Discussion title"
-                            value={newTopic.title}
-                            onChange={(e) =>
-                                setNewTopic((p) => ({ ...p, title: e.target.value }))
-                            }
-                        />
-                        <Select
-                            value={newTopic.category}
-                            onValueChange={(value) =>
-                                setNewTopic((p) => ({ ...p, category: value }))
-                            }
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-1.5 block">
+                                Channel Name
+                            </label>
+                            <div className="flex items-center gap-1 bg-[#1e1f22] rounded-md px-3 py-2">
+                                <HashIcon className="h-4 w-4 text-[#6d6f78]" />
+                                <Input
+                                    placeholder="new-channel"
+                                    value={newTopic.title}
+                                    onChange={(e) =>
+                                        setNewTopic((p) => ({
+                                            ...p,
+                                            title: e.target.value,
+                                        }))
+                                    }
+                                    className="bg-transparent border-0 text-white placeholder-[#6d6f78] h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-1.5 block">
+                                Category
+                            </label>
+                            <Select
+                                value={newTopic.category}
+                                onValueChange={(value) =>
+                                    setNewTopic((p) => ({
+                                        ...p,
+                                        category: value,
+                                    }))
+                                }
+                            >
+                                <SelectTrigger className="bg-[#1e1f22] border-0 text-white">
+                                    <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#2b2d31] border-[#1f2023]">
+                                    {CATEGORIES.map((cat) => (
+                                        <SelectItem
+                                            key={cat}
+                                            value={cat}
+                                            className="text-[#dbdee1] focus:bg-[#404249] focus:text-white"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat]}`}
+                                                />
+                                                {cat}
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-1.5 block">
+                                Description
+                            </label>
+                            <Textarea
+                                placeholder="What is this channel about?"
+                                value={newTopic.content}
+                                onChange={(e) =>
+                                    setNewTopic((p) => ({
+                                        ...p,
+                                        content: e.target.value,
+                                    }))
+                                }
+                                className="bg-[#1e1f22] border-0 text-white placeholder-[#6d6f78] min-h-[80px]"
+                            />
+                        </div>
+                        <Button
+                            onClick={handleCreateTopic}
+                            className="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white"
                         >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CATEGORIES.map((cat) => (
-                                    <SelectItem key={cat} value={cat}>
-                                        {cat}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Textarea
-                            placeholder="What would you like to discuss?"
-                            value={newTopic.content}
-                            onChange={(e) =>
-                                setNewTopic((p) => ({ ...p, content: e.target.value }))
-                            }
-                            className="min-h-[100px]"
-                        />
-                        <Button onClick={handleCreateTopic} className="w-full">
-                            Create Discussion
+                            Create Channel
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
-
-            {/* Topic Detail Dialog */}
-            <Dialog
-                open={!!selectedTopic}
-                onOpenChange={(open) => {
-                    if (!open) setSelectedTopic(null);
-                }}
-            >
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    {selectedTopic && (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>{selectedTopic.title}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={selectedTopic.user.image || undefined} />
-                                        <AvatarFallback className="bg-blue-700 text-white text-xs">
-                                            {selectedTopic.user.name?.charAt(0)?.toUpperCase() || "U"}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="text-sm font-medium">{selectedTopic.user.name}</p>
-                                        <p className="text-xs text-gray-500">
-                                            {formatDate(selectedTopic.createdAt)}
-                                        </p>
-                                    </div>
-                                    <Badge variant="secondary" className="ml-auto">
-                                        {selectedTopic.category}
-                                    </Badge>
-                                </div>
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                    {selectedTopic.content}
-                                </p>
-
-                                <div className="border-t pt-4 space-y-3">
-                                    <h4 className="font-semibold text-sm">
-                                        Replies ({selectedTopic.replies.length})
-                                    </h4>
-                                    {selectedTopic.replies.map((reply) => (
-                                        <div key={reply.id} className="flex gap-2">
-                                            <Avatar className="h-7 w-7">
-                                                <AvatarImage src={reply.user.image || undefined} />
-                                                <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700">
-                                                    {reply.user.name?.charAt(0)?.toUpperCase() || "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-lg p-2">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs font-semibold">
-                                                        {reply.user.name}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {formatDate(reply.createdAt)}
-                                                    </p>
-                                                </div>
-                                                <p className="text-sm mt-1">{reply.content}</p>
-                                                {/* Nested replies */}
-                                                {reply.children && reply.children.length > 0 && (
-                                                    <div className="ml-4 mt-2 space-y-2">
-                                                        {reply.children.map((child) => (
-                                                            <div key={child.id} className="flex gap-2">
-                                                                <Avatar className="h-6 w-6">
-                                                                    <AvatarImage src={child.user.image || undefined} />
-                                                                    <AvatarFallback className="text-xs">
-                                                                        {child.user.name?.charAt(0)?.toUpperCase() || "U"}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                                <div className="flex-1">
-                                                                    <p className="text-xs font-semibold">
-                                                                        {child.user.name}
-                                                                    </p>
-                                                                    <p className="text-xs">{child.content}</p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Write a reply..."
-                                            value={replyText}
-                                            onChange={(e) => setReplyText(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") handleReply();
-                                            }}
-                                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
-                                        />
-                                        <Button size="sm" variant="ghost" onClick={handleReply}>
-                                            <SendIcon className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            {/* Topics List */}
-            {topics.length === 0 ? (
-                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-                    <CardContent className="py-12 text-center">
-                        <MessageSquareIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                        <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                            No discussions yet
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Start the first discussion in the community
-                        </p>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="space-y-3">
-                    {topics.map((topic) => (
-                        <Card
-                            key={topic.id}
-                            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-md transition-shadow cursor-pointer"
-                            onClick={() => handleViewTopic(topic.id)}
-                        >
-                            <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="h-9 w-9">
-                                            <AvatarImage src={topic.user.image || undefined} />
-                                            <AvatarFallback className="bg-blue-700 text-white text-xs">
-                                                {topic.user.name?.charAt(0)?.toUpperCase() || "U"}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <CardTitle className="text-base">
-                                                {topic.title}
-                                            </CardTitle>
-                                            <p className="text-xs text-gray-500">
-                                                {topic.user.name} •{" "}
-                                                {formatDate(topic.createdAt)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Badge variant="secondary">{topic.category}</Badge>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                    {topic.content}
-                                </p>
-                                <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                                    <MessageSquareIcon className="h-3 w-3" />
-                                    {topic._count.replies} replies
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }

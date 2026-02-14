@@ -83,6 +83,7 @@ export async function addReply(data: {
     topicId: string;
     content: string;
     parentId?: string;
+    image?: string;
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -92,10 +93,25 @@ export async function addReply(data: {
             content: data.content,
             topicId: data.topicId,
             parentId: data.parentId || null,
+            image: data.image || null,
             userId: session.user.id,
         },
         include: {
             user: { select: { id: true, name: true, image: true } },
         },
     });
+}
+
+export async function getCommunityUsers() {
+    try {
+        const users = await db.user.findMany({
+            where: { banned: { not: true } },
+            select: { id: true, name: true, image: true, role: true },
+            orderBy: { name: "asc" },
+        });
+        return users;
+    } catch (error) {
+        console.error("Error fetching community users:", error);
+        return [];
+    }
 }
