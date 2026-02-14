@@ -11,10 +11,16 @@ export default async function UserManagementPage() {
     const session = await authIsRequired();
 
     // Only admins can access user management
-    const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
+    let currentUser;
+    try {
+        currentUser = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+    } catch (error) {
+        console.error("Error checking user role:", error);
+        redirect("/dashboard");
+    }
 
     if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
         redirect("/dashboard");

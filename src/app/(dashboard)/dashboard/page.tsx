@@ -111,7 +111,10 @@ export default async function DashboardPage() {
                                     </p>
                                     <p className="text-xs text-yellow-800 dark:text-yellow-200">
                                         We recommend enabling two-factor authentication to protect your account. 
-                                        You can enable it in your profile settings.
+                                        You can enable it in your{" "}
+                                        <Link href="/update-profile" className="underline font-medium">
+                                            profile page
+                                        </Link>.
                                     </p>
                                 </div>
                             </div>
