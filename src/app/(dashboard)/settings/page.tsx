@@ -1,50 +1,68 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { SettingsIcon } from "lucide-react";
+import { ChangePasswordForm } from "@/components/change-password";
+import { ToggleOtpForm } from "@/components/toggle-otp-form";
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
     await authIsRequired();
-    await updateProfile();
+    const user = await updateProfile();
+
+    if (!user) redirect("/sign-in");
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Page Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <SettingsIcon className="w-7 h-7" />
                         Settings
                     </h1>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Configure your application preferences and settings
+                        Manage your security and account preferences
                     </p>
                 </div>
 
-                {/* Main Content */}
-                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <SettingsIcon className="w-5 h-5" />
-                            Application Settings
-                        </CardTitle>
-                        <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-                            Manage your application preferences
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <SettingsIcon className="w-16 h-16 text-gray-400 dark:text-gray-600 mb-4" />
-                            <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                Settings Panel Coming Soon
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-                                Advanced application settings will be available here. For account and security settings, visit your profile page.
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Security Settings Grid */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Two-Factor Authentication Card */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
+                        <CardHeader className="space-y-1 pb-4">
+                            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                Two-Factor Authentication
+                            </CardTitle>
+                            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                                Add an extra layer of security to your account
+                            </CardDescription>
+                        </CardHeader>
+                        <Separator className="bg-gray-200 dark:bg-gray-800" />
+                        <CardContent className="pt-6">
+                            <ToggleOtpForm twoFactorEnabled={user.twoFactorEnabled} />
+                        </CardContent>
+                    </Card>
+
+                    {/* Change Password Card */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
+                        <CardHeader className="space-y-1 pb-4">
+                            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                Change Password
+                            </CardTitle>
+                            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                                Update your password to keep your account secure
+                            </CardDescription>
+                        </CardHeader>
+                        <Separator className="bg-gray-200 dark:bg-gray-800" />
+                        <CardContent className="pt-6">
+                            <ChangePasswordForm />
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );
