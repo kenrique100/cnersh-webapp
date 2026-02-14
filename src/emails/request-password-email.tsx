@@ -28,7 +28,6 @@ export const RequestPasswordEmail = ({
             <Body className="bg-white font-sans">
                 <Preview>Reset your password for {appName}</Preview>
                 <Container className="mx-auto py-5 pb-12 px-4 max-w-150">
-                    {/* Professional Email Navbar - Text Based */}
                     <Section className="mb-6">
                         <table className="w-full">
                             <tbody>
