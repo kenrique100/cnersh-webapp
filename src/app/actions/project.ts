@@ -46,13 +46,18 @@ export async function getUserProjects() {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    return db.project.findMany({
-        where: { userId: session.user.id, deleted: false },
-        orderBy: { createdAt: "desc" },
-        include: {
-            statusHistory: { orderBy: { createdAt: "desc" }, take: 1 },
-        },
-    });
+    try {
+        return await db.project.findMany({
+            where: { userId: session.user.id, deleted: false },
+            orderBy: { createdAt: "desc" },
+            include: {
+                statusHistory: { orderBy: { createdAt: "desc" }, take: 1 },
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching user projects:", error);
+        return [];
+    }
 }
 
 export async function getAllProjects(status?: ProjectStatus) {

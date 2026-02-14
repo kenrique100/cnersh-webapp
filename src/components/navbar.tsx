@@ -9,16 +9,12 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { MenuIcon, SettingsIcon, LogOutIcon, HomeIcon, UsersIcon, UserIcon, FileTextIcon, FilePlusIcon, ChevronDownIcon } from "lucide-react";
+import { MenuIcon, LogOutIcon, UserIcon, SettingsIcon } from "lucide-react";
 import Image from "next/image";
 
 interface NavbarProps {
@@ -32,18 +28,11 @@ interface NavbarProps {
 export default function Navbar({ user }: NavbarProps) {
     const router = useRouter();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-    const [isFormsOpen, setIsFormsOpen] = React.useState(false);
 
     const handleSignOut = async () => {
         await authClient.signOut();
         router.push("/sign-in");
     };
-
-    const navLinks = user ? [
-        { href: "/update-profile", label: "Profile", icon: UserIcon },
-        { href: "/", label: "Community", icon: HomeIcon },
-        { href: "/user-management", label: "Users", icon: UsersIcon },
-    ] : [];
 
     const userInitials = user?.name
         ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
@@ -53,7 +42,7 @@ export default function Navbar({ user }: NavbarProps) {
         <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white dark:bg-gray-950 dark:border-gray-800 shadow-sm">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                    {/* Left Side - Logo (always at top left) */}
+                    {/* Left Side - Logo */}
                     <div className="flex items-center gap-2">
                         <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
                             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
@@ -72,84 +61,62 @@ export default function Navbar({ user }: NavbarProps) {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation - Center (only when logged in) */}
-                    {user && (
-                        <div className="hidden md:flex items-center gap-6">
-                            {navLinks.map((link) => (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    className="text-sm font-medium text-gray-700 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-500 transition-colors"
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
-
-                            {/* Forms Dropdown */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="text-sm font-medium text-gray-700 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-500 transition-colors gap-1">
-                                        Forms
-                                        <ChevronDownIcon className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="center">
-                                    <DropdownMenuItem asChild>
-                                        <Link href="/forms/add" className="cursor-pointer">
-                                            <FilePlusIcon className="mr-2 h-4 w-4" />
-                                            <span>Add Form</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                        <Link href="/forms/view" className="cursor-pointer">
-                                            <FileTextIcon className="mr-2 h-4 w-4" />
-                                            <span>View Forms</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            <Link
-                                href="/settings"
-                                className="text-sm font-medium text-gray-700 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-500 transition-colors"
-                            >
-                                Settings
-                            </Link>
-                        </div>
-                    )}
-
-                    {/* Right Side - User Avatar + Logout (when logged in) or Auth buttons (when logged out) */}
+                    {/* Right Side */}
                     <div className="flex items-center gap-4">
                         {user ? (
                             <>
-                                {/* User Avatar and Info */}
-                                <div className="hidden md:flex items-center gap-3">
-                                    <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
-                                        <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-                                        <AvatarFallback className="bg-blue-700 text-white dark:bg-blue-600">
-                                            {userInitials}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="hidden lg:block">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            {user.name || "User"}
-                                        </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                                            {user.email}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Desktop Logout Button */}
+                                {/* Desktop: User Avatar Dropdown */}
                                 <div className="hidden md:block">
-                                    <Button
-                                        onClick={handleSignOut}
-                                        variant="ghost"
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
-                                    >
-                                        <LogOutIcon className="mr-2 h-4 w-4" />
-                                        Logout
-                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button className="flex items-center gap-3 cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                                <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
+                                                    <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                                                    <AvatarFallback className="bg-blue-700 text-white dark:bg-blue-600">
+                                                        {userInitials}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="hidden lg:block text-left">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                        {user.name || "User"}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        {user.email}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56">
+                                            <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                    {user.name || "User"}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {user.email}
+                                                </p>
+                                            </div>
+                                            <DropdownMenuItem asChild>
+                                                <Link href="/update-profile" className="cursor-pointer">
+                                                    <UserIcon className="mr-2 h-4 w-4" />
+                                                    <span>View Profile</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Link href="/settings" className="cursor-pointer">
+                                                    <SettingsIcon className="mr-2 h-4 w-4" />
+                                                    <span>Settings</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                onClick={handleSignOut}
+                                                className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
+                                            >
+                                                <LogOutIcon className="mr-2 h-4 w-4" />
+                                                <span>Logout</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
 
                                 {/* Mobile Menu Toggle */}
@@ -181,50 +148,14 @@ export default function Navbar({ user }: NavbarProps) {
 
                                             {/* Navigation Links */}
                                             <div className="flex flex-col gap-2">
-                                                {navLinks.map((link) => {
-                                                    const Icon = link.icon;
-                                                    return (
-                                                        <Link
-                                                            key={link.href}
-                                                            href={link.href}
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors"
-                                                        >
-                                                            <Icon className="h-5 w-5" />
-                                                            {link.label}
-                                                        </Link>
-                                                    );
-                                                })}
-
-                                                {/* Forms Collapsible */}
-                                                <Collapsible open={isFormsOpen} onOpenChange={setIsFormsOpen}>
-                                                    <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors">
-                                                        <div className="flex items-center gap-3">
-                                                            <FileTextIcon className="h-5 w-5" />
-                                                            Forms
-                                                        </div>
-                                                        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isFormsOpen ? "rotate-180" : ""}`} />
-                                                    </CollapsibleTrigger>
-                                                    <CollapsibleContent className="ml-8 mt-2 space-y-2">
-                                                        <Link
-                                                            href="/forms/add"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors"
-                                                        >
-                                                            <FilePlusIcon className="h-4 w-4" />
-                                                            Add Form
-                                                        </Link>
-                                                        <Link
-                                                            href="/forms/view"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors"
-                                                        >
-                                                            <FileTextIcon className="h-4 w-4" />
-                                                            View Forms
-                                                        </Link>
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-
+                                                <Link
+                                                    href="/update-profile"
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                    className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-500 dark:hover:bg-blue-950 rounded-md transition-colors"
+                                                >
+                                                    <UserIcon className="h-5 w-5" />
+                                                    View Profile
+                                                </Link>
                                                 <Link
                                                     href="/settings"
                                                     onClick={() => setIsMobileMenuOpen(false)}

@@ -21,22 +21,27 @@ export async function createPost(data: { content: string; image?: string }) {
 export async function getPosts(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
 
-    const [posts, total] = await Promise.all([
-        db.post.findMany({
-            where: { deleted: false },
-            include: {
-                user: { select: { id: true, name: true, image: true } },
-                _count: { select: { comments: true, likes: true } },
-                likes: { select: { userId: true } },
-            },
-            orderBy: { createdAt: "desc" },
-            skip,
-            take: limit,
-        }),
-        db.post.count({ where: { deleted: false } }),
-    ]);
+    try {
+        const [posts, total] = await Promise.all([
+            db.post.findMany({
+                where: { deleted: false },
+                include: {
+                    user: { select: { id: true, name: true, image: true } },
+                    _count: { select: { comments: true, likes: true } },
+                    likes: { select: { userId: true } },
+                },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: limit,
+            }),
+            db.post.count({ where: { deleted: false } }),
+        ]);
 
-    return { posts, total, pages: Math.ceil(total / limit) };
+        return { posts, total, pages: Math.ceil(total / limit) };
+    } catch (error) {
+        console.error("Error fetching posts:", error);
+        return { posts: [], total: 0, pages: 0 };
+    }
 }
 
 export async function toggleLike(postId: string) {
