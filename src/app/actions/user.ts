@@ -16,6 +16,7 @@ export async function updateProfile() {
             email: true,
             name: true,
             image: true,
+            role: true,
             twoFactorEnabled: true,
         },
     });

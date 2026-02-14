@@ -12,6 +12,7 @@ model User {
   email               String      @unique
   name                String?
   role                String?
+  bio                 String?
   hasDeletePermission Boolean     @default(false)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -25,6 +26,16 @@ model User {
   banned              Boolean?
   banReason           String?
   banExpires          DateTime?
+
+  posts              Post[]
+  comments           Comment[]
+  likes              Like[]
+  projects           Project[]
+  communityTopics    CommunityTopic[]
+  communityReplies   CommunityReply[]
+  reports            Report[]        @relation("ReportAuthor")
+  notifications      Notification[]
+  auditLogs          AuditLog[]
 
   @@map("user")
 }
@@ -94,4 +105,223 @@ model TwoFactor {
 
   @@index([userId])
   @@map("twoFactor")
+}
+
+// ─── Feed System ───────────────────────────────────────────
+
+model Post {
+  id        String      @id @default(uuid())
+  content   String
+  image     String?
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  likes     Like[]
+  deleted   Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("post")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deleted   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+  @@index([userId])
+  @@map("comment")
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("like")
+}
+
+// ─── Project Submission System ─────────────────────────────
+
+model Project {
+  id          String              @id @default(uuid())
+  title       String
+  description String
+  objectives  String?
+  category    String
+  location    String?
+  timeline    String?
+  budget      String?
+  document    String?
+  status      ProjectStatus       @default(DRAFT)
+  feedback    String?
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statusHistory ProjectStatusHistory[]
+  deleted     Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("project")
+}
+
+model ProjectStatusHistory {
+  id        String        @id @default(uuid())
+  projectId String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status    ProjectStatus
+  comment   String?
+  changedBy String
+  createdAt DateTime      @default(now())
+
+  @@index([projectId])
+  @@map("project_status_history")
+}
+
+enum ProjectStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+
+  @@map("project_status")
+}
+
+// ─── Community Discussion System ───────────────────────────
+
+model CommunityTopic {
+  id        String           @id @default(uuid())
+  title     String
+  content   String
+  category  String
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies   CommunityReply[]
+  deleted   Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@index([createdAt])
+  @@map("community_topic")
+}
+
+model CommunityReply {
+  id        String          @id @default(uuid())
+  content   String
+  topicId   String
+  topic     CommunityTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    CommunityReply? @relation("ReplyToReply", fields: [parentId], references: [id])
+  children  CommunityReply[] @relation("ReplyToReply")
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deleted   Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([topicId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("community_reply")
+}
+
+// ─── Reporting System ──────────────────────────────────────
+
+model Report {
+  id          String       @id @default(uuid())
+  reason      String
+  contentType ReportTarget
+  contentId   String
+  userId      String
+  user        User         @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([contentType, contentId])
+  @@map("report")
+}
+
+enum ReportTarget {
+  POST
+  COMMENT
+  TOPIC
+  REPLY
+
+  @@map("report_target")
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+
+  @@map("report_status")
+}
+
+// ─── Notification System ───────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notification")
+}
+
+enum NotificationType {
+  PROJECT_STATUS
+  COMMENT
+  LIKE
+  MENTION
+  SYSTEM
+
+  @@map("notification_type")
+}
+
+// ─── Audit Log System ──────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  details   String?
+  targetId  String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_log")
 }

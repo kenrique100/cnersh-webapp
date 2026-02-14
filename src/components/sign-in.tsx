@@ -62,7 +62,11 @@ export function SignInForm() {
                         const { error } = await authClient.twoFactor.sendOtp({});
 
                         if (error) {
-                            router.push("/dashboard");
+                            // Check user role for redirect
+                            const session = await authClient.getSession();
+                            const role = session?.data?.user?.role;
+                            const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
+                            router.push(redirectPath);
                             toast.success("Signed in successfully");
                         } else {
                             router.push("/two-factor");

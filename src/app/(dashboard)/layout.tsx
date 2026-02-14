@@ -1,6 +1,7 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
 import Navbar from "@/components/navbar";
+import DashboardShell from "@/components/dashboard-shell";
 import React from "react";
 
 export default async function DashboardLayout({
@@ -18,9 +19,9 @@ export default async function DashboardLayout({
                 email: user.email,
                 image: user.image
             } : null} />
-            <main className="w-full">
+            <DashboardShell role={user?.role}>
                 {children}
-            </main>
+            </DashboardShell>
         </div>
     );
 }
