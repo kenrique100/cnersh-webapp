@@ -18,6 +18,6 @@ export const sendOtpEmail = async ({ to, otp }: EmailProps) => {
         });
     } catch (error) {
         console.error("Failed to send OTP email:", error);
-        throw new Error("Failed to send OTP email. Please try again.");
+        throw new Error(`Failed to send OTP email: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     }
 };
