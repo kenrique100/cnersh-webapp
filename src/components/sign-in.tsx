@@ -73,7 +73,18 @@ export function SignInForm() {
                         }
                     },
                     onError: (ctx) => {
-                        toast.error(ctx.error.message || "Invalid email or password");
+                        const errorMessage = ctx.error.message || "Invalid email or password";
+                        
+                        // ✅ Provide specific error messages
+                        if (errorMessage.includes("verify") || errorMessage.includes("verification")) {
+                            toast.error("Please verify your email before signing in. Check your inbox.");
+                        } else if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+                            toast.error("Access denied. Please check your credentials or verify your email.");
+                        } else if (errorMessage.includes("timeout") || errorMessage.includes("terminated")) {
+                            toast.error("Database connection timeout. Please try again in a moment.");
+                        } else {
+                            toast.error(errorMessage);
+                        }
                     },
                 }
             );
