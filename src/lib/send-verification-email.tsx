@@ -25,11 +25,7 @@ export const sendVerificationEmail = async ({
         });
     } catch (error) {
         // Log the full error for debugging
-        console.error("Failed to send verification email:", {
-            error,
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
-        });
+        console.error("Failed to send verification email:", error);
         throw new Error("Failed to send verification email. Please check your email configuration and try again.");
     }
 }
