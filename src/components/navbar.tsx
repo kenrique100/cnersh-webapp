@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import NotificationDropdown from "@/components/notification-dropdown";
 
 interface NavbarProps {
     user?: {
@@ -123,19 +124,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                     <div className="flex items-center gap-2 sm:gap-4">
                         {user ? (
                             <>
-                                {/* Notification Bell - visible on all screen sizes */}
-                                <Link
-                                    href="/notifications"
-                                    className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                    title="Notifications"
-                                >
-                                    <BellIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                                    {notificationCount > 0 && (
-                                        <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold leading-none text-white bg-red-600 rounded-full">
-                                            {notificationCount > 99 ? "99+" : notificationCount}
-                                        </span>
-                                    )}
-                                </Link>
+                                <NotificationDropdown count={notificationCount} />
 
                                 {/* Desktop: User Avatar Dropdown */}
                                 <div className="hidden md:block">

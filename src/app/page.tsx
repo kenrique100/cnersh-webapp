@@ -14,7 +14,7 @@ export default async function Home() {
     }
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        <div className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(239,246,255,0.92), rgba(255,255,255,0.92), rgba(239,246,255,0.92)), url('/background.png')" }}>
             {/* Navbar */}
             <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:bg-gray-950/80 dark:border-gray-800 shadow-sm">
                 <div className="container mx-auto max-w-7xl">
