@@ -41,9 +41,18 @@ export default async function UserManagementPage() {
     });
 
     if (!users) redirect("/sign-in");
+
+    // Fetch additional user data (image, banned status) from DB
+    const userIds = users.map((u) => u.id);
+    const dbUsers = await db.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, image: true, banned: true },
+    });
+    const dbUserMap = new Map(dbUsers.map((u) => [u.id, u]));
     
     const formattedUsers = users
         .map((user) => {
+            const dbUser = dbUserMap.get(user.id);
             return {
                 id: user.id,
                 name: user.name,
@@ -51,6 +60,8 @@ export default async function UserManagementPage() {
                 email: user.email,
                 emailVerified: user.emailVerified,
                 hasDeletePermission: hasDeletePermission.success,
+                image: dbUser?.image || null,
+                banned: dbUser?.banned || false,
             };
         })
         .filter((f) => ["user", "admin"].includes(f.role as Role));

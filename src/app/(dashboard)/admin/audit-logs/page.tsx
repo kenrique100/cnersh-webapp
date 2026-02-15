@@ -4,9 +4,26 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollTextIcon } from "lucide-react";
+import { ScrollTextIcon, ClockIcon, UserIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+const actionColors: Record<string, string> = {
+    CREATE: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+    UPDATE: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+    DELETE: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+    BAN: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+    APPROVE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300",
+    REJECT: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-300",
+    WARNING: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
+};
+
+function getActionColor(action: string): string {
+    const key = Object.keys(actionColors).find((k) =>
+        action.toUpperCase().includes(k)
+    );
+    return key ? actionColors[key] : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+}
 
 export default async function AuditLogsPage() {
     const session = await authIsRequired();
@@ -24,56 +41,87 @@ export default async function AuditLogsPage() {
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
-            <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+            <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
+                {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        Audit Logs
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Track all administrative actions
-                    </p>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2.5 rounded-xl bg-indigo-600 text-white">
+                            <ScrollTextIcon className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                Audit Logs
+                            </h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Track all administrative actions on the platform
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {logs.length === 0 ? (
-                    <Card>
-                        <CardContent className="py-12 text-center">
-                            <ScrollTextIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                            <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                No audit logs
-                            </p>
-                            <p className="text-sm text-gray-500">
-                                Administrative actions will be logged here
-                            </p>
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardContent className="py-16 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                    <ScrollTextIcon className="h-8 w-8 text-gray-400" />
+                                </div>
+                                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                    No audit logs yet
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Administrative actions will be logged here
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="space-y-2">
-                        {logs.map((log) => (
-                            <Card
-                                key={log.id}
-                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950"
-                            >
-                                <CardContent className="py-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="secondary">{log.action}</Badge>
-                                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                                                {log.details || "No details"}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500">
-                                                by {log.user.name || log.user.email}
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                                {new Date(log.createdAt).toLocaleString()}
-                                            </p>
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
+                        {/* Table Header */}
+                        <div className="hidden sm:grid sm:grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <div className="col-span-2">Action</div>
+                            <div className="col-span-5">Details</div>
+                            <div className="col-span-3">Performed By</div>
+                            <div className="col-span-2">Date</div>
+                        </div>
+
+                        {/* Table Body */}
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {logs.map((log) => (
+                                <div
+                                    key={log.id}
+                                    className="grid sm:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+                                >
+                                    <div className="sm:col-span-2">
+                                        <Badge className={`${getActionColor(log.action)} font-medium text-xs`}>
+                                            {log.action}
+                                        </Badge>
+                                    </div>
+                                    <div className="sm:col-span-5">
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                                            {log.details || "No details provided"}
+                                        </p>
+                                    </div>
+                                    <div className="sm:col-span-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                                <UserIcon className="h-3.5 w-3.5 text-gray-500" />
+                                            </div>
+                                            <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                                                {log.user.name || log.user.email}
+                                            </span>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                                    <div className="sm:col-span-2">
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                            <ClockIcon className="h-3.5 w-3.5" />
+                                            <span>{new Date(log.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
                 )}
             </div>
         </div>

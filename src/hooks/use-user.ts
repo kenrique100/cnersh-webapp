@@ -7,6 +7,8 @@ export interface UserProps {
     email: string;
     emailVerified: boolean;
     hasDeletePermission: boolean;
+    image?: string | null;
+    banned?: boolean | null;
 }
 
 interface UserModalProps {
