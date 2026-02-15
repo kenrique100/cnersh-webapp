@@ -70,12 +70,6 @@ interface CommentData {
     replies?: CommentData[];
 }
 
-interface PostUser {
-    id: string;
-    name: string | null;
-    image: string | null;
-}
-
 interface PostData {
     id: string;
     content: string;

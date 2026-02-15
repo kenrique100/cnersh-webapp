@@ -143,7 +143,7 @@ export async function addComment(postId: string, content: string, parentId?: str
                 });
             }
         }
-        // Notify mentioned users (@username)
+        // Notify mentioned users (@username) - matches @Name patterns, stopping at next @ or end of string
         const mentionRegex = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
         const mentions = [...content.matchAll(mentionRegex)].map((m) => m[1].trim());
         if (mentions.length > 0) {

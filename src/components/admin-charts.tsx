@@ -135,7 +135,7 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
                 <CardContent>
                     <ResponsiveContainer width="100%" height={220}>
                         <BarChart data={contentBarData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                             <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                             <Tooltip />
