@@ -38,6 +38,22 @@ export const ourFileRouter = {
         .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
+
+    documentUploader: f({
+        pdf: { maxFileSize: "8MB", maxFileCount: 1 },
+        "application/msword": { maxFileSize: "8MB", maxFileCount: 1 },
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "8MB", maxFileCount: 1 },
+    })
+        .middleware(async ({}) => {
+            const session = await authSession();
+
+            if (!session) throw new UploadThingError("Unauthorized");
+
+            return { userId: session.user.id };
+        })
+        .onUploadComplete(async ({ metadata }) => {
+            return { uploadedBy: metadata.userId };
+        }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

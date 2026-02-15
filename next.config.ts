@@ -10,12 +10,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "**.ufs.sh",
+        hostname: "*.ufs.sh",
         pathname: "/**",
       },
       {
         protocol: "https",
-        hostname: "**.uploadthing.com",
+        hostname: "*.uploadthing.com",
         pathname: "/**",
       },
       {

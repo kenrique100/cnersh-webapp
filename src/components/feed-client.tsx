@@ -16,6 +16,7 @@ import {
     ThumbsUpIcon,
     ShareIcon,
     FlagIcon,
+    XIcon,
 } from "lucide-react";
 import {
     Dialog,
@@ -82,7 +83,7 @@ export default function FeedClient({
         : "U";
 
     const handleCreatePost = async () => {
-        if (!newPostContent.trim()) return;
+        if (!newPostContent.trim() && !newPostImage) return;
         setIsSubmitting(true);
         try {
             await createPost({ content: newPostContent, image: newPostImage || undefined });
@@ -209,13 +210,42 @@ export default function FeedClient({
         });
     };
 
+    const formatFullDate = (date: Date) => {
+        const postDate = new Date(date);
+        return postDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const handleShare = (post: PostData) => {
+        const shareUrl = typeof window !== "undefined" ? window.location.origin + "/feeds" : "";
+        const shareText = post.content.substring(0, 100) + (post.content.length > 100 ? "..." : "");
+        
+        if (navigator.share) {
+            navigator.share({
+                title: `Post by ${post.user.name || "Community Member"}`,
+                text: shareText,
+                url: shareUrl,
+            }).catch(() => {
+                // User cancelled share
+            });
+        } else {
+            navigator.clipboard.writeText(shareUrl);
+            toast.success("Link copied to clipboard!");
+        }
+    };
+
     return (
         <div className="w-full max-w-2xl mx-auto space-y-4">
             {/* Create Post Card - LinkedIn Style */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
                 <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                        <Avatar className="h-12 w-12 shrink-0 border border-gray-200 dark:border-gray-700">
+                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border border-gray-200 dark:border-gray-700">
                             <AvatarImage src={currentUserImage || undefined} alt={currentUserName || ""} />
                             <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
                                 {currentUserInitials}
@@ -228,13 +258,41 @@ export default function FeedClient({
                                 onChange={(e) => setNewPostContent(e.target.value)}
                                 className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm"
                             />
-                            {showImageUpload && (
+                            {/* Image Preview */}
+                            {newPostImage && (
+                                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                    <Image
+                                        src={newPostImage}
+                                        alt="Upload preview"
+                                        width={600}
+                                        height={300}
+                                        className="w-full max-h-[200px] object-cover"
+                                        unoptimized
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNewPostImage(null);
+                                            setShowImageUpload(false);
+                                        }}
+                                        className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
+                                        title="Remove image"
+                                    >
+                                        <XIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
+                            {/* Image Upload Dropzone */}
+                            {showImageUpload && !newPostImage && (
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
                                     <ImageUpload
                                         endpoint="imageUploader"
                                         variant="feed"
                                         defaultUrl={newPostImage}
-                                        onChange={(url) => setNewPostImage(url)}
+                                        onChange={(url) => {
+                                            setNewPostImage(url);
+                                            if (url) setShowImageUpload(false);
+                                        }}
                                     />
                                 </div>
                             )}
@@ -243,7 +301,12 @@ export default function FeedClient({
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => setShowImageUpload(!showImageUpload)}
+                                        onClick={() => {
+                                            if (newPostImage) {
+                                                setNewPostImage(null);
+                                            }
+                                            setShowImageUpload(!showImageUpload);
+                                        }}
                                         className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-9 px-3 rounded-lg"
                                     >
                                         <ImageIcon className="h-4 w-4 mr-1.5" />
@@ -252,7 +315,7 @@ export default function FeedClient({
                                 </div>
                                 <Button
                                     onClick={handleCreatePost}
-                                    disabled={isSubmitting || !newPostContent.trim()}
+                                    disabled={isSubmitting || (!newPostContent.trim() && !newPostImage)}
                                     size="sm"
                                     className="bg-blue-700 hover:bg-blue-800 text-white rounded-full px-5 h-9 text-sm font-medium disabled:opacity-50"
                                 >
@@ -312,7 +375,7 @@ export default function FeedClient({
                             <div className="p-4 pb-0">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="h-12 w-12 border border-gray-200 dark:border-gray-700">
+                                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
                                             <AvatarImage
                                                 src={post.user.image || undefined}
                                                 alt={post.user.name || ""}
@@ -328,7 +391,7 @@ export default function FeedClient({
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                                 Community Member
                                             </p>
-                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5" title={formatFullDate(post.createdAt)}>
                                                 {formatDate(post.createdAt)}
                                             </p>
                                         </div>
@@ -361,11 +424,13 @@ export default function FeedClient({
                             </div>
 
                             {/* Post Content */}
-                            <div className="px-4 py-3">
-                                <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                    {post.content}
-                                </p>
-                            </div>
+                            {post.content && (
+                                <div className="px-4 py-3">
+                                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                        {post.content}
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Post Image */}
                             {post.image && (
@@ -376,6 +441,7 @@ export default function FeedClient({
                                         width={700}
                                         height={400}
                                         className="w-full object-cover max-h-[500px]"
+                                        unoptimized
                                     />
                                 </div>
                             )}
@@ -389,18 +455,20 @@ export default function FeedClient({
                                                 <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
                                                     <ThumbsUpIcon className="h-2.5 w-2.5 text-white" />
                                                 </span>
-                                                <span>{post._count.likes}</span>
+                                                <span>{post._count.likes} {post._count.likes === 1 ? "like" : "likes"}</span>
                                             </>
                                         )}
                                     </div>
-                                    {post._count.comments > 0 && (
-                                        <button
-                                            onClick={() => toggleComments(post.id)}
-                                            className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
-                                        >
-                                            {post._count.comments} comment{post._count.comments !== 1 ? "s" : ""}
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-3">
+                                        {post._count.comments > 0 && (
+                                            <button
+                                                onClick={() => toggleComments(post.id)}
+                                                className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                                            >
+                                                {post._count.comments} comment{post._count.comments !== 1 ? "s" : ""}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -409,7 +477,7 @@ export default function FeedClient({
                                 <div className="flex items-center justify-around">
                                     <button
                                         onClick={() => handleLike(post.id)}
-                                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
+                                        className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
                                             isLiked
                                                 ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
                                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -420,17 +488,14 @@ export default function FeedClient({
                                     </button>
                                     <button
                                         onClick={() => toggleComments(post.id)}
-                                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
                                     >
                                         <MessageCircleIcon className="h-4 w-4" />
                                         <span className="hidden sm:inline">Comment</span>
                                     </button>
                                     <button
-                                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(window.location.href);
-                                            toast.success("Link copied!");
-                                        }}
+                                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                        onClick={() => handleShare(post)}
                                     >
                                         <ShareIcon className="h-4 w-4" />
                                         <span className="hidden sm:inline">Share</span>
@@ -454,9 +519,14 @@ export default function FeedClient({
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2">
-                                                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                                                        {comment.user.name || "Anonymous"}
-                                                    </p>
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                                            {comment.user.name || "Anonymous"}
+                                                        </p>
+                                                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                            {formatDate(comment.createdAt)}
+                                                        </p>
+                                                    </div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed">
                                                         {comment.content}
                                                     </p>
