@@ -78,7 +78,7 @@ export async function toggleLike(postId: string) {
                 });
             }
             // Also notify admins if the post is not by an admin
-            if (post && post.user.role !== "admin" && post.user.role !== "superadmin") {
+            if (post && post.user?.role !== "admin" && post.user?.role !== "superadmin") {
                 await notifyAdmins({
                     type: "LIKE",
                     message: `${session.user.name || "A user"} liked a post`,
@@ -126,7 +126,7 @@ export async function addComment(postId: string, content: string) {
             });
         }
         // Also notify admins if the post is not by an admin
-        if (post && post.user.role !== "admin" && post.user.role !== "superadmin") {
+        if (post && post.user?.role !== "admin" && post.user?.role !== "superadmin") {
             await notifyAdmins({
                 type: "COMMENT",
                 message: `${session.user.name || "A user"} commented on a post`,

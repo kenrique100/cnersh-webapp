@@ -65,9 +65,6 @@ export async function getProjectById(projectId: string) {
             user: { select: { id: true, name: true, email: true, image: true } },
             statusHistory: {
                 orderBy: { createdAt: "desc" },
-                include: {
-                    project: { select: { id: true } },
-                },
             },
         },
     });
