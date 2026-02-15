@@ -15,9 +15,18 @@ import {
     ImageIcon,
     ThumbsUpIcon,
     ShareIcon,
+    FlagIcon,
 } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { createPost, toggleLike, addComment, deletePost, getPostComments } from "@/app/actions/feed";
+import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
 
 interface PostUser {
@@ -65,6 +74,8 @@ export default function FeedClient({
         createdAt: Date;
         user: PostUser;
     }>>>({});
+    const [reportingPostId, setReportingPostId] = React.useState<string | null>(null);
+    const [reportReason, setReportReason] = React.useState("");
 
     const currentUserInitials = currentUserName
         ? currentUserName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
@@ -142,6 +153,22 @@ export default function FeedClient({
             toast.success("Post removed");
         } catch {
             toast.error("Failed to delete post");
+        }
+    };
+
+    const handleReport = async () => {
+        if (!reportingPostId || !reportReason.trim()) return;
+        try {
+            await createReport({
+                contentType: "POST",
+                contentId: reportingPostId,
+                reason: reportReason,
+            });
+            toast.success("Report submitted successfully");
+            setReportingPostId(null);
+            setReportReason("");
+        } catch {
+            toast.error("Failed to submit report");
         }
     };
 
@@ -306,17 +333,30 @@ export default function FeedClient({
                                             </p>
                                         </div>
                                     </div>
-                                    {(post.user.id === currentUserId || isAdmin) && (
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-full"
-                                            onClick={() => handleDelete(post.id)}
-                                            title="Delete post"
-                                        >
-                                            <TrashIcon className="h-4 w-4" />
-                                        </Button>
-                                    )}
+                                    <div className="flex items-center gap-1">
+                                        {post.user.id !== currentUserId && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-full"
+                                                onClick={() => setReportingPostId(post.id)}
+                                                title="Report post"
+                                            >
+                                                <FlagIcon className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {(post.user.id === currentUserId || isAdmin) && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-full"
+                                                onClick={() => handleDelete(post.id)}
+                                                title="Delete post"
+                                            >
+                                                <TrashIcon className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -466,6 +506,49 @@ export default function FeedClient({
                     );
                 })
             )}
+
+            {/* Report Dialog */}
+            <Dialog open={reportingPostId !== null} onOpenChange={(open) => {
+                if (!open) {
+                    setReportingPostId(null);
+                    setReportReason("");
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Report Post</DialogTitle>
+                        <DialogDescription>
+                            Please provide a reason for reporting this post.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <Textarea
+                            placeholder="Describe why you are reporting this post..."
+                            value={reportReason}
+                            onChange={(e) => setReportReason(e.target.value)}
+                            className="min-h-[100px] resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setReportingPostId(null);
+                                    setReportReason("");
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleReport}
+                                disabled={!reportReason.trim()}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                Submit Report
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
