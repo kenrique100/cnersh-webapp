@@ -43,17 +43,19 @@ export default function NotificationDropdown({ count }: NotificationDropdownProp
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
     const [unreadCount, setUnreadCount] = useState(count);
     const [markingAll, setMarkingAll] = useState(false);
 
     const fetchNotifications = useCallback(async () => {
         setLoading(true);
+        setError(false);
         try {
             const data = await getNotifications(1, 10);
             setNotifications(data.notifications as Notification[]);
             setUnreadCount(data.unreadCount);
         } catch {
-            // silently fail
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -141,6 +143,10 @@ export default function NotificationDropdown({ count }: NotificationDropdownProp
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
                             <Loader2Icon className="h-5 w-5 animate-spin text-gray-400" />
+                        </div>
+                    ) : error ? (
+                        <div className="py-8 text-center text-sm text-red-500 dark:text-red-400">
+                            Failed to load notifications
                         </div>
                     ) : notifications.length === 0 ? (
                         <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
