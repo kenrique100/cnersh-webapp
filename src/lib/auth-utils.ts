@@ -7,12 +7,13 @@ export const authSession = async () => {
         const session = await auth.api.getSession({ headers: await headers() });
 
         if (!session) {
-            throw new Error("Unauthorized: No valid session found");
+            return null;
         }
 
         return session;
     } catch (error) {
-        throw new Error(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Session fetch failed — user may need to sign in again:", error instanceof Error ? error.message : error);
+        return null;
     }
 };
 
@@ -26,15 +27,14 @@ export const authIsRequired = async () => {
     return session;
 };
 
-export const authIsNotRequired = async () => {
-    try {
-        const session = await authSession();
+/** Get the appropriate dashboard path for a user role */
+export const getDashboardPath = (role?: string | null): string =>
+    (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
 
-        if (session) {
-            redirect("/");
-        }
-    } catch {
-        // No session or authentication failed - this is expected for unauthenticated pages
-        // Do nothing and allow the page to render
+export const authIsNotRequired = async () => {
+    const session = await authSession();
+
+    if (session) {
+        redirect(getDashboardPath(session.user?.role));
     }
 };

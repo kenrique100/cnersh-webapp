@@ -59,15 +59,20 @@ export function SignInForm() {
                 },
                 {
                     onSuccess: async () => {
-                        const { error } = await authClient.twoFactor.sendOtp({});
+                        // Fetch session to check user role for redirect
+                        const session = await authClient.getSession();
+                        const user = session?.data?.user;
 
-                        if (error) {
+                        if (!user) {
                             router.push("/dashboard");
                             toast.success("Signed in successfully");
-                        } else {
-                            router.push("/two-factor");
-                            toast.success("OTP sent. Please check your email.");
+                            return;
                         }
+
+                        const role = user.role;
+                        const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
+                        router.push(redirectPath);
+                        toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
                         // ✅ Better error handling
@@ -95,7 +100,7 @@ export function SignInForm() {
         try {
             await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/",
+                callbackURL: "/dashboard",
             });
         } catch {
             toast.error("Unable to sign in with Google. Please try again.");
@@ -172,7 +177,7 @@ export function SignInForm() {
                                         <span>Password <span className="text-red-500">*</span></span>
                                         <Link
                                             className="text-xs text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 transition-colors font-medium"
-                                            href="/request-password-reset"
+                                            href="/request-password"
                                         >
                                             Forgot password?
                                         </Link>

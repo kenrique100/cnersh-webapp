@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AddFormPage() {
     await authIsRequired();
-    const user = await updateProfile();
+    await updateProfile();
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">

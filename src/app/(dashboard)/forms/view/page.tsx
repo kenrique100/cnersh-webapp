@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ViewFormsPage() {
     await authIsRequired();
-    const user = await updateProfile();
+    await updateProfile();
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -40,7 +40,7 @@ export default async function ViewFormsPage() {
                                 No Forms Available
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-                                You haven't created any forms yet. Start by creating a new form from the "Add Form" option.
+                                You haven&apos;t created any forms yet. Start by creating a new form from the &ldquo;Add Form&rdquo; option.
                             </p>
                         </div>
                     </CardContent>

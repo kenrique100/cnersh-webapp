@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { authIsRequired } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import UserManagementForm, { Role } from "./user-client";
@@ -8,6 +9,22 @@ export const dynamic = 'force-dynamic';
 
 export default async function UserManagementPage() {
     const session = await authIsRequired();
+
+    // Only admins can access user management
+    let currentUser;
+    try {
+        currentUser = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+    } catch (error) {
+        console.error("Error checking user role:", error);
+        redirect("/dashboard");
+    }
+
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        redirect("/dashboard");
+    }
 
     const { users } = await auth.api.listUsers({
         query: {},
