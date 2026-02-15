@@ -203,8 +203,17 @@ export async function deleteReply(replyId: string) {
         select: { role: true },
     });
 
+    const reply = await db.communityReply.findUnique({
+        where: { id: replyId },
+        select: { userId: true },
+    });
+
+    if (!reply) throw new Error("Reply not found");
+
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-    if (!isAdmin) throw new Error("Forbidden");
+    const isOwner = reply.userId === session.user.id;
+
+    if (!isAdmin && !isOwner) throw new Error("Forbidden");
 
     await db.communityReply.update({
         where: { id: replyId },
@@ -221,4 +230,24 @@ export async function deleteReply(replyId: string) {
     });
 
     return { success: true };
+}
+
+export async function editReply(replyId: string, content: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const reply = await db.communityReply.findUnique({
+        where: { id: replyId },
+        select: { userId: true },
+    });
+
+    if (!reply) throw new Error("Reply not found");
+    if (reply.userId !== session.user.id) throw new Error("Forbidden");
+
+    const updated = await db.communityReply.update({
+        where: { id: replyId },
+        data: { content },
+    });
+
+    return updated;
 }

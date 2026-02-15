@@ -33,6 +33,8 @@ import {
     AtSignIcon,
     TrashIcon,
     FlagIcon,
+    PencilIcon,
+    CheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -41,6 +43,7 @@ import {
     getTopicWithReplies,
     deleteTopic,
     deleteReply,
+    editReply,
 } from "@/app/actions/community";
 import { createReport } from "@/app/actions/admin";
 import { UploadButton } from "@/lib/uploadthing";
@@ -148,6 +151,9 @@ export default function CommunityClient({
     const [showMentions, setShowMentions] = React.useState(false);
     const [mentionFilter, setMentionFilter] = React.useState("");
     const [showMobileChannels, setShowMobileChannels] = React.useState(false);
+    const [editingReplyId, setEditingReplyId] = React.useState<string | null>(null);
+    const [editingContent, setEditingContent] = React.useState("");
+    const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
     const [newTopic, setNewTopic] = React.useState({
         title: "",
         content: "",
@@ -263,6 +269,28 @@ export default function CommunityClient({
         } catch {
             toast.error("Failed to report chat");
         }
+    };
+
+    const handleEditReply = async (replyId: string) => {
+        if (!editingContent.trim() || !selectedTopic) return;
+        try {
+            await editReply(replyId, editingContent);
+            setSelectedTopic({
+                ...selectedTopic,
+                replies: selectedTopic.replies.map((r) =>
+                    r.id === replyId ? { ...r, content: editingContent } : r
+                ),
+            });
+            setEditingReplyId(null);
+            setEditingContent("");
+            toast.success("Message updated");
+        } catch {
+            toast.error("Failed to edit message");
+        }
+    };
+
+    const handleMessageTap = (replyId: string) => {
+        setActiveMessageId(activeMessageId === replyId ? null : replyId);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -539,6 +567,7 @@ export default function CommunityClient({
                         <div
                             key={reply.id}
                             className="group hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded px-2 py-0.5 -mx-2 relative"
+                            onClick={() => handleMessageTap(reply.id)}
                         >
                             {/* Reply reference */}
                             {parentReply && (
@@ -600,7 +629,29 @@ export default function CommunityClient({
                                         </div>
                                     )}
                                     <p className="text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
-                                        {renderMessageContent(reply.content)}
+                                        {editingReplyId === reply.id ? (
+                                            <span className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editingContent}
+                                                    onChange={(e) => setEditingContent(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") handleEditReply(reply.id);
+                                                        if (e.key === "Escape") { setEditingReplyId(null); setEditingContent(""); }
+                                                    }}
+                                                    className="flex-1 text-sm px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    autoFocus
+                                                />
+                                                <button onClick={() => handleEditReply(reply.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
+                                                    <CheckIcon className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={() => { setEditingReplyId(null); setEditingContent(""); }} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" title="Cancel">
+                                                    <XIcon className="h-4 w-4" />
+                                                </button>
+                                            </span>
+                                        ) : (
+                                            renderMessageContent(reply.content)
+                                        )}
                                     </p>
                                     {reply.image && (
                                         <div className="mt-1 max-w-sm">
@@ -678,27 +729,45 @@ export default function CommunityClient({
                                         )}
                                 </div>
 
-                                {/* Message Actions (hover) */}
-                                <div className="opacity-0 group-hover:opacity-100 absolute top-0 right-2 -translate-y-1/2 flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg">
+                                {/* Message Actions (hover on desktop, tap on mobile) */}
+                                <div
+                                    className={`absolute top-0 right-2 -translate-y-1/2 flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg transition-opacity ${
+                                        activeMessageId === reply.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                    }`}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     <button
-                                        onClick={() => setReplyingTo(reply)}
+                                        onClick={() => { setReplyingTo(reply); setActiveMessageId(null); }}
                                         className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                         title="Reply"
                                     >
                                         <ReplyIcon className="h-4 w-4" />
                                     </button>
-                                    {isAdmin && (
+                                    {currentUserId === reply.user.id && (
                                         <button
-                                            onClick={() => handleDeleteReply(reply.id)}
+                                            onClick={() => {
+                                                setEditingReplyId(reply.id);
+                                                setEditingContent(reply.content);
+                                                setActiveMessageId(null);
+                                            }}
+                                            className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                                            title="Edit message"
+                                        >
+                                            <PencilIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    {(isAdmin || currentUserId === reply.user.id) && (
+                                        <button
+                                            onClick={() => { handleDeleteReply(reply.id); setActiveMessageId(null); }}
                                             className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-400 hover:text-red-600 transition-colors"
                                             title="Delete message"
                                         >
                                             <TrashIcon className="h-4 w-4" />
                                         </button>
                                     )}
-                                    {!isAdmin && currentUserId !== reply.user.id && (
+                                    {currentUserId !== reply.user.id && (
                                         <button
-                                            onClick={() => handleReportChat(reply.id)}
+                                            onClick={() => { handleReportChat(reply.id); setActiveMessageId(null); }}
                                             className="p-1.5 hover:bg-orange-100 dark:hover:bg-orange-900 rounded text-gray-400 hover:text-orange-600 transition-colors"
                                             title="Report message"
                                         >
