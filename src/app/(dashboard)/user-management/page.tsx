@@ -43,12 +43,14 @@ export default async function UserManagementPage() {
     if (!users) redirect("/sign-in");
 
     // Fetch additional user data (image, banned status) from DB
-    const userIds = users.map((u) => u.id);
+    const userIds = users.map((u: { id: string }) => u.id);
     const dbUsers = await db.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, image: true, banned: true },
     });
-    const dbUserMap = new Map(dbUsers.map((u) => [u.id, u]));
+    const dbUserMap = new Map<string, { id: string; image: string | null; banned: boolean | null }>(
+        dbUsers.map((u: { id: string; image: string | null; banned: boolean | null }) => [u.id, u])
+    );
     
     const formattedUsers = users
         .map((user) => {

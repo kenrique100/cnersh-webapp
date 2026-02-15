@@ -87,7 +87,7 @@ export default async function AuditLogsPage() {
 
                         {/* Table Body */}
                         <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                            {logs.map((log) => (
+                            {logs.map((log: { id: string; action: string; details: string | null; createdAt: Date; user: { name: string | null; email: string } }) => (
                                 <div
                                     key={log.id}
                                     className="grid sm:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"

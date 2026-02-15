@@ -32,7 +32,7 @@ export default async function ReportsPage() {
                     </p>
                 </div>
 
-                <ReportsClient reports={reports} />
+                <ReportsClient reports={JSON.parse(JSON.stringify(reports))} />
             </div>
         </div>
     );

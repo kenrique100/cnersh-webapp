@@ -42,15 +42,12 @@ export default async function ProjectsPage() {
     const projects = await getUserProjects();
 
     // Group projects by status
-    const groupedProjects = projects.reduce(
-        (acc, project) => {
-            const status = project.status;
-            if (!acc[status]) acc[status] = [];
-            acc[status].push(project);
-            return acc;
-        },
-        {} as Record<string, typeof projects>
-    );
+    const groupedProjects: Record<string, typeof projects> = {};
+    for (const project of projects) {
+        const status = project.status;
+        if (!groupedProjects[status]) groupedProjects[status] = [];
+        groupedProjects[status].push(project);
+    }
 
     const statusOrder = ["PENDING_REVIEW", "SUBMITTED", "APPROVED", "DRAFT", "REJECTED"];
 
