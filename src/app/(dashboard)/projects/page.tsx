@@ -142,9 +142,9 @@ export default async function ProjectsPage() {
                                         {/* Projects Grid */}
                                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                             {statusProjects.map((project) => (
+                                                <Link key={project.id} href={`/projects/${project.id}`}>
                                                 <Card
-                                                    key={project.id}
-                                                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden"
+                                                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden cursor-pointer"
                                                 >
                                                     <CardHeader className="pb-3">
                                                         <div className="flex items-start justify-between gap-2">
@@ -183,6 +183,7 @@ export default async function ProjectsPage() {
                                                         )}
                                                     </CardContent>
                                                 </Card>
+                                                </Link>
                                             ))}
                                         </div>
                                     </div>

@@ -3,6 +3,7 @@
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { ProjectStatus } from "@/generated/prisma";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function submitProject(data: {
     title: string;
@@ -38,6 +39,51 @@ export async function submitProject(data: {
             },
         },
     });
+
+    // Notify admins about new project submission
+    try {
+        await notifyAdmins({
+            type: "PROJECT_STATUS",
+            message: `${session.user.name || "A user"} submitted a new project: "${project.title}"`,
+            link: `/admin/project-review`,
+            excludeUserId: session.user.id,
+        });
+    } catch (error) {
+        console.error("Error notifying admins about project submission:", error);
+    }
+
+    return project;
+}
+
+export async function getProjectById(projectId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const project = await db.project.findUnique({
+        where: { id: projectId, deleted: false },
+        include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+            statusHistory: {
+                orderBy: { createdAt: "desc" },
+                include: {
+                    project: { select: { id: true } },
+                },
+            },
+        },
+    });
+
+    if (!project) return null;
+
+    // Only allow project owner or admins to view
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const isOwner = project.userId === session.user.id;
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+    if (!isOwner && !isAdmin) throw new Error("Forbidden");
 
     return project;
 }
@@ -123,7 +169,7 @@ export async function updateProjectStatus(
         data: {
             type: "PROJECT_STATUS",
             message: `Your project "${project.title}" has been ${status.toLowerCase().replace("_", " ")}`,
-            link: `/projects`,
+            link: `/projects/${projectId}`,
             userId: project.userId,
         },
     });

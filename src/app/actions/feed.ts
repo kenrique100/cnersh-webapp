@@ -2,6 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function createPost(data: { content: string; image?: string }) {
     const session = await authSession();
@@ -64,7 +65,7 @@ export async function toggleLike(postId: string) {
         try {
             const post = await db.post.findUnique({
                 where: { id: postId },
-                select: { userId: true },
+                select: { userId: true, user: { select: { role: true } } },
             });
             if (post && post.userId !== session.user.id) {
                 await db.notification.create({
@@ -74,6 +75,15 @@ export async function toggleLike(postId: string) {
                         link: "/feeds",
                         userId: post.userId,
                     },
+                });
+            }
+            // Also notify admins if the post is not by an admin
+            if (post && post.user.role !== "admin" && post.user.role !== "superadmin") {
+                await notifyAdmins({
+                    type: "LIKE",
+                    message: `${session.user.name || "A user"} liked a post`,
+                    link: "/feeds",
+                    excludeUserId: session.user.id,
                 });
             }
         } catch (error) {
@@ -103,7 +113,7 @@ export async function addComment(postId: string, content: string) {
     try {
         const post = await db.post.findUnique({
             where: { id: postId },
-            select: { userId: true },
+            select: { userId: true, user: { select: { role: true } } },
         });
         if (post && post.userId !== session.user.id) {
             await db.notification.create({
@@ -113,6 +123,15 @@ export async function addComment(postId: string, content: string) {
                     link: "/feeds",
                     userId: post.userId,
                 },
+            });
+        }
+        // Also notify admins if the post is not by an admin
+        if (post && post.user.role !== "admin" && post.user.role !== "superadmin") {
+            await notifyAdmins({
+                type: "COMMENT",
+                message: `${session.user.name || "A user"} commented on a post`,
+                link: "/feeds",
+                excludeUserId: session.user.id,
             });
         }
     } catch (error) {

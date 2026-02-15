@@ -2,6 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function getAdminStats() {
     const session = await authSession();
@@ -121,7 +122,7 @@ export async function createReport(data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    return db.report.create({
+    const report = await db.report.create({
         data: {
             reason: data.reason,
             contentType: data.contentType,
@@ -129,6 +130,21 @@ export async function createReport(data: {
             userId: session.user.id,
         },
     });
+
+    // Notify admins about the new report
+    try {
+        const contentLabel = data.contentType.toLowerCase().replace("_", " ");
+        await notifyAdmins({
+            type: "SYSTEM",
+            message: `${session.user.name || "A user"} reported a ${contentLabel}: "${data.reason.substring(0, 80)}${data.reason.length > 80 ? "..." : ""}"`,
+            link: "/admin/reports",
+            excludeUserId: session.user.id,
+        });
+    } catch (error) {
+        console.error("Error notifying admins about report:", error);
+    }
+
+    return report;
 }
 
 async function requireAdmin() {

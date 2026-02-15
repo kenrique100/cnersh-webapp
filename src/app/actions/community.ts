@@ -2,6 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function createTopic(data: {
     title: string;
@@ -144,6 +145,14 @@ export async function addReply(data: {
         if (notifications.length > 0) {
             await db.notification.createMany({ data: notifications });
         }
+
+        // Also notify admins about community activity
+        await notifyAdmins({
+            type: "COMMENT",
+            message: `${session.user.name || "A user"} posted a reply in the community`,
+            link: "/community",
+            excludeUserId: session.user.id,
+        });
     } catch (error) {
         console.error("Error creating community notifications:", error);
     }

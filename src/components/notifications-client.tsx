@@ -87,7 +87,12 @@ export default function NotificationsClient({
         if (!notification.read) {
             await handleMarkRead(notification.id);
         }
-        setSelectedNotification(notification);
+        // Navigate directly to the linked page if available
+        if (notification.link) {
+            router.push(notification.link);
+        } else {
+            setSelectedNotification(notification);
+        }
     };
 
     const handleNavigate = (link: string) => {
