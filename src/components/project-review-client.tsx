@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CheckIcon, XIcon, ClockIcon } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectStatus } from "@/app/actions/project";
+import { useRouter } from "next/navigation";
 
 interface ProjectUser {
     id: string;
@@ -46,6 +47,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function ProjectReviewClient({ projects }: ProjectReviewClientProps) {
+    const router = useRouter();
     const [selectedProject, setSelectedProject] = React.useState<ProjectData | null>(null);
     const [feedback, setFeedback] = React.useState("");
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -64,7 +66,7 @@ export default function ProjectReviewClient({ projects }: ProjectReviewClientPro
             toast.success(`Project ${status.toLowerCase().replace("_", " ")}`);
             setSelectedProject(null);
             setFeedback("");
-            window.location.reload();
+            router.refresh();
         } catch {
             toast.error("Failed to update project status");
         } finally {

@@ -22,7 +22,7 @@ export default function ImageUpload({
     const [value, setValue] = useState<string | null>(defaultUrl ?? null);
     const [showDropzone, setShowDropzone] = useState<boolean>(!defaultUrl);
 
-    const handleChangImage = (url: string | null) => {
+    const handleChangeImage = (url: string | null) => {
         setValue(url);
         onChange?.(url);
     };
@@ -47,7 +47,7 @@ export default function ImageUpload({
                 <button
                     type="button"
                     onClick={() => {
-                        handleChangImage(null);
+                        handleChangeImage(null);
                         setShowDropzone(true);
                     }}
                     className={
@@ -77,7 +77,7 @@ export default function ImageUpload({
 
                     if (url) {
                         setShowDropzone(false);
-                        handleChangImage(url);
+                        handleChangeImage(url);
                     }
                 }}
             />

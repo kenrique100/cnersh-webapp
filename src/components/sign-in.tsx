@@ -177,7 +177,7 @@ export function SignInForm() {
                                         <span>Password <span className="text-red-500">*</span></span>
                                         <Link
                                             className="text-xs text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 transition-colors font-medium"
-                                            href="/request-password-reset"
+                                            href="/request-password"
                                         >
                                             Forgot password?
                                         </Link>
