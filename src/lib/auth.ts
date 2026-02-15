@@ -5,8 +5,7 @@ import { nextCookies } from "better-auth/next-js";
 import { sendVerificationEmail } from "@/lib/send-verification-email";
 import { sendResetPasswordEmail } from "./send-reset-password-email";
 import { ac, roles } from "./permissions";
-import { sendOtpEmail } from "./send-otp-email";
-import { admin, twoFactor } from "better-auth/plugins";
+import { admin } from "better-auth/plugins";
 
 export const auth = betterAuth({
     database: prismaAdapter(db, {
@@ -22,7 +21,7 @@ export const auth = betterAuth({
                 throw new Error("User email is required for password reset");
             }
             await sendResetPasswordEmail({
-                to: "kenriqueanyere@gmail.com",
+                to: user.email,
                 subject: "Reset your password",
                 url,
             });
@@ -43,9 +42,12 @@ export const auth = betterAuth({
             if (!user?.email) {
                 throw new Error("User email is required for verification");
             }
+            // Set callbackURL to /dashboard so verified users go to dashboard
+            const verificationUrl = new URL(url);
+            verificationUrl.searchParams.set("callbackURL", "/dashboard");
             await sendVerificationEmail({
-                to: "kenriqueanyere@gmail.com",
-                verificationUrl: url,
+                to: user.email,
+                verificationUrl: verificationUrl.toString(),
                 userName: user.name,
             });
         },
@@ -81,21 +83,5 @@ export const auth = betterAuth({
         }),
 
         nextCookies(),
-
-        twoFactor({
-            skipVerificationOnEnable: false,
-            otpOptions: {
-
-                async sendOTP({ user, otp }) {
-                    if (!user?.email) {
-                        throw new Error("User email is required for OTP");
-                    }
-                    await sendOtpEmail({
-                        to: "kenriqueanyere@gmail.com",
-                        otp,
-                    });
-                },
-            },
-        }),
     ],
 });
