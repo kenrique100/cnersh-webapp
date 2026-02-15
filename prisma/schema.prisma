@@ -34,6 +34,7 @@ model User {
   reports            Report[]        @relation("ReportAuthor")
   notifications      Notification[]
   auditLogs          AuditLog[]
+  commentLikes       CommentLike[]
 
   @@map("user")
 }
@@ -120,13 +121,33 @@ model Comment {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  commentLikes CommentLike[]
   deleted   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([postId])
   @@index([userId])
+  @@index([parentId])
   @@map("comment")
+}
+
+model CommentLike {
+  id        String   @id @default(uuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDislike Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_like")
 }
 
 model Like {

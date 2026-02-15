@@ -25,6 +25,13 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { createPost, toggleLike, addComment, deletePost, getPostComments } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
@@ -77,6 +84,7 @@ export default function FeedClient({
     }>>>({});
     const [reportingPostId, setReportingPostId] = React.useState<string | null>(null);
     const [reportReason, setReportReason] = React.useState("");
+    const [reportCategory, setReportCategory] = React.useState("");
 
     const currentUserInitials = currentUserName
         ? currentUserName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
@@ -158,16 +166,18 @@ export default function FeedClient({
     };
 
     const handleReport = async () => {
-        if (!reportingPostId || !reportReason.trim()) return;
+        if (!reportingPostId || !reportCategory) return;
+        const fullReason = reportCategory + (reportReason.trim() ? `: ${reportReason.trim()}` : "");
         try {
             await createReport({
                 contentType: "POST",
                 contentId: reportingPostId,
-                reason: reportReason,
+                reason: fullReason,
             });
             toast.success("Report submitted successfully");
             setReportingPostId(null);
             setReportReason("");
+            setReportCategory("");
         } catch {
             toast.error("Failed to submit report");
         }
@@ -221,22 +231,41 @@ export default function FeedClient({
         });
     };
 
+    const [sharePostId, setSharePostId] = React.useState<string | null>(null);
+
     const handleShare = (post: PostData) => {
+        setSharePostId(post.id);
+    };
+
+    const handleShareTo = (platform: string, post: PostData) => {
         const shareUrl = typeof window !== "undefined" ? window.location.origin + "/feeds" : "";
-        const shareText = post.content.substring(0, 100) + (post.content.length > 100 ? "..." : "");
-        
-        if (navigator.share) {
-            navigator.share({
-                title: `Post by ${post.user.name || "Community Member"}`,
-                text: shareText,
-                url: shareUrl,
-            }).catch(() => {
-                // User cancelled share
-            });
-        } else {
-            navigator.clipboard.writeText(shareUrl);
-            toast.success("Link copied to clipboard!");
+        const shareText = encodeURIComponent(post.content.substring(0, 200));
+        const encodedUrl = encodeURIComponent(shareUrl);
+
+        let url = "";
+        switch (platform) {
+            case "whatsapp":
+                url = `https://wa.me/?text=${shareText}%20${encodedUrl}`;
+                break;
+            case "facebook":
+                url = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+                break;
+            case "twitter":
+                url = `https://twitter.com/intent/tweet?text=${shareText}&url=${encodedUrl}`;
+                break;
+            case "instagram":
+                navigator.clipboard.writeText(shareUrl);
+                toast.success("Link copied! Paste it on Instagram.");
+                setSharePostId(null);
+                return;
+            case "copy":
+                navigator.clipboard.writeText(shareUrl);
+                toast.success("Link copied to clipboard!");
+                setSharePostId(null);
+                return;
         }
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+        setSharePostId(null);
     };
 
     return (
@@ -582,21 +611,37 @@ export default function FeedClient({
                 if (!open) {
                     setReportingPostId(null);
                     setReportReason("");
+                    setReportCategory("");
                 }
             }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Report Post</DialogTitle>
                         <DialogDescription>
-                            Please provide a reason for reporting this post.
+                            Select a reason for reporting this post.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
+                        <Select value={reportCategory} onValueChange={setReportCategory}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a reason..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Spam">Spam</SelectItem>
+                                <SelectItem value="Harassment or Bullying">Harassment or Bullying</SelectItem>
+                                <SelectItem value="Hate Speech">Hate Speech</SelectItem>
+                                <SelectItem value="Misinformation">Misinformation</SelectItem>
+                                <SelectItem value="Violence or Threats">Violence or Threats</SelectItem>
+                                <SelectItem value="Inappropriate Content">Inappropriate Content</SelectItem>
+                                <SelectItem value="Copyright Violation">Copyright Violation</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <Textarea
-                            placeholder="Describe why you are reporting this post..."
+                            placeholder="Additional details (optional)..."
                             value={reportReason}
                             onChange={(e) => setReportReason(e.target.value)}
-                            className="min-h-[100px] resize-none"
+                            className="min-h-[80px] resize-none"
                         />
                         <div className="flex justify-end gap-2">
                             <Button
@@ -604,18 +649,78 @@ export default function FeedClient({
                                 onClick={() => {
                                     setReportingPostId(null);
                                     setReportReason("");
+                                    setReportCategory("");
                                 }}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleReport}
-                                disabled={!reportReason.trim()}
+                                disabled={!reportCategory}
                                 className="bg-red-600 hover:bg-red-700 text-white"
                             >
                                 Submit Report
                             </Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Share Dialog */}
+            <Dialog open={sharePostId !== null} onOpenChange={(open) => {
+                if (!open) setSharePostId(null);
+            }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Share Post</DialogTitle>
+                        <DialogDescription>Choose a platform to share this post.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-3 py-4">
+                        {(() => {
+                            const post = posts.find(p => p.id === sharePostId);
+                            if (!post) return null;
+                            return (
+                                <>
+                                    <button
+                                        onClick={() => handleShareTo("whatsapp", post)}
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-950 transition-colors"
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white text-lg font-bold">W</div>
+                                        <span className="text-sm font-medium">WhatsApp</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleShareTo("facebook", post)}
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold">f</div>
+                                        <span className="text-sm font-medium">Facebook</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleShareTo("twitter", post)}
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-lg font-bold">𝕏</div>
+                                        <span className="text-sm font-medium">X (Twitter)</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleShareTo("instagram", post)}
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors"
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">I</div>
+                                        <span className="text-sm font-medium">Instagram</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleShareTo("copy", post)}
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors col-span-2"
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white">
+                                            <ShareIcon className="h-5 w-5" />
+                                        </div>
+                                        <span className="text-sm font-medium">Copy Link</span>
+                                    </button>
+                                </>
+                            );
+                        })()}
                     </div>
                 </DialogContent>
             </Dialog>

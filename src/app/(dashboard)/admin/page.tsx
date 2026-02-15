@@ -14,6 +14,7 @@ import {
     AlertCircleIcon,
     ActivityIcon,
 } from "lucide-react";
+import AdminCharts from "@/components/admin-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +152,11 @@ export default async function AdminOverviewPage() {
                             </Card>
                         );
                     })}
+                </div>
+
+                {/* Charts Section */}
+                <div className="mt-10">
+                    <AdminCharts stats={stats} />
                 </div>
             </div>
         </div>

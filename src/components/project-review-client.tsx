@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckIcon, XIcon, ClockIcon } from "lucide-react";
+import { CheckIcon, XIcon, ClockIcon, FileTextIcon, DownloadIcon } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectStatus } from "@/app/actions/project";
 import { useRouter } from "next/navigation";
@@ -28,6 +28,7 @@ interface ProjectData {
     location: string | null;
     timeline: string | null;
     budget: string | null;
+    document: string | null;
     status: string;
     feedback: string | null;
     createdAt: Date;
@@ -132,6 +133,33 @@ export default function ProjectReviewClient({ projects }: ProjectReviewClientPro
                                         {selectedProject.timeline && <div><strong>Timeline:</strong> {selectedProject.timeline}</div>}
                                         {selectedProject.budget && <div><strong>Budget:</strong> {selectedProject.budget}</div>}
                                     </div>
+                                    {selectedProject.document && (
+                                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <FileTextIcon className="h-4 w-4 text-blue-600" />
+                                                <strong className="text-sm text-blue-800 dark:text-blue-200">Project Document</strong>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <a
+                                                    href={selectedProject.document}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors"
+                                                >
+                                                    <FileTextIcon className="h-3.5 w-3.5" />
+                                                    View Document
+                                                </a>
+                                                <a
+                                                    href={selectedProject.document}
+                                                    download
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-medium transition-colors"
+                                                >
+                                                    <DownloadIcon className="h-3.5 w-3.5" />
+                                                    Download
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="border-t pt-4 space-y-3">

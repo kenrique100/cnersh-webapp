@@ -156,6 +156,9 @@ export default function CommunityClient({
     const [editingReplyId, setEditingReplyId] = React.useState<string | null>(null);
     const [editingContent, setEditingContent] = React.useState("");
     const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
+    const [reportingReplyId, setReportingReplyId] = React.useState<string | null>(null);
+    const [reportCategory, setReportCategory] = React.useState("");
+    const [reportDetails, setReportDetails] = React.useState("");
     const [userProfileId, setUserProfileId] = React.useState<string | null>(null);
     const [warningMessage, setWarningMessage] = React.useState("");
     const [banReason, setBanReason] = React.useState("");
@@ -266,13 +269,23 @@ export default function CommunityClient({
     };
 
     const handleReportChat = async (replyId: string) => {
+        setReportingReplyId(replyId);
+        setActiveMessageId(null);
+    };
+
+    const submitChatReport = async () => {
+        if (!reportingReplyId || !reportCategory) return;
+        const fullReason = reportCategory + (reportDetails.trim() ? `: ${reportDetails.trim()}` : "");
         try {
             await createReport({
                 contentType: "REPLY",
-                contentId: replyId,
-                reason: "Reported by user from community chat",
+                contentId: reportingReplyId,
+                reason: fullReason,
             });
             toast.success("Chat reported to admins");
+            setReportingReplyId(null);
+            setReportCategory("");
+            setReportDetails("");
         } catch {
             toast.error("Failed to report chat");
         }
@@ -1268,6 +1281,48 @@ export default function CommunityClient({
                             </Button>
                             <Button variant="destructive" size="sm" onClick={handleBanUser} disabled={!banReason.trim()}>
                                 Ban User
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Report Chat Dialog */}
+            <Dialog
+                open={reportingReplyId !== null}
+                onOpenChange={(open) => { if (!open) { setReportingReplyId(null); setReportCategory(""); setReportDetails(""); } }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Report Message</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Select value={reportCategory} onValueChange={setReportCategory}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a reason..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Spam">Spam</SelectItem>
+                                <SelectItem value="Harassment or Bullying">Harassment or Bullying</SelectItem>
+                                <SelectItem value="Hate Speech">Hate Speech</SelectItem>
+                                <SelectItem value="Misinformation">Misinformation</SelectItem>
+                                <SelectItem value="Violence or Threats">Violence or Threats</SelectItem>
+                                <SelectItem value="Inappropriate Content">Inappropriate Content</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Textarea
+                            placeholder="Additional details (optional)..."
+                            value={reportDetails}
+                            onChange={(e) => setReportDetails(e.target.value)}
+                            className="min-h-[80px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => { setReportingReplyId(null); setReportCategory(""); setReportDetails(""); }}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={submitChatReport} disabled={!reportCategory} className="bg-red-600 hover:bg-red-700 text-white">
+                                Submit Report
                             </Button>
                         </div>
                     </div>
