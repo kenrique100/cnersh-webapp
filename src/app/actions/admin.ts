@@ -130,3 +130,132 @@ export async function createReport(data: {
         },
     });
 }
+
+async function requireAdmin() {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "admin" && user?.role !== "superadmin") {
+        throw new Error("Forbidden");
+    }
+
+    return session;
+}
+
+export async function resolveReport(
+    reportId: string,
+    action: "REVIEWED" | "DISMISSED",
+) {
+    const session = await requireAdmin();
+
+    await db.report.update({
+        where: { id: reportId },
+        data: { status: action },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "RESOLVE_REPORT",
+            details: `Report resolved as ${action}`,
+            targetId: reportId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function sendWarning(userId: string, message: string) {
+    const session = await requireAdmin();
+
+    await db.notification.create({
+        data: {
+            type: "SYSTEM",
+            message,
+            userId,
+        },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "SEND_WARNING",
+            details: `Warning sent: ${message}`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function banUserById(userId: string, reason: string) {
+    const session = await requireAdmin();
+
+    await db.user.update({
+        where: { id: userId },
+        data: { banned: true, banReason: reason },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "BAN_USER",
+            details: `User banned: ${reason}`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function deleteReportedContent(
+    contentType: string,
+    contentId: string,
+) {
+    const session = await requireAdmin();
+
+    switch (contentType) {
+        case "POST":
+            await db.post.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        case "COMMENT":
+            await db.comment.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        case "TOPIC":
+            await db.communityTopic.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        case "REPLY":
+            await db.communityReply.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        default:
+            throw new Error(`Unknown content type: ${contentType}`);
+    }
+
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_CONTENT",
+            details: `Deleted ${contentType} with id ${contentId}`,
+            targetId: contentId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
