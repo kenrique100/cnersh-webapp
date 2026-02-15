@@ -75,8 +75,8 @@ export default function NotificationDropdown({ count }: NotificationDropdownProp
             setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
             setUnreadCount(0);
             router.refresh();
-        } catch {
-            // silently fail
+        } catch (error) {
+            console.error("Failed to mark all notifications as read:", error);
         } finally {
             setMarkingAll(false);
         }
@@ -91,8 +91,8 @@ export default function NotificationDropdown({ count }: NotificationDropdownProp
                 );
                 setUnreadCount((prev) => Math.max(0, prev - 1));
                 router.refresh();
-            } catch {
-                // silently fail
+            } catch (error) {
+                console.error("Failed to mark notification as read:", error);
             }
         }
         setOpen(false);
