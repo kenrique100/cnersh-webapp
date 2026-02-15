@@ -164,3 +164,61 @@ export async function getCommunityUsers() {
         return [];
     }
 }
+
+export async function deleteTopic(topicId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    if (!isAdmin) throw new Error("Forbidden");
+
+    await db.communityTopic.update({
+        where: { id: topicId },
+        data: { deleted: true },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_TOPIC",
+            details: `Community topic deleted`,
+            targetId: topicId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function deleteReply(replyId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    if (!isAdmin) throw new Error("Forbidden");
+
+    await db.communityReply.update({
+        where: { id: replyId },
+        data: { deleted: true },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_REPLY",
+            details: `Community reply deleted`,
+            targetId: replyId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}

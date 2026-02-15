@@ -31,13 +31,18 @@ import {
     XIcon,
     UsersIcon,
     AtSignIcon,
+    TrashIcon,
+    FlagIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
     createTopic,
     addReply,
     getTopicWithReplies,
+    deleteTopic,
+    deleteReply,
 } from "@/app/actions/community";
+import { createReport } from "@/app/actions/admin";
 import { UploadButton } from "@/lib/uploadthing";
 
 /* ─── Types ───────────────────────────────────────────── */
@@ -118,17 +123,21 @@ const CATEGORY_COLORS: Record<string, string> = {
 interface CommunityClientProps {
     initialTopics: TopicData[];
     users: CommunityUser[];
+    isAdmin?: boolean;
+    currentUserId?: string;
 }
 
 export default function CommunityClient({
     initialTopics,
     users,
+    isAdmin = false,
+    currentUserId,
 }: CommunityClientProps) {
     const router = useRouter();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const [topics] = React.useState(initialTopics);
+    const [topics, setTopics] = React.useState(initialTopics);
     const [selectedTopic, setSelectedTopic] =
         React.useState<TopicDetail | null>(null);
     const [messageText, setMessageText] = React.useState("");
@@ -212,6 +221,47 @@ export default function CommunityClient({
             scrollToBottom();
         } catch {
             toast.error("Failed to send message");
+        }
+    };
+
+    const handleDeleteTopic = async (topicId: string) => {
+        try {
+            await deleteTopic(topicId);
+            setTopics((prev) => prev.filter((t) => t.id !== topicId));
+            if (selectedTopic?.id === topicId) {
+                setSelectedTopic(null);
+            }
+            toast.success("Channel deleted");
+            router.refresh();
+        } catch {
+            toast.error("Failed to delete channel");
+        }
+    };
+
+    const handleDeleteReply = async (replyId: string) => {
+        if (!selectedTopic) return;
+        try {
+            await deleteReply(replyId);
+            setSelectedTopic({
+                ...selectedTopic,
+                replies: selectedTopic.replies.filter((r) => r.id !== replyId),
+            });
+            toast.success("Message deleted");
+        } catch {
+            toast.error("Failed to delete message");
+        }
+    };
+
+    const handleReportChat = async (replyId: string) => {
+        try {
+            await createReport({
+                contentType: "REPLY",
+                contentId: replyId,
+                reason: "Reported by user from community chat",
+            });
+            toast.success("Chat reported to admins");
+        } catch {
+            toast.error("Failed to report chat");
         }
     };
 
@@ -340,6 +390,18 @@ export default function CommunityClient({
                                             {topic._count.replies}
                                         </span>
                                     )}
+                                    {isAdmin && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteTopic(topic.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-500 transition-all"
+                                            title="Delete channel"
+                                        >
+                                            <TrashIcon className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -363,7 +425,7 @@ export default function CommunityClient({
                                     onClick={() =>
                                         handleSelectTopic(topic.id)
                                     }
-                                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
+                                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors group ${
                                         selectedTopic?.id === topic.id
                                             ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
                                             : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800"
@@ -373,6 +435,18 @@ export default function CommunityClient({
                                     <span className="truncate text-left flex-1">
                                         {topic.title.toLowerCase().replace(/\s+/g, "-")}
                                     </span>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteTopic(topic.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-500 transition-all"
+                                            title="Delete channel"
+                                        >
+                                            <TrashIcon className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
                                 </button>
                             ))}
                     </div>
@@ -613,6 +687,24 @@ export default function CommunityClient({
                                     >
                                         <ReplyIcon className="h-4 w-4" />
                                     </button>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => handleDeleteReply(reply.id)}
+                                            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-400 hover:text-red-600 transition-colors"
+                                            title="Delete message"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    {!isAdmin && currentUserId !== reply.user.id && (
+                                        <button
+                                            onClick={() => handleReportChat(reply.id)}
+                                            className="p-1.5 hover:bg-orange-100 dark:hover:bg-orange-900 rounded text-gray-400 hover:text-orange-600 transition-colors"
+                                            title="Report message"
+                                        >
+                                            <FlagIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
