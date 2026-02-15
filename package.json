@@ -10,8 +10,10 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:push:force": "prisma db push --accept-data-loss",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
+    "db:reset": "prisma db push --force-reset",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma generate && prisma db push && tsx prisma/seed.ts"
@@ -33,7 +35,6 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.4",
     "embla-carousel-react": "^8.6.0",
-    "input-otp": "^1.4.2",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "next-themes": "^0.4.6",

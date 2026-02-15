@@ -5,7 +5,7 @@ A secure, scalable, production-grade web platform designed for government instit
 ## Tech Stack
 
 - **Framework**: [Next.js](https://nextjs.org) 16 (App Router)
-- **Auth**: [Better Auth](https://www.better-auth.com/) with 2FA, Google OAuth, role-based access
+- **Auth**: [Better Auth](https://www.better-auth.com/) with Google OAuth, role-based access
 - **Database**: PostgreSQL with [Prisma ORM](https://www.prisma.io/) (driver adapter via `@prisma/adapter-pg`)
 - **UI**: [shadcn/ui](https://ui.shadcn.com/), Tailwind CSS, Radix UI
 - **File Uploads**: [UploadThing](https://uploadthing.com/)
@@ -101,6 +101,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run lint` | Run ESLint |
 | `npm run db:generate` | Generate Prisma client (TypeScript types only) |
 | `npm run db:push` | Push schema to database (create/update tables) |
+| `npm run db:push:force` | Push schema with `--accept-data-loss` (drops removed columns) |
+| `npm run db:reset` | Reset database completely (`--force-reset`) — ⚠️ deletes all data |
 | `npm run db:migrate` | Run pending migrations (production) |
 | `npm run db:migrate:dev` | Create and run migrations (development) |
 | `npm run db:studio` | Open Prisma Studio (database GUI) |
@@ -123,6 +125,29 @@ This usually means the Prisma client was not generated. Run:
 
 ```bash
 npm run db:generate
+```
+
+### "twoFactorEnabled" column appears in SQL queries
+
+This means the old `twoFactorEnabled` column still exists in your database from a previous schema version. To remove it, run:
+
+```bash
+npm run db:push:force
+```
+
+This uses `--accept-data-loss` to allow dropping the removed column. If you want to fully reset the database (deletes all data):
+
+```bash
+npm run db:reset
+npm run db:seed
+```
+
+### Database schema out of sync after pulling new code
+
+If you pull code changes that modify the Prisma schema, always run:
+
+```bash
+npx prisma generate && npm run db:push:force
 ```
 
 ## Deploy on Vercel
