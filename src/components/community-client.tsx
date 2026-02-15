@@ -35,6 +35,8 @@ import {
     FlagIcon,
     PencilIcon,
     CheckIcon,
+    ShieldAlertIcon,
+    BanIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -45,7 +47,7 @@ import {
     deleteReply,
     editReply,
 } from "@/app/actions/community";
-import { createReport } from "@/app/actions/admin";
+import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 import { UploadButton } from "@/lib/uploadthing";
 
 /* ─── Types ───────────────────────────────────────────── */
@@ -154,6 +156,11 @@ export default function CommunityClient({
     const [editingReplyId, setEditingReplyId] = React.useState<string | null>(null);
     const [editingContent, setEditingContent] = React.useState("");
     const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
+    const [userProfileId, setUserProfileId] = React.useState<string | null>(null);
+    const [warningMessage, setWarningMessage] = React.useState("");
+    const [banReason, setBanReason] = React.useState("");
+    const [showBanDialog, setShowBanDialog] = React.useState(false);
+    const [showWarningDialog, setShowWarningDialog] = React.useState(false);
     const [newTopic, setNewTopic] = React.useState({
         title: "",
         content: "",
@@ -291,6 +298,41 @@ export default function CommunityClient({
 
     const handleMessageTap = (replyId: string) => {
         setActiveMessageId(activeMessageId === replyId ? null : replyId);
+    };
+
+    const handleUserClick = (userId: string) => {
+        if (isAdmin && userId !== currentUserId) {
+            setUserProfileId(userId);
+        }
+    };
+
+    const selectedUser = userProfileId ? users.find(u => u.id === userProfileId) : null;
+
+    const handleSendWarning = async () => {
+        if (!userProfileId || !warningMessage.trim()) return;
+        try {
+            await sendWarning(userProfileId, warningMessage);
+            toast.success("Warning sent successfully");
+            setShowWarningDialog(false);
+            setWarningMessage("");
+            setUserProfileId(null);
+        } catch {
+            toast.error("Failed to send warning");
+        }
+    };
+
+    const handleBanUser = async () => {
+        if (!userProfileId || !banReason.trim()) return;
+        try {
+            await banUserById(userProfileId, banReason);
+            toast.success("User banned successfully");
+            setShowBanDialog(false);
+            setBanReason("");
+            setUserProfileId(null);
+            router.refresh();
+        } catch {
+            toast.error("Failed to ban user");
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -619,7 +661,10 @@ export default function CommunityClient({
                                 <div className="flex-1 min-w-0">
                                     {showHeader && (
                                         <div className="flex items-baseline gap-2">
-                                            <span className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer">
+                                            <span
+                                                className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer"
+                                                onClick={(e) => { e.stopPropagation(); handleUserClick(reply.user.id); }}
+                                            >
                                                 {reply.user.name}
                                             </span>
                                             <span className="text-[11px] text-gray-500 dark:text-gray-400">
@@ -1121,6 +1166,110 @@ export default function CommunityClient({
                         >
                             Create Channel
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Admin User Profile Dialog */}
+            <Dialog
+                open={!!userProfileId && !showBanDialog && !showWarningDialog}
+                onOpenChange={(open) => { if (!open) setUserProfileId(null); }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>User Profile</DialogTitle>
+                    </DialogHeader>
+                    {selectedUser && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-14 w-14">
+                                    <AvatarImage src={selectedUser.image || undefined} />
+                                    <AvatarFallback className="bg-indigo-500 text-white text-lg">
+                                        {selectedUser.name?.charAt(0)?.toUpperCase() || "U"}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold text-lg">{selectedUser.name || "Unknown"}</p>
+                                    <Badge className="text-xs mt-0.5">{selectedUser.role || "user"}</Badge>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-800">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowWarningDialog(true)}
+                                    className="flex-1"
+                                >
+                                    <ShieldAlertIcon className="h-4 w-4 mr-1.5" />
+                                    Send Warning
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => setShowBanDialog(true)}
+                                    className="flex-1"
+                                >
+                                    <BanIcon className="h-4 w-4 mr-1.5" />
+                                    Ban User
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Warning Dialog */}
+            <Dialog
+                open={showWarningDialog}
+                onOpenChange={(open) => { if (!open) { setShowWarningDialog(false); setWarningMessage(""); } }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Send Warning to {selectedUser?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Textarea
+                            placeholder="Warning message..."
+                            value={warningMessage}
+                            onChange={(e) => setWarningMessage(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => { setShowWarningDialog(false); setWarningMessage(""); }}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleSendWarning} disabled={!warningMessage.trim()}>
+                                Send Warning
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Ban Dialog */}
+            <Dialog
+                open={showBanDialog}
+                onOpenChange={(open) => { if (!open) { setShowBanDialog(false); setBanReason(""); } }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Ban {selectedUser?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Textarea
+                            placeholder="Reason for ban..."
+                            value={banReason}
+                            onChange={(e) => setBanReason(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => { setShowBanDialog(false); setBanReason(""); }}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={handleBanUser} disabled={!banReason.trim()}>
+                                Ban User
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>
