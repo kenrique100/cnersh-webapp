@@ -479,7 +479,7 @@ export function SignUpForm() {
                                                                 inevitably leads to greater integrity in staff conduct.
                                                             </p>
                                                             <p className="text-gray-700 dark:text-gray-300 mt-2 text-xs">
-                                                                - Rev. Dr. Dieudonné MASSI GAMS, Chairman
+                                                                - Rev. Dr. Dieudonné MASS GAMS, Chairman
                                                             </p>
                                                         </div>
 
@@ -1094,7 +1094,7 @@ export function SignUpForm() {
                                                     </div>
                                                 </ScrollArea>
                                                 {/* Bottom Left Button Footer */}
-                                                <div className="flex justify-start items-center px-6 py-4 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
+                                                <div className="flex justify-start items-center px-6 py-4 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 shrink-0">
                                                     <Button
                                                         onClick={() => {
                                                             setTermsDialogOpen(false);
