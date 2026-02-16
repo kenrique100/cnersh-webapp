@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 
-export async function createPost(data: { content: string; image?: string }) {
+export async function createPost(data: { content: string; image?: string; video?: string }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -13,6 +13,7 @@ export async function createPost(data: { content: string; image?: string }) {
         data: {
             content: data.content,
             image: data.image || null,
+            video: data.video || null,
             userId: session.user.id,
         },
     });

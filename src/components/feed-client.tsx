@@ -14,6 +14,7 @@ import {
     TrashIcon,
     PenIcon,
     ImageIcon,
+    VideoIcon,
     ThumbsUpIcon,
     ThumbsDownIcon,
     ShareIcon,
@@ -47,6 +48,7 @@ import { toast } from "sonner";
 import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
+import { UploadDropzone } from "@/lib/uploadthing";
 
 interface PostUser {
     id: string;
@@ -74,6 +76,7 @@ interface PostData {
     id: string;
     content: string;
     image: string | null;
+    video: string | null;
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
@@ -105,7 +108,9 @@ export default function FeedClient({
     const [posts, setPosts] = React.useState(initialPosts);
     const [newPostContent, setNewPostContent] = React.useState("");
     const [newPostImage, setNewPostImage] = React.useState<string | null>(null);
+    const [newPostVideo, setNewPostVideo] = React.useState<string | null>(null);
     const [showImageUpload, setShowImageUpload] = React.useState(false);
+    const [showVideoUpload, setShowVideoUpload] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [expandedComments, setExpandedComments] = React.useState<Set<string>>(new Set());
     const [commentTexts, setCommentTexts] = React.useState<Record<string, string>>({});
@@ -126,13 +131,15 @@ export default function FeedClient({
         : "U";
 
     const handleCreatePost = async () => {
-        if (!newPostContent.trim() && !newPostImage) return;
+        if (!newPostContent.trim() && !newPostImage && !newPostVideo) return;
         setIsSubmitting(true);
         try {
-            await createPost({ content: newPostContent, image: newPostImage || undefined });
+            await createPost({ content: newPostContent, image: newPostImage || undefined, video: newPostVideo || undefined });
             setNewPostContent("");
             setNewPostImage(null);
+            setNewPostVideo(null);
             setShowImageUpload(false);
+            setShowVideoUpload(false);
             toast.success("Post published successfully");
             router.refresh();
         } catch {
@@ -442,6 +449,27 @@ export default function FeedClient({
                                     </button>
                                 </div>
                             )}
+                            {/* Video Preview */}
+                            {newPostVideo && (
+                                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                    <video
+                                        src={newPostVideo}
+                                        controls
+                                        className="w-full max-h-[200px] object-contain bg-black"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNewPostVideo(null);
+                                            setShowVideoUpload(false);
+                                        }}
+                                        className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
+                                        title="Remove video"
+                                    >
+                                        <XIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
                             {/* Image Upload Dropzone */}
                             {showImageUpload && !newPostImage && (
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
@@ -456,6 +484,33 @@ export default function FeedClient({
                                     />
                                 </div>
                             )}
+                            {/* Video Upload Dropzone */}
+                            {showVideoUpload && !newPostVideo && (
+                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
+                                    <UploadDropzone
+                                        endpoint="videoUploader"
+                                        content={{
+                                            label: "Drop or click to upload a video",
+                                            allowedContent: "Videos up to 32MB",
+                                        }}
+                                        appearance={{
+                                            container: "rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer",
+                                            button: "!bg-blue-700 !text-white text-sm",
+                                            label: "text-sm text-gray-600 dark:text-gray-400",
+                                        }}
+                                        onClientUploadComplete={(res) => {
+                                            const url = res?.[0]?.url;
+                                            if (url) {
+                                                setNewPostVideo(url);
+                                                setShowVideoUpload(false);
+                                            }
+                                        }}
+                                        onUploadError={(error) => {
+                                            toast.error(`Video upload failed: ${error.message}`);
+                                        }}
+                                    />
+                                </div>
+                            )}
                             <div className="flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-1">
                                     <Button
@@ -465,6 +520,7 @@ export default function FeedClient({
                                             if (newPostImage) {
                                                 setNewPostImage(null);
                                             }
+                                            setShowVideoUpload(false);
                                             setShowImageUpload(!showImageUpload);
                                         }}
                                         className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-9 px-3 rounded-lg"
@@ -472,10 +528,25 @@ export default function FeedClient({
                                         <ImageIcon className="h-4 w-4 mr-1.5" />
                                         <span className="text-xs font-medium">Photo</span>
                                     </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (newPostVideo) {
+                                                setNewPostVideo(null);
+                                            }
+                                            setShowImageUpload(false);
+                                            setShowVideoUpload(!showVideoUpload);
+                                        }}
+                                        className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 h-9 px-3 rounded-lg"
+                                    >
+                                        <VideoIcon className="h-4 w-4 mr-1.5" />
+                                        <span className="text-xs font-medium">Video</span>
+                                    </Button>
                                 </div>
                                 <Button
                                     onClick={handleCreatePost}
-                                    disabled={isSubmitting || (!newPostContent.trim() && !newPostImage)}
+                                    disabled={isSubmitting || (!newPostContent.trim() && !newPostImage && !newPostVideo)}
                                     size="sm"
                                     className="bg-blue-700 hover:bg-blue-800 text-white rounded-full px-5 h-9 text-sm font-medium disabled:opacity-50"
                                 >
@@ -602,6 +673,17 @@ export default function FeedClient({
                                         height={400}
                                         className="w-full object-cover max-h-[500px]"
                                         unoptimized
+                                    />
+                                </div>
+                            )}
+
+                            {/* Post Video */}
+                            {post.video && (
+                                <div className="border-t border-b border-gray-100 dark:border-gray-800">
+                                    <video
+                                        src={post.video}
+                                        controls
+                                        className="w-full max-h-[500px] object-contain bg-black"
                                     />
                                 </div>
                             )}

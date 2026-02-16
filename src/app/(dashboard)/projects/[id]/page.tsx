@@ -13,6 +13,7 @@ import {
     FileTextIcon,
     UserIcon,
     ArrowLeftIcon,
+    DownloadIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -231,15 +232,25 @@ export default async function ProjectDetailPage({
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
-                                <a
-                                    href={project.document}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors text-sm font-medium"
-                                >
-                                    <FileTextIcon className="h-4 w-4" />
-                                    View Document
-                                </a>
+                                <div className="flex gap-2">
+                                    <a
+                                        href={project.document}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors text-sm font-medium"
+                                    >
+                                        <FileTextIcon className="h-4 w-4" />
+                                        View Document
+                                    </a>
+                                    <a
+                                        href={project.document}
+                                        download
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+                                    >
+                                        <DownloadIcon className="h-4 w-4" />
+                                        Download
+                                    </a>
+                                </div>
                             </CardContent>
                         </Card>
                     )}

@@ -54,6 +54,23 @@ export const ourFileRouter = {
         .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
+
+    videoUploader: f({
+        video: {
+            maxFileSize: "32MB",
+            maxFileCount: 1,
+        },
+    })
+        .middleware(async ({}) => {
+            const session = await authSession();
+
+            if (!session) throw new UploadThingError("Unauthorized");
+
+            return { userId: session.user.id };
+        })
+        .onUploadComplete(async ({ metadata }) => {
+            return { uploadedBy: metadata.userId };
+        }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

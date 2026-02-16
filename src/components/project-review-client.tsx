@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckIcon, XIcon, ClockIcon, FileTextIcon, DownloadIcon } from "lucide-react";
+import { CheckIcon, XIcon, ClockIcon, FileTextIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectStatus } from "@/app/actions/project";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface ProjectUser {
     id: string;
@@ -97,7 +98,17 @@ export default function ProjectReviewClient({ projects }: ProjectReviewClientPro
                     {selectedProject && (
                         <>
                             <DialogHeader>
-                                <DialogTitle>{selectedProject.title}</DialogTitle>
+                                <div className="flex items-center justify-between">
+                                    <DialogTitle>{selectedProject.title}</DialogTitle>
+                                    <Link
+                                        href={`/projects/${selectedProject.id}`}
+                                        target="_blank"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800 text-xs font-medium transition-colors"
+                                    >
+                                        <ExternalLinkIcon className="h-3.5 w-3.5" />
+                                        View Full Project
+                                    </Link>
+                                </div>
                             </DialogHeader>
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3">
