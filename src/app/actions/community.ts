@@ -3,6 +3,7 @@
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
+import { sendNotificationEmail } from "@/lib/send-notification-email";
 
 export async function createTopic(data: {
     title: string;
@@ -33,7 +34,7 @@ export async function getTopics(category?: string, page: number = 1, limit: numb
                     ...(category ? { category } : {}),
                 },
                 include: {
-                    user: { select: { id: true, name: true, image: true } },
+                    user: { select: { id: true, name: true, image: true, role: true } },
                     _count: { select: { replies: true } },
                 },
                 orderBy: { createdAt: "desc" },
@@ -59,15 +60,15 @@ export async function getTopicWithReplies(topicId: string) {
     const topic = await db.communityTopic.findUnique({
         where: { id: topicId, deleted: false },
         include: {
-            user: { select: { id: true, name: true, image: true } },
+            user: { select: { id: true, name: true, image: true, role: true } },
             replies: {
                 where: { deleted: false, parentId: null },
                 include: {
-                    user: { select: { id: true, name: true, image: true } },
+                    user: { select: { id: true, name: true, image: true, role: true } },
                     children: {
                         where: { deleted: false },
                         include: {
-                            user: { select: { id: true, name: true, image: true } },
+                            user: { select: { id: true, name: true, image: true, role: true } },
                         },
                         orderBy: { createdAt: "asc" },
                     },
@@ -98,13 +99,14 @@ export async function addReply(data: {
             userId: session.user.id,
         },
         include: {
-            user: { select: { id: true, name: true, image: true } },
+            user: { select: { id: true, name: true, image: true, role: true } },
         },
     });
 
     // Create notifications asynchronously (don't block the reply)
     try {
         const notifications: { type: "MENTION" | "COMMENT"; message: string; link: string; userId: string }[] = [];
+        const emailRecipients: { email: string; name: string; message: string; type: string }[] = [];
 
         // Notify @mentioned users
         const mentionMatches = data.content.match(/@(\w+(?:\s\w+)?)/g);
@@ -112,16 +114,25 @@ export async function addReply(data: {
             const mentionedNames = mentionMatches.map(m => m.slice(1).trim());
             const mentionedUsers = await db.user.findMany({
                 where: { name: { in: mentionedNames }, banned: { not: true } },
-                select: { id: true },
+                select: { id: true, email: true, name: true },
             });
             for (const u of mentionedUsers) {
                 if (u.id !== session.user.id) {
+                    const mentionMessage = `${session.user.name || "Someone"} mentioned you in the community`;
                     notifications.push({
                         type: "MENTION",
-                        message: `${session.user.name || "Someone"} mentioned you in the community`,
+                        message: mentionMessage,
                         link: `/community`,
                         userId: u.id,
                     });
+                    if (u.email) {
+                        emailRecipients.push({
+                            email: u.email,
+                            name: u.name || "User",
+                            message: mentionMessage,
+                            type: "MENTION",
+                        });
+                    }
                 }
             }
         }
@@ -130,20 +141,40 @@ export async function addReply(data: {
         if (data.parentId) {
             const parentReply = await db.communityReply.findUnique({
                 where: { id: data.parentId },
-                select: { userId: true },
+                select: { userId: true, user: { select: { email: true, name: true } } },
             });
             if (parentReply && parentReply.userId !== session.user.id) {
+                const replyMessage = `${session.user.name || "Someone"} replied to your message in the community`;
                 notifications.push({
                     type: "COMMENT",
-                    message: `${session.user.name || "Someone"} replied to your message in the community`,
+                    message: replyMessage,
                     link: `/community`,
                     userId: parentReply.userId,
                 });
+                if (parentReply.user?.email) {
+                    emailRecipients.push({
+                        email: parentReply.user.email,
+                        name: parentReply.user.name || "User",
+                        message: replyMessage,
+                        type: "COMMENT",
+                    });
+                }
             }
         }
 
         if (notifications.length > 0) {
             await db.notification.createMany({ data: notifications });
+        }
+
+        // Send email notifications (non-blocking)
+        for (const recipient of emailRecipients) {
+            sendNotificationEmail({
+                to: recipient.email,
+                userName: recipient.name,
+                notificationMessage: recipient.message,
+                notificationType: recipient.type,
+                actionUrl: "/community",
+            }).catch((err) => console.error("Error sending community email:", err));
         }
 
         // Also notify admins about community activity

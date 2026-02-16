@@ -56,6 +56,7 @@ interface TopicUser {
     id: string;
     name: string | null;
     image: string | null;
+    role?: string | null;
 }
 
 interface CommunityUser {
@@ -390,6 +391,13 @@ export default function CommunityClient({
             year: "numeric",
         });
 
+    const getDisplayName = (user: TopicUser) => {
+        if (user.role === "admin" || user.role === "superadmin") {
+            return "CNEC Admin";
+        }
+        return user.name || "Unknown";
+    };
+
     const renderMessageContent = (content: string) => {
         const parts = content.split(/(@\w+)/g);
         return parts.map((part, i) => {
@@ -592,7 +600,7 @@ export default function CommunityClient({
                         </span>{" "}
                         channel. Created by{" "}
                         <span className="font-semibold text-gray-900 dark:text-white">
-                            {selectedTopic.user.name}
+                            {getDisplayName(selectedTopic.user)}
                         </span>{" "}
                         on {formatDate(selectedTopic.createdAt)}.
                     </p>
@@ -636,13 +644,13 @@ export default function CommunityClient({
                                             }
                                         />
                                         <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
-                                            {parentReply.user.name
+                                            {getDisplayName(parentReply.user)
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
                                         </AvatarFallback>
                                     </Avatar>
                                     <span className="font-semibold text-gray-600 dark:text-gray-300 hover:underline cursor-pointer">
-                                        {parentReply.user.name}
+                                        {getDisplayName(parentReply.user)}
                                     </span>
                                     <span className="truncate max-w-[200px]">
                                         {parentReply.content}
@@ -659,7 +667,7 @@ export default function CommunityClient({
                                             }
                                         />
                                         <AvatarFallback className="bg-indigo-500 text-white text-sm">
-                                            {reply.user.name
+                                            {getDisplayName(reply.user)
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
                                         </AvatarFallback>
@@ -678,7 +686,7 @@ export default function CommunityClient({
                                                 className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer"
                                                 onClick={(e) => { e.stopPropagation(); handleUserClick(reply.user.id); }}
                                             >
-                                                {reply.user.name}
+                                                {getDisplayName(reply.user)}
                                             </span>
                                             <span className="text-[11px] text-gray-500 dark:text-gray-400">
                                                 {formatDate(reply.createdAt)}{" "}
@@ -743,7 +751,7 @@ export default function CommunityClient({
                                                                     }
                                                                 />
                                                                 <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
-                                                                    {child.user.name
+                                                                    {getDisplayName(child.user)
                                                                         ?.charAt(
                                                                             0
                                                                         )
@@ -753,11 +761,7 @@ export default function CommunityClient({
                                                             </Avatar>
                                                             <div>
                                                                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                                                    {
-                                                                        child
-                                                                            .user
-                                                                            .name
-                                                                    }
+                                                                    {getDisplayName(child.user)}
                                                                 </span>
                                                                 <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-2">
                                                                     {formatTime(
@@ -849,7 +853,7 @@ export default function CommunityClient({
                         <span>
                             Replying to{" "}
                             <span className="font-semibold text-gray-900 dark:text-white">
-                                {replyingTo.user.name}
+                                {getDisplayName(replyingTo.user)}
                             </span>
                         </span>
                         <button
@@ -1202,7 +1206,11 @@ export default function CommunityClient({
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <p className="font-semibold text-lg">{selectedUser.name || "Unknown"}</p>
+                                    <p className="font-semibold text-lg">
+                                        {selectedUser.role === "admin" || selectedUser.role === "superadmin"
+                                            ? "CNEC Admin"
+                                            : selectedUser.name || "Unknown"}
+                                    </p>
                                     <Badge className="text-xs mt-0.5">{selectedUser.role || "user"}</Badge>
                                 </div>
                             </div>

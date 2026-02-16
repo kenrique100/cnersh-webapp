@@ -4,6 +4,7 @@ import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { ProjectStatus } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
+import { sendNotificationEmail } from "@/lib/send-notification-email";
 
 export async function submitProject(data: {
     title: string;
@@ -162,14 +163,34 @@ export async function updateProjectStatus(
     });
 
     // Create notification for project owner
+    const statusMessage = `Your project "${project.title}" has been ${status.toLowerCase().replace("_", " ")}`;
     await db.notification.create({
         data: {
             type: "PROJECT_STATUS",
-            message: `Your project "${project.title}" has been ${status.toLowerCase().replace("_", " ")}`,
+            message: statusMessage,
             link: `/projects/${projectId}`,
             userId: project.userId,
         },
     });
+
+    // Send email notification to project owner
+    try {
+        const projectOwner = await db.user.findUnique({
+            where: { id: project.userId },
+            select: { email: true, name: true },
+        });
+        if (projectOwner?.email) {
+            sendNotificationEmail({
+                to: projectOwner.email,
+                userName: projectOwner.name || "User",
+                notificationMessage: statusMessage,
+                notificationType: "PROJECT_STATUS",
+                actionUrl: `/projects/${projectId}`,
+            }).catch((err) => console.error("Error sending project status email:", err));
+        }
+    } catch (error) {
+        console.error("Error sending project status email notification:", error);
+    }
 
     // Create audit log
     await db.auditLog.create({
