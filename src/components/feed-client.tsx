@@ -77,6 +77,7 @@ interface PostData {
     content: string;
     image: string | null;
     video: string | null;
+    tags: string[];
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
@@ -109,6 +110,8 @@ export default function FeedClient({
     const [newPostContent, setNewPostContent] = React.useState("");
     const [newPostImage, setNewPostImage] = React.useState<string | null>(null);
     const [newPostVideo, setNewPostVideo] = React.useState<string | null>(null);
+    const [newPostTags, setNewPostTags] = React.useState<string[]>([]);
+    const [tagInput, setTagInput] = React.useState("");
     const [showImageUpload, setShowImageUpload] = React.useState(false);
     const [showVideoUpload, setShowVideoUpload] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -134,10 +137,12 @@ export default function FeedClient({
         if (!newPostContent.trim() && !newPostImage && !newPostVideo) return;
         setIsSubmitting(true);
         try {
-            await createPost({ content: newPostContent, image: newPostImage || undefined, video: newPostVideo || undefined });
+            await createPost({ content: newPostContent, image: newPostImage || undefined, video: newPostVideo || undefined, tags: newPostTags.length > 0 ? newPostTags : undefined });
             setNewPostContent("");
             setNewPostImage(null);
             setNewPostVideo(null);
+            setNewPostTags([]);
+            setTagInput("");
             setShowImageUpload(false);
             setShowVideoUpload(false);
             toast.success("Post published successfully");
@@ -371,6 +376,28 @@ export default function FeedClient({
 
     const [sharePostId, setSharePostId] = React.useState<string | null>(null);
 
+    const renderPostContent = (content: string) => {
+        const parts = content.split(/(@\w[\w\s]*?)(?=\s@|$|\s)|(\#\w+)/g);
+        return parts.map((part, i) => {
+            if (!part) return null;
+            if (part.startsWith("@") && part.length > 1) {
+                return (
+                    <span key={i} className="text-blue-600 dark:text-blue-400 font-medium">
+                        {part}
+                    </span>
+                );
+            }
+            if (part.startsWith("#") && part.length > 1) {
+                return (
+                    <span key={i} className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
+                        {part}
+                    </span>
+                );
+            }
+            return part;
+        });
+    };
+
     const handleShare = (post: PostData) => {
         setSharePostId(post.id);
     };
@@ -511,6 +538,23 @@ export default function FeedClient({
                                     />
                                 </div>
                             )}
+                            {/* Tags Input */}
+                            {newPostTags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {newPostTags.map((tag, idx) => (
+                                        <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                                            #{tag}
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewPostTags((prev) => prev.filter((_, i) => i !== idx))}
+                                                className="hover:text-blue-900 dark:hover:text-blue-100"
+                                            >
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-1">
                                     <Button
@@ -543,6 +587,25 @@ export default function FeedClient({
                                         <VideoIcon className="h-4 w-4 mr-1.5" />
                                         <span className="text-xs font-medium">Video</span>
                                     </Button>
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="text"
+                                            placeholder="Add tag..."
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                                                    e.preventDefault();
+                                                    const tag = tagInput.trim().replace(/^#/, "");
+                                                    if (tag && !newPostTags.includes(tag)) {
+                                                        setNewPostTags((prev) => [...prev, tag]);
+                                                    }
+                                                    setTagInput("");
+                                                }
+                                            }}
+                                            className="h-8 w-24 sm:w-32 px-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        />
+                                    </div>
                                 </div>
                                 <Button
                                     onClick={handleCreatePost}
@@ -658,8 +721,19 @@ export default function FeedClient({
                             {post.content && (
                                 <div className="px-4 py-3">
                                     <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                        {post.content}
+                                        {renderPostContent(post.content)}
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Post Tags */}
+                            {post.tags && post.tags.length > 0 && (
+                                <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+                                    {post.tags.map((tag, idx) => (
+                                        <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-medium">
+                                            #{tag}
+                                        </span>
+                                    ))}
                                 </div>
                             )}
 

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 
-export async function createPost(data: { content: string; image?: string; video?: string }) {
+export async function createPost(data: { content: string; image?: string; video?: string; tags?: string[] }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -14,9 +14,46 @@ export async function createPost(data: { content: string; image?: string; video?
             content: data.content,
             image: data.image || null,
             video: data.video || null,
+            tags: data.tags || [],
             userId: session.user.id,
         },
     });
+
+    // Notify mentioned users in the post content
+    try {
+        const mentionRegex = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
+        const mentions = [...data.content.matchAll(mentionRegex)].map((m) => m[1].trim());
+        if (mentions.length > 0) {
+            const mentionedUsers = await db.user.findMany({
+                where: { name: { in: mentions }, id: { not: session.user.id } },
+                select: { id: true, email: true, name: true },
+            });
+            if (mentionedUsers.length > 0) {
+                const mentionMessage = `${session.user.name || "Someone"} mentioned you in a post`;
+                await db.notification.createMany({
+                    data: mentionedUsers.map((u) => ({
+                        type: "MENTION" as const,
+                        message: mentionMessage,
+                        link: "/feeds",
+                        userId: u.id,
+                    })),
+                });
+                for (const u of mentionedUsers) {
+                    if (u.email) {
+                        sendNotificationEmail({
+                            to: u.email,
+                            userName: u.name || "User",
+                            notificationMessage: mentionMessage,
+                            notificationType: "MENTION",
+                            actionUrl: "/feeds",
+                        }).catch((err) => console.error("Error sending post mention email:", err));
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error creating post mention notifications:", error);
+    }
 
     return post;
 }
