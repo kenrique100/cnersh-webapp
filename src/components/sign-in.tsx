@@ -57,22 +57,12 @@ export function SignInForm() {
                 {
                     email: data.email,
                     password: data.password,
-                    callbackURL: "/",
+                    callbackURL: "/dashboard",
                     rememberMe: data.rememberMe ?? false,
                 },
                 {
                     onSuccess: async () => {
-                        // Fetch session to check user role for redirect
-                        const session = await authClient.getSession();
-                        const user = session?.data?.user;
-
-                        if (!user) {
-                            router.push("/");
-                            toast.success("Signed in successfully");
-                            return;
-                        }
-
-                        router.push("/");
+                        router.push("/dashboard");
                         toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
@@ -101,7 +91,7 @@ export function SignInForm() {
         try {
             await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/",
+                callbackURL: "/dashboard",
             });
         } catch {
             toast.error("Unable to sign in with Google. Please try again.");

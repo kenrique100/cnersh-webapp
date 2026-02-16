@@ -18,17 +18,19 @@ export default async function Home() {
 
     // If authenticated, get user data for navbar
     let navUser = null;
+    let userGender: string | null = null;
     let notificationCount = 0;
     if (session) {
         const [user, unreadCount] = await Promise.all([
             db.user.findUnique({
                 where: { id: session.user.id },
-                select: { name: true, email: true, image: true, role: true },
+                select: { name: true, email: true, image: true, role: true, gender: true },
             }),
             getUnreadNotificationCount(),
         ]);
         if (user) {
             navUser = { name: user.name, email: user.email, image: user.image, role: user.role };
+            userGender = user.gender;
         }
         notificationCount = unreadCount;
     }
@@ -81,6 +83,54 @@ export default async function Home() {
                 <div className="flex flex-col lg:flex-row gap-6 py-6">
                     {/* Left Sidebar - About & Features (hidden on mobile, shown on lg) */}
                     <aside className="hidden lg:block w-72 shrink-0 space-y-4">
+                        {session && navUser ? (
+                            <>
+                                {/* User Profile Card (LinkedIn-style) */}
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
+                                    <div className="bg-gradient-to-r from-blue-600 to-blue-800 h-16" />
+                                    <div className="flex flex-col items-center -mt-8 pb-4 px-4">
+                                        <div className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-950 overflow-hidden bg-gray-200 dark:bg-gray-700">
+                                            {navUser.image ? (
+                                                <Image
+                                                    src={navUser.image}
+                                                    alt={navUser.name || "Profile"}
+                                                    width={64}
+                                                    height={64}
+                                                    unoptimized
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-blue-600 text-white text-xl font-bold">
+                                                    {navUser.name?.charAt(0)?.toUpperCase() || "U"}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100 text-center">
+                                            {navUser.name || "User"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center truncate max-w-full">
+                                            {navUser.email}
+                                        </p>
+                                        {userGender && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
+                                                {userGender}
+                                            </p>
+                                        )}
+                                        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 capitalize">
+                                            {navUser.role || "user"}
+                                        </span>
+                                    </div>
+                                    <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3">
+                                        <Link href="/dashboard">
+                                            <Button size="sm" className="w-full bg-blue-700 hover:bg-blue-800 text-white text-xs">
+                                                Go to Dashboard
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            </>
+                        ) : (
+                            <>
                         {/* Logo & Welcome */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
                             <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-4 pb-6 text-center">
@@ -117,6 +167,8 @@ export default async function Home() {
                                 </div>
                             </CardContent>
                         </Card>
+                            </>
+                        )}
 
                         {/* Features */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
@@ -156,6 +208,38 @@ export default async function Home() {
                     <div className="flex-1 min-w-0 max-w-2xl mx-auto lg:mx-0">
                         {/* Mobile Hero Banner */}
                         <div className="lg:hidden mb-4">
+                            {session && navUser ? (
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
+                                    <div className="bg-gradient-to-r from-blue-600 to-blue-800 h-12" />
+                                    <div className="flex items-center gap-3 -mt-6 px-4 pb-3">
+                                        <div className="w-12 h-12 rounded-full border-3 border-white dark:border-gray-950 overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                                            {navUser.image ? (
+                                                <Image
+                                                    src={navUser.image}
+                                                    alt={navUser.name || "Profile"}
+                                                    width={48}
+                                                    height={48}
+                                                    unoptimized
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-blue-600 text-white text-lg font-bold">
+                                                    {navUser.name?.charAt(0)?.toUpperCase() || "U"}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="mt-6 min-w-0">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{navUser.name}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{navUser.email}</p>
+                                        </div>
+                                        <Link href="/dashboard" className="ml-auto mt-6">
+                                            <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white text-xs">
+                                                Dashboard
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            ) : (
                             <Card className="border border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl overflow-hidden">
                                 <CardContent className="py-4 text-center">
                                     <div className="flex justify-center mb-2">
@@ -186,6 +270,7 @@ export default async function Home() {
                                     </div>
                                 </CardContent>
                             </Card>
+                            )}
                         </div>
 
                         {/* Feed Header */}

@@ -176,7 +176,7 @@ export function SignUpForm() {
                             termsAccepted: false,
                         });
                         setPassword("");
-                        router.push("/");
+                        router.push("/dashboard");
                     },
                     onError: (ctx) => {
                         console.error("Signup error:", ctx.error);

@@ -759,14 +759,15 @@ export default function CommunityClient({
                                     {/* Nested replies inline */}
                                     {reply.children &&
                                         reply.children.length > 0 && (
-                                            <div className="mt-1 ml-2 pl-3 border-l-2 border-gray-300 dark:border-gray-600 space-y-1">
+                                            <div className="mt-2 ml-4 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2">
                                                 {reply.children.map(
                                                     (child) => (
                                                         <div
                                                             key={child.id}
-                                                            className="flex items-start gap-2"
+                                                            className="group/child flex items-start gap-2.5 py-1.5 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 relative"
+                                                            onClick={() => handleMessageTap(child.id)}
                                                         >
-                                                            <Avatar className="h-5 w-5 mt-0.5">
+                                                            <Avatar className="h-7 w-7 mt-0.5 shrink-0">
                                                                 <AvatarImage
                                                                     src={
                                                                         child
@@ -775,7 +776,7 @@ export default function CommunityClient({
                                                                         undefined
                                                                     }
                                                                 />
-                                                                <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
+                                                                <AvatarFallback className="text-[10px] bg-indigo-500 text-white">
                                                                     {getDisplayName(child.user)
                                                                         ?.charAt(
                                                                             0
@@ -784,20 +785,41 @@ export default function CommunityClient({
                                                                         "U"}
                                                                 </AvatarFallback>
                                                             </Avatar>
-                                                            <div>
-                                                                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                                                    {getDisplayName(child.user)}
-                                                                </span>
-                                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-2">
-                                                                    {formatTime(
-                                                                        child.createdAt
-                                                                    )}
-                                                                </span>
-                                                                <p className="text-xs text-gray-800 dark:text-gray-200">
-                                                                    {renderMessageContent(
-                                                                        child.content
-                                                                    )}
-                                                                </p>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                                                        {getDisplayName(child.user)}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                                        {formatDate(child.createdAt)}{" "}
+                                                                        {formatTime(child.createdAt)}
+                                                                    </span>
+                                                                </div>
+                                                                {editingReplyId === child.id ? (
+                                                                    <span className="flex items-center gap-2 mt-0.5">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editingContent}
+                                                                            onChange={(e) => setEditingContent(e.target.value)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") handleEditReply(child.id);
+                                                                                if (e.key === "Escape") { setEditingReplyId(null); setEditingContent(""); }
+                                                                            }}
+                                                                            className="flex-1 text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            autoFocus
+                                                                        />
+                                                                        <button onClick={() => handleEditReply(child.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
+                                                                            <CheckIcon className="h-3 w-3" />
+                                                                        </button>
+                                                                        <button onClick={() => { setEditingReplyId(null); setEditingContent(""); }} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" title="Cancel">
+                                                                            <XIcon className="h-3 w-3" />
+                                                                        </button>
+                                                                    </span>
+                                                                ) : (
+                                                                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5 whitespace-pre-wrap break-words">
+                                                                        {renderMessageContent(child.content)}
+                                                                    </p>
+                                                                )}
                                                                 {child.image && (
                                                                     <Image
                                                                         src={child.image}
@@ -805,9 +827,47 @@ export default function CommunityClient({
                                                                         width={200}
                                                                         height={150}
                                                                         unoptimized
-                                                                        className="mt-1 rounded max-h-[150px] w-auto object-contain"
+                                                                        className="mt-1 rounded max-h-[150px] w-auto object-contain border border-gray-200 dark:border-gray-800"
                                                                     />
                                                                 )}
+                                                                {/* Child reply actions */}
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setReplyingTo(child);
+                                                                            setActiveMessageId(null);
+                                                                            const userName = getDisplayName(child.user).replace(/\s+/g, "");
+                                                                            setMessageText(`@${userName} `);
+                                                                        }}
+                                                                        className="text-[10px] text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
+                                                                    >
+                                                                        Reply
+                                                                    </button>
+                                                                    {currentUserId === child.user.id && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setEditingReplyId(child.id);
+                                                                                setEditingContent(child.content);
+                                                                            }}
+                                                                            className="text-[10px] text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                    )}
+                                                                    {(isAdmin || currentUserId === child.user.id) && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDeleteReply(child.id);
+                                                                            }}
+                                                                            className="text-[10px] text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
+                                                                        >
+                                                                            Delete
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )
