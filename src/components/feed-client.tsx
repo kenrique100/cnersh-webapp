@@ -594,8 +594,10 @@ export default function FeedClient({
                                             value={tagInput}
                                             onChange={(e) => setTagInput(e.target.value)}
                                             onKeyDown={(e) => {
-                                                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                                                if (e.key === "," ) {
                                                     e.preventDefault();
+                                                }
+                                                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
                                                     const tag = tagInput.trim().replace(/^#/, "");
                                                     if (tag && !newPostTags.includes(tag)) {
                                                         setNewPostTags((prev) => [...prev, tag]);

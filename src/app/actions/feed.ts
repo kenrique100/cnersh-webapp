@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 
+const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
+
 export async function createPost(data: { content: string; image?: string; video?: string; tags?: string[] }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -21,8 +23,7 @@ export async function createPost(data: { content: string; image?: string; video?
 
     // Notify mentioned users in the post content
     try {
-        const mentionRegex = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
-        const mentions = [...data.content.matchAll(mentionRegex)].map((m) => m[1].trim());
+        const mentions = [...data.content.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
             const mentionedUsers = await db.user.findMany({
                 where: { name: { in: mentions }, id: { not: session.user.id } },
@@ -214,8 +215,7 @@ export async function addComment(postId: string, content: string, parentId?: str
             }
         }
         // Notify mentioned users (@username) - matches @Name patterns, stopping at next @ or end of string
-        const mentionRegex = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
-        const mentions = [...content.matchAll(mentionRegex)].map((m) => m[1].trim());
+        const mentions = [...content.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
             const mentionedUsers = await db.user.findMany({
                 where: { name: { in: mentions }, id: { not: session.user.id } },

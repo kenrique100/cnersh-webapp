@@ -36,7 +36,7 @@ export async function sendNotificationEmail({
         await getResend().emails.send({
             from: process.env.EMAIL_FROM,
             to,
-            subject: `CNEC Notification: ${notificationType.replace("_", " ")}`,
+            subject: `CNEC Notification: ${notificationType.replace(/_/g, " ")}`,
             react: (
                 <NotificationEmail
                     userName={userName}
