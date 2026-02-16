@@ -31,13 +31,23 @@ import {
     XIcon,
     UsersIcon,
     AtSignIcon,
+    TrashIcon,
+    FlagIcon,
+    PencilIcon,
+    CheckIcon,
+    ShieldAlertIcon,
+    BanIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
     createTopic,
     addReply,
     getTopicWithReplies,
+    deleteTopic,
+    deleteReply,
+    editReply,
 } from "@/app/actions/community";
+import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 import { UploadButton } from "@/lib/uploadthing";
 
 /* ─── Types ───────────────────────────────────────────── */
@@ -118,17 +128,21 @@ const CATEGORY_COLORS: Record<string, string> = {
 interface CommunityClientProps {
     initialTopics: TopicData[];
     users: CommunityUser[];
+    isAdmin?: boolean;
+    currentUserId?: string;
 }
 
 export default function CommunityClient({
     initialTopics,
     users,
+    isAdmin = false,
+    currentUserId,
 }: CommunityClientProps) {
     const router = useRouter();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const [topics] = React.useState(initialTopics);
+    const [topics, setTopics] = React.useState(initialTopics);
     const [selectedTopic, setSelectedTopic] =
         React.useState<TopicDetail | null>(null);
     const [messageText, setMessageText] = React.useState("");
@@ -139,6 +153,17 @@ export default function CommunityClient({
     const [showMentions, setShowMentions] = React.useState(false);
     const [mentionFilter, setMentionFilter] = React.useState("");
     const [showMobileChannels, setShowMobileChannels] = React.useState(false);
+    const [editingReplyId, setEditingReplyId] = React.useState<string | null>(null);
+    const [editingContent, setEditingContent] = React.useState("");
+    const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
+    const [reportingReplyId, setReportingReplyId] = React.useState<string | null>(null);
+    const [reportCategory, setReportCategory] = React.useState("");
+    const [reportDetails, setReportDetails] = React.useState("");
+    const [userProfileId, setUserProfileId] = React.useState<string | null>(null);
+    const [warningMessage, setWarningMessage] = React.useState("");
+    const [banReason, setBanReason] = React.useState("");
+    const [showBanDialog, setShowBanDialog] = React.useState(false);
+    const [showWarningDialog, setShowWarningDialog] = React.useState(false);
     const [newTopic, setNewTopic] = React.useState({
         title: "",
         content: "",
@@ -212,6 +237,114 @@ export default function CommunityClient({
             scrollToBottom();
         } catch {
             toast.error("Failed to send message");
+        }
+    };
+
+    const handleDeleteTopic = async (topicId: string) => {
+        try {
+            await deleteTopic(topicId);
+            setTopics((prev) => prev.filter((t) => t.id !== topicId));
+            if (selectedTopic?.id === topicId) {
+                setSelectedTopic(null);
+            }
+            toast.success("Channel deleted");
+            router.refresh();
+        } catch {
+            toast.error("Failed to delete channel");
+        }
+    };
+
+    const handleDeleteReply = async (replyId: string) => {
+        if (!selectedTopic) return;
+        try {
+            await deleteReply(replyId);
+            setSelectedTopic({
+                ...selectedTopic,
+                replies: selectedTopic.replies.filter((r) => r.id !== replyId),
+            });
+            toast.success("Message deleted");
+        } catch {
+            toast.error("Failed to delete message");
+        }
+    };
+
+    const handleReportChat = async (replyId: string) => {
+        setReportingReplyId(replyId);
+        setActiveMessageId(null);
+    };
+
+    const submitChatReport = async () => {
+        if (!reportingReplyId || !reportCategory) return;
+        const fullReason = reportCategory + (reportDetails.trim() ? `: ${reportDetails.trim()}` : "");
+        try {
+            await createReport({
+                contentType: "REPLY",
+                contentId: reportingReplyId,
+                reason: fullReason,
+            });
+            toast.success("Chat reported to admins");
+            setReportingReplyId(null);
+            setReportCategory("");
+            setReportDetails("");
+        } catch {
+            toast.error("Failed to report chat");
+        }
+    };
+
+    const handleEditReply = async (replyId: string) => {
+        if (!editingContent.trim() || !selectedTopic) return;
+        try {
+            await editReply(replyId, editingContent);
+            setSelectedTopic({
+                ...selectedTopic,
+                replies: selectedTopic.replies.map((r) =>
+                    r.id === replyId ? { ...r, content: editingContent } : r
+                ),
+            });
+            setEditingReplyId(null);
+            setEditingContent("");
+            toast.success("Message updated");
+        } catch {
+            toast.error("Failed to edit message");
+        }
+    };
+
+    const handleMessageTap = (replyId: string) => {
+        setActiveMessageId(activeMessageId === replyId ? null : replyId);
+    };
+
+    const handleUserClick = (userId: string) => {
+        if (isAdmin && userId !== currentUserId) {
+            setUserProfileId(userId);
+        }
+    };
+
+    const selectedUser = userProfileId ? users.find(u => u.id === userProfileId) : null;
+
+    const handleSendWarning = async () => {
+        if (!userProfileId || !warningMessage.trim()) return;
+        try {
+            await sendWarning(userProfileId, warningMessage);
+            toast.success("Warning sent successfully");
+            setShowWarningDialog(false);
+            setWarningMessage("");
+            setUserProfileId(null);
+        } catch {
+            toast.error("Failed to send warning");
+        }
+    };
+
+    const handleBanUser = async () => {
+        if (!userProfileId || !banReason.trim()) return;
+        try {
+            await banUserById(userProfileId, banReason);
+            toast.success("User banned successfully");
+            setShowBanDialog(false);
+            setBanReason("");
+            setUserProfileId(null);
+            router.refresh();
+        } catch {
+            toast.error("Failed to ban user");
         }
     };
 
@@ -340,6 +473,18 @@ export default function CommunityClient({
                                             {topic._count.replies}
                                         </span>
                                     )}
+                                    {isAdmin && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteTopic(topic.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-500 transition-all"
+                                            title="Delete channel"
+                                        >
+                                            <TrashIcon className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -363,7 +508,7 @@ export default function CommunityClient({
                                     onClick={() =>
                                         handleSelectTopic(topic.id)
                                     }
-                                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
+                                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors group ${
                                         selectedTopic?.id === topic.id
                                             ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
                                             : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800"
@@ -373,6 +518,18 @@ export default function CommunityClient({
                                     <span className="truncate text-left flex-1">
                                         {topic.title.toLowerCase().replace(/\s+/g, "-")}
                                     </span>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteTopic(topic.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-500 transition-all"
+                                            title="Delete channel"
+                                        >
+                                            <TrashIcon className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
                                 </button>
                             ))}
                     </div>
@@ -465,6 +622,7 @@ export default function CommunityClient({
                         <div
                             key={reply.id}
                             className="group hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded px-2 py-0.5 -mx-2 relative"
+                            onClick={() => handleMessageTap(reply.id)}
                         >
                             {/* Reply reference */}
                             {parentReply && (
@@ -516,7 +674,10 @@ export default function CommunityClient({
                                 <div className="flex-1 min-w-0">
                                     {showHeader && (
                                         <div className="flex items-baseline gap-2">
-                                            <span className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer">
+                                            <span
+                                                className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer"
+                                                onClick={(e) => { e.stopPropagation(); handleUserClick(reply.user.id); }}
+                                            >
                                                 {reply.user.name}
                                             </span>
                                             <span className="text-[11px] text-gray-500 dark:text-gray-400">
@@ -526,7 +687,29 @@ export default function CommunityClient({
                                         </div>
                                     )}
                                     <p className="text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
-                                        {renderMessageContent(reply.content)}
+                                        {editingReplyId === reply.id ? (
+                                            <span className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editingContent}
+                                                    onChange={(e) => setEditingContent(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") handleEditReply(reply.id);
+                                                        if (e.key === "Escape") { setEditingReplyId(null); setEditingContent(""); }
+                                                    }}
+                                                    className="flex-1 text-sm px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    autoFocus
+                                                />
+                                                <button onClick={() => handleEditReply(reply.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
+                                                    <CheckIcon className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={() => { setEditingReplyId(null); setEditingContent(""); }} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" title="Cancel">
+                                                    <XIcon className="h-4 w-4" />
+                                                </button>
+                                            </span>
+                                        ) : (
+                                            renderMessageContent(reply.content)
+                                        )}
                                     </p>
                                     {reply.image && (
                                         <div className="mt-1 max-w-sm">
@@ -604,15 +787,51 @@ export default function CommunityClient({
                                         )}
                                 </div>
 
-                                {/* Message Actions (hover) */}
-                                <div className="opacity-0 group-hover:opacity-100 absolute top-0 right-2 -translate-y-1/2 flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg">
+                                {/* Message Actions (hover on desktop, tap on mobile) */}
+                                <div
+                                    className={`absolute top-0 right-2 -translate-y-1/2 flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg transition-opacity ${
+                                        activeMessageId === reply.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                    }`}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     <button
-                                        onClick={() => setReplyingTo(reply)}
+                                        onClick={() => { setReplyingTo(reply); setActiveMessageId(null); }}
                                         className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                         title="Reply"
                                     >
                                         <ReplyIcon className="h-4 w-4" />
                                     </button>
+                                    {currentUserId === reply.user.id && (
+                                        <button
+                                            onClick={() => {
+                                                setEditingReplyId(reply.id);
+                                                setEditingContent(reply.content);
+                                                setActiveMessageId(null);
+                                            }}
+                                            className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                                            title="Edit message"
+                                        >
+                                            <PencilIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    {(isAdmin || currentUserId === reply.user.id) && (
+                                        <button
+                                            onClick={() => { handleDeleteReply(reply.id); setActiveMessageId(null); }}
+                                            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-400 hover:text-red-600 transition-colors"
+                                            title="Delete message"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    {currentUserId !== reply.user.id && (
+                                        <button
+                                            onClick={() => { handleReportChat(reply.id); setActiveMessageId(null); }}
+                                            className="p-1.5 hover:bg-orange-100 dark:hover:bg-orange-900 rounded text-gray-400 hover:text-orange-600 transition-colors"
+                                            title="Report message"
+                                        >
+                                            <FlagIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -960,6 +1179,152 @@ export default function CommunityClient({
                         >
                             Create Channel
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Admin User Profile Dialog */}
+            <Dialog
+                open={!!userProfileId && !showBanDialog && !showWarningDialog}
+                onOpenChange={(open) => { if (!open) setUserProfileId(null); }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>User Profile</DialogTitle>
+                    </DialogHeader>
+                    {selectedUser && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-14 w-14">
+                                    <AvatarImage src={selectedUser.image || undefined} />
+                                    <AvatarFallback className="bg-indigo-500 text-white text-lg">
+                                        {selectedUser.name?.charAt(0)?.toUpperCase() || "U"}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold text-lg">{selectedUser.name || "Unknown"}</p>
+                                    <Badge className="text-xs mt-0.5">{selectedUser.role || "user"}</Badge>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-800">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowWarningDialog(true)}
+                                    className="flex-1"
+                                >
+                                    <ShieldAlertIcon className="h-4 w-4 mr-1.5" />
+                                    Send Warning
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => setShowBanDialog(true)}
+                                    className="flex-1"
+                                >
+                                    <BanIcon className="h-4 w-4 mr-1.5" />
+                                    Ban User
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Warning Dialog */}
+            <Dialog
+                open={showWarningDialog}
+                onOpenChange={(open) => { if (!open) { setShowWarningDialog(false); setWarningMessage(""); } }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Send Warning to {selectedUser?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Textarea
+                            placeholder="Warning message..."
+                            value={warningMessage}
+                            onChange={(e) => setWarningMessage(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => { setShowWarningDialog(false); setWarningMessage(""); }}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleSendWarning} disabled={!warningMessage.trim()}>
+                                Send Warning
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Ban Dialog */}
+            <Dialog
+                open={showBanDialog}
+                onOpenChange={(open) => { if (!open) { setShowBanDialog(false); setBanReason(""); } }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Ban {selectedUser?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Textarea
+                            placeholder="Reason for ban..."
+                            value={banReason}
+                            onChange={(e) => setBanReason(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => { setShowBanDialog(false); setBanReason(""); }}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={handleBanUser} disabled={!banReason.trim()}>
+                                Ban User
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Report Chat Dialog */}
+            <Dialog
+                open={reportingReplyId !== null}
+                onOpenChange={(open) => { if (!open) { setReportingReplyId(null); setReportCategory(""); setReportDetails(""); } }}
+            >
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Report Message</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Select value={reportCategory} onValueChange={setReportCategory}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a reason..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Spam">Spam</SelectItem>
+                                <SelectItem value="Harassment or Bullying">Harassment or Bullying</SelectItem>
+                                <SelectItem value="Hate Speech">Hate Speech</SelectItem>
+                                <SelectItem value="Misinformation">Misinformation</SelectItem>
+                                <SelectItem value="Violence or Threats">Violence or Threats</SelectItem>
+                                <SelectItem value="Inappropriate Content">Inappropriate Content</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Textarea
+                            placeholder="Additional details (optional)..."
+                            value={reportDetails}
+                            onChange={(e) => setReportDetails(e.target.value)}
+                            className="min-h-[80px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => { setReportingReplyId(null); setReportCategory(""); setReportDetails(""); }}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={submitChatReport} disabled={!reportCategory} className="bg-red-600 hover:bg-red-700 text-white">
+                                Submit Report
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

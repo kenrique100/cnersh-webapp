@@ -2,6 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function getAdminStats() {
     const session = await authSession();
@@ -121,7 +122,7 @@ export async function createReport(data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    return db.report.create({
+    const report = await db.report.create({
         data: {
             reason: data.reason,
             contentType: data.contentType,
@@ -129,4 +130,148 @@ export async function createReport(data: {
             userId: session.user.id,
         },
     });
+
+    // Notify admins about the new report
+    try {
+        const contentLabel = data.contentType.toLowerCase().replace("_", " ");
+        await notifyAdmins({
+            type: "SYSTEM",
+            message: `${session.user.name || "A user"} reported a ${contentLabel}: "${data.reason.substring(0, 80)}${data.reason.length > 80 ? "..." : ""}"`,
+            link: "/admin/reports",
+            excludeUserId: session.user.id,
+        });
+    } catch (error) {
+        console.error("Error notifying admins about report:", error);
+    }
+
+    return report;
+}
+
+async function requireAdmin() {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "admin" && user?.role !== "superadmin") {
+        throw new Error("Forbidden");
+    }
+
+    return session;
+}
+
+export async function resolveReport(
+    reportId: string,
+    action: "REVIEWED" | "DISMISSED",
+) {
+    const session = await requireAdmin();
+
+    await db.report.update({
+        where: { id: reportId },
+        data: { status: action },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "RESOLVE_REPORT",
+            details: `Report resolved as ${action}`,
+            targetId: reportId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function sendWarning(userId: string, message: string) {
+    const session = await requireAdmin();
+
+    await db.notification.create({
+        data: {
+            type: "SYSTEM",
+            message,
+            userId,
+        },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "SEND_WARNING",
+            details: `Warning sent: ${message}`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function banUserById(userId: string, reason: string) {
+    const session = await requireAdmin();
+
+    await db.user.update({
+        where: { id: userId },
+        data: { banned: true, banReason: reason },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "BAN_USER",
+            details: `User banned: ${reason}`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function deleteReportedContent(
+    contentType: string,
+    contentId: string,
+) {
+    const session = await requireAdmin();
+
+    switch (contentType) {
+        case "POST":
+            await db.post.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        case "COMMENT":
+            await db.comment.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        case "TOPIC":
+            await db.communityTopic.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        case "REPLY":
+            await db.communityReply.update({
+                where: { id: contentId },
+                data: { deleted: true },
+            });
+            break;
+        default:
+            throw new Error(`Unknown content type: ${contentType}`);
+    }
+
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_CONTENT",
+            details: `Deleted ${contentType} with id ${contentId}`,
+            targetId: contentId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
 }

@@ -2,7 +2,7 @@
 
 import { OurFileRouter } from "@/app/api/uploadthing/core";
 import { UploadDropzone } from "@/lib/uploadthing";
-import { Trash } from "lucide-react";
+import { Trash, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -30,11 +30,11 @@ export default function ImageUpload({
     if (!showDropzone && value) {
         const isProfile = variant === "profile";
         return (
-            <div className="relative">
+            <div className="relative group">
                 <div className={
                     isProfile
-                        ? "relative w-25 h-25 shadow-lg overflow-hidden rounded-full"
-                        : "relative w-full h-48 shadow-lg overflow-hidden rounded-lg"
+                        ? "relative w-24 h-24 shadow-lg overflow-hidden rounded-full border-2 border-gray-200 dark:border-gray-700"
+                        : "relative w-full h-48 shadow-lg overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
                 }>
                     <Image
                         src={value ?? ""}
@@ -52,11 +52,12 @@ export default function ImageUpload({
                     }}
                     className={
                         isProfile
-                            ? "absolute top-0 left-40 text-rose-600 cursor-pointer"
-                            : "absolute top-2 right-2 p-1.5 bg-white/80 dark:bg-gray-900/80 rounded-full text-rose-600 hover:bg-white dark:hover:bg-gray-900 cursor-pointer transition-colors"
+                            ? "absolute -top-1 -right-1 p-1.5 bg-white dark:bg-gray-900 rounded-full text-rose-600 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer transition-colors shadow-sm border border-gray-200 dark:border-gray-700"
+                            : "absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-gray-900/90 rounded-full text-rose-600 hover:bg-white dark:hover:bg-gray-900 cursor-pointer transition-colors shadow-sm"
                     }
+                    title="Remove image"
                 >
-                    <Trash className="h-5 w-5" />
+                    <Trash className="h-4 w-4" />
                 </button>
             </div>
         );
@@ -70,8 +71,13 @@ export default function ImageUpload({
                     label: value
                         ? "Drop or click to replace the image"
                         : "Drop or click to upload an image",
+                    allowedContent: "Images up to 4MB",
                 }}
-                appearance={{ container: "rounded-xl border", button: "!bg-blue-700" }}
+                appearance={{
+                    container: "rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer",
+                    button: "!bg-blue-700 !text-white text-sm",
+                    label: "text-sm text-gray-600 dark:text-gray-400",
+                }}
                 onClientUploadComplete={(res) => {
                     const url = res?.[0]?.url;
 

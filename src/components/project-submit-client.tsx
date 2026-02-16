@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { submitProject } from "@/app/actions/project";
+import { UploadDropzone } from "@/lib/uploadthing";
+import { FileTextIcon, TrashIcon } from "lucide-react";
 
 const PROJECT_CATEGORIES = [
     "Health",
@@ -25,6 +27,8 @@ const PROJECT_CATEGORIES = [
 export default function ProjectSubmitClient() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [documentUrl, setDocumentUrl] = React.useState<string | null>(null);
+    const [documentName, setDocumentName] = React.useState<string | null>(null);
     const [formData, setFormData] = React.useState({
         title: "",
         description: "",
@@ -43,7 +47,7 @@ export default function ProjectSubmitClient() {
         }
         setIsSubmitting(true);
         try {
-            await submitProject(formData);
+            await submitProject({ ...formData, document: documentUrl || undefined });
             toast.success("Project submitted successfully!");
             router.push("/projects");
         } catch {
@@ -145,6 +149,55 @@ export default function ProjectSubmitClient() {
                             onChange={(e) => setFormData((p) => ({ ...p, budget: e.target.value }))}
                             placeholder="Estimated budget"
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                            Project Document <span className="text-gray-400 text-xs">(optional — PDF or Word)</span>
+                        </label>
+                        {documentUrl ? (
+                            <div className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+                                <FileTextIcon className="h-5 w-5 text-blue-600 shrink-0" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                                    {documentName || "Document uploaded"}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDocumentUrl(null);
+                                        setDocumentName(null);
+                                    }}
+                                    className="p-1.5 rounded-full hover:bg-red-50 dark:hover:bg-red-950 text-red-500 transition-colors cursor-pointer"
+                                    title="Remove document"
+                                >
+                                    <TrashIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <UploadDropzone
+                                endpoint="documentUploader"
+                                content={{
+                                    label: "Drop or click to upload a document (PDF, DOC, DOCX)",
+                                    allowedContent: "PDF, DOC, DOCX up to 8MB",
+                                }}
+                                appearance={{
+                                    container: "rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer",
+                                    button: "!bg-blue-700 !text-white text-sm",
+                                    label: "text-sm text-gray-600 dark:text-gray-400",
+                                }}
+                                onClientUploadComplete={(res) => {
+                                    const file = res?.[0];
+                                    if (file?.url) {
+                                        setDocumentUrl(file.url);
+                                        setDocumentName(file.name);
+                                        toast.success("Document uploaded successfully");
+                                    }
+                                }}
+                                onUploadError={(error) => {
+                                    toast.error(`Upload failed: ${error.message}`);
+                                }}
+                            />
+                        )}
                     </div>
 
                     <Button type="submit" disabled={isSubmitting} className="w-full">

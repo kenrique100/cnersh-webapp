@@ -2,6 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function createPost(data: { content: string; image?: string }) {
     const session = await authSession();
@@ -64,7 +65,7 @@ export async function toggleLike(postId: string) {
         try {
             const post = await db.post.findUnique({
                 where: { id: postId },
-                select: { userId: true },
+                select: { userId: true, user: { select: { role: true } } },
             });
             if (post && post.userId !== session.user.id) {
                 await db.notification.create({
@@ -76,6 +77,15 @@ export async function toggleLike(postId: string) {
                     },
                 });
             }
+            // Also notify admins if the post is not by an admin
+            if (post && post.user?.role !== "admin" && post.user?.role !== "superadmin") {
+                await notifyAdmins({
+                    type: "LIKE",
+                    message: `${session.user.name || "A user"} liked a post`,
+                    link: "/feeds",
+                    excludeUserId: session.user.id,
+                });
+            }
         } catch (error) {
             console.error("Error creating like notification:", error);
         }
@@ -84,7 +94,7 @@ export async function toggleLike(postId: string) {
     }
 }
 
-export async function addComment(postId: string, content: string) {
+export async function addComment(postId: string, content: string, parentId?: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -93,9 +103,10 @@ export async function addComment(postId: string, content: string) {
             content,
             postId,
             userId: session.user.id,
+            parentId: parentId || null,
         },
         include: {
-            user: { select: { id: true, name: true, image: true } },
+            user: { select: { id: true, name: true, image: true, role: true } },
         },
     });
 
@@ -103,7 +114,7 @@ export async function addComment(postId: string, content: string) {
     try {
         const post = await db.post.findUnique({
             where: { id: postId },
-            select: { userId: true },
+            select: { userId: true, user: { select: { role: true } } },
         });
         if (post && post.userId !== session.user.id) {
             await db.notification.create({
@@ -115,6 +126,51 @@ export async function addComment(postId: string, content: string) {
                 },
             });
         }
+        // Notify parent comment owner if it's a reply
+        if (parentId) {
+            const parentComment = await db.comment.findUnique({
+                where: { id: parentId },
+                select: { userId: true },
+            });
+            if (parentComment && parentComment.userId !== session.user.id) {
+                await db.notification.create({
+                    data: {
+                        type: "COMMENT",
+                        message: `${session.user.name || "Someone"} replied to your comment`,
+                        link: "/feeds",
+                        userId: parentComment.userId,
+                    },
+                });
+            }
+        }
+        // Notify mentioned users (@username) - matches @Name patterns, stopping at next @ or end of string
+        const mentionRegex = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
+        const mentions = [...content.matchAll(mentionRegex)].map((m) => m[1].trim());
+        if (mentions.length > 0) {
+            const mentionedUsers = await db.user.findMany({
+                where: { name: { in: mentions }, id: { not: session.user.id } },
+                select: { id: true },
+            });
+            if (mentionedUsers.length > 0) {
+                await db.notification.createMany({
+                    data: mentionedUsers.map((u) => ({
+                        type: "MENTION" as const,
+                        message: `${session.user.name || "Someone"} mentioned you in a comment`,
+                        link: "/feeds",
+                        userId: u.id,
+                    })),
+                });
+            }
+        }
+        // Also notify admins if the post is not by an admin
+        if (post && post.user?.role !== "admin" && post.user?.role !== "superadmin") {
+            await notifyAdmins({
+                type: "COMMENT",
+                message: `${session.user.name || "A user"} commented on a post`,
+                link: "/feeds",
+                excludeUserId: session.user.id,
+            });
+        }
     } catch (error) {
         console.error("Error creating comment notification:", error);
     }
@@ -124,9 +180,20 @@ export async function addComment(postId: string, content: string) {
 
 export async function getPostComments(postId: string) {
     return db.comment.findMany({
-        where: { postId, deleted: false },
+        where: { postId, deleted: false, parentId: null },
         include: {
-            user: { select: { id: true, name: true, image: true } },
+            user: { select: { id: true, name: true, image: true, role: true } },
+            _count: { select: { commentLikes: true, replies: true } },
+            commentLikes: { select: { userId: true, isDislike: true } },
+            replies: {
+                where: { deleted: false },
+                include: {
+                    user: { select: { id: true, name: true, image: true, role: true } },
+                    _count: { select: { commentLikes: true } },
+                    commentLikes: { select: { userId: true, isDislike: true } },
+                },
+                orderBy: { createdAt: "asc" },
+            },
         },
         orderBy: { createdAt: "asc" },
     });
@@ -169,4 +236,89 @@ export async function updatePost(postId: string, content: string) {
         where: { id: postId },
         data: { content },
     });
+}
+
+export async function toggleCommentLike(commentId: string, isDislike: boolean = false) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const existing = await db.commentLike.findUnique({
+        where: { commentId_userId: { commentId, userId: session.user.id } },
+    });
+
+    if (existing) {
+        if (existing.isDislike === isDislike) {
+            // Same action - remove
+            await db.commentLike.delete({ where: { id: existing.id } });
+            return { action: "removed" };
+        } else {
+            // Switch between like/dislike
+            await db.commentLike.update({ where: { id: existing.id }, data: { isDislike } });
+            return { action: isDislike ? "disliked" : "liked" };
+        }
+    } else {
+        await db.commentLike.create({
+            data: { commentId, userId: session.user.id, isDislike },
+        });
+
+        // Notify comment owner
+        try {
+            const comment = await db.comment.findUnique({
+                where: { id: commentId },
+                select: { userId: true },
+            });
+            if (comment && comment.userId !== session.user.id) {
+                await db.notification.create({
+                    data: {
+                        type: "LIKE",
+                        message: `${session.user.name || "Someone"} ${isDislike ? "disliked" : "liked"} your comment`,
+                        link: "/feeds",
+                        userId: comment.userId,
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Error creating comment like notification:", error);
+        }
+
+        return { action: isDislike ? "disliked" : "liked" };
+    }
+}
+
+export async function editComment(commentId: string, content: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const comment = await db.comment.findUnique({ where: { id: commentId } });
+    if (!comment) throw new Error("Comment not found");
+    if (comment.userId !== session.user.id) throw new Error("Forbidden");
+
+    return db.comment.update({
+        where: { id: commentId },
+        data: { content },
+    });
+}
+
+export async function deleteComment(commentId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const comment = await db.comment.findUnique({ where: { id: commentId } });
+    if (!comment) throw new Error("Comment not found");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const isOwner = comment.userId === session.user.id;
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    if (!isOwner && !isAdmin) throw new Error("Forbidden");
+
+    await db.comment.update({
+        where: { id: commentId },
+        data: { deleted: true },
+    });
+
+    return { success: true };
 }

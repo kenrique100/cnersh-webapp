@@ -2,6 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { notifyAdmins } from "@/lib/notify-admins";
 
 export async function createTopic(data: {
     title: string;
@@ -144,6 +145,14 @@ export async function addReply(data: {
         if (notifications.length > 0) {
             await db.notification.createMany({ data: notifications });
         }
+
+        // Also notify admins about community activity
+        await notifyAdmins({
+            type: "COMMENT",
+            message: `${session.user.name || "A user"} posted a reply in the community`,
+            link: "/community",
+            excludeUserId: session.user.id,
+        });
     } catch (error) {
         console.error("Error creating community notifications:", error);
     }
@@ -163,4 +172,91 @@ export async function getCommunityUsers() {
         console.error("Error fetching community users:", error);
         return [];
     }
+}
+
+export async function deleteTopic(topicId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    if (!isAdmin) throw new Error("Forbidden");
+
+    await db.communityTopic.update({
+        where: { id: topicId },
+        data: { deleted: true },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_TOPIC",
+            details: `Community topic deleted`,
+            targetId: topicId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function deleteReply(replyId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const reply = await db.communityReply.findUnique({
+        where: { id: replyId },
+        select: { userId: true },
+    });
+
+    if (!reply) throw new Error("Reply not found");
+
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    const isOwner = reply.userId === session.user.id;
+
+    if (!isAdmin && !isOwner) throw new Error("Forbidden");
+
+    await db.communityReply.update({
+        where: { id: replyId },
+        data: { deleted: true },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_REPLY",
+            details: `Community reply deleted`,
+            targetId: replyId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function editReply(replyId: string, content: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const reply = await db.communityReply.findUnique({
+        where: { id: replyId },
+        select: { userId: true },
+    });
+
+    if (!reply) throw new Error("Reply not found");
+    if (reply.userId !== session.user.id) throw new Error("Forbidden");
+
+    const updated = await db.communityReply.update({
+        where: { id: replyId },
+        data: { content },
+    });
+
+    return updated;
 }

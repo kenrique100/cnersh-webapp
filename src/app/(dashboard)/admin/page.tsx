@@ -12,7 +12,9 @@ import {
     ShieldCheckIcon,
     TrendingUpIcon,
     AlertCircleIcon,
+    ActivityIcon,
 } from "lucide-react";
+import AdminCharts from "@/components/admin-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,103 +37,126 @@ export default async function AdminOverviewPage() {
             title: "Total Users",
             value: stats.totalUsers,
             icon: UsersIcon,
-            color: "text-blue-600 dark:text-blue-500",
-            bg: "bg-blue-100 dark:bg-blue-900",
+            color: "text-blue-600 dark:text-blue-400",
+            bg: "bg-blue-50 dark:bg-blue-950",
+            border: "border-blue-200 dark:border-blue-800",
         },
         {
             title: "Active Users",
             value: stats.activeUsers,
             icon: TrendingUpIcon,
-            color: "text-green-600 dark:text-green-500",
-            bg: "bg-green-100 dark:bg-green-900",
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-50 dark:bg-emerald-950",
+            border: "border-emerald-200 dark:border-emerald-800",
         },
         {
             title: "Banned Users",
             value: stats.bannedUsers,
             icon: AlertCircleIcon,
-            color: "text-red-600 dark:text-red-500",
-            bg: "bg-red-100 dark:bg-red-900",
+            color: "text-red-600 dark:text-red-400",
+            bg: "bg-red-50 dark:bg-red-950",
+            border: "border-red-200 dark:border-red-800",
         },
         {
             title: "Total Posts",
             value: stats.totalPosts,
             icon: FileTextIcon,
-            color: "text-purple-600 dark:text-purple-500",
-            bg: "bg-purple-100 dark:bg-purple-900",
+            color: "text-violet-600 dark:text-violet-400",
+            bg: "bg-violet-50 dark:bg-violet-950",
+            border: "border-violet-200 dark:border-violet-800",
         },
         {
             title: "Total Projects",
             value: stats.totalProjects,
             icon: FolderIcon,
-            color: "text-orange-600 dark:text-orange-500",
-            bg: "bg-orange-100 dark:bg-orange-900",
+            color: "text-orange-600 dark:text-orange-400",
+            bg: "bg-orange-50 dark:bg-orange-950",
+            border: "border-orange-200 dark:border-orange-800",
         },
         {
             title: "Approved Projects",
             value: stats.approvedProjects,
             icon: ShieldCheckIcon,
-            color: "text-green-600 dark:text-green-500",
-            bg: "bg-green-100 dark:bg-green-900",
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-50 dark:bg-emerald-950",
+            border: "border-emerald-200 dark:border-emerald-800",
         },
         {
             title: "Pending Projects",
             value: stats.pendingProjects,
             icon: FolderIcon,
-            color: "text-yellow-600 dark:text-yellow-500",
-            bg: "bg-yellow-100 dark:bg-yellow-900",
+            color: "text-amber-600 dark:text-amber-400",
+            bg: "bg-amber-50 dark:bg-amber-950",
+            border: "border-amber-200 dark:border-amber-800",
         },
         {
             title: "Discussions",
             value: stats.totalTopics,
             icon: MessageSquareIcon,
-            color: "text-indigo-600 dark:text-indigo-500",
-            bg: "bg-indigo-100 dark:bg-indigo-900",
+            color: "text-indigo-600 dark:text-indigo-400",
+            bg: "bg-indigo-50 dark:bg-indigo-950",
+            border: "border-indigo-200 dark:border-indigo-800",
         },
         {
             title: "Pending Reports",
             value: stats.pendingReports,
             icon: FlagIcon,
-            color: "text-red-600 dark:text-red-500",
-            bg: "bg-red-100 dark:bg-red-900",
+            color: "text-rose-600 dark:text-rose-400",
+            bg: "bg-rose-50 dark:bg-rose-950",
+            border: "border-rose-200 dark:border-rose-800",
         },
     ];
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        Admin Dashboard
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Platform overview and analytics
-                    </p>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2.5 rounded-xl bg-blue-600 text-white">
+                            <ActivityIcon className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                Admin Dashboard
+                            </h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Platform overview and analytics
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {/* Stats Grid */}
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {statCards.map((stat) => {
                         const Icon = stat.icon;
                         return (
                             <Card
                                 key={stat.title}
-                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow"
+                                className={`border ${stat.border} bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden`}
                             >
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                                    <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">
                                         {stat.title}
                                     </CardTitle>
-                                    <div className={`p-2 rounded-lg ${stat.bg}`}>
-                                        <Icon className={`h-4 w-4 ${stat.color}`} />
+                                    <div className={`p-2.5 rounded-xl ${stat.bg}`}>
+                                        <Icon className={`h-5 w-5 ${stat.color}`} />
                                     </div>
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                                <CardContent className="px-5 pb-5">
+                                    <div className={`text-4xl font-bold ${stat.color}`}>
                                         {stat.value}
                                     </div>
                                 </CardContent>
                             </Card>
                         );
                     })}
+                </div>
+
+                {/* Charts Section */}
+                <div className="mt-10">
+                    <AdminCharts stats={stats} />
                 </div>
             </div>
         </div>

@@ -1,13 +1,22 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { getNotifications } from "@/app/actions/notification";
+import { db } from "@/lib/db";
 import NotificationsClient from "@/components/notifications-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
-    await authIsRequired();
+    const session = await authIsRequired();
 
-    const { notifications, unreadCount } = await getNotifications(1, 50);
+    const [{ notifications, unreadCount }, user] = await Promise.all([
+        getNotifications(1, 50),
+        db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        }),
+    ]);
+
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -28,6 +37,7 @@ export default async function NotificationsPage() {
                 <NotificationsClient
                     initialNotifications={JSON.parse(JSON.stringify(notifications))}
                     unreadCount={unreadCount}
+                    isAdmin={isAdmin}
                 />
             </div>
         </div>
