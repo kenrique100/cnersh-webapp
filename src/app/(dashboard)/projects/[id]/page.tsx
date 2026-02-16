@@ -16,7 +16,7 @@ import {
     DownloadIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import ProjectDetailActions from "./project-detail-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,8 @@ export default async function ProjectDetailPage({
 }: {
     params: Promise<{ id: string }>;
 }) {
-    await authIsRequired();
+    const session = await authIsRequired();
+    const isAdmin = session.user.role === "admin" || session.user.role === "superadmin";
 
     const { id } = await params;
 
@@ -318,6 +319,11 @@ export default async function ProjectDetailPage({
                                 </div>
                             </CardContent>
                         </Card>
+                    )}
+
+                    {/* Admin Actions */}
+                    {isAdmin && (
+                        <ProjectDetailActions projectId={project.id} currentStatus={project.status} />
                     )}
                 </div>
             </div>

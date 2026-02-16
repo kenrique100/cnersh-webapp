@@ -46,7 +46,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment } from "@/app/actions/feed";
+import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getPostLikers } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
 
@@ -210,9 +210,77 @@ export default function FeedClient({
     const [commentReportDetails, setCommentReportDetails] = React.useState("");
     const [showCommentEmoji, setShowCommentEmoji] = React.useState<string | null>(null);
 
+    // @mention autocomplete state
+    const [mentionResults, setMentionResults] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
+    const [showMentionDropdown, setShowMentionDropdown] = React.useState<string | null>(null); // postId or "new-post"
+    const mentionSearchTimeout = React.useRef<NodeJS.Timeout | null>(null);
+
+    // Likers dialog state
+    const [likersPostId, setLikersPostId] = React.useState<string | null>(null);
+    const [likersList, setLikersList] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
+    const [loadingLikers, setLoadingLikers] = React.useState(false);
+
     const currentUserInitials = currentUserName
         ? currentUserName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
         : "U";
+
+    const handleMentionSearch = (text: string, source: string) => {
+        // Check if user is typing @mention
+        const lastAtIndex = text.lastIndexOf("@");
+        if (lastAtIndex === -1) {
+            setShowMentionDropdown(null);
+            setMentionResults([]);
+            return;
+        }
+        const afterAt = text.slice(lastAtIndex + 1);
+        // Only search if we're at the end of text and there's no newline after query start
+        const hasNewline = afterAt.includes("\n");
+        if (hasNewline) {
+            setShowMentionDropdown(null);
+            setMentionResults([]);
+            return;
+        }
+        setShowMentionDropdown(source);
+        if (mentionSearchTimeout.current) clearTimeout(mentionSearchTimeout.current);
+        mentionSearchTimeout.current = setTimeout(async () => {
+            const results = await searchUsers(afterAt);
+            setMentionResults(results);
+        }, 200);
+    };
+
+    const insertMention = (name: string, source: string) => {
+        if (source === "new-post") {
+            const lastAtIndex = newPostContent.lastIndexOf("@");
+            if (lastAtIndex !== -1) {
+                setNewPostContent(newPostContent.slice(0, lastAtIndex) + `@${name} `);
+            }
+        } else {
+            // It's a comment input
+            const text = commentTexts[source] || "";
+            const lastAtIndex = text.lastIndexOf("@");
+            if (lastAtIndex !== -1) {
+                setCommentTexts((prev) => ({
+                    ...prev,
+                    [source]: text.slice(0, lastAtIndex) + `@${name} `,
+                }));
+            }
+        }
+        setShowMentionDropdown(null);
+        setMentionResults([]);
+    };
+
+    const handleShowLikers = async (postId: string) => {
+        setLikersPostId(postId);
+        setLoadingLikers(true);
+        try {
+            const users = await getPostLikers(postId);
+            setLikersList(users);
+        } catch {
+            toast.error("Failed to load likers");
+        } finally {
+            setLoadingLikers(false);
+        }
+    };
 
     const handleCreatePost = async () => {
         if (!newPostContent.trim() && !newPostImage && !newPostVideo) return;
@@ -527,12 +595,36 @@ export default function FeedClient({
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 space-y-3">
-                            <Textarea
-                                placeholder="Share an update with your community..."
-                                value={newPostContent}
-                                onChange={(e) => setNewPostContent(e.target.value)}
-                                className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm"
-                            />
+                            <div className="relative">
+                                <Textarea
+                                    placeholder="Share an update with your community... (use @ to mention users)"
+                                    value={newPostContent}
+                                    onChange={(e) => {
+                                        setNewPostContent(e.target.value);
+                                        handleMentionSearch(e.target.value, "new-post");
+                                    }}
+                                    className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm"
+                                />
+                                {/* @Mention Dropdown for Post */}
+                                {showMentionDropdown === "new-post" && mentionResults.length > 0 && (
+                                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                        {mentionResults.map((user) => (
+                                            <button
+                                                key={user.id}
+                                                type="button"
+                                                onClick={() => insertMention(user.name || "User", "new-post")}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                                            >
+                                                <Avatar className="h-7 w-7 shrink-0">
+                                                    <AvatarImage src={user.image || undefined} />
+                                                    <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             {/* Image Preview */}
                             {newPostImage && (
                                 <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -833,12 +925,15 @@ export default function FeedClient({
                                 <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                                     <div className="flex items-center gap-1.5">
                                         {post._count.likes > 0 && (
-                                            <>
+                                            <button
+                                                onClick={() => handleShowLikers(post.id)}
+                                                className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                                            >
                                                 <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
                                                     <ThumbsUpIcon className="h-2.5 w-2.5 text-white" />
                                                 </span>
                                                 <span>{post._count.likes} {post._count.likes === 1 ? "like" : "likes"}</span>
-                                            </>
+                                            </button>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -1056,47 +1151,69 @@ export default function FeedClient({
                                                 {currentUserInitials}
                                             </AvatarFallback>
                                         </Avatar>
-                                        <div className="flex-1 flex items-center gap-1">
-                                            <Popover open={showCommentEmoji === post.id} onOpenChange={(open) => setShowCommentEmoji(open ? post.id : null)}>
-                                                <PopoverTrigger asChild>
-                                                    <button className="h-9 w-9 flex items-center justify-center rounded-full text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950 transition-colors shrink-0" title="Add emoji">
-                                                        <SmileIcon className="h-4 w-4" />
-                                                    </button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-64 p-2" side="top">
-                                                    <div className="grid grid-cols-8 gap-1">
-                                                        {EMOJI_LIST.map((emoji) => (
-                                                            <button key={emoji} className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 transition-colors" onClick={() => insertEmoji(post.id, emoji)}>
-                                                                {emoji}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
-                                            <input
-                                                type="text"
-                                                placeholder={replyingTo[post.id] ? `Reply to ${replyingTo[post.id]?.name}...` : "Write a comment... (use @ to mention)"}
-                                                value={commentTexts[post.id] || ""}
-                                                onChange={(e) =>
-                                                    setCommentTexts((prev) => ({
-                                                        ...prev,
-                                                        [post.id]: e.target.value,
-                                                    }))
-                                                }
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") handleComment(post.id);
-                                                }}
-                                                className="flex-1 h-9 px-4 text-sm rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-                                            />
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                onClick={() => handleComment(post.id)}
-                                                className="h-9 w-9 rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 shrink-0"
-                                                disabled={!commentTexts[post.id]?.trim()}
-                                            >
-                                                <SendIcon className="h-4 w-4" />
-                                            </Button>
+                                        <div className="flex-1 relative">
+                                            <div className="flex items-center gap-1">
+                                                <Popover open={showCommentEmoji === post.id} onOpenChange={(open) => setShowCommentEmoji(open ? post.id : null)}>
+                                                    <PopoverTrigger asChild>
+                                                        <button className="h-9 w-9 flex items-center justify-center rounded-full text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950 transition-colors shrink-0" title="Add emoji">
+                                                            <SmileIcon className="h-4 w-4" />
+                                                        </button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-64 p-2" side="top">
+                                                        <div className="grid grid-cols-8 gap-1">
+                                                            {EMOJI_LIST.map((emoji) => (
+                                                                <button key={emoji} className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 transition-colors" onClick={() => insertEmoji(post.id, emoji)}>
+                                                                    {emoji}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <input
+                                                    type="text"
+                                                    placeholder={replyingTo[post.id] ? `Reply to ${replyingTo[post.id]?.name}...` : "Write a comment... (use @ to mention)"}
+                                                    value={commentTexts[post.id] || ""}
+                                                    onChange={(e) => {
+                                                        setCommentTexts((prev) => ({
+                                                            ...prev,
+                                                            [post.id]: e.target.value,
+                                                        }));
+                                                        handleMentionSearch(e.target.value, post.id);
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter" && showMentionDropdown !== post.id) handleComment(post.id);
+                                                    }}
+                                                    className="flex-1 h-9 px-4 text-sm rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+                                                />
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => handleComment(post.id)}
+                                                    className="h-9 w-9 rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 shrink-0"
+                                                    disabled={!commentTexts[post.id]?.trim()}
+                                                >
+                                                    <SendIcon className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            {/* @Mention Dropdown for Comment */}
+                                            {showMentionDropdown === post.id && mentionResults.length > 0 && (
+                                                <div className="absolute z-50 left-0 right-0 bottom-full mb-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                                    {mentionResults.map((user) => (
+                                                        <button
+                                                            key={user.id}
+                                                            type="button"
+                                                            onClick={() => insertMention(user.name || "User", post.id)}
+                                                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                                                        >
+                                                            <Avatar className="h-6 w-6 shrink-0">
+                                                                <AvatarImage src={user.image || undefined} />
+                                                                <AvatarFallback className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1253,6 +1370,49 @@ export default function FeedClient({
                             <Button variant="outline" onClick={() => { setReportingCommentId(null); setCommentReportCategory(""); setCommentReportDetails(""); }}>Cancel</Button>
                             <Button onClick={handleReportComment} disabled={!commentReportCategory} className="bg-red-600 hover:bg-red-700 text-white">Submit Report</Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Likers Dialog */}
+            <Dialog open={likersPostId !== null} onOpenChange={(open) => {
+                if (!open) { setLikersPostId(null); setLikersList([]); }
+            }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>People who liked this</DialogTitle>
+                        <DialogDescription>
+                            {likersList.length} {likersList.length === 1 ? "person" : "people"} liked this post
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-80 overflow-y-auto space-y-1 py-2">
+                        {loadingLikers ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                            </div>
+                        ) : likersList.length === 0 ? (
+                            <p className="text-center text-sm text-gray-500 py-4">No likes yet</p>
+                        ) : (
+                            likersList.map((user) => (
+                                <div key={user.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={user.image || undefined} />
+                                        <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                            {(user.name || "U").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name || "Anonymous"}</p>
+                                        <p className="text-xs text-gray-500">Member</p>
+                                    </div>
+                                    <div className="ml-auto">
+                                        <span className="flex items-center justify-center w-6 h-6 bg-blue-600 rounded-full">
+                                            <ThumbsUpIcon className="h-3 w-3 text-white" />
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>

@@ -414,3 +414,34 @@ export async function deleteComment(commentId: string) {
 
     return { success: true };
 }
+
+export async function searchUsers(query: string) {
+    if (!query || query.length < 1) return [];
+
+    const session = await authSession();
+    if (!session) return [];
+
+    const users = await db.user.findMany({
+        where: {
+            name: { contains: query, mode: "insensitive" },
+            id: { not: session.user.id },
+        },
+        select: { id: true, name: true, image: true },
+        take: 8,
+    });
+
+    return users;
+}
+
+export async function getPostLikers(postId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const likes = await db.like.findMany({
+        where: { postId },
+        include: { user: { select: { id: true, name: true, image: true } } },
+        orderBy: { createdAt: "desc" },
+    });
+
+    return likes.map((l) => l.user);
+}

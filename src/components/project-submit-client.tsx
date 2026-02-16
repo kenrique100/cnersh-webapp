@@ -234,8 +234,19 @@ export default function ProjectSubmitClient() {
                         )}
                     </div>
 
-                    <Button type="submit" disabled={isSubmitting} className="w-full">
-                        {isSubmitting ? <Spinner className="size-4" /> : "Submit Project"}
+                    <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full h-12 text-base font-semibold bg-blue-700 hover:bg-blue-800 text-white rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                    >
+                        {isSubmitting ? (
+                            <span className="flex items-center gap-2">
+                                <Spinner className="size-4" />
+                                Submitting...
+                            </span>
+                        ) : (
+                            "Submit Project"
+                        )}
                     </Button>
                 </form>
             </CardContent>

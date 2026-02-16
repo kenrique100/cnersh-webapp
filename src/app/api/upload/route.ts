@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authSession } from "@/lib/auth-utils";
 
+// Increase body size limit for file uploads
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
     const session = await authSession();
     if (!session) {
