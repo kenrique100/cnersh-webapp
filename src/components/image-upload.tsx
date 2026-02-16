@@ -1,46 +1,90 @@
 "use client";
 
-import { OurFileRouter } from "@/app/api/uploadthing/core";
-import { UploadDropzone } from "@/lib/uploadthing";
-import { Trash, ImageIcon } from "lucide-react";
+import { Trash, ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface ImageUploadProps {
     defaultUrl?: string | null;
     onChange?: (url: string | null) => void;
-    endpoint: keyof OurFileRouter;
     variant?: "profile" | "feed";
 }
 
 export default function ImageUpload({
-                                        defaultUrl,
-                                        onChange,
-                                        endpoint,
-                                        variant = "profile",
-                                    }: ImageUploadProps) {
+    defaultUrl,
+    onChange,
+    variant = "profile",
+}: ImageUploadProps) {
     const [value, setValue] = useState<string | null>(defaultUrl ?? null);
-    const [showDropzone, setShowDropzone] = useState<boolean>(!defaultUrl);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleChangeImage = (url: string | null) => {
         setValue(url);
         onChange?.(url);
     };
 
-    if (!showDropzone && value) {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            alert("Please select an image file");
+            return;
+        }
+
+        if (file.size > 4 * 1024 * 1024) {
+            alert("Image must be less than 4MB");
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Upload failed");
+            }
+
+            const data = await res.json();
+            if (data.url) {
+                handleChangeImage(data.url);
+            }
+        } catch (err) {
+            console.error("Upload error:", err);
+            alert(err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
+    };
+
+    if (value) {
         const isProfile = variant === "profile";
         return (
             <div className="relative group">
-                <div className={
-                    isProfile
-                        ? "relative w-24 h-24 shadow-lg overflow-hidden rounded-full border-2 border-gray-200 dark:border-gray-700"
-                        : "relative w-full h-48 shadow-lg overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
-                }>
+                <div
+                    className={
+                        isProfile
+                            ? "relative w-24 h-24 shadow-lg overflow-hidden rounded-full border-2 border-gray-200 dark:border-gray-700"
+                            : "relative w-full h-48 shadow-lg overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+                    }
+                >
                     <Image
-                        src={value ?? ""}
+                        src={value}
                         className="object-cover"
                         fill
                         alt="uploaded image"
+                        unoptimized
                     />
                 </div>
 
@@ -48,7 +92,6 @@ export default function ImageUpload({
                     type="button"
                     onClick={() => {
                         handleChangeImage(null);
-                        setShowDropzone(true);
                     }}
                     className={
                         isProfile
@@ -65,28 +108,39 @@ export default function ImageUpload({
 
     return (
         <div className="relative">
-            <UploadDropzone
-                endpoint={endpoint}
-                content={{
-                    label: value
-                        ? "Drop or click to replace the image"
-                        : "Drop or click to upload an image",
-                    allowedContent: "Images up to 4MB",
-                }}
-                appearance={{
-                    container: "rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer",
-                    button: "!bg-blue-700 !text-white text-sm",
-                    label: "text-sm text-gray-600 dark:text-gray-400",
-                }}
-                onClientUploadComplete={(res) => {
-                    const url = res?.[0]?.url;
-
-                    if (url) {
-                        setShowDropzone(false);
-                        handleChangeImage(url);
-                    }
-                }}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isUploading}
             />
+            <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-6 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isUploading ? (
+                    <>
+                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Uploading...
+                        </span>
+                    </>
+                ) : (
+                    <>
+                        <ImageIcon className="h-8 w-8 text-gray-400" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Drop or click to upload an image
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                            Images up to 4MB
+                        </span>
+                    </>
+                )}
+            </button>
         </div>
     );
 }

@@ -48,7 +48,6 @@ import {
     editReply,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
-import { UploadButton } from "@/lib/uploadthing";
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -894,27 +893,47 @@ export default function CommunityClient({
                 >
                     {/* Upload button */}
                     <div className="shrink-0 mb-0.5">
-                        <UploadButton
-                            endpoint="communityImage"
-                            appearance={{
-                                button: "!bg-transparent !text-gray-600 hover:!text-gray-900 dark:hover:!text-white !p-1 !h-8 !w-8 !rounded-full !ring-0 !shadow-none !border-0 ut-uploading:!text-blue-400",
-                                allowedContent: "hidden",
-                                container: "!p-0 !m-0 !min-w-0",
-                            }}
-                            content={{
-                                button: <ImageIcon className="h-5 w-5" />,
-                            }}
-                            onClientUploadComplete={(res) => {
-                                if (res?.[0]) {
-                                    setPendingImage(res[0].ufsUrl);
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id="community-image-upload"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 4 * 1024 * 1024) {
+                                    toast.error("Image must be less than 4MB");
+                                    return;
                                 }
-                            }}
-                            onUploadError={(error) => {
-                                toast.error(
-                                    `Upload failed: ${error.message}`
-                                );
+                                try {
+                                    const formData = new FormData();
+                                    formData.append("file", file);
+                                    const res = await fetch("/api/upload", {
+                                        method: "POST",
+                                        body: formData,
+                                    });
+                                    if (!res.ok) throw new Error("Upload failed");
+                                    const data = await res.json();
+                                    if (data.url) {
+                                        setPendingImage(data.url);
+                                    }
+                                } catch {
+                                    toast.error("Image upload failed");
+                                }
+                                e.target.value = "";
                             }}
                         />
+                        <button
+                            type="button"
+                            onClick={() =>
+                                document
+                                    .getElementById("community-image-upload")
+                                    ?.click()
+                            }
+                            className="p-1 h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        >
+                            <ImageIcon className="h-5 w-5" />
+                        </button>
                     </div>
 
                     {/* Text input */}
