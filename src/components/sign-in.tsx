@@ -37,6 +37,7 @@ const emailSchema = z
 const formSchema = z.object({
     email: emailSchema,
     password: z.string().min(1, "Password is required"),
+    rememberMe: z.boolean().optional(),
 });
 
 export function SignInForm() {
@@ -46,6 +47,7 @@ export function SignInForm() {
         defaultValues: {
             email: "",
             password: "",
+            rememberMe: false,
         },
     });
 
@@ -55,7 +57,8 @@ export function SignInForm() {
                 {
                     email: data.email,
                     password: data.password,
-                    callbackURL: "/dashboard",
+                    callbackURL: "/",
+                    rememberMe: data.rememberMe ?? false,
                 },
                 {
                     onSuccess: async () => {
@@ -64,14 +67,12 @@ export function SignInForm() {
                         const user = session?.data?.user;
 
                         if (!user) {
-                            router.push("/dashboard");
+                            router.push("/");
                             toast.success("Signed in successfully");
                             return;
                         }
 
-                        const role = user.role;
-                        const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
-                        router.push(redirectPath);
+                        router.push("/");
                         toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
@@ -100,7 +101,7 @@ export function SignInForm() {
         try {
             await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/dashboard",
+                callbackURL: "/",
             });
         } catch {
             toast.error("Unable to sign in with Google. Please try again.");
@@ -200,6 +201,26 @@ export function SignInForm() {
                             )}
                         />
                     </FieldGroup>
+
+                    {/* Remember Me */}
+                    <Controller
+                        name="rememberMe"
+                        control={form.control}
+                        render={({ field }) => (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="rememberMe"
+                                    checked={field.value ?? false}
+                                    onChange={(e) => field.onChange(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <label htmlFor="rememberMe" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                                    Remember me for 24 hours
+                                </label>
+                            </div>
+                        )}
+                    />
                 </form>
             </CardContent>
 

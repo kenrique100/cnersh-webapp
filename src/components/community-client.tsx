@@ -15,6 +15,11 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -707,6 +712,20 @@ export default function CommunityClient({
                                                     className="flex-1 text-sm px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                     autoFocus
                                                 />
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <button type="button" className="text-gray-400 hover:text-yellow-500 transition-colors p-1">
+                                                            <SmileIcon className="h-4 w-4" />
+                                                        </button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-2" align="end">
+                                                        <div className="grid grid-cols-8 gap-1">
+                                                            {EMOJI_LIST.map((emoji) => (
+                                                                <button key={emoji} type="button" onClick={() => setEditingContent((prev) => prev + emoji)} className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer">{emoji}</button>
+                                                            ))}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
                                                 <button onClick={() => handleEditReply(reply.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
                                                     <CheckIcon className="h-4 w-4" />
                                                 </button>
@@ -798,7 +817,12 @@ export default function CommunityClient({
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <button
-                                        onClick={() => { setReplyingTo(reply); setActiveMessageId(null); }}
+                                        onClick={() => {
+                                            setReplyingTo(reply);
+                                            setActiveMessageId(null);
+                                            const userName = getDisplayName(reply.user).replace(/\s+/g, "");
+                                            setMessageText(`@${userName} `);
+                                        }}
                                         className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                         title="Reply"
                                     >

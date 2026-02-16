@@ -57,25 +57,41 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
     };
 
     const renderPostContent = (content: string) => {
-        const parts = content.split(/(@\w[\w\s]*?)(?=\s@|$|\s)|(\#\w+)/g);
-        return parts.map((part, i) => {
-            if (!part) return null;
-            if (part.startsWith("@") && part.length > 1) {
-                return (
-                    <span key={i} className="text-blue-600 dark:text-blue-400 font-medium">
-                        {part}
+        const combinedRegex = /(https?:\/\/[^\s]+)|(@\w[\w]*)|(\#\w+)/g;
+        const result: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = combinedRegex.exec(content)) !== null) {
+            if (match.index > lastIndex) {
+                result.push(content.slice(lastIndex, match.index));
+            }
+            const matchStr = match[0];
+            if (matchStr.startsWith("http")) {
+                result.push(
+                    <a key={match.index} href={matchStr} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
+                        {matchStr}
+                    </a>
+                );
+            } else if (matchStr.startsWith("@")) {
+                result.push(
+                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium">
+                        {matchStr}
+                    </span>
+                );
+            } else if (matchStr.startsWith("#")) {
+                result.push(
+                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium">
+                        {matchStr}
                     </span>
                 );
             }
-            if (part.startsWith("#") && part.length > 1) {
-                return (
-                    <span key={i} className="text-blue-600 dark:text-blue-400 font-medium">
-                        {part}
-                    </span>
-                );
-            }
-            return part;
-        });
+            lastIndex = match.index + matchStr.length;
+        }
+        if (lastIndex < content.length) {
+            result.push(content.slice(lastIndex));
+        }
+        return result.length > 0 ? result : content;
     };
 
     if (posts.length === 0) {

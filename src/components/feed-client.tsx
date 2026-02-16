@@ -540,25 +540,44 @@ export default function FeedClient({
     const [sharePostId, setSharePostId] = React.useState<string | null>(null);
 
     const renderPostContent = (content: string) => {
-        const parts = content.split(/(@\w[\w\s]*?)(?=\s@|$|\s)|(\#\w+)/g);
-        return parts.map((part, i) => {
-            if (!part) return null;
-            if (part.startsWith("@") && part.length > 1) {
-                return (
-                    <span key={i} className="text-blue-600 dark:text-blue-400 font-medium">
-                        {part}
+        // Split on URLs, @mentions, and #hashtags
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const combinedRegex = /(https?:\/\/[^\s]+)|(@\w[\w]*)|(\#\w+)/g;
+        const result: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = combinedRegex.exec(content)) !== null) {
+            // Add text before the match
+            if (match.index > lastIndex) {
+                result.push(content.slice(lastIndex, match.index));
+            }
+            const matchStr = match[0];
+            if (matchStr.match(urlRegex)) {
+                result.push(
+                    <a key={match.index} href={matchStr} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
+                        {matchStr}
+                    </a>
+                );
+            } else if (matchStr.startsWith("@")) {
+                result.push(
+                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium">
+                        {matchStr}
+                    </span>
+                );
+            } else if (matchStr.startsWith("#")) {
+                result.push(
+                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
+                        {matchStr}
                     </span>
                 );
             }
-            if (part.startsWith("#") && part.length > 1) {
-                return (
-                    <span key={i} className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
-                        {part}
-                    </span>
-                );
-            }
-            return part;
-        });
+            lastIndex = match.index + matchStr.length;
+        }
+        if (lastIndex < content.length) {
+            result.push(content.slice(lastIndex));
+        }
+        return result.length > 0 ? result : content;
     };
 
     const handleShare = (post: PostData) => {
@@ -740,23 +759,6 @@ export default function FeedClient({
                                     />
                                 </div>
                             )}
-                            {/* Tags Input */}
-                            {newPostTags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {newPostTags.map((tag, idx) => (
-                                        <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium">
-                                            #{tag}
-                                            <button
-                                                type="button"
-                                                onClick={() => setNewPostTags((prev) => prev.filter((_, i) => i !== idx))}
-                                                className="hover:text-blue-900 dark:hover:text-blue-100"
-                                            >
-                                                <XIcon className="h-3 w-3" />
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
                             <div className="flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-1">
                                     <Button
@@ -783,27 +785,6 @@ export default function FeedClient({
                                         <VideoIcon className="h-4 w-4 mr-1.5" />
                                         <span className="text-xs font-medium">Video</span>
                                     </Button>
-                                    <div className="flex items-center gap-1">
-                                        <input
-                                            type="text"
-                                            placeholder="Add tag..."
-                                            value={tagInput}
-                                            onChange={(e) => setTagInput(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "," ) {
-                                                    e.preventDefault();
-                                                }
-                                                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-                                                    const tag = tagInput.trim().replace(/^#/, "");
-                                                    if (tag && !newPostTags.includes(tag)) {
-                                                        setNewPostTags((prev) => [...prev, tag]);
-                                                    }
-                                                    setTagInput("");
-                                                }
-                                            }}
-                                            className="h-8 w-24 sm:w-32 px-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                        />
-                                    </div>
                                 </div>
                                 <Button
                                     onClick={handleCreatePost}
@@ -1096,7 +1077,7 @@ export default function FeedClient({
                                                                 </p>
                                                             </div>
                                                             {editingCommentId === comment.id ? (
-                                                                <div className="mt-1 flex gap-2">
+                                                                <div className="mt-1 flex items-center gap-2">
                                                                     <input
                                                                         type="text"
                                                                         value={editingCommentContent}
@@ -1105,12 +1086,26 @@ export default function FeedClient({
                                                                         className="flex-1 text-sm px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         autoFocus
                                                                     />
+                                                                    <Popover>
+                                                                        <PopoverTrigger asChild>
+                                                                            <button type="button" className="text-gray-400 hover:text-yellow-500 transition-colors p-1">
+                                                                                <SmileIcon className="h-4 w-4" />
+                                                                            </button>
+                                                                        </PopoverTrigger>
+                                                                        <PopoverContent className="w-auto p-2" align="end">
+                                                                            <div className="grid grid-cols-8 gap-1">
+                                                                                {EMOJI_LIST.map((emoji) => (
+                                                                                    <button key={emoji} type="button" onClick={() => setEditingCommentContent((prev) => prev + emoji)} className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer">{emoji}</button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </PopoverContent>
+                                                                    </Popover>
                                                                     <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => handleEditComment(post.id, comment.id)}>Save</Button>
                                                                     <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setEditingCommentId(null); setEditingCommentContent(""); }}>Cancel</Button>
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap">
-                                                                    {comment.content}
+                                                                    {renderPostContent(comment.content)}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -1124,9 +1119,13 @@ export default function FeedClient({
                                                                 <ThumbsDownIcon className={`h-3 w-3 ${userDisliked ? "fill-current" : ""}`} />
                                                                 {dislikes.length > 0 && <span>{dislikes.length}</span>}
                                                             </button>
-                                                            <button onClick={() => setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: comment.user.name || "Anonymous" } }))} className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors">
+                                                            <button onClick={() => {
+                                                                const userName = comment.user.name || "Anonymous";
+                                                                setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: userName } }));
+                                                                setCommentTexts((prev) => ({ ...prev, [post.id]: `@${userName.replace(/\s+/g, "")} ` }));
+                                                            }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors">
                                                                 <ReplyIcon className="h-3 w-3" />
-                                                                Reply
+                                                                Reply{comment.replies && comment.replies.length > 0 ? ` (${comment.replies.length})` : ""}
                                                             </button>
                                                             {isCommentAuthor && (
                                                                 <button onClick={() => { setEditingCommentId(comment.id); setEditingCommentContent(comment.content); }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 transition-colors">
@@ -1181,7 +1180,7 @@ export default function FeedClient({
                                                                                     <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => handleEditComment(post.id, reply.id)}>Save</Button>
                                                                                 </div>
                                                                             ) : (
-                                                                                <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{reply.content}</p>
+                                                                                <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{renderPostContent(reply.content)}</p>
                                                                             )}
                                                                         </div>
                                                                         <div className="flex items-center gap-2 mt-0.5 px-1">
