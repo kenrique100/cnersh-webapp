@@ -24,6 +24,7 @@ import {
     ReplyIcon,
     PencilIcon,
     MoreHorizontalIcon,
+    Loader2,
 } from "lucide-react";
 import {
     Dialog,
@@ -48,7 +49,6 @@ import { toast } from "sonner";
 import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
-import { UploadDropzone } from "@/lib/uploadthing";
 
 interface PostUser {
     id: string;
@@ -97,6 +97,87 @@ const EMOJI_LIST = [
     "❤️", "💯", "🙏", "👏", "🤝", "💪", "✅", "⭐",
     "🚀", "💡", "📌", "🎯", "👀", "✨", "⚡", "🌟",
 ];
+
+function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
+    const [isUploading, setIsUploading] = React.useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith("video/")) {
+            toast.error("Please select a video file");
+            return;
+        }
+
+        if (file.size > 32 * 1024 * 1024) {
+            toast.error("Video must be less than 32MB");
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Upload failed");
+            }
+
+            const data = await res.json();
+            if (data.url) {
+                onUpload(data.url);
+            }
+        } catch (err) {
+            console.error("Video upload error:", err);
+            toast.error(err instanceof Error ? err.message : "Video upload failed");
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
+    };
+
+    return (
+        <div>
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isUploading}
+            />
+            <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-6 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isUploading ? (
+                    <>
+                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Uploading video...</span>
+                    </>
+                ) : (
+                    <>
+                        <VideoIcon className="h-8 w-8 text-gray-400" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a video</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 32MB</span>
+                    </>
+                )}
+            </button>
+        </div>
+    );
+}
 
 export default function FeedClient({
     initialPosts,
@@ -501,7 +582,6 @@ export default function FeedClient({
                             {showImageUpload && !newPostImage && (
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
                                     <ImageUpload
-                                        endpoint="imageUploader"
                                         variant="feed"
                                         defaultUrl={newPostImage}
                                         onChange={(url) => {
@@ -511,29 +591,13 @@ export default function FeedClient({
                                     />
                                 </div>
                             )}
-                            {/* Video Upload Dropzone */}
+                            {/* Video Upload */}
                             {showVideoUpload && !newPostVideo && (
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
-                                    <UploadDropzone
-                                        endpoint="videoUploader"
-                                        content={{
-                                            label: "Drop or click to upload a video",
-                                            allowedContent: "Videos up to 32MB",
-                                        }}
-                                        appearance={{
-                                            container: "rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer",
-                                            button: "!bg-blue-700 !text-white text-sm",
-                                            label: "text-sm text-gray-600 dark:text-gray-400",
-                                        }}
-                                        onClientUploadComplete={(res) => {
-                                            const url = res?.[0]?.url;
-                                            if (url) {
-                                                setNewPostVideo(url);
-                                                setShowVideoUpload(false);
-                                            }
-                                        }}
-                                        onUploadError={(error) => {
-                                            toast.error(`Video upload failed: ${error.message}`);
+                                    <VideoUploadInput
+                                        onUpload={(url) => {
+                                            setNewPostVideo(url);
+                                            setShowVideoUpload(false);
                                         }}
                                     />
                                 </div>
