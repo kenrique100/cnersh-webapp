@@ -1196,6 +1196,14 @@ export default function FeedClient({
                                                                                 <ThumbsDownIcon className={`h-2.5 w-2.5 ${rUserDisliked ? "fill-current" : ""}`} />
                                                                                 {rDislikes.length > 0 && rDislikes.length}
                                                                             </button>
+                                                                            <button onClick={() => {
+                                                                                const replyUserName = reply.user.name || "Anonymous";
+                                                                                setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: replyUserName } }));
+                                                                                setCommentTexts((prev) => ({ ...prev, [post.id]: `@${replyUserName.replace(/\s+/g, "")} ` }));
+                                                                            }} className="flex items-center gap-0.5 text-[10px] text-gray-500 hover:text-blue-600">
+                                                                                <ReplyIcon className="h-2.5 w-2.5" />
+                                                                                Reply
+                                                                            </button>
                                                                             {isReplyAuthor && <button onClick={() => { setEditingCommentId(reply.id); setEditingCommentContent(reply.content); }} className="text-[10px] text-gray-500 hover:text-green-600">Edit</button>}
                                                                             {(isReplyAuthor || isAdmin) && <button onClick={() => handleDeleteComment(post.id, reply.id)} className="text-[10px] text-gray-500 hover:text-red-600">Delete</button>}
                                                                             {!isReplyAuthor && <button onClick={() => setReportingCommentId(reply.id)} className="text-[10px] text-gray-500 hover:text-orange-600">Report</button>}
