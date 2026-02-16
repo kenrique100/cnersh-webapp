@@ -98,6 +98,8 @@ const EMOJI_LIST = [
     "🚀", "💡", "📌", "🎯", "👀", "✨", "⚡", "🌟",
 ];
 
+const MENTION_SEARCH_DEBOUNCE_MS = 200;
+
 function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
     const [isUploading, setIsUploading] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -245,7 +247,7 @@ export default function FeedClient({
         mentionSearchTimeout.current = setTimeout(async () => {
             const results = await searchUsers(afterAt);
             setMentionResults(results);
-        }, 200);
+        }, MENTION_SEARCH_DEBOUNCE_MS);
     };
 
     const insertMention = (name: string, source: string) => {

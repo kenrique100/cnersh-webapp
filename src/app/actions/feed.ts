@@ -416,14 +416,12 @@ export async function deleteComment(commentId: string) {
 }
 
 export async function searchUsers(query: string) {
-    if (!query || query.length < 1) return [];
-
     const session = await authSession();
     if (!session) return [];
 
     const users = await db.user.findMany({
         where: {
-            name: { contains: query, mode: "insensitive" },
+            ...(query?.trim() ? { name: { contains: query.trim(), mode: "insensitive" as const } } : {}),
             id: { not: session.user.id },
         },
         select: { id: true, name: true, image: true },
