@@ -15,8 +15,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
 
-        // Validate file size (max 10MB for images, 32MB for videos, 8MB for documents)
-        const maxSize = file.type.startsWith("video/") ? 32 * 1024 * 1024 : 10 * 1024 * 1024;
+        // Validate file size (max 4MB for images, 32MB for videos, 8MB for documents)
+        let maxSize: number;
+        if (file.type.startsWith("video/")) {
+            maxSize = 32 * 1024 * 1024;
+        } else if (file.type.startsWith("image/")) {
+            maxSize = 4 * 1024 * 1024;
+        } else {
+            maxSize = 8 * 1024 * 1024;
+        }
         if (file.size > maxSize) {
             return NextResponse.json(
                 { error: `File too large. Maximum size is ${maxSize / (1024 * 1024)}MB` },

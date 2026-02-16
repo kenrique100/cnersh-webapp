@@ -107,12 +107,12 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
         if (!file) return;
 
         if (!file.type.startsWith("video/")) {
-            alert("Please select a video file");
+            toast.error("Please select a video file");
             return;
         }
 
         if (file.size > 32 * 1024 * 1024) {
-            alert("Video must be less than 32MB");
+            toast.error("Video must be less than 32MB");
             return;
         }
 
@@ -137,7 +137,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
             }
         } catch (err) {
             console.error("Video upload error:", err);
-            alert(err instanceof Error ? err.message : "Video upload failed");
+            toast.error(err instanceof Error ? err.message : "Video upload failed");
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) {

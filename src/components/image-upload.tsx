@@ -3,6 +3,7 @@
 import { Trash, ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 
 interface ImageUploadProps {
     defaultUrl?: string | null;
@@ -29,12 +30,12 @@ export default function ImageUpload({
         if (!file) return;
 
         if (!file.type.startsWith("image/")) {
-            alert("Please select an image file");
+            toast.error("Please select an image file");
             return;
         }
 
         if (file.size > 4 * 1024 * 1024) {
-            alert("Image must be less than 4MB");
+            toast.error("Image must be less than 4MB");
             return;
         }
 
@@ -59,7 +60,7 @@ export default function ImageUpload({
             }
         } catch (err) {
             console.error("Upload error:", err);
-            alert(err instanceof Error ? err.message : "Upload failed");
+            toast.error(err instanceof Error ? err.message : "Upload failed");
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) {
