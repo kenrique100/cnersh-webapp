@@ -104,7 +104,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                     {/* Left Side - Logo */}
                     <div className="flex items-center gap-2">
                         <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                                 <Image
                                     src="/logo.png"
                                     alt="CNEC"

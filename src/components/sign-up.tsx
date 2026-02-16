@@ -205,7 +205,7 @@ export function SignUpForm() {
         <Card className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg rounded-2xl">
             <CardHeader className="space-y-6 px-6 sm:px-8 pt-10 pb-6">
                 <div className="flex flex-col items-center space-y-4">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                         <div className="flex items-center justify-center w-full h-full">
                             <Image
                                 src="/logo.png"

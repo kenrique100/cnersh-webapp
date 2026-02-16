@@ -67,6 +67,7 @@ export default async function ProjectDetailPage({
 
     if (!project) notFound();
 
+    const isOwner = project.userId === session.user.id;
     const config = statusConfig[project.status] || statusConfig.DRAFT;
 
     return (
@@ -321,9 +322,17 @@ export default async function ProjectDetailPage({
                         </Card>
                     )}
 
-                    {/* Admin Actions */}
-                    {isAdmin && (
-                        <ProjectDetailActions projectId={project.id} currentStatus={project.status} />
+                    {/* Project Actions (for owners and admins) */}
+                    {(isOwner || isAdmin) && (
+                        <ProjectDetailActions
+                            projectId={project.id}
+                            currentStatus={project.status}
+                            isOwner={isOwner}
+                            isAdmin={isAdmin}
+                            projectTitle={project.title}
+                            projectObjectives={project.objectives}
+                            projectDescription={project.description}
+                        />
                     )}
                 </div>
             </div>

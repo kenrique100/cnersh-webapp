@@ -7,7 +7,7 @@ import { sendNotificationEmail } from "@/lib/send-notification-email";
 
 const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
 
-export async function createPost(data: { content: string; image?: string; video?: string; tags?: string[] }) {
+export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[] }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -16,6 +16,8 @@ export async function createPost(data: { content: string; image?: string; video?
             content: data.content,
             image: data.image || null,
             video: data.video || null,
+            images: data.images || [],
+            videos: data.videos || [],
             tags: data.tags || [],
             userId: session.user.id,
         },
@@ -82,6 +84,25 @@ export async function getPosts(page: number = 1, limit: number = 10) {
     } catch (error) {
         console.error("Error fetching posts:", error);
         return { posts: [], total: 0, pages: 0 };
+    }
+}
+
+export async function getPublicPosts(limit: number = 10) {
+    try {
+        const posts = await db.post.findMany({
+            where: { deleted: false },
+            include: {
+                user: { select: { id: true, name: true, image: true } },
+                _count: { select: { comments: true, likes: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: limit,
+        });
+
+        return posts;
+    } catch (error) {
+        console.error("Error fetching public posts:", error);
+        return [];
     }
 }
 

@@ -23,7 +23,6 @@ import {
     SmileIcon,
     ReplyIcon,
     PencilIcon,
-    MoreHorizontalIcon,
     Loader2,
 } from "lucide-react";
 import {
@@ -77,6 +76,8 @@ interface PostData {
     content: string;
     image: string | null;
     video: string | null;
+    images: string[];
+    videos: string[];
     tags: string[];
     createdAt: Date;
     user: PostUser;
@@ -193,6 +194,8 @@ export default function FeedClient({
     const [newPostContent, setNewPostContent] = React.useState("");
     const [newPostImage, setNewPostImage] = React.useState<string | null>(null);
     const [newPostVideo, setNewPostVideo] = React.useState<string | null>(null);
+    const [newPostImages, setNewPostImages] = React.useState<string[]>([]);
+    const [newPostVideos, setNewPostVideos] = React.useState<string[]>([]);
     const [newPostTags, setNewPostTags] = React.useState<string[]>([]);
     const [tagInput, setTagInput] = React.useState("");
     const [showImageUpload, setShowImageUpload] = React.useState(false);
@@ -285,13 +288,22 @@ export default function FeedClient({
     };
 
     const handleCreatePost = async () => {
-        if (!newPostContent.trim() && !newPostImage && !newPostVideo) return;
+        if (!newPostContent.trim() && !newPostImage && !newPostVideo && newPostImages.length === 0 && newPostVideos.length === 0) return;
         setIsSubmitting(true);
         try {
-            await createPost({ content: newPostContent, image: newPostImage || undefined, video: newPostVideo || undefined, tags: newPostTags.length > 0 ? newPostTags : undefined });
+            await createPost({
+                content: newPostContent,
+                image: newPostImage || undefined,
+                video: newPostVideo || undefined,
+                images: newPostImages.length > 0 ? newPostImages : undefined,
+                videos: newPostVideos.length > 0 ? newPostVideos : undefined,
+                tags: newPostTags.length > 0 ? newPostTags : undefined,
+            });
             setNewPostContent("");
             setNewPostImage(null);
             setNewPostVideo(null);
+            setNewPostImages([]);
+            setNewPostVideos([]);
             setNewPostTags([]);
             setTagInput("");
             setShowImageUpload(false);
@@ -627,70 +639,102 @@ export default function FeedClient({
                                     </div>
                                 )}
                             </div>
-                            {/* Image Preview */}
-                            {newPostImage && (
-                                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src={newPostImage}
-                                        alt="Upload preview"
-                                        width={600}
-                                        height={300}
-                                        className="w-full max-h-[200px] object-cover"
-                                        unoptimized
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setNewPostImage(null);
-                                            setShowImageUpload(false);
-                                        }}
-                                        className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
-                                        title="Remove image"
-                                    >
-                                        <XIcon className="h-4 w-4" />
-                                    </button>
+                            {/* Images Preview (multiple) */}
+                            {(newPostImages.length > 0 || newPostImage) && (
+                                <div className="flex flex-wrap gap-2">
+                                    {newPostImage && (
+                                        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]">
+                                            <Image
+                                                src={newPostImage}
+                                                alt="Upload preview"
+                                                width={300}
+                                                height={200}
+                                                className="w-full h-[150px] object-cover"
+                                                unoptimized
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewPostImage(null)}
+                                                className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
+                                                title="Remove image"
+                                            >
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {newPostImages.map((img, idx) => (
+                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]">
+                                            <Image
+                                                src={img}
+                                                alt={`Upload preview ${idx + 1}`}
+                                                width={300}
+                                                height={200}
+                                                className="w-full h-[150px] object-cover"
+                                                unoptimized
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewPostImages((prev) => prev.filter((_, i) => i !== idx))}
+                                                className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
+                                                title="Remove image"
+                                            >
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
-                            {/* Video Preview */}
-                            {newPostVideo && (
-                                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                    <video
-                                        src={newPostVideo}
-                                        controls
-                                        className="w-full max-h-[200px] object-contain bg-black"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setNewPostVideo(null);
-                                            setShowVideoUpload(false);
-                                        }}
-                                        className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
-                                        title="Remove video"
-                                    >
-                                        <XIcon className="h-4 w-4" />
-                                    </button>
+                            {/* Videos Preview (multiple) */}
+                            {(newPostVideos.length > 0 || newPostVideo) && (
+                                <div className="space-y-2">
+                                    {newPostVideo && (
+                                        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                            <video src={newPostVideo} controls className="w-full max-h-[200px] object-contain bg-black" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewPostVideo(null)}
+                                                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
+                                                title="Remove video"
+                                            >
+                                                <XIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {newPostVideos.map((vid, idx) => (
+                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                            <video src={vid} controls className="w-full max-h-[200px] object-contain bg-black" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewPostVideos((prev) => prev.filter((_, i) => i !== idx))}
+                                                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
+                                                title="Remove video"
+                                            >
+                                                <XIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                             {/* Image Upload Dropzone */}
-                            {showImageUpload && !newPostImage && (
+                            {showImageUpload && (
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
                                     <ImageUpload
                                         variant="feed"
-                                        defaultUrl={newPostImage}
                                         onChange={(url) => {
-                                            setNewPostImage(url);
-                                            if (url) setShowImageUpload(false);
+                                            if (url) {
+                                                setNewPostImages((prev) => [...prev, url]);
+                                                setShowImageUpload(false);
+                                            }
                                         }}
                                     />
                                 </div>
                             )}
                             {/* Video Upload */}
-                            {showVideoUpload && !newPostVideo && (
+                            {showVideoUpload && (
                                 <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
                                     <VideoUploadInput
                                         onUpload={(url) => {
-                                            setNewPostVideo(url);
+                                            setNewPostVideos((prev) => [...prev, url]);
                                             setShowVideoUpload(false);
                                         }}
                                     />
@@ -719,9 +763,6 @@ export default function FeedClient({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
-                                            if (newPostImage) {
-                                                setNewPostImage(null);
-                                            }
                                             setShowVideoUpload(false);
                                             setShowImageUpload(!showImageUpload);
                                         }}
@@ -734,9 +775,6 @@ export default function FeedClient({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
-                                            if (newPostVideo) {
-                                                setNewPostVideo(null);
-                                            }
                                             setShowImageUpload(false);
                                             setShowVideoUpload(!showVideoUpload);
                                         }}
@@ -769,7 +807,7 @@ export default function FeedClient({
                                 </div>
                                 <Button
                                     onClick={handleCreatePost}
-                                    disabled={isSubmitting || (!newPostContent.trim() && !newPostImage && !newPostVideo)}
+                                    disabled={isSubmitting || (!newPostContent.trim() && !newPostImage && !newPostVideo && newPostImages.length === 0 && newPostVideos.length === 0)}
                                     size="sm"
                                     className="bg-blue-700 hover:bg-blue-800 text-white rounded-full px-5 h-9 text-sm font-medium disabled:opacity-50"
                                 >
@@ -897,28 +935,63 @@ export default function FeedClient({
                                 </div>
                             )}
 
-                            {/* Post Image */}
-                            {post.image && (
+                            {/* Post Image(s) */}
+                            {(post.image || (post.images && post.images.length > 0)) && (
                                 <div className="border-t border-b border-gray-100 dark:border-gray-800">
-                                    <Image
-                                        src={post.image}
-                                        alt="Post attachment"
-                                        width={700}
-                                        height={400}
-                                        className="w-full object-cover max-h-[500px]"
-                                        unoptimized
-                                    />
+                                    {(() => {
+                                        const allImages = [
+                                            ...(post.image ? [post.image] : []),
+                                            ...(post.images || []),
+                                        ];
+                                        if (allImages.length === 1) {
+                                            return (
+                                                <Image
+                                                    src={allImages[0]}
+                                                    alt="Post attachment"
+                                                    width={700}
+                                                    height={400}
+                                                    className="w-full object-cover max-h-[500px]"
+                                                    unoptimized
+                                                />
+                                            );
+                                        }
+                                        return (
+                                            <div className={`grid gap-1 ${allImages.length === 2 ? "grid-cols-2" : allImages.length >= 3 ? "grid-cols-2" : ""}`}>
+                                                {allImages.map((img, idx) => (
+                                                    <Image
+                                                        key={idx}
+                                                        src={img}
+                                                        alt={`Post attachment ${idx + 1}`}
+                                                        width={350}
+                                                        height={250}
+                                                        className={`w-full object-cover ${allImages.length > 1 ? "max-h-[250px]" : "max-h-[500px]"} ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
+                                                        unoptimized
+                                                    />
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
 
-                            {/* Post Video */}
-                            {post.video && (
-                                <div className="border-t border-b border-gray-100 dark:border-gray-800">
-                                    <video
-                                        src={post.video}
-                                        controls
-                                        className="w-full max-h-[500px] object-contain bg-black"
-                                    />
+                            {/* Post Video(s) */}
+                            {(post.video || (post.videos && post.videos.length > 0)) && (
+                                <div className="border-t border-b border-gray-100 dark:border-gray-800 space-y-1">
+                                    {post.video && (
+                                        <video
+                                            src={post.video}
+                                            controls
+                                            className="w-full max-h-[500px] object-contain bg-black"
+                                        />
+                                    )}
+                                    {(post.videos || []).map((vid, idx) => (
+                                        <video
+                                            key={idx}
+                                            src={vid}
+                                            controls
+                                            className="w-full max-h-[500px] object-contain bg-black"
+                                        />
+                                    ))}
                                 </div>
                             )}
 

@@ -112,7 +112,7 @@ export function SignInForm() {
             <CardHeader className="space-y-6 px-6 sm:px-8 pt-10 pb-6">
             {/* Government-style Logo and Brand Section */}
                 <div className="flex flex-col items-center space-y-3">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                     <div className="flex items-center justify-center w-full h-full">
                             <Image
                                 src="/logo.png"
