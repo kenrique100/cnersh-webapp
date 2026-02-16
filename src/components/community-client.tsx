@@ -225,17 +225,32 @@ export default function CommunityClient({
                 parentId: replyingTo?.id,
                 image: pendingImage || undefined,
             });
-            setSelectedTopic((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          replies: [
-                              ...prev.replies,
-                              { ...reply, children: [] },
-                          ],
-                      }
-                    : prev
-            );
+            setSelectedTopic((prev) => {
+                if (!prev) return prev;
+                if (replyingTo?.id) {
+                    // Nest reply under its parent's children array
+                    return {
+                        ...prev,
+                        replies: prev.replies.map((r) =>
+                            r.id === replyingTo.id
+                                ? { ...r, children: [...(r.children || []), { ...reply, children: [] }] }
+                                : {
+                                      ...r,
+                                      children: (r.children || []).map((c) =>
+                                          c.id === replyingTo.id
+                                              ? { ...c, children: [...(c.children || []), { ...reply, children: [] }] }
+                                              : c
+                                      ),
+                                  }
+                        ),
+                    };
+                }
+                // Top-level reply
+                return {
+                    ...prev,
+                    replies: [...prev.replies, { ...reply, children: [] }],
+                };
+            });
             setMessageText("");
             setPendingImage(null);
             setReplyingTo(null);
@@ -265,7 +280,12 @@ export default function CommunityClient({
             await deleteReply(replyId);
             setSelectedTopic({
                 ...selectedTopic,
-                replies: selectedTopic.replies.filter((r) => r.id !== replyId),
+                replies: selectedTopic.replies
+                    .filter((r) => r.id !== replyId)
+                    .map((r) => ({
+                        ...r,
+                        children: (r.children || []).filter((c) => c.id !== replyId),
+                    })),
             });
             toast.success("Message deleted");
         } catch {
@@ -303,7 +323,14 @@ export default function CommunityClient({
             setSelectedTopic({
                 ...selectedTopic,
                 replies: selectedTopic.replies.map((r) =>
-                    r.id === replyId ? { ...r, content: editingContent } : r
+                    r.id === replyId
+                        ? { ...r, content: editingContent }
+                        : {
+                              ...r,
+                              children: (r.children || []).map((c) =>
+                                  c.id === replyId ? { ...c, content: editingContent } : c
+                              ),
+                          }
                 ),
             });
             setEditingReplyId(null);
