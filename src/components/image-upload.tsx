@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 
+const PROFILE_IMAGE_QUALITY = 0.92;
+
 interface ImageUploadProps {
     defaultUrl?: string | null;
     onChange?: (url: string | null) => void;
@@ -47,7 +49,7 @@ async function getCroppedImageBlob(
         canvas.toBlob(
             (blob) => (blob ? resolve(blob) : reject(new Error("Canvas is empty"))),
             "image/jpeg",
-            0.92
+            PROFILE_IMAGE_QUALITY
         );
     });
 }

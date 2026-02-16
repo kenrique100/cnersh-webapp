@@ -13,7 +13,7 @@ export const auth = betterAuth({
     }),
 
     session: {
-        expiresIn: 60 * 60, // Default: 1 hour (short session)
+        expiresIn: 60 * 60, // 1 hour when "Remember Me" is NOT checked
         updateAge: 60 * 5, // Update session every 5 minutes
     },
 

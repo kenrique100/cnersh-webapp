@@ -721,7 +721,14 @@ export default function CommunityClient({
                                                     <PopoverContent className="w-auto p-2" align="end">
                                                         <div className="grid grid-cols-8 gap-1">
                                                             {EMOJI_LIST.map((emoji) => (
-                                                                <button key={emoji} type="button" onClick={() => setEditingContent((prev) => prev + emoji)} className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer">{emoji}</button>
+                                                                <button
+                                                                    key={emoji}
+                                                                    type="button"
+                                                                    onClick={() => setEditingContent((prev) => prev + emoji)}
+                                                                    className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer"
+                                                                >
+                                                                    {emoji}
+                                                                </button>
                                                             ))}
                                                         </div>
                                                     </PopoverContent>

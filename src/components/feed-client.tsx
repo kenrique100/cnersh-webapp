@@ -540,20 +540,17 @@ export default function FeedClient({
     const [sharePostId, setSharePostId] = React.useState<string | null>(null);
 
     const renderPostContent = (content: string) => {
-        // Split on URLs, @mentions, and #hashtags
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
         const combinedRegex = /(https?:\/\/[^\s]+)|(@\w[\w]*)|(\#\w+)/g;
         const result: React.ReactNode[] = [];
         let lastIndex = 0;
         let match;
 
         while ((match = combinedRegex.exec(content)) !== null) {
-            // Add text before the match
             if (match.index > lastIndex) {
                 result.push(content.slice(lastIndex, match.index));
             }
             const matchStr = match[0];
-            if (matchStr.match(urlRegex)) {
+            if (matchStr.startsWith("http")) {
                 result.push(
                     <a key={match.index} href={matchStr} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
                         {matchStr}
@@ -1095,7 +1092,14 @@ export default function FeedClient({
                                                                         <PopoverContent className="w-auto p-2" align="end">
                                                                             <div className="grid grid-cols-8 gap-1">
                                                                                 {EMOJI_LIST.map((emoji) => (
-                                                                                    <button key={emoji} type="button" onClick={() => setEditingCommentContent((prev) => prev + emoji)} className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer">{emoji}</button>
+                                                                                    <button
+                                                                                        key={emoji}
+                                                                                        type="button"
+                                                                                        onClick={() => setEditingCommentContent((prev) => prev + emoji)}
+                                                                                        className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer"
+                                                                                    >
+                                                                                        {emoji}
+                                                                                    </button>
                                                                                 ))}
                                                                             </div>
                                                                         </PopoverContent>
