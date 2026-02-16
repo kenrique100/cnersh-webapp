@@ -213,7 +213,15 @@ export default function ProjectDetailActions({
                                 )}
                                 {/* Image upload */}
                                 {showForwardImageUpload && (
-                                    <ImageUpload variant="feed" onChange={(url) => { if (url) { setForwardImages((prev) => [...prev, url]); setShowForwardImageUpload(false); } }} />
+                                    <ImageUpload
+                                        variant="feed"
+                                        onChange={(url) => {
+                                            if (url) {
+                                                setForwardImages((prev) => [...prev, url]);
+                                                setShowForwardImageUpload(false);
+                                            }
+                                        }}
+                                    />
                                 )}
                                 {/* Video upload */}
                                 {showForwardVideoUpload && (

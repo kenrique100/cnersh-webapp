@@ -164,7 +164,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         );
                                     }
                                     return (
-                                        <div className={`grid gap-1 ${allImages.length === 2 ? "grid-cols-2" : "grid-cols-2"}`}>
+                                        <div className="grid gap-1 grid-cols-2">
                                             {allImages.map((img, idx) => (
                                                 <Image
                                                     key={idx}
