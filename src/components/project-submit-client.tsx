@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { submitProject } from "@/app/actions/project";
-import { UploadDropzone } from "@/lib/uploadthing";
-import { FileTextIcon, TrashIcon } from "lucide-react";
+import { FileTextIcon, TrashIcon, Loader2, UploadIcon } from "lucide-react";
 
 const PROJECT_CATEGORIES = [
     "Health",
@@ -27,6 +26,7 @@ const PROJECT_CATEGORIES = [
 export default function ProjectSubmitClient() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isUploadingDoc, setIsUploadingDoc] = React.useState(false);
     const [documentUrl, setDocumentUrl] = React.useState<string | null>(null);
     const [documentName, setDocumentName] = React.useState<string | null>(null);
     const [formData, setFormData] = React.useState({
@@ -174,34 +174,79 @@ export default function ProjectSubmitClient() {
                                 </button>
                             </div>
                         ) : (
-                            <UploadDropzone
-                                endpoint="documentUploader"
-                                content={{
-                                    label: "Drop or click to upload a document (PDF, DOC, DOCX)",
-                                    allowedContent: "PDF, DOC, DOCX up to 8MB",
-                                }}
-                                appearance={{
-                                    container: "rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer",
-                                    button: "!bg-blue-700 !text-white text-sm",
-                                    label: "text-sm text-gray-600 dark:text-gray-400",
-                                }}
-                                onClientUploadComplete={(res) => {
-                                    const file = res?.[0];
-                                    if (file?.url) {
-                                        setDocumentUrl(file.url);
-                                        setDocumentName(file.name);
-                                        toast.success("Document uploaded successfully");
-                                    }
-                                }}
-                                onUploadError={(error) => {
-                                    toast.error(`Upload failed: ${error.message}`);
-                                }}
-                            />
+                            <div>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                    className="hidden"
+                                    id="document-upload"
+                                    disabled={isUploadingDoc}
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        if (file.size > 8 * 1024 * 1024) {
+                                            toast.error("Document must be less than 8MB");
+                                            return;
+                                        }
+                                        setIsUploadingDoc(true);
+                                        try {
+                                            const formData = new FormData();
+                                            formData.append("file", file);
+                                            const res = await fetch("/api/upload", {
+                                                method: "POST",
+                                                body: formData,
+                                            });
+                                            if (!res.ok) throw new Error("Upload failed");
+                                            const data = await res.json();
+                                            if (data.url) {
+                                                setDocumentUrl(data.url);
+                                                setDocumentName(data.name || file.name);
+                                                toast.success("Document uploaded successfully");
+                                            }
+                                        } catch {
+                                            toast.error("Document upload failed");
+                                        } finally {
+                                            setIsUploadingDoc(false);
+                                            e.target.value = "";
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => document.getElementById("document-upload")?.click()}
+                                    disabled={isUploadingDoc}
+                                    className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-6 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isUploadingDoc ? (
+                                        <>
+                                            <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                                            <span className="text-sm text-gray-600 dark:text-gray-400">Uploading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UploadIcon className="h-8 w-8 text-gray-400" />
+                                            <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a document (PDF, DOC, DOCX)</span>
+                                            <span className="text-xs text-gray-400 dark:text-gray-500">PDF, DOC, DOCX up to 8MB</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         )}
                     </div>
 
-                    <Button type="submit" disabled={isSubmitting} className="w-full">
-                        {isSubmitting ? <Spinner className="size-4" /> : "Submit Project"}
+                    <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full h-12 text-base font-semibold bg-blue-700 hover:bg-blue-800 text-white rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                    >
+                        {isSubmitting ? (
+                            <span className="flex items-center gap-2">
+                                <Spinner className="size-4" />
+                                Submitting...
+                            </span>
+                        ) : (
+                            "Submit Project"
+                        )}
                     </Button>
                 </form>
             </CardContent>

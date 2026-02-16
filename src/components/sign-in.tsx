@@ -37,6 +37,7 @@ const emailSchema = z
 const formSchema = z.object({
     email: emailSchema,
     password: z.string().min(1, "Password is required"),
+    rememberMe: z.boolean().optional(),
 });
 
 export function SignInForm() {
@@ -46,6 +47,7 @@ export function SignInForm() {
         defaultValues: {
             email: "",
             password: "",
+            rememberMe: false,
         },
     });
 
@@ -56,22 +58,11 @@ export function SignInForm() {
                     email: data.email,
                     password: data.password,
                     callbackURL: "/dashboard",
+                    rememberMe: data.rememberMe ?? false,
                 },
                 {
                     onSuccess: async () => {
-                        // Fetch session to check user role for redirect
-                        const session = await authClient.getSession();
-                        const user = session?.data?.user;
-
-                        if (!user) {
-                            router.push("/dashboard");
-                            toast.success("Signed in successfully");
-                            return;
-                        }
-
-                        const role = user.role;
-                        const redirectPath = (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
-                        router.push(redirectPath);
+                        router.push("/dashboard");
                         toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
@@ -112,7 +103,7 @@ export function SignInForm() {
             <CardHeader className="space-y-6 px-6 sm:px-8 pt-10 pb-6">
             {/* Government-style Logo and Brand Section */}
                 <div className="flex flex-col items-center space-y-3">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                     <div className="flex items-center justify-center w-full h-full">
                             <Image
                                 src="/logo.png"
@@ -200,6 +191,26 @@ export function SignInForm() {
                             )}
                         />
                     </FieldGroup>
+
+                    {/* Remember Me */}
+                    <Controller
+                        name="rememberMe"
+                        control={form.control}
+                        render={({ field }) => (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="rememberMe"
+                                    checked={field.value ?? false}
+                                    onChange={(e) => field.onChange(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <label htmlFor="rememberMe" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                                    Remember me for 24 hours
+                                </label>
+                            </div>
+                        )}
+                    />
                 </form>
             </CardContent>
 

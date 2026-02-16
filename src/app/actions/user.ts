@@ -7,7 +7,7 @@ export async function updateProfile() {
     const session = await authSession();
 
     if (!session) {
-        throw new Error("Unauthorized");
+        return null;
     }
 
     return db.user.findUnique({

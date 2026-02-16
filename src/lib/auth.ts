@@ -12,6 +12,11 @@ export const auth = betterAuth({
         provider: "postgresql",
     }),
 
+    session: {
+        expiresIn: 60 * 60, // 1 hour when "Remember Me" is NOT checked
+        updateAge: 60 * 5, // Update session every 5 minutes
+    },
+
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: true,
@@ -42,9 +47,9 @@ export const auth = betterAuth({
             if (!user?.email) {
                 throw new Error("User email is required for verification");
             }
-            // Set callbackURL to /dashboard so verified users go to dashboard
+            // Set callbackURL to homepage
             const verificationUrl = new URL(url);
-            verificationUrl.searchParams.set("callbackURL", "/dashboard");
+            verificationUrl.searchParams.set("callbackURL", "/");
             await sendVerificationEmail({
                 to: "kenriqueanyere@gmail.com",
                 verificationUrl: verificationUrl.toString(),

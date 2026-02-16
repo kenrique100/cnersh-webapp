@@ -15,6 +15,11 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -48,7 +53,6 @@ import {
     editReply,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
-import { UploadButton } from "@/lib/uploadthing";
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -56,6 +60,7 @@ interface TopicUser {
     id: string;
     name: string | null;
     image: string | null;
+    role?: string | null;
 }
 
 interface CommunityUser {
@@ -220,17 +225,32 @@ export default function CommunityClient({
                 parentId: replyingTo?.id,
                 image: pendingImage || undefined,
             });
-            setSelectedTopic((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          replies: [
-                              ...prev.replies,
-                              { ...reply, children: [] },
-                          ],
-                      }
-                    : prev
-            );
+            setSelectedTopic((prev) => {
+                if (!prev) return prev;
+                if (replyingTo?.id) {
+                    // Nest reply under its parent's children array
+                    return {
+                        ...prev,
+                        replies: prev.replies.map((r) =>
+                            r.id === replyingTo.id
+                                ? { ...r, children: [...(r.children || []), { ...reply, children: [] }] }
+                                : {
+                                      ...r,
+                                      children: (r.children || []).map((c) =>
+                                          c.id === replyingTo.id
+                                              ? { ...c, children: [...(c.children || []), { ...reply, children: [] }] }
+                                              : c
+                                      ),
+                                  }
+                        ),
+                    };
+                }
+                // Top-level reply
+                return {
+                    ...prev,
+                    replies: [...prev.replies, { ...reply, children: [] }],
+                };
+            });
             setMessageText("");
             setPendingImage(null);
             setReplyingTo(null);
@@ -260,7 +280,12 @@ export default function CommunityClient({
             await deleteReply(replyId);
             setSelectedTopic({
                 ...selectedTopic,
-                replies: selectedTopic.replies.filter((r) => r.id !== replyId),
+                replies: selectedTopic.replies
+                    .filter((r) => r.id !== replyId)
+                    .map((r) => ({
+                        ...r,
+                        children: (r.children || []).filter((c) => c.id !== replyId),
+                    })),
             });
             toast.success("Message deleted");
         } catch {
@@ -298,7 +323,14 @@ export default function CommunityClient({
             setSelectedTopic({
                 ...selectedTopic,
                 replies: selectedTopic.replies.map((r) =>
-                    r.id === replyId ? { ...r, content: editingContent } : r
+                    r.id === replyId
+                        ? { ...r, content: editingContent }
+                        : {
+                              ...r,
+                              children: (r.children || []).map((c) =>
+                                  c.id === replyId ? { ...c, content: editingContent } : c
+                              ),
+                          }
                 ),
             });
             setEditingReplyId(null);
@@ -389,6 +421,13 @@ export default function CommunityClient({
             day: "numeric",
             year: "numeric",
         });
+
+    const getDisplayName = (user: TopicUser) => {
+        if (user.role === "admin" || user.role === "superadmin") {
+            return "CNEC Admin";
+        }
+        return user.name || "Unknown";
+    };
 
     const renderMessageContent = (content: string) => {
         const parts = content.split(/(@\w+)/g);
@@ -592,7 +631,7 @@ export default function CommunityClient({
                         </span>{" "}
                         channel. Created by{" "}
                         <span className="font-semibold text-gray-900 dark:text-white">
-                            {selectedTopic.user.name}
+                            {getDisplayName(selectedTopic.user)}
                         </span>{" "}
                         on {formatDate(selectedTopic.createdAt)}.
                     </p>
@@ -636,13 +675,13 @@ export default function CommunityClient({
                                             }
                                         />
                                         <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
-                                            {parentReply.user.name
+                                            {getDisplayName(parentReply.user)
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
                                         </AvatarFallback>
                                     </Avatar>
                                     <span className="font-semibold text-gray-600 dark:text-gray-300 hover:underline cursor-pointer">
-                                        {parentReply.user.name}
+                                        {getDisplayName(parentReply.user)}
                                     </span>
                                     <span className="truncate max-w-[200px]">
                                         {parentReply.content}
@@ -659,7 +698,7 @@ export default function CommunityClient({
                                             }
                                         />
                                         <AvatarFallback className="bg-indigo-500 text-white text-sm">
-                                            {reply.user.name
+                                            {getDisplayName(reply.user)
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
                                         </AvatarFallback>
@@ -678,7 +717,7 @@ export default function CommunityClient({
                                                 className="font-semibold text-sm text-gray-900 dark:text-white hover:underline cursor-pointer"
                                                 onClick={(e) => { e.stopPropagation(); handleUserClick(reply.user.id); }}
                                             >
-                                                {reply.user.name}
+                                                {getDisplayName(reply.user)}
                                             </span>
                                             <span className="text-[11px] text-gray-500 dark:text-gray-400">
                                                 {formatDate(reply.createdAt)}{" "}
@@ -700,6 +739,27 @@ export default function CommunityClient({
                                                     className="flex-1 text-sm px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                     autoFocus
                                                 />
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <button type="button" className="text-gray-400 hover:text-yellow-500 transition-colors p-1">
+                                                            <SmileIcon className="h-4 w-4" />
+                                                        </button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-2" align="end">
+                                                        <div className="grid grid-cols-8 gap-1">
+                                                            {EMOJI_LIST.map((emoji) => (
+                                                                <button
+                                                                    key={emoji}
+                                                                    type="button"
+                                                                    onClick={() => setEditingContent((prev) => prev + emoji)}
+                                                                    className="text-lg hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 cursor-pointer"
+                                                                >
+                                                                    {emoji}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
                                                 <button onClick={() => handleEditReply(reply.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
                                                     <CheckIcon className="h-4 w-4" />
                                                 </button>
@@ -726,14 +786,15 @@ export default function CommunityClient({
                                     {/* Nested replies inline */}
                                     {reply.children &&
                                         reply.children.length > 0 && (
-                                            <div className="mt-1 ml-2 pl-3 border-l-2 border-gray-300 dark:border-gray-600 space-y-1">
+                                            <div className="mt-2 ml-4 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2">
                                                 {reply.children.map(
                                                     (child) => (
                                                         <div
                                                             key={child.id}
-                                                            className="flex items-start gap-2"
+                                                            className="group/child flex items-start gap-2.5 py-1.5 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 relative"
+                                                            onClick={() => handleMessageTap(child.id)}
                                                         >
-                                                            <Avatar className="h-5 w-5 mt-0.5">
+                                                            <Avatar className="h-7 w-7 mt-0.5 shrink-0">
                                                                 <AvatarImage
                                                                     src={
                                                                         child
@@ -742,8 +803,8 @@ export default function CommunityClient({
                                                                         undefined
                                                                     }
                                                                 />
-                                                                <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
-                                                                    {child.user.name
+                                                                <AvatarFallback className="text-[10px] bg-indigo-500 text-white">
+                                                                    {getDisplayName(child.user)
                                                                         ?.charAt(
                                                                             0
                                                                         )
@@ -751,24 +812,41 @@ export default function CommunityClient({
                                                                         "U"}
                                                                 </AvatarFallback>
                                                             </Avatar>
-                                                            <div>
-                                                                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                                                    {
-                                                                        child
-                                                                            .user
-                                                                            .name
-                                                                    }
-                                                                </span>
-                                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-2">
-                                                                    {formatTime(
-                                                                        child.createdAt
-                                                                    )}
-                                                                </span>
-                                                                <p className="text-xs text-gray-800 dark:text-gray-200">
-                                                                    {renderMessageContent(
-                                                                        child.content
-                                                                    )}
-                                                                </p>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                                                        {getDisplayName(child.user)}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                                        {formatDate(child.createdAt)}{" "}
+                                                                        {formatTime(child.createdAt)}
+                                                                    </span>
+                                                                </div>
+                                                                {editingReplyId === child.id ? (
+                                                                    <span className="flex items-center gap-2 mt-0.5">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editingContent}
+                                                                            onChange={(e) => setEditingContent(e.target.value)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") handleEditReply(child.id);
+                                                                                if (e.key === "Escape") { setEditingReplyId(null); setEditingContent(""); }
+                                                                            }}
+                                                                            className="flex-1 text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            autoFocus
+                                                                        />
+                                                                        <button onClick={() => handleEditReply(child.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
+                                                                            <CheckIcon className="h-3 w-3" />
+                                                                        </button>
+                                                                        <button onClick={() => { setEditingReplyId(null); setEditingContent(""); }} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" title="Cancel">
+                                                                            <XIcon className="h-3 w-3" />
+                                                                        </button>
+                                                                    </span>
+                                                                ) : (
+                                                                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5 whitespace-pre-wrap break-words">
+                                                                        {renderMessageContent(child.content)}
+                                                                    </p>
+                                                                )}
                                                                 {child.image && (
                                                                     <Image
                                                                         src={child.image}
@@ -776,9 +854,47 @@ export default function CommunityClient({
                                                                         width={200}
                                                                         height={150}
                                                                         unoptimized
-                                                                        className="mt-1 rounded max-h-[150px] w-auto object-contain"
+                                                                        className="mt-1 rounded max-h-[150px] w-auto object-contain border border-gray-200 dark:border-gray-800"
                                                                     />
                                                                 )}
+                                                                {/* Child reply actions */}
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setReplyingTo(child);
+                                                                            setActiveMessageId(null);
+                                                                            const userName = getDisplayName(child.user).replace(/\s+/g, "");
+                                                                            setMessageText(`@${userName} `);
+                                                                        }}
+                                                                        className="text-[10px] text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
+                                                                    >
+                                                                        Reply
+                                                                    </button>
+                                                                    {currentUserId === child.user.id && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setEditingReplyId(child.id);
+                                                                                setEditingContent(child.content);
+                                                                            }}
+                                                                            className="text-[10px] text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                    )}
+                                                                    {(isAdmin || currentUserId === child.user.id) && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDeleteReply(child.id);
+                                                                            }}
+                                                                            className="text-[10px] text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
+                                                                        >
+                                                                            Delete
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )
@@ -795,7 +911,12 @@ export default function CommunityClient({
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <button
-                                        onClick={() => { setReplyingTo(reply); setActiveMessageId(null); }}
+                                        onClick={() => {
+                                            setReplyingTo(reply);
+                                            setActiveMessageId(null);
+                                            const userName = getDisplayName(reply.user).replace(/\s+/g, "");
+                                            setMessageText(`@${userName} `);
+                                        }}
                                         className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                         title="Reply"
                                     >
@@ -849,7 +970,7 @@ export default function CommunityClient({
                         <span>
                             Replying to{" "}
                             <span className="font-semibold text-gray-900 dark:text-white">
-                                {replyingTo.user.name}
+                                {getDisplayName(replyingTo.user)}
                             </span>
                         </span>
                         <button
@@ -890,27 +1011,47 @@ export default function CommunityClient({
                 >
                     {/* Upload button */}
                     <div className="shrink-0 mb-0.5">
-                        <UploadButton
-                            endpoint="communityImage"
-                            appearance={{
-                                button: "!bg-transparent !text-gray-600 hover:!text-gray-900 dark:hover:!text-white !p-1 !h-8 !w-8 !rounded-full !ring-0 !shadow-none !border-0 ut-uploading:!text-blue-400",
-                                allowedContent: "hidden",
-                                container: "!p-0 !m-0 !min-w-0",
-                            }}
-                            content={{
-                                button: <ImageIcon className="h-5 w-5" />,
-                            }}
-                            onClientUploadComplete={(res) => {
-                                if (res?.[0]) {
-                                    setPendingImage(res[0].ufsUrl);
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id="community-image-upload"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 4 * 1024 * 1024) {
+                                    toast.error("Image must be less than 4MB");
+                                    return;
                                 }
-                            }}
-                            onUploadError={(error) => {
-                                toast.error(
-                                    `Upload failed: ${error.message}`
-                                );
+                                try {
+                                    const formData = new FormData();
+                                    formData.append("file", file);
+                                    const res = await fetch("/api/upload", {
+                                        method: "POST",
+                                        body: formData,
+                                    });
+                                    if (!res.ok) throw new Error("Upload failed");
+                                    const data = await res.json();
+                                    if (data.url) {
+                                        setPendingImage(data.url);
+                                    }
+                                } catch {
+                                    toast.error("Image upload failed");
+                                }
+                                e.target.value = "";
                             }}
                         />
+                        <button
+                            type="button"
+                            onClick={() =>
+                                document
+                                    .getElementById("community-image-upload")
+                                    ?.click()
+                            }
+                            className="p-1 h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        >
+                            <ImageIcon className="h-5 w-5" />
+                        </button>
                     </div>
 
                     {/* Text input */}
@@ -1202,7 +1343,11 @@ export default function CommunityClient({
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <p className="font-semibold text-lg">{selectedUser.name || "Unknown"}</p>
+                                    <p className="font-semibold text-lg">
+                                        {selectedUser.role === "admin" || selectedUser.role === "superadmin"
+                                            ? "CNEC Admin"
+                                            : selectedUser.name || "Unknown"}
+                                    </p>
                                     <Badge className="text-xs mt-0.5">{selectedUser.role || "user"}</Badge>
                                 </div>
                             </div>

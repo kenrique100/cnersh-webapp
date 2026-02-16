@@ -101,6 +101,10 @@ model Post {
   id        String      @id @default(uuid())
   content   String
   image     String?
+  video     String?
+  images    String[]    @default([])
+  videos    String[]    @default([])
+  tags      String[]    @default([])
   userId    String
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments  Comment[]

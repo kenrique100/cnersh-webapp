@@ -76,7 +76,6 @@ export function UpdateProfile({ name, email, image}: ProfileFormProps) {
                                 Profile Picture
                             </FieldLabel>
                             <ImageUpload
-                                endpoint="imageUploader"
                                 defaultUrl={field.value ?? null}
                                 onChange={(url) => {
                                     field.onChange(url);
