@@ -16,8 +16,25 @@ export default async function AdminPagesPage() {
     }
 
     const pages = await db.page.findMany({
+        where: { parentId: null },
         include: {
             items: {
+                orderBy: { createdAt: "asc" },
+            },
+            children: {
+                include: {
+                    items: {
+                        orderBy: { createdAt: "asc" },
+                    },
+                    children: {
+                        include: {
+                            items: {
+                                orderBy: { createdAt: "asc" },
+                            },
+                        },
+                        orderBy: { createdAt: "asc" },
+                    },
+                },
                 orderBy: { createdAt: "asc" },
             },
         },

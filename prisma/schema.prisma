@@ -344,11 +344,15 @@ model AuditLog {
 model Page {
   id        String     @id @default(uuid())
   name      String
+  parentId  String?
+  parent    Page?      @relation("PageChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Page[]     @relation("PageChildren")
   items     PageItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
   @@index([name])
+  @@index([parentId])
   @@map("page")
 }
 

@@ -47,7 +47,22 @@ export default async function Home() {
 
     // Fetch dynamic pages for the sidebar
     const dynamicPages = await db.page.findMany({
-        include: { items: { orderBy: { createdAt: "asc" } } },
+        where: { parentId: null },
+        include: {
+            items: { orderBy: { createdAt: "asc" } },
+            children: {
+                include: {
+                    items: { orderBy: { createdAt: "asc" } },
+                    children: {
+                        include: {
+                            items: { orderBy: { createdAt: "asc" } },
+                        },
+                        orderBy: { createdAt: "asc" },
+                    },
+                },
+                orderBy: { createdAt: "asc" },
+            },
+        },
         orderBy: { createdAt: "asc" },
     });
 

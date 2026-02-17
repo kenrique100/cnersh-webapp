@@ -21,8 +21,25 @@ async function requireAdmin() {
 
 export async function getPages() {
     const pages = await db.page.findMany({
+        where: { parentId: null },
         include: {
             items: {
+                orderBy: { createdAt: "asc" },
+            },
+            children: {
+                include: {
+                    items: {
+                        orderBy: { createdAt: "asc" },
+                    },
+                    children: {
+                        include: {
+                            items: {
+                                orderBy: { createdAt: "asc" },
+                            },
+                        },
+                        orderBy: { createdAt: "asc" },
+                    },
+                },
                 orderBy: { createdAt: "asc" },
             },
         },
@@ -33,6 +50,7 @@ export async function getPages() {
 
 export async function createPage(data: {
     name: string;
+    parentId?: string;
     items: { name: string; url?: string; fileUrl?: string }[];
 }) {
     await requireAdmin();
@@ -42,6 +60,7 @@ export async function createPage(data: {
     const page = await db.page.create({
         data: {
             name: data.name.trim(),
+            parentId: data.parentId || null,
             items: {
                 create: data.items.map((item) => ({
                     name: item.name.trim(),
@@ -51,6 +70,19 @@ export async function createPage(data: {
             },
         },
         include: { items: true },
+    });
+
+    return page;
+}
+
+export async function updatePage(pageId: string, data: { name: string }) {
+    await requireAdmin();
+
+    if (!data.name.trim()) throw new Error("Page name is required");
+
+    const page = await db.page.update({
+        where: { id: pageId },
+        data: { name: data.name.trim() },
     });
 
     return page;
@@ -78,6 +110,26 @@ export async function addPageItem(
             url: item.url?.trim() || null,
             fileUrl: item.fileUrl || null,
             pageId,
+        },
+    });
+
+    return pageItem;
+}
+
+export async function updatePageItem(
+    itemId: string,
+    data: { name: string; url?: string; fileUrl?: string },
+) {
+    await requireAdmin();
+
+    if (!data.name.trim()) throw new Error("Item name is required");
+
+    const pageItem = await db.pageItem.update({
+        where: { id: itemId },
+        data: {
+            name: data.name.trim(),
+            url: data.url?.trim() || null,
+            fileUrl: data.fileUrl || null,
         },
     });
 

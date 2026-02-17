@@ -14,39 +14,35 @@ interface Page {
     id: string;
     name: string;
     items: PageItem[];
+    children?: Page[];
 }
 
-export default function PagesDropdown({ pages }: { pages: Page[] }) {
-    const [openPage, setOpenPage] = useState<string | null>(null);
-
-    const togglePage = (pageId: string) => {
-        setOpenPage(openPage === pageId ? null : pageId);
-    };
-
-    if (pages.length === 0) {
-        return null;
-    }
+function PageNode({ page }: { page: Page }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const hasContent = page.items.length > 0 || (page.children && page.children.length > 0);
 
     return (
-        <div className="space-y-1">
-            {pages.map((page) => (
-                <div key={page.id}>
-                    <button
-                        onClick={() => togglePage(page.id)}
-                        className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
-                    >
-                        <span className="flex items-center gap-1.5">
-                            <FileTextIcon className="w-3 h-3 text-purple-500" />
-                            {page.name}
-                        </span>
-                        <ChevronDownIcon
-                            className={`w-3 h-3 text-gray-400 transition-transform ${
-                                openPage === page.id ? "rotate-180" : ""
-                            }`}
-                        />
-                    </button>
-                    {openPage === page.id && page.items.length > 0 && (
-                        <ul className="ml-4 mt-0.5 space-y-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+            >
+                <span className="flex items-center gap-1.5">
+                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    {page.name}
+                </span>
+                {hasContent && (
+                    <ChevronDownIcon
+                        className={`w-3 h-3 text-gray-400 transition-transform ${
+                            isOpen ? "rotate-180" : ""
+                        }`}
+                    />
+                )}
+            </button>
+            {isOpen && hasContent && (
+                <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                    {page.items.length > 0 && (
+                        <ul className="space-y-0.5">
                             {page.items.map((item) => {
                                 const href = item.url || item.fileUrl;
                                 const isFile = !item.url && !!item.fileUrl;
@@ -77,7 +73,28 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
                             })}
                         </ul>
                     )}
+                    {page.children && page.children.length > 0 && (
+                        <div className="space-y-0.5 mt-0.5">
+                            {page.children.map((child) => (
+                                <PageNode key={child.id} page={child} />
+                            ))}
+                        </div>
+                    )}
                 </div>
+            )}
+        </div>
+    );
+}
+
+export default function PagesDropdown({ pages }: { pages: Page[] }) {
+    if (pages.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="space-y-1">
+            {pages.map((page) => (
+                <PageNode key={page.id} page={page} />
             ))}
         </div>
     );
