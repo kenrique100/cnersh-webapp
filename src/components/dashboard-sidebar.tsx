@@ -20,6 +20,7 @@ import {
     FlagIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
+    FileTextIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ const adminNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
     { href: "/admin", label: "Admin Overview", icon: BarChart3Icon },
     { href: "/user-management", label: "User Management", icon: UsersIcon },
+    { href: "/admin/pages", label: "Manage Pages", icon: FileTextIcon },
     { href: "/admin/project-review", label: "Project Review", icon: CheckSquareIcon },
     { href: "/admin/feed-moderation", label: "Feed Moderation", icon: ShieldIcon },
     { href: "/admin/community-moderation", label: "Community Moderation", icon: MessageSquareIcon },

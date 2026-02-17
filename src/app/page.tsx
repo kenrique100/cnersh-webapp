@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, FileTextIcon, GlobeIcon, EyeIcon, TargetIcon } from "lucide-react";
+import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, FileTextIcon, EyeIcon, TargetIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
 import { getPosts, getPublicPosts } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
@@ -10,6 +10,7 @@ import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
+import PagesDropdown from "@/components/pages-dropdown";
 
 export default async function Home() {
     const session = await authSession();
@@ -44,6 +45,12 @@ export default async function Home() {
         publicPosts = await getPublicPosts(20);
     }
 
+    // Fetch dynamic pages for the sidebar
+    const dynamicPages = await db.page.findMany({
+        include: { items: { orderBy: { createdAt: "asc" } } },
+        orderBy: { createdAt: "asc" },
+    });
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Navbar - Use app navbar for authenticated users, simple navbar for guests */}
@@ -69,7 +76,6 @@ export default async function Home() {
                                 </span>
                             </Link>
                             <div className="flex items-center gap-3">
-                                <div id="google_translate_element" />
                                 <Link href="/sign-in">
                                     <Button variant="ghost" className="text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950">
                                         Sign In
@@ -268,17 +274,6 @@ export default async function Home() {
 
                     {/* Right Sidebar (hidden on mobile) */}
                     <aside className="hidden lg:block w-72 shrink-0 space-y-4">
-                        {/* Google Translate */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardContent className="py-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <GlobeIcon className="w-4 h-4 text-blue-600" />
-                                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Translate</span>
-                                </div>
-                                <div id="google_translate_element" />
-                            </CardContent>
-                        </Card>
-
                         {/* Announcements */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
@@ -333,7 +328,7 @@ export default async function Home() {
                             </CardContent>
                         </Card>
 
-                        {/* Pages Card */}
+                        {/* Pages Card - Dynamic from DB */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -342,78 +337,7 @@ export default async function Home() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
-                                <ul className="space-y-1 text-[11px]">
-                                    <li>
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">Resources</span>
-                                        <ul className="ml-3 mt-1 space-y-0.5">
-                                            <li><a href="http://elearning.trree.org/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">WHO links for training</a></li>
-                                            <li><a href="https://cameroon-national-ethics-com.net/docs/cioms/WEB-CIOMS-EthicalGuidelines.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">CIOMS</a></li>
-                                            <li><a href="https://cameroon-national-ethics-com.net/docs/helsinki/wma-declaration-of-helsinki%20(3).pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Helsinki Declaration</a></li>
-                                            <li><a href="https://cameroon-national-ethics-com.net/docs/tuskegee/The%20Tuskegee%20Syphilis%20Study.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Tuskegee Syphilis Trials</a></li>
-                                            <li>
-                                                <span className="font-medium text-gray-900 dark:text-gray-100">Law &amp; Research in Cameroon</span>
-                                                <ul className="ml-3 mt-0.5 space-y-0.5">
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/humanresearchlaw/LAW%20ON%20RESEARCH%20ON%20HUMAN%20SUBJECTS%20(2).pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Law on Human Subjects</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/medicalLaw/LOI%20RECHERCHE%20MEDICALE-OCR.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Medical Research</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/financialLaw/Loi%20N%C2%B02023-019%20du%2019%20d%C3%A9cembre%202023.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Finance Law 2024</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/dataprotection/loi_n_2024_017_du_23_12_2024-web.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Data Protection Law</a></li>
-                                                </ul>
-                                            </li>
-                                            <li><a href="https://cameroon-national-ethics-com.net/articles" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Article</a></li>
-                                            <li><a href="https://cameroon-national-ethics-com.net/docs/ministerialdecision/Organisation_et_fonctionnement__%C3%A9valuation_recherche_12.11.2023-good%20version.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Ministerial Decision</a></li>
-                                        </ul>
-                                    </li>
-                                    <li className="pt-1">
-                                        <a href="https://cameroon-national-ethics-com.net/research/institutions/cmr" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Contract Rex Org</a>
-                                    </li>
-                                    <li className="pt-1">
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">Ethical Clearance</span>
-                                        <ul className="ml-3 mt-0.5 space-y-0.5">
-                                            <li><a href="https://cameroon-national-ethics-com.net/docs/calender/PROCEDURE%20D&#39;EVALUATION%20DES%20PROTOCOLES%20DE%20RECHERCHE.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Documents &amp; Calendar</a></li>
-                                            <li>
-                                                <span className="text-gray-700 dark:text-gray-300">Application Guidelines</span>
-                                                <ul className="ml-3 mt-0.5 space-y-0.5">
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/guideline/Composition%20dossier%20pour%20soumission%20protocole.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Dossier Composition</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/guideline/Form%20for%20Ethical%20Clearance%20CNERSH%20(2025).pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Clearance Form</a></li>
-                                                </ul>
-                                            </li>
-                                            <li>
-                                                <span className="text-gray-700 dark:text-gray-300">Forms &amp; Questionnaires</span>
-                                                <ul className="ml-3 mt-0.5 space-y-0.5">
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/oqdownloadableform/Contenu%20d&#39;un%20protocole%20de%20recherche.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Protocol Content</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/oqdownloadableform/Fiche%20d&#39;Evaluation%20CNERSH.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Evaluation Form</a></li>
-                                                </ul>
-                                            </li>
-                                        </ul>
-                                    </li>
-                                    <li className="pt-1">
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">SOP&apos;s</span>
-                                        <ul className="ml-3 mt-0.5 space-y-0.5">
-                                            <li>
-                                                <span className="text-gray-700 dark:text-gray-300">English</span>
-                                                <ul className="ml-3 mt-0.5 space-y-0.5">
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/english/SOP1-%20Current%20Edit-06-25-24.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP1</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/english/SOP2%20-%20Current%20edit-06-26-24.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP2</a></li>
-                                                </ul>
-                                            </li>
-                                            <li>
-                                                <span className="text-gray-700 dark:text-gray-300">French</span>
-                                                <ul className="ml-3 mt-0.5 space-y-0.5">
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/french/SOP1-%20Current%20Edit-06-25-24%20French.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP1</a></li>
-                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/french/SOP2%20-%20Current%20edit-06-26-24.French.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP2</a></li>
-                                                </ul>
-                                            </li>
-                                        </ul>
-                                    </li>
-                                    <li className="pt-1">
-                                        <a href="https://cameroon-national-ethics-com.net/docs/technical/CNRESH%20Study%20Review%20&%20Follow%20up%20Form.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Reviews</a>
-                                    </li>
-                                    <li className="pt-1 flex gap-2">
-                                        <a href="/sign-in" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Login</a>
-                                        <span className="text-gray-400">|</span>
-                                        <a href="/sign-up" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Register</a>
-                                    </li>
-                                </ul>
+                                <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
                             </CardContent>
                         </Card>
                     </aside>

@@ -31,6 +31,7 @@ import {
     BarChart3Icon,
     ScrollTextIcon,
     FlagIcon,
+    FileTextIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ const adminMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
     { href: "/admin", label: "Admin Overview", icon: BarChart3Icon },
     { href: "/user-management", label: "User Management", icon: UsersIcon },
+    { href: "/admin/pages", label: "Manage Pages", icon: FileTextIcon },
     { href: "/admin/project-review", label: "Project Review", icon: CheckSquareIcon },
     { href: "/admin/feed-moderation", label: "Feed Moderation", icon: ShieldIcon },
     { href: "/admin/community-moderation", label: "Community Moderation", icon: MessageSquareIcon },

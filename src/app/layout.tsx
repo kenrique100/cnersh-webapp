@@ -3,6 +3,7 @@ import "./globals.css";
 import React from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import TranslatePopup from "@/components/translate-popup";
 
 export const metadata: Metadata = {
   title: "CNERSH - National Ethics Committee for Health Research on Humans",
@@ -37,6 +38,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <TranslatePopup />
           <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>
