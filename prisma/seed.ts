@@ -221,7 +221,7 @@ async function main() {
         {
             content: "🚀 Thrilled to share that CamHealth Solutions just launched our telemedicine platform! Rural health workers can now consult specialists in Yaoundé and Douala via video calls. Already 50+ consultations completed in the first week. Technology bridging the healthcare gap! 🏥",
             image: "https://picsum.photos/seed/telemedicine-app/800/500",
-            video: "https://www.w3schools.com/html/mov_bbb.mp4",
+            video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
             tags: ["technology", "health", "innovation"],
             userIndex: 5,
         },
@@ -249,7 +249,7 @@ async function main() {
                 "https://picsum.photos/seed/douala-event/800/500",
                 "https://picsum.photos/seed/workshop-group/800/500",
             ],
-            video: "https://www.w3schools.com/html/movie.mp4",
+            video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
             tags: ["youth", "empowerment", "education"],
             userIndex: 7,
         },
@@ -293,7 +293,7 @@ async function main() {
         {
             content: "Day 3 of our field research on traditional medicine practices in the Northwest Region. Documenting incredible indigenous knowledge systems. The healers have been incredibly generous in sharing their expertise. This data will help bridge traditional and modern medicine. 🌿",
             image: "https://picsum.photos/seed/traditional-medicine/800/500",
-            video: "https://www.w3schools.com/html/mov_bbb.mp4",
+            video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
             tags: ["research", "traditional-medicine", "culture"],
             userIndex: 1,
         },
