@@ -69,7 +69,7 @@ export default async function Home() {
                                 </span>
                             </Link>
                             <div className="flex items-center gap-3">
-                                <div id="google_translate_element" className="hidden sm:block" />
+                                <div id="google_translate_element" />
                                 <Link href="/sign-in">
                                     <Button variant="ghost" className="text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950">
                                         Sign In
