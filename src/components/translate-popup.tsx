@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 export default function TranslatePopup() {
     const [isOpen, setIsOpen] = useState(false);
 
+    // This component requires the Google Translate script loaded in the root layout
+    // (translate.google.com/translate_a/element.js) which populates #google_translate_element
     return (
         <div className="fixed bottom-4 right-4 z-50">
             {isOpen && (
