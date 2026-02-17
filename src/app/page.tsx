@@ -72,7 +72,7 @@ export default async function Home() {
                                     />
                                 </div>
                                 <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    CNERSH
+                                    CNEC
                                 </span>
                             </Link>
                             <div className="flex items-center gap-3">
@@ -156,7 +156,7 @@ export default async function Home() {
                                             />
                                         </div>
                                     </div>
-                                    <h1 className="text-lg font-bold text-white">CNERSH</h1>
+                                    <h1 className="text-lg font-bold text-white">CNEC</h1>
                                     <p className="text-xs text-blue-100 mt-0.5">National Ethics Committee for Health Research on Humans</p>
                                 </div>
                                 <CardContent className="pt-4 pb-3">
@@ -232,7 +232,7 @@ export default async function Home() {
                                                 />
                                             </div>
                                         </div>
-                                        <h1 className="text-lg font-bold text-white">Welcome to CNERSH</h1>
+                                        <h1 className="text-lg font-bold text-white">Welcome to CNEC</h1>
                                         <p className="text-xs text-blue-100 mt-1 mb-3">National Ethics Committee for Health Research on Humans</p>
                                         <div className="flex items-center justify-center gap-2">
                                             <Link href="/sign-up">
@@ -286,7 +286,7 @@ export default async function Home() {
                                 <div className="p-2.5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Platform Launch</p>
                                     <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                                        CNERSH platform is live. Start submitting projects and join discussions.
+                                        CNEC platform is live. Start submitting projects and join discussions.
                                     </p>
                                 </div>
                                 <div className="p-2.5 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
@@ -295,6 +295,19 @@ export default async function Home() {
                                         All projects undergo thorough ethical review before approval.
                                     </p>
                                 </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pages Card - Dynamic from DB */}
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <FileTextIcon className="w-4 h-4 text-purple-600" />
+                                    Our Pages
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                                <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
                             </CardContent>
                         </Card>
 
@@ -327,19 +340,6 @@ export default async function Home() {
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* Pages Card - Dynamic from DB */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                    <FileTextIcon className="w-4 h-4 text-purple-600" />
-                                    Pages
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                                <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
-                            </CardContent>
-                        </Card>
                     </aside>
                 </div>
             </main>
@@ -348,7 +348,7 @@ export default async function Home() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
+                    &copy; {new Date().getFullYear()} CNEC - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>
