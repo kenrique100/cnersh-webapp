@@ -20,7 +20,7 @@ interface RequestPasswordEmailProps {
 export const RequestPasswordEmail = ({
                                          url,
                                          to,
-                                         appName = "Cameroon National Ethics Community",
+                                         appName = "National Ethics Committee for Health Research on Humans",
                                      }: RequestPasswordEmailProps) => (
     <Html>
         <Head />

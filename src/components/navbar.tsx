@@ -115,7 +115,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                 />
                             </div>
                             <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                CNEC
+                                CNERSH
                             </span>
                         </Link>
                     </div>

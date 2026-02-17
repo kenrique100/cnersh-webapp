@@ -70,18 +70,18 @@ export function DataTable<TData, TValue>({
 
     return (
         <div className="w-full">
-            <div className="flex items-center py-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 py-4">
                 <Input
                     placeholder="Filter emails..."
                     value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
                     onChange={(event) =>
                         table.getColumn("email")?.setFilterValue(event.target.value)
                     }
-                    className="max-w-sm"
+                    className="w-full sm:max-w-sm"
                 />
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="ml-auto">
+                        <Button variant="outline" className="ml-0 sm:ml-auto w-full sm:w-auto">
                             Columns <ChevronDown />
                         </Button>
                     </DropdownMenuTrigger>
@@ -106,8 +106,8 @@ export function DataTable<TData, TValue>({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="overflow-hidden rounded-md border">
-                <Table>
+            <div className="overflow-x-auto rounded-md border">
+                <Table className="min-w-[600px]">
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
@@ -156,12 +156,12 @@ export function DataTable<TData, TValue>({
                     </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <div className="text-muted-foreground flex-1 text-sm">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 py-4">
+                <div className="text-muted-foreground text-sm text-center sm:text-left">
                     {table.getFilteredSelectedRowModel().rows.length} of{" "}
                     {table.getFilteredRowModel().rows.length} row(s) selected.
                 </div>
-                <div className="space-x-2">
+                <div className="flex gap-2">
                     <Button
                         variant="outline"
                         size="sm"

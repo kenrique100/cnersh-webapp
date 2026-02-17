@@ -24,7 +24,7 @@ export const NotificationEmail = ({
     notificationMessage,
     notificationType,
     actionUrl,
-    appName = "Cameroon National Ethics Community",
+    appName = "National Ethics Committee for Health Research on Humans",
 }: NotificationEmailProps) => (
     <Html>
         <Head />

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon } from "lucide-react";
+import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, FileTextIcon, GlobeIcon, EyeIcon, TargetIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
 import { getPosts, getPublicPosts } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
@@ -65,10 +65,11 @@ export default async function Home() {
                                     />
                                 </div>
                                 <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    CNEC
+                                    CNERSH
                                 </span>
                             </Link>
                             <div className="flex items-center gap-3">
+                                <div id="google_translate_element" className="hidden sm:block" />
                                 <Link href="/sign-in">
                                     <Button variant="ghost" className="text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950">
                                         Sign In
@@ -149,12 +150,12 @@ export default async function Home() {
                                             />
                                         </div>
                                     </div>
-                                    <h1 className="text-lg font-bold text-white">CNEC</h1>
-                                    <p className="text-xs text-blue-100 mt-0.5">Cameroon National Ethics Community</p>
+                                    <h1 className="text-lg font-bold text-white">CNERSH</h1>
+                                    <p className="text-xs text-blue-100 mt-0.5">National Ethics Committee for Health Research on Humans</p>
                                 </div>
                                 <CardContent className="pt-4 pb-3">
                                     <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        A secure platform for managing ethical review processes and community collaboration across Cameroon.
+                                        Reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.
                                     </p>
                                     <div className="flex flex-col gap-2 mt-3">
                                         <Link href="/sign-up">
@@ -225,8 +226,8 @@ export default async function Home() {
                                                 />
                                             </div>
                                         </div>
-                                        <h1 className="text-lg font-bold text-white">Welcome to CNEC</h1>
-                                        <p className="text-xs text-blue-100 mt-1 mb-3">Cameroon National Ethics Community</p>
+                                        <h1 className="text-lg font-bold text-white">Welcome to CNERSH</h1>
+                                        <p className="text-xs text-blue-100 mt-1 mb-3">National Ethics Committee for Health Research on Humans</p>
                                         <div className="flex items-center justify-center gap-2">
                                             <Link href="/sign-up">
                                                 <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50 text-xs font-medium">
@@ -267,6 +268,17 @@ export default async function Home() {
 
                     {/* Right Sidebar (hidden on mobile) */}
                     <aside className="hidden lg:block w-72 shrink-0 space-y-4">
+                        {/* Google Translate */}
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                            <CardContent className="py-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <GlobeIcon className="w-4 h-4 text-blue-600" />
+                                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Translate</span>
+                                </div>
+                                <div id="google_translate_element" />
+                            </CardContent>
+                        </Card>
+
                         {/* Announcements */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
@@ -279,7 +291,7 @@ export default async function Home() {
                                 <div className="p-2.5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Platform Launch</p>
                                     <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                                        CNEC platform is live. Start submitting projects and join discussions.
+                                        CNERSH platform is live. Start submitting projects and join discussions.
                                     </p>
                                 </div>
                                 <div className="p-2.5 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
@@ -291,16 +303,117 @@ export default async function Home() {
                             </CardContent>
                         </Card>
 
-                        {/* About */}
+                        {/* About Us */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">About CNEC</CardTitle>
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">About Us</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0 space-y-3">
+                                <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    We are dedicated to ensuring the highest ethical standards in health research and clinical trials across Cameroon. Our commitment lies in safeguarding human participants, fostering transparency, and promoting integrity in every aspect of research.
+                                </p>
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <EyeIcon className="w-3.5 h-3.5 text-blue-600" />
+                                        <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">Our Vision</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        To be a globally recognized leader in ethical research governance, ensuring that all health research and clinical trials conducted in Cameroon adhere to the principles of integrity, accountability, and respect for human dignity, while fostering innovation and improving public health outcomes.
+                                    </p>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <TargetIcon className="w-3.5 h-3.5 text-green-600" />
+                                        <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">Our Mission</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        To uphold the highest ethical standards in health research and clinical trials in Cameroon by ensuring the protection of human participants, fostering transparency and integrity in research, and strengthening the ethical review process across regional and institutional levels. Through robust policy frameworks and collaboration, we strive to enhance public trust, advance scientific excellence, and contribute to an equitable and resilient health system.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pages Card */}
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <FileTextIcon className="w-4 h-4 text-purple-600" />
+                                    Pages
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
-                                <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    The Cameroon National Ethics Community is a platform dedicated to fostering ethical
-                                    practices in research, policy-making, and community development.
-                                </p>
+                                <ul className="space-y-1 text-[11px]">
+                                    <li>
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">Resources</span>
+                                        <ul className="ml-3 mt-1 space-y-0.5">
+                                            <li><a href="http://elearning.trree.org/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">WHO links for training</a></li>
+                                            <li><a href="https://cameroon-national-ethics-com.net/docs/cioms/WEB-CIOMS-EthicalGuidelines.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">CIOMS</a></li>
+                                            <li><a href="https://cameroon-national-ethics-com.net/docs/helsinki/wma-declaration-of-helsinki%20(3).pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Helsinki Declaration</a></li>
+                                            <li><a href="https://cameroon-national-ethics-com.net/docs/tuskegee/The%20Tuskegee%20Syphilis%20Study.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Tuskegee Syphilis Trials</a></li>
+                                            <li>
+                                                <span className="font-medium text-gray-900 dark:text-gray-100">Law &amp; Research in Cameroon</span>
+                                                <ul className="ml-3 mt-0.5 space-y-0.5">
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/humanresearchlaw/LAW%20ON%20RESEARCH%20ON%20HUMAN%20SUBJECTS%20(2).pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Law on Human Subjects</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/medicalLaw/LOI%20RECHERCHE%20MEDICALE-OCR.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Medical Research</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/financialLaw/Loi%20N%C2%B02023-019%20du%2019%20d%C3%A9cembre%202023.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Finance Law 2024</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/dataprotection/loi_n_2024_017_du_23_12_2024-web.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Data Protection Law</a></li>
+                                                </ul>
+                                            </li>
+                                            <li><a href="https://cameroon-national-ethics-com.net/articles" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Article</a></li>
+                                            <li><a href="https://cameroon-national-ethics-com.net/docs/ministerialdecision/Organisation_et_fonctionnement__%C3%A9valuation_recherche_12.11.2023-good%20version.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Ministerial Decision</a></li>
+                                        </ul>
+                                    </li>
+                                    <li className="pt-1">
+                                        <a href="https://cameroon-national-ethics-com.net/research/institutions/cmr" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Contract Rex Org</a>
+                                    </li>
+                                    <li className="pt-1">
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">Ethical Clearance</span>
+                                        <ul className="ml-3 mt-0.5 space-y-0.5">
+                                            <li><a href="https://cameroon-national-ethics-com.net/docs/calender/PROCEDURE%20D&#39;EVALUATION%20DES%20PROTOCOLES%20DE%20RECHERCHE.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Documents &amp; Calendar</a></li>
+                                            <li>
+                                                <span className="text-gray-700 dark:text-gray-300">Application Guidelines</span>
+                                                <ul className="ml-3 mt-0.5 space-y-0.5">
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/guideline/Composition%20dossier%20pour%20soumission%20protocole.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Dossier Composition</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/guideline/Form%20for%20Ethical%20Clearance%20CNERSH%20(2025).pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Clearance Form</a></li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <span className="text-gray-700 dark:text-gray-300">Forms &amp; Questionnaires</span>
+                                                <ul className="ml-3 mt-0.5 space-y-0.5">
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/oqdownloadableform/Contenu%20d&#39;un%20protocole%20de%20recherche.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Protocol Content</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/oqdownloadableform/Fiche%20d&#39;Evaluation%20CNERSH.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">Evaluation Form</a></li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li className="pt-1">
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">SOP&apos;s</span>
+                                        <ul className="ml-3 mt-0.5 space-y-0.5">
+                                            <li>
+                                                <span className="text-gray-700 dark:text-gray-300">English</span>
+                                                <ul className="ml-3 mt-0.5 space-y-0.5">
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/english/SOP1-%20Current%20Edit-06-25-24.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP1</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/english/SOP2%20-%20Current%20edit-06-26-24.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP2</a></li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <span className="text-gray-700 dark:text-gray-300">French</span>
+                                                <ul className="ml-3 mt-0.5 space-y-0.5">
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/french/SOP1-%20Current%20Edit-06-25-24%20French.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP1</a></li>
+                                                    <li><a href="https://cameroon-national-ethics-com.net/docs/SNECFA/french/SOP2%20-%20Current%20edit-06-26-24.French.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">SOP2</a></li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li className="pt-1">
+                                        <a href="https://cameroon-national-ethics-com.net/docs/technical/CNRESH%20Study%20Review%20&%20Follow%20up%20Form.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Reviews</a>
+                                    </li>
+                                    <li className="pt-1 flex gap-2">
+                                        <a href="/sign-in" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Login</a>
+                                        <span className="text-gray-400">|</span>
+                                        <a href="/sign-up" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline font-medium">Register</a>
+                                    </li>
+                                </ul>
                             </CardContent>
                         </Card>
                     </aside>
@@ -311,7 +424,7 @@ export default async function Home() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                        &copy; {new Date().getFullYear()} CNEC - Cameroon National Ethics Community. All rights reserved.
+                    &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>

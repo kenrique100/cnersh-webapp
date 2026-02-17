@@ -256,7 +256,7 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
                 </DialogContent>
             </Dialog>
 
-            <div className="flex flex-col px-4 sm:px-8 py-4 sm:py-6 w-full">
+            <div className="flex flex-col px-3 sm:px-8 py-4 sm:py-6 w-full">
                 <div className="flex flex-col sm:flex-row w-full justify-between gap-3 sm:items-center">
                     <h1 className="text-lg font-semibold">User management</h1>
                     <Button className="cursor-pointer w-full sm:w-auto" onClick={() => setIsOpen(true)}>
@@ -264,7 +264,7 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
                     </Button>
                 </div>
 
-                <div className="flex flex-col py-4 sm:py-6 overflow-x-auto">
+                <div className="flex flex-col py-4 sm:py-6 w-full overflow-hidden">
                     <DataTable data={users} columns={columns} />
                 </div>
             </div>
