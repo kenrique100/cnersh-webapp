@@ -91,7 +91,12 @@ export default function TranslatePopup() {
                     display: none !important;
                 }
                 body { top: 0 !important; }
-                .skiptranslate { display: none !important; }
+                body > .skiptranslate {
+                    display: none !important;
+                }
+                #google_translate_element .skiptranslate {
+                    display: block !important;
+                }
                 .goog-te-gadget .goog-te-combo {
                     padding: 4px 8px;
                     border-radius: 6px;
