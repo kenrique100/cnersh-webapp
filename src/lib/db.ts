@@ -1,6 +1,7 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { sanitizeDatabaseUrl } from "@/lib/sanitize-db-url";
 
 const globalForPrisma = global as unknown as {
     prisma?: PrismaClient;
@@ -17,7 +18,7 @@ const createPool = () => {
     console.log("🔄 Creating new database pool...");
 
     const pool = new Pool({
-        connectionString: process.env.DATABASE_URL!,
+        connectionString: sanitizeDatabaseUrl(process.env.DATABASE_URL!),
         max: 20, // Increased to handle concurrent requests in cloud environments
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 20000, // ✅ Increased from 5000 to 20000

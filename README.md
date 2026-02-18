@@ -44,6 +44,10 @@ RESEND_API_KEY="your-resend-api-key"
 UPLOADTHING_TOKEN="your-uploadthing-token"
 ```
 
+> **Note**: If your database password contains special characters (e.g. `/`, `?`, `@`, `#`),
+> they are automatically URL-encoded by the application. You can paste the connection string
+> as-is from your Supabase or Neon dashboard.
+
 ### 3. Set Up the Database
 
 Push the Prisma schema to your database to create all tables:
