@@ -75,7 +75,7 @@ export default async function AboutUsPage() {
                         <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900">
                             <Image
                                 src="/about-hero.png"
-                                alt="CNEC - About Us"
+                                alt="CNERSH - About Us"
                                 fill
                                 className="object-contain"
                                 priority
@@ -97,7 +97,7 @@ export default async function AboutUsPage() {
                                 We are dedicated to ensuring the highest ethical standards in health research and clinical trials across Cameroon. Our commitment lies in safeguarding human participants, fostering transparency, and promoting integrity in every aspect of research.
                             </p>
                             <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed">
-                                The National Ethics Committee for Health Research on Humans (CNEC) reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.
+                                The National Ethics Committee for Health Research on Humans (CNERSH) reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.
                             </p>
 
                             {/* Image Gallery */}
@@ -105,7 +105,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-1.png"
-                                        alt="CNEC - About Us Image 1"
+                                        alt="CNERSH - About Us Image 1"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -114,7 +114,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-2.png"
-                                        alt="CNEC - About Us Image 2"
+                                        alt="CNERSH - About Us Image 2"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -123,7 +123,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-3.png"
-                                        alt="CNEC - About Us Image 3"
+                                        alt="CNERSH - About Us Image 3"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -132,7 +132,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-4.png"
-                                        alt="CNEC - About Us Image 4"
+                                        alt="CNERSH - About Us Image 4"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -179,7 +179,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-5.png"
-                                        alt="CNEC - About Us Image 5"
+                                        alt="CNERSH - About Us Image 5"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 33vw"
@@ -188,7 +188,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-6.png"
-                                        alt="CNEC - About Us Image 6"
+                                        alt="CNERSH - About Us Image 6"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 33vw"
@@ -197,7 +197,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-7.png"
-                                        alt="CNEC - About Us Image 7"
+                                        alt="CNERSH - About Us Image 7"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 33vw"
@@ -264,7 +264,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-8.png"
-                                        alt="CNEC - About Us Image 8"
+                                        alt="CNERSH - About Us Image 8"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -273,7 +273,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-9.png"
-                                        alt="CNEC - About Us Image 9"
+                                        alt="CNERSH - About Us Image 9"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -282,7 +282,7 @@ export default async function AboutUsPage() {
                                 <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 sm:col-span-2 lg:col-span-1">
                                     <Image
                                         src="/about-10.png"
-                                        alt="CNEC - About Us Image 10"
+                                        alt="CNERSH - About Us Image 10"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -298,7 +298,7 @@ export default async function AboutUsPage() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                        &copy; {new Date().getFullYear()} CNEC - National Ethics Committee for Health Research on Humans. All rights reserved.
+                        &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>

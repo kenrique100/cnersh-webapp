@@ -127,7 +127,7 @@ export default async function Home() {
                                         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-md">
                                             <Image
                                                 src="/logo.png"
-                                                alt="CNEC Logo"
+                                                alt="CNERSH Logo"
                                                 width={56}
                                                 height={56}
                                                 className="w-14 h-14 object-contain"
@@ -135,7 +135,7 @@ export default async function Home() {
                                             />
                                         </div>
                                     </div>
-                                    <h1 className="text-lg font-bold text-white">CNEC</h1>
+                                    <h1 className="text-lg font-bold text-white">CNERSH</h1>
                                     <p className="text-xs text-blue-100 mt-0.5">National Ethics Committee for Health Research on Humans</p>
                                 </div>
                                 <CardContent className="pt-4 pb-3">
@@ -203,7 +203,7 @@ export default async function Home() {
                                             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md">
                                                 <Image
                                                     src="/logo.png"
-                                                    alt="CNEC"
+                                                    alt="CNERSH"
                                                     width={40}
                                                     height={40}
                                                     className="w-10 h-10 object-contain"
@@ -211,7 +211,7 @@ export default async function Home() {
                                                 />
                                             </div>
                                         </div>
-                                        <h1 className="text-lg font-bold text-white">Welcome to CNEC</h1>
+                                        <h1 className="text-lg font-bold text-white">Welcome to CNERSH</h1>
                                         <p className="text-xs text-blue-100 mt-1 mb-3">National Ethics Committee for Health Research on Humans</p>
                                         <div className="flex items-center justify-center gap-2">
                                             <Link href="/sign-up">
@@ -285,7 +285,7 @@ export default async function Home() {
                                 <div className="p-2.5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Platform Launch</p>
                                     <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                                        CNEC platform is live. Start submitting projects and join discussions.
+                                        CNERSH platform is live. Start submitting projects and join discussions.
                                     </p>
                                 </div>
                                 <div className="p-2.5 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
@@ -352,7 +352,7 @@ export default async function Home() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    &copy; {new Date().getFullYear()} CNEC - National Ethics Committee for Health Research on Humans. All rights reserved.
+                    &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>

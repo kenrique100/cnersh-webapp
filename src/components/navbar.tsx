@@ -34,6 +34,7 @@ import {
     FileTextIcon,
     ChevronDownIcon,
     BuildingIcon,
+    DownloadIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -124,6 +125,26 @@ function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNaviga
                         <BuildingIcon className="h-4 w-4 shrink-0" />
                         Contract Rex Org
                     </Link>
+                    <a
+                        href="/membership.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={onNavigate}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                    >
+                        <DownloadIcon className="h-4 w-4 shrink-0" />
+                        Membership
+                    </a>
+                    <a
+                        href="/Fiche d'Evaluation CNERSH.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={onNavigate}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                    >
+                        <DownloadIcon className="h-4 w-4 shrink-0" />
+                        Reviews
+                    </a>
                     <Link
                         href="/pages"
                         onClick={onNavigate}
@@ -170,7 +191,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                                 <Image
                                     src="/logo.png"
-                                    alt="CNEC"
+                                    alt="CNERSH"
                                     width={32}
                                     height={32}
                                     className="w-8 h-8 object-contain"
@@ -178,7 +199,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                 />
                             </div>
                             <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                CNEC
+                                CNERSH
                             </span>
                         </Link>
                     </div>

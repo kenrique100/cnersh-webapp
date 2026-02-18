@@ -17,8 +17,8 @@ async function main() {
     const prisma = new PrismaClient({ adapter });
 
     const adminEmail = process.env.ADMIN_EMAIL || "admin@cnec.cm";
-    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@CNEC2026";
-    const adminName = process.env.ADMIN_NAME || "CNEC Admin";
+    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@CNERSH2026";
+    const adminName = process.env.ADMIN_NAME || "CNERSH Admin";
 
     console.log("🌱 Seeding database...\n");
 

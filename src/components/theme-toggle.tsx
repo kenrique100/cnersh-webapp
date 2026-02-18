@@ -60,7 +60,7 @@ export function ThemeToggle() {
                 Appearance
             </Label>
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                Choose how CNEC looks to you. Select a single theme, or sync with your system.
+                Choose how CNERSH looks to you. Select a single theme, or sync with your system.
             </p>
             <Select value={theme} onValueChange={setTheme}>
                 <SelectTrigger className="w-full">

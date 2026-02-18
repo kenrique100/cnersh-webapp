@@ -116,6 +116,28 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
                     Contract Rex Org
                 </Link>
             </div>
+            <div>
+                <a
+                    href="/membership.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <DownloadIcon className="w-3 h-3 text-purple-500" />
+                    Membership
+                </a>
+            </div>
+            <div>
+                <a
+                    href="/Fiche d'Evaluation CNERSH.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <DownloadIcon className="w-3 h-3 text-purple-500" />
+                    Reviews
+                </a>
+            </div>
         </div>
     );
 }

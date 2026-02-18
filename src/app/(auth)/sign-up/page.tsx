@@ -3,8 +3,8 @@ import { authIsNotRequired } from "@/lib/auth-utils";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Sign Up - CNEC",
-    description: "Create a new CNEC account",
+    title: "Sign Up - CNERSH",
+    description: "Create a new CNERSH account",
 };
 
 export default async function SignUpPage() {

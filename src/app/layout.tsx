@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import TranslatePopup from "@/components/translate-popup";
 
 export const metadata: Metadata = {
-  title: "CNEC - National Ethics Committee for Health Research on Humans",
+  title: "CNERSH - National Ethics Committee for Health Research on Humans",
   description: "Reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.",
   icons: {
     icon: "/favicon.ico",

@@ -217,6 +217,60 @@ export default async function OurPagesPage() {
                             </ul>
                         </CardContent>
                     </Card>
+
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <DownloadIcon className="w-5 h-5 text-green-600 shrink-0" />
+                                <span className="break-words">Membership</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                <li>
+                                    <a
+                                        href="/membership.pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            Download Membership Document
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <DownloadIcon className="w-5 h-5 text-green-600 shrink-0" />
+                                <span className="break-words">Reviews</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                <li>
+                                    <a
+                                        href="/Fiche d'Evaluation CNERSH.pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            Download Fiche d&apos;Evaluation CNERSH
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
                 </div>
             </main>
 
@@ -224,7 +278,7 @@ export default async function OurPagesPage() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                        &copy; {new Date().getFullYear()} CNEC - National Ethics Committee for Health Research on Humans. All rights reserved.
+                        &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>
