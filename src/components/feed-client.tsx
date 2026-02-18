@@ -849,7 +849,7 @@ export default function FeedClient({
                                     <div className="flex -space-x-2">
                                         {post.recentActivity.users.slice(0, 3).map((activityUser) => {
                                             const initials = activityUser.name
-                                                ? activityUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                                                ? activityUser.name.split(" ").filter(n => n).map(n => n[0]).join("").toUpperCase().slice(0, 2)
                                                 : "U";
                                             return (
                                                 <Avatar key={activityUser.id} className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0">
