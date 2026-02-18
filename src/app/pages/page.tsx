@@ -1,8 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, ExternalLinkIcon, DownloadIcon, ChevronRightIcon, ArrowLeftIcon, BuildingIcon } from "lucide-react";
+import { FileTextIcon, ExternalLinkIcon, DownloadIcon, ChevronRightIcon, ArrowLeftIcon, BuildingIcon, UsersIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
@@ -135,43 +133,7 @@ export default async function OurPagesPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Navbar */}
-            {session ? (
-                <Navbar user={navUser} notificationCount={notificationCount} />
-            ) : (
-                <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:bg-gray-950/80 dark:border-gray-800 shadow-sm">
-                    <div className="container mx-auto max-w-7xl">
-                        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                            <Link href="/" className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
-                                    <Image
-                                        src="/logo.png"
-                                        alt="CNEC"
-                                        width={32}
-                                        height={32}
-                                        className="w-8 h-8 object-contain"
-                                        priority
-                                    />
-                                </div>
-                                <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    CNEC
-                                </span>
-                            </Link>
-                            <div className="flex items-center gap-3">
-                                <Link href="/sign-in">
-                                    <Button variant="ghost" className="text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950">
-                                        Sign In
-                                    </Button>
-                                </Link>
-                                <Link href="/sign-up">
-                                    <Button className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all">
-                                        Sign Up
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </nav>
-            )}
+            <Navbar user={navUser} notificationCount={notificationCount} />
 
             <main className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 {/* Header */}
@@ -206,6 +168,31 @@ export default async function OurPagesPage() {
                     ))}
 
                     {/* Static Article Pages */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <UsersIcon className="w-5 h-5 text-blue-600 shrink-0" />
+                                <span className="break-words">About Us</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                <li>
+                                    <Link
+                                        href="/pages/about"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <FileTextIcon className="w-4 h-4 text-blue-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            View About Us Page
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </Link>
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
+
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">

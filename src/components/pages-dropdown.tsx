@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ChevronDownIcon, FileTextIcon, ExternalLinkIcon, DownloadIcon, BuildingIcon } from "lucide-react";
+import { ChevronDownIcon, FileTextIcon, ExternalLinkIcon, DownloadIcon, BuildingIcon, UsersIcon } from "lucide-react";
 
 interface PageItem {
     id: string;
@@ -97,7 +97,16 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
             {pages.length > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             )}
-            {/* Static Article Page: Contract Rex Org */}
+            {/* Static Article Pages */}
+            <div>
+                <Link
+                    href="/pages/about"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <UsersIcon className="w-3 h-3 text-purple-500" />
+                    About Us
+                </Link>
+            </div>
             <div>
                 <Link
                     href="/pages/contract-rex"

@@ -68,44 +68,8 @@ export default async function Home() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Navbar - Use app navbar for authenticated users, simple navbar for guests */}
-            {session ? (
-                <Navbar user={navUser} notificationCount={notificationCount} />
-            ) : (
-                <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:bg-gray-950/80 dark:border-gray-800 shadow-sm">
-                    <div className="container mx-auto max-w-7xl">
-                        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                            <Link href="/" className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
-                                    <Image
-                                        src="/logo.png"
-                                        alt="CNEC"
-                                        width={32}
-                                        height={32}
-                                        className="w-8 h-8 object-contain"
-                                        priority
-                                    />
-                                </div>
-                                <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    CNEC
-                                </span>
-                            </Link>
-                            <div className="flex items-center gap-3">
-                                <Link href="/sign-in">
-                                    <Button variant="ghost" className="text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950">
-                                        Sign In
-                                    </Button>
-                                </Link>
-                                <Link href="/sign-up">
-                                    <Button className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all">
-                                        Sign Up
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </nav>
-            )}
+            {/* Navbar - Use app navbar for all users (handles guest and authenticated states) */}
+            <Navbar user={navUser} notificationCount={notificationCount} />
 
             <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col lg:flex-row gap-6 py-6">
