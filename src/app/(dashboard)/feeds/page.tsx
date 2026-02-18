@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function FeedsPage() {
     const session = await authIsRequired();
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true, name: true, image: true },
-    });
-
-    const { posts } = await getPosts(1, 20);
+    const [user, { posts }] = await Promise.all([
+        db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true, name: true, image: true },
+        }),
+        getPosts(1, 20),
+    ]);
 
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
