@@ -83,6 +83,11 @@ interface PostData {
     user: PostUser;
     _count: { comments: number; likes: number };
     likes: { userId: string }[];
+    recentActivity?: {
+        users: { id: string; name: string | null; image: string | null }[];
+        likeCount: number;
+        commentCount: number;
+    };
 }
 
 interface FeedClientProps {
@@ -837,8 +842,48 @@ export default function FeedClient({
                         : "U";
 
                     return (
+                        <div key={post.id} className="space-y-0">
+                            {/* LinkedIn-style Recent Activity Banner */}
+                            {post.recentActivity && post.recentActivity.users.length > 0 && (
+                                <div className="flex items-center gap-2 px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="flex -space-x-2">
+                                        {post.recentActivity.users.slice(0, 3).map((activityUser) => {
+                                            const initials = activityUser.name
+                                                ? activityUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                                                : "U";
+                                            return (
+                                                <Avatar key={activityUser.id} className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0">
+                                                    <AvatarImage src={activityUser.image || undefined} alt={activityUser.name || ""} />
+                                                    <AvatarFallback className="text-[8px] bg-gray-200 dark:bg-gray-700 font-medium">
+                                                        {initials}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            );
+                                        })}
+                                    </div>
+                                    <span className="truncate">
+                                        {(() => {
+                                            const names = post.recentActivity.users.slice(0, 2).map(u => u.name || "Someone");
+                                            const totalEngaged = post.recentActivity.likeCount + post.recentActivity.commentCount;
+                                            const remaining = totalEngaged - names.length;
+                                            const actions: string[] = [];
+                                            if (post.recentActivity.likeCount > 0) actions.push("liked");
+                                            if (post.recentActivity.commentCount > 0) actions.push("commented on");
+                                            const actionText = actions.join(" and ") || "engaged with";
+
+                                            if (names.length === 1 && remaining <= 0) {
+                                                return `${names[0]} ${actionText} this`;
+                                            } else if (names.length === 2 && remaining <= 0) {
+                                                return `${names[0]} and ${names[1]} ${actionText} this`;
+                                            } else if (remaining > 0) {
+                                                return `${names[0]}${names.length > 1 ? `, ${names[1]}` : ""} and ${remaining} other${remaining !== 1 ? "s" : ""} ${actionText} this`;
+                                            }
+                                            return `${names.join(", ")} ${actionText} this`;
+                                        })()}
+                                    </span>
+                                </div>
+                            )}
                         <Card
-                            key={post.id}
                             className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                         >
                             {/* Post Header */}
@@ -1305,6 +1350,7 @@ export default function FeedClient({
                                 </div>
                             )}
                         </Card>
+                        </div>
                     );
                 })
             )}

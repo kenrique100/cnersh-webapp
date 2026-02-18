@@ -20,16 +20,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
-      <head>
-        <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `function googleTranslateElementInit() {
-              new google.translate.TranslateElement({pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
-            }`,
-          }}
-        />
-      </head>
       <body>
         <ThemeProvider
           attribute="class"
