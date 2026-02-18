@@ -87,6 +87,132 @@ function PageNode({ page }: { page: Page }) {
     );
 }
 
+function EthicalClearanceDropdown() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [guidelinesOpen, setGuidelinesOpen] = useState(false);
+    const [formsOpen, setFormsOpen] = useState(false);
+
+    return (
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+            >
+                <span className="flex items-center gap-1.5">
+                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    Ethical Clearance
+                </span>
+                <ChevronDownIcon
+                    className={`w-3 h-3 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
+            </button>
+            {isOpen && (
+                <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                    <ul className="space-y-0.5">
+                        <li>
+                            <a
+                                href="/PROCEDURE D'EVALUATION DES PROTOCOLES DE RECHERCHE.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                            >
+                                <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                Documents &amp; Calendar
+                            </a>
+                        </li>
+                    </ul>
+                    {/* Application Guidelines - nested */}
+                    <div className="mt-0.5">
+                        <button
+                            onClick={() => setGuidelinesOpen(!guidelinesOpen)}
+                            className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                        >
+                            <span className="flex items-center gap-1.5">
+                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                Application Guidelines
+                            </span>
+                            <ChevronDownIcon
+                                className={`w-3 h-3 text-gray-400 transition-transform ${guidelinesOpen ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                        {guidelinesOpen && (
+                            <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                                <ul className="space-y-0.5">
+                                    <li>
+                                        <a
+                                            href="/Composition dossier pour soumission protocole.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Dossier Composition
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="/Form for Ethical Clearance CNERSH (2025).pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Clearance Form
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                    {/* Forms & Questionnaires - nested */}
+                    <div className="mt-0.5">
+                        <button
+                            onClick={() => setFormsOpen(!formsOpen)}
+                            className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                        >
+                            <span className="flex items-center gap-1.5">
+                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                Forms &amp; Questionnaires
+                            </span>
+                            <ChevronDownIcon
+                                className={`w-3 h-3 text-gray-400 transition-transform ${formsOpen ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                        {formsOpen && (
+                            <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                                <ul className="space-y-0.5">
+                                    <li>
+                                        <a
+                                            href="/Contenu d'un protocole de recherche.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Protocol Content
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="/Fiche d'Evaluation CNERSH.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Evaluation Form
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function ResourcesDropdown() {
     const [isOpen, setIsOpen] = useState(false);
     const [lawOpen, setLawOpen] = useState(false);
@@ -277,6 +403,9 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
             {pages.length > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             )}
+            {/* Static Ethical Clearance Page */}
+            <EthicalClearanceDropdown />
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             {/* Static Resources Page */}
             <ResourcesDropdown />
             <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
