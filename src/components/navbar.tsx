@@ -84,11 +84,69 @@ const adminMobileNavItems: NavItem[] = [
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    return (
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+            >
+                <FileTextIcon className="h-5 w-5 shrink-0" />
+                <span className="flex-1 text-left">Our Pages</span>
+                <ChevronDownIcon className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && (
+                <div className="ml-6 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-2">
+                    <Link
+                        href="/pages/about"
+                        onClick={onNavigate}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages/about"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <UsersIcon className="h-4 w-4 shrink-0" />
+                        About Us
+                    </Link>
+                    <Link
+                        href="/pages/contract-rex"
+                        onClick={onNavigate}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages/contract-rex"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <BuildingIcon className="h-4 w-4 shrink-0" />
+                        Contract Rex Org
+                    </Link>
+                    <Link
+                        href="/pages"
+                        onClick={onNavigate}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <FileTextIcon className="h-4 w-4 shrink-0" />
+                        View All Pages
+                    </Link>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-    const [isOurPagesOpen, setIsOurPagesOpen] = React.useState(false);
 
     const handleSignOut = async () => {
         await authClient.signOut();
@@ -249,57 +307,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
 
                                             {/* Our Pages Section */}
                                             <div className="border-t border-gray-200 dark:border-gray-800 pt-2">
-                                                <button
-                                                    onClick={() => setIsOurPagesOpen(!isOurPagesOpen)}
-                                                    className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                                                >
-                                                    <FileTextIcon className="h-5 w-5 shrink-0" />
-                                                    <span className="flex-1 text-left">Our Pages</span>
-                                                    <ChevronDownIcon className={cn("h-4 w-4 transition-transform", isOurPagesOpen && "rotate-180")} />
-                                                </button>
-                                                {isOurPagesOpen && (
-                                                    <div className="ml-6 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-2">
-                                                        <Link
-                                                            href="/pages/about"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className={cn(
-                                                                "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
-                                                                pathname === "/pages/about"
-                                                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                                                    : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                                                            )}
-                                                        >
-                                                            <UsersIcon className="h-4 w-4 shrink-0" />
-                                                            About Us
-                                                        </Link>
-                                                        <Link
-                                                            href="/pages/contract-rex"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className={cn(
-                                                                "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
-                                                                pathname === "/pages/contract-rex"
-                                                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                                                    : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                                                            )}
-                                                        >
-                                                            <BuildingIcon className="h-4 w-4 shrink-0" />
-                                                            Contract Rex Org
-                                                        </Link>
-                                                        <Link
-                                                            href="/pages"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className={cn(
-                                                                "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
-                                                                pathname === "/pages"
-                                                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                                                    : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                                                            )}
-                                                        >
-                                                            <FileTextIcon className="h-4 w-4 shrink-0" />
-                                                            View All Pages
-                                                        </Link>
-                                                    </div>
-                                                )}
+                                                <OurPagesDropdown pathname={pathname} onNavigate={() => setIsMobileMenuOpen(false)} />
                                             </div>
 
                                             {/* Logout */}
@@ -358,42 +366,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
 
                                             {/* Our Pages Dropdown */}
                                             <div className="py-2">
-                                                <button
-                                                    onClick={() => setIsOurPagesOpen(!isOurPagesOpen)}
-                                                    className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                                                >
-                                                    <FileTextIcon className="h-5 w-5 shrink-0" />
-                                                    <span className="flex-1 text-left">Our Pages</span>
-                                                    <ChevronDownIcon className={cn("h-4 w-4 transition-transform", isOurPagesOpen && "rotate-180")} />
-                                                </button>
-                                                {isOurPagesOpen && (
-                                                    <div className="ml-6 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-2">
-                                                        <Link
-                                                            href="/pages/about"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950 rounded-md transition-colors"
-                                                        >
-                                                            <UsersIcon className="h-4 w-4 shrink-0" />
-                                                            About Us
-                                                        </Link>
-                                                        <Link
-                                                            href="/pages/contract-rex"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950 rounded-md transition-colors"
-                                                        >
-                                                            <BuildingIcon className="h-4 w-4 shrink-0" />
-                                                            Contract Rex Org
-                                                        </Link>
-                                                        <Link
-                                                            href="/pages"
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950 rounded-md transition-colors"
-                                                        >
-                                                            <FileTextIcon className="h-4 w-4 shrink-0" />
-                                                            View All Pages
-                                                        </Link>
-                                                    </div>
-                                                )}
+                                                <OurPagesDropdown pathname={pathname} onNavigate={() => setIsMobileMenuOpen(false)} />
                                             </div>
                                         </div>
                                     </SheetContent>
