@@ -3,7 +3,11 @@ import { defineConfig } from "prisma/config"
 import "dotenv/config"
 import { sanitizeDatabaseUrl } from "./src/lib/sanitize-db-url"
 
-const rawUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || "";
+// Prisma CLI (migrations, db push) must use a direct or session-mode connection.
+// PgBouncer in transaction mode (port 6543) does NOT support prepared statements
+// which Prisma migrations require. Use DIRECT_URL (session mode, port 5432) first,
+// falling back to DATABASE_URL only if DIRECT_URL is not set.
+const rawUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
 
 export default defineConfig({
   schema: "./prisma/schema.prisma",
@@ -13,10 +17,7 @@ export default defineConfig({
   },
 
   datasource: {
-    // Use DATABASE_URL (pooled, port 6543) as the primary connection.
-    // Supabase's Supavisor handles DDL operations correctly on this port.
-    // Falls back to DIRECT_URL if DATABASE_URL is not set.
-    // sanitizeDatabaseUrl encodes special characters in the password.
+    // sanitizeDatabaseUrl encodes special characters in the password
     url: sanitizeDatabaseUrl(rawUrl),
   },
 })
