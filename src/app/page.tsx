@@ -290,6 +290,24 @@ export default async function Home() {
                         </div>
                     </div>
 
+                    {/* Pages Card - Dynamic from DB */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <FileTextIcon className="w-4 h-4 text-purple-600" />
+                                    Our Pages
+                                </CardTitle>
+                                <Link href="/pages" className="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
+                                    View All
+                                </Link>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
+                        </CardContent>
+                    </Card>
+
                     {/* Right Sidebar (hidden on mobile) */}
                     <aside className="hidden lg:block w-72 shrink-0 space-y-4">
                         {/* Announcements */}
@@ -313,24 +331,6 @@ export default async function Home() {
                                         All projects undergo thorough ethical review before approval.
                                     </p>
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Pages Card - Dynamic from DB */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardHeader className="pb-2">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                        <FileTextIcon className="w-4 h-4 text-purple-600" />
-                                        Our Pages
-                                    </CardTitle>
-                                    <Link href="/pages" className="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
-                                        View All
-                                    </Link>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                                <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
                             </CardContent>
                         </Card>
 
