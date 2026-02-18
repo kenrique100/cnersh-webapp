@@ -18,14 +18,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
 
-        // Validate file size (max 4MB for images, 32MB for videos, 8MB for documents)
+        // Validate file size (max 4MB for images, 32MB for videos, 50MB for documents)
         let maxSize: number;
         if (file.type.startsWith("video/")) {
-            maxSize = 32 * 1024 * 1024;
+            maxSize = 50 * 1024 * 1024;
         } else if (file.type.startsWith("image/")) {
-            maxSize = 4 * 1024 * 1024;
-        } else {
             maxSize = 8 * 1024 * 1024;
+        } else {
+            maxSize = 50 * 1024 * 1024;
         }
         if (file.size > maxSize) {
             return NextResponse.json(

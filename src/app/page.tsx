@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon } from "lucide-react";
+import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, FileTextIcon, EyeIcon, TargetIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
 import { getPosts, getPublicPosts } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
@@ -10,6 +10,7 @@ import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
+import PagesDropdown from "@/components/pages-dropdown";
 
 export default async function Home() {
     const session = await authSession();
@@ -43,6 +44,27 @@ export default async function Home() {
     } else {
         publicPosts = await getPublicPosts(20);
     }
+
+    // Fetch dynamic pages for the sidebar
+    const dynamicPages = await db.page.findMany({
+        where: { parentId: null },
+        include: {
+            items: { orderBy: { createdAt: "asc" } },
+            children: {
+                include: {
+                    items: { orderBy: { createdAt: "asc" } },
+                    children: {
+                        include: {
+                            items: { orderBy: { createdAt: "asc" } },
+                        },
+                        orderBy: { createdAt: "asc" },
+                    },
+                },
+                orderBy: { createdAt: "asc" },
+            },
+        },
+        orderBy: { createdAt: "asc" },
+    });
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -150,11 +172,11 @@ export default async function Home() {
                                         </div>
                                     </div>
                                     <h1 className="text-lg font-bold text-white">CNEC</h1>
-                                    <p className="text-xs text-blue-100 mt-0.5">Cameroon National Ethics Community</p>
+                                    <p className="text-xs text-blue-100 mt-0.5">National Ethics Committee for Health Research on Humans</p>
                                 </div>
                                 <CardContent className="pt-4 pb-3">
                                     <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        A secure platform for managing ethical review processes and community collaboration across Cameroon.
+                                        Reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.
                                     </p>
                                     <div className="flex flex-col gap-2 mt-3">
                                         <Link href="/sign-up">
@@ -226,7 +248,7 @@ export default async function Home() {
                                             </div>
                                         </div>
                                         <h1 className="text-lg font-bold text-white">Welcome to CNEC</h1>
-                                        <p className="text-xs text-blue-100 mt-1 mb-3">Cameroon National Ethics Community</p>
+                                        <p className="text-xs text-blue-100 mt-1 mb-3">National Ethics Committee for Health Research on Humans</p>
                                         <div className="flex items-center justify-center gap-2">
                                             <Link href="/sign-up">
                                                 <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50 text-xs font-medium">
@@ -291,16 +313,46 @@ export default async function Home() {
                             </CardContent>
                         </Card>
 
-                        {/* About */}
+                        {/* Pages Card - Dynamic from DB */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">About CNEC</CardTitle>
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <FileTextIcon className="w-4 h-4 text-purple-600" />
+                                    Our Pages
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
+                                <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
+                            </CardContent>
+                        </Card>
+
+                        {/* About Us */}
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">About Us</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0 space-y-3">
                                 <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    The Cameroon National Ethics Community is a platform dedicated to fostering ethical
-                                    practices in research, policy-making, and community development.
+                                    We are dedicated to ensuring the highest ethical standards in health research and clinical trials across Cameroon. Our commitment lies in safeguarding human participants, fostering transparency, and promoting integrity in every aspect of research.
                                 </p>
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <EyeIcon className="w-3.5 h-3.5 text-blue-600" />
+                                        <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">Our Vision</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        To be a globally recognized leader in ethical research governance, ensuring that all health research and clinical trials conducted in Cameroon adhere to the principles of integrity, accountability, and respect for human dignity, while fostering innovation and improving public health outcomes.
+                                    </p>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <TargetIcon className="w-3.5 h-3.5 text-green-600" />
+                                        <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">Our Mission</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        To uphold the highest ethical standards in health research and clinical trials in Cameroon by ensuring the protection of human participants, fostering transparency and integrity in research, and strengthening the ethical review process across regional and institutional levels. Through robust policy frameworks and collaboration, we strive to enhance public trust, advance scientific excellence, and contribute to an equitable and resilient health system.
+                                    </p>
+                                </div>
                             </CardContent>
                         </Card>
                     </aside>
@@ -311,7 +363,7 @@ export default async function Home() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                        &copy; {new Date().getFullYear()} CNEC - Cameroon National Ethics Community. All rights reserved.
+                    &copy; {new Date().getFullYear()} CNEC - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>

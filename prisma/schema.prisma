@@ -338,3 +338,33 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_log")
 }
+
+// ─── Pages System (Admin-managed) ──────────────────────────
+
+model Page {
+  id        String     @id @default(uuid())
+  name      String
+  parentId  String?
+  parent    Page?      @relation("PageChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Page[]     @relation("PageChildren")
+  items     PageItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([name])
+  @@index([parentId])
+  @@map("page")
+}
+
+model PageItem {
+  id        String   @id @default(uuid())
+  name      String
+  url       String?
+  fileUrl   String?
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([pageId])
+  @@map("page_item")
+}

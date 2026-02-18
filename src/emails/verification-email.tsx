@@ -20,7 +20,7 @@ interface VerificationEmailProps {
 export const VerificationEmail = ({
                                       verificationUrl,
                                       userName,
-                                      appName = "Cameroon National Ethics Community",
+                                      appName = "National Ethics Committee for Health Research on Humans",
                                   }: VerificationEmailProps) => (
     <Html>
         <Head />
