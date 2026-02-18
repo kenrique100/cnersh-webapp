@@ -169,6 +169,124 @@ export default async function OurPagesPage() {
                         <PageSection key={page.id} page={page} />
                     ))}
 
+                    {/* Static Ethical Clearance Page */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <span className="break-words">Ethical Clearance</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                <li>
+                                    <a
+                                        href="/PROCEDURE D'EVALUATION DES PROTOCOLES DE RECHERCHE.pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            Documents &amp; Calendar
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                            </ul>
+
+                            {/* Application Guidelines - sub-section */}
+                            <div className="mt-4">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <span className="break-words">Application Guidelines</span>
+                                            <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <ul className="space-y-2">
+                                            <li>
+                                                <a
+                                                    href="/Composition dossier pour soumission protocole.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Dossier Composition
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href="/Form for Ethical Clearance CNERSH (2025).pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Clearance Form
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Forms & Questionnaires - sub-section */}
+                            <div className="mt-4">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <span className="break-words">Forms &amp; Questionnaires</span>
+                                            <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <ul className="space-y-2">
+                                            <li>
+                                                <a
+                                                    href="/Contenu d'un protocole de recherche.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Protocol Content
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href="/Fiche d'Evaluation CNERSH.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Evaluation Form
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Static Resources Page */}
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                         <CardHeader className="pb-2">
