@@ -225,7 +225,7 @@ function ResourcesDropdown() {
                             href="/pages/article"
                             className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline py-0.5"
                         >
-                            <ExternalLinkIcon className="w-2.5 h-2.5 shrink-0" />
+                            <FileTextIcon className="w-2.5 h-2.5 shrink-0" />
                             Article
                         </Link>
                     </div>
