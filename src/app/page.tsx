@@ -12,6 +12,8 @@ import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import PagesDropdown from "@/components/pages-dropdown";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
     const session = await authSession();
 
