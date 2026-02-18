@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import Navbar from "@/components/navbar";
 
+export const dynamic = "force-dynamic";
+
 interface PageItem {
     id: string;
     name: string;

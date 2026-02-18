@@ -7,6 +7,8 @@ export const metadata: Metadata = {
     description: "Create a new CNERSH account",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function SignUpPage() {
     await authIsNotRequired();
 
