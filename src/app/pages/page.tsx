@@ -169,6 +169,198 @@ export default async function OurPagesPage() {
                         <PageSection key={page.id} page={page} />
                     ))}
 
+                    {/* Static Resources Page */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <span className="break-words">Resources</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                <li>
+                                    <a
+                                        href="https://elearning.trree.org"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <ExternalLinkIcon className="w-4 h-4 text-blue-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            WHO links for training
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                                <li>
+                                    <a
+                                        href="/WEB-CIOMS-EthicalGuidelines.pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            CIOMS
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                                <li>
+                                    <a
+                                        href="/wma-declaration-of-helsinki (3).pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            Helsinki Declaration
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                                <li>
+                                    <a
+                                        href="/The Tuskegee Syphilis Study.pdf"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            Tuskegee Syphilis Trials
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </li>
+                            </ul>
+
+                            {/* Law & Research in Cameroon - sub-section */}
+                            <div className="mt-4">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <span className="break-words">Law &amp; Research in Cameroon</span>
+                                            <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <ul className="space-y-2">
+                                            <li>
+                                                <a
+                                                    href="/LAW ON RESEARCH ON HUMAN SUBJECTS.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Law on Human Subjects
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href="/LOI RECHERCHE MEDICALE-OCR.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Medical Research
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href="/Finance Law 2024.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Finance Law 2024
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href="/loi_n_2024_017_du_23_12_2024-web.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Data Protection Law
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Article link */}
+                            <div className="mt-3">
+                                <ul className="space-y-2">
+                                    <li>
+                                        <Link
+                                            href="/pages/article"
+                                            className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                        >
+                                            <FileTextIcon className="w-4 h-4 text-blue-600 shrink-0" />
+                                            <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                Article
+                                            </span>
+                                            <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Ministerial Decision - sub-section */}
+                            <div className="mt-4">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <span className="break-words">Ministerial Decision</span>
+                                            <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <ul className="space-y-2">
+                                            <li>
+                                                <a
+                                                    href="/Organisation_et_fonctionnement__évaluation_recherche_12.11.2023-good version.pdf"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                                >
+                                                    <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                        Ministerial Decision
+                                                    </span>
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Static Article Pages */}
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                         <CardHeader className="pb-2">

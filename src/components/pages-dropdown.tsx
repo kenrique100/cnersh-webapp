@@ -87,6 +87,186 @@ function PageNode({ page }: { page: Page }) {
     );
 }
 
+function ResourcesDropdown() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [lawOpen, setLawOpen] = useState(false);
+    const [ministerialOpen, setMinisterialOpen] = useState(false);
+
+    return (
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+            >
+                <span className="flex items-center gap-1.5">
+                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    Resources
+                </span>
+                <ChevronDownIcon
+                    className={`w-3 h-3 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
+            </button>
+            {isOpen && (
+                <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                    <ul className="space-y-0.5">
+                        <li>
+                            <a
+                                href="https://elearning.trree.org"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                            >
+                                <ExternalLinkIcon className="w-2.5 h-2.5 shrink-0" />
+                                WHO links for training
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="/WEB-CIOMS-EthicalGuidelines.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                            >
+                                <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                CIOMS
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="/wma-declaration-of-helsinki (3).pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                            >
+                                <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                Helsinki Declaration
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="/The Tuskegee Syphilis Study.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                            >
+                                <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                Tuskegee Syphilis Trials
+                            </a>
+                        </li>
+                    </ul>
+                    {/* Law & Research in Cameroon - nested under Resources */}
+                    <div className="mt-0.5">
+                        <button
+                            onClick={() => setLawOpen(!lawOpen)}
+                            className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                        >
+                            <span className="flex items-center gap-1.5">
+                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                Law &amp; Research in Cameroon
+                            </span>
+                            <ChevronDownIcon
+                                className={`w-3 h-3 text-gray-400 transition-transform ${lawOpen ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                        {lawOpen && (
+                            <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                                <ul className="space-y-0.5">
+                                    <li>
+                                        <a
+                                            href="/LAW ON RESEARCH ON HUMAN SUBJECTS.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Law on Human Subjects
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="/LOI RECHERCHE MEDICALE-OCR.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Medical Research
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="/Finance Law 2024.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Finance Law 2024
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="/loi_n_2024_017_du_23_12_2024-web.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Data Protection Law
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                    {/* Article link */}
+                    <div className="mt-0.5">
+                        <Link
+                            href="/pages/article"
+                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline py-0.5"
+                        >
+                            <FileTextIcon className="w-2.5 h-2.5 shrink-0" />
+                            Article
+                        </Link>
+                    </div>
+                    {/* Ministerial Decision - nested under Resources */}
+                    <div className="mt-0.5">
+                        <button
+                            onClick={() => setMinisterialOpen(!ministerialOpen)}
+                            className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                        >
+                            <span className="flex items-center gap-1.5">
+                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                Ministerial Decision
+                            </span>
+                            <ChevronDownIcon
+                                className={`w-3 h-3 text-gray-400 transition-transform ${ministerialOpen ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                        {ministerialOpen && (
+                            <div className="ml-4 mt-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                                <ul className="space-y-0.5">
+                                    <li>
+                                        <a
+                                            href="/Organisation_et_fonctionnement__évaluation_recherche_12.11.2023-good version.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                                        >
+                                            <DownloadIcon className="w-2.5 h-2.5 shrink-0" />
+                                            Ministerial Decision
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function PagesDropdown({ pages }: { pages: Page[] }) {
     return (
         <div className="space-y-1">
@@ -97,6 +277,9 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
             {pages.length > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             )}
+            {/* Static Resources Page */}
+            <ResourcesDropdown />
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             {/* Static Article Pages */}
             <div>
                 <Link
