@@ -20,6 +20,8 @@ interface Page {
     name: string;
     items: PageItem[];
     children: Page[];
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 function PageSection({ page, depth = 0 }: { page: Page; depth?: number }) {
@@ -208,7 +210,7 @@ export default async function OurPagesPage() {
                 ) : (
                     <div className="space-y-4">
                         {pages.map((page) => (
-                            <PageSection key={page.id} page={page as unknown as Page} />
+                            <PageSection key={page.id} page={page} />
                         ))}
                     </div>
                 )}
