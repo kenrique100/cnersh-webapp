@@ -27,6 +27,42 @@ export default async function Home() {
     // For unauthenticated users, get public posts
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
 
+    // Fetch dynamic pages for the sidebar (started early, awaited in parallel below)
+    const dynamicPagesPromise = db.page.findMany({
+        where: { parentId: null },
+        select: {
+            id: true,
+            name: true,
+            items: {
+                select: { id: true, name: true, url: true, fileUrl: true },
+                orderBy: { createdAt: "asc" },
+            },
+            children: {
+                select: {
+                    id: true,
+                    name: true,
+                    items: {
+                        select: { id: true, name: true, url: true, fileUrl: true },
+                        orderBy: { createdAt: "asc" },
+                    },
+                    children: {
+                        select: {
+                            id: true,
+                            name: true,
+                            items: {
+                                select: { id: true, name: true, url: true, fileUrl: true },
+                                orderBy: { createdAt: "asc" },
+                            },
+                        },
+                        orderBy: { createdAt: "asc" },
+                    },
+                },
+                orderBy: { createdAt: "asc" },
+            },
+        },
+        orderBy: { createdAt: "asc" },
+    });
+
     if (session) {
         const [user, unreadCount, postsResult] = await Promise.all([
             db.user.findUnique({
@@ -47,26 +83,7 @@ export default async function Home() {
         publicPosts = await getPublicPosts(20);
     }
 
-    // Fetch dynamic pages for the sidebar
-    const dynamicPages = await db.page.findMany({
-        where: { parentId: null },
-        include: {
-            items: { orderBy: { createdAt: "asc" } },
-            children: {
-                include: {
-                    items: { orderBy: { createdAt: "asc" } },
-                    children: {
-                        include: {
-                            items: { orderBy: { createdAt: "asc" } },
-                        },
-                        orderBy: { createdAt: "asc" },
-                    },
-                },
-                orderBy: { createdAt: "asc" },
-            },
-        },
-        orderBy: { createdAt: "asc" },
-    });
+    const dynamicPages = await dynamicPagesPromise;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -89,8 +106,8 @@ export default async function Home() {
                                                 alt={navUser.name || "Profile"}
                                                 width={64}
                                                 height={64}
-                                                unoptimized
                                                 className="w-full h-full object-cover"
+                                                {...(navUser.image.startsWith("data:") ? { unoptimized: true } : {})}
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center bg-blue-600 text-white text-xl font-bold">
