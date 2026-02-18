@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusIcon, TrashIcon, UploadIcon, FileTextIcon, XIcon, PencilIcon, CheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createPage, deletePage, addPageItem, deletePageItem, updatePage, updatePageItem } from "@/app/actions/page";
+import { createPage, deletePage, addPageItem, deletePageItem, updatePage, updatePageItem } from "@/app/actions/page-actions";
 
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
