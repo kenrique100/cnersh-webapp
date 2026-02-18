@@ -200,14 +200,6 @@ export default async function OurPagesPage() {
                 </div>
 
                 {/* Pages List */}
-                {pages.length === 0 && (
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                        <CardContent className="py-12 text-center">
-                            <FileTextIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                            <p className="text-sm text-gray-500 dark:text-gray-400">No pages available yet.</p>
-                        </CardContent>
-                    </Card>
-                )}
                 <div className="space-y-4">
                     {pages.map((page) => (
                         <PageSection key={page.id} page={page} />

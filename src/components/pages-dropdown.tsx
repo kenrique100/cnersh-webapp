@@ -93,6 +93,10 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
             {pages.map((page) => (
                 <PageNode key={page.id} page={page} />
             ))}
+            {/* Separator when dynamic pages exist */}
+            {pages.length > 0 && (
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+            )}
             {/* Static Article Page: Contract Rex Org */}
             <div>
                 <Link
