@@ -3,10 +3,10 @@ import { defineConfig } from "prisma/config"
 import "dotenv/config"
 import { sanitizeDatabaseUrl } from "./src/lib/sanitize-db-url"
 
-// Prisma CLI (migrations, db push) must use a direct or session-mode connection.
-// PgBouncer in transaction mode (port 6543) does NOT support prepared statements
-// which Prisma migrations require. Use DIRECT_URL (session mode, port 5432) first,
-// falling back to DATABASE_URL only if DIRECT_URL is not set.
+// Prisma CLI (migrations, db push) must use a direct (non-pooled) connection.
+// Connection poolers (Neon's -pooler endpoint, Supabase's PgBouncer) may not
+// support the prepared statements or DDL that migrations require.
+// Use DIRECT_URL first, falling back to DATABASE_URL if not set.
 const rawUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
 
 export default defineConfig({
