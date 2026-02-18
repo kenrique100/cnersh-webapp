@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDownIcon, FileTextIcon, ExternalLinkIcon, DownloadIcon } from "lucide-react";
+import Link from "next/link";
+import { ChevronDownIcon, FileTextIcon, ExternalLinkIcon, DownloadIcon, BuildingIcon } from "lucide-react";
 
 interface PageItem {
     id: string;
@@ -87,15 +88,21 @@ function PageNode({ page }: { page: Page }) {
 }
 
 export default function PagesDropdown({ pages }: { pages: Page[] }) {
-    if (pages.length === 0) {
-        return null;
-    }
-
     return (
         <div className="space-y-1">
             {pages.map((page) => (
                 <PageNode key={page.id} page={page} />
             ))}
+            {/* Static Article Page: Contract Rex Org */}
+            <div>
+                <Link
+                    href="/pages/contract-rex"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <BuildingIcon className="w-3 h-3 text-purple-500" />
+                    Contract Rex Org
+                </Link>
+            </div>
         </div>
     );
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, ExternalLinkIcon, DownloadIcon, ChevronRightIcon, ArrowLeftIcon } from "lucide-react";
+import { FileTextIcon, ExternalLinkIcon, DownloadIcon, ChevronRightIcon, ArrowLeftIcon, BuildingIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
@@ -200,20 +200,45 @@ export default async function OurPagesPage() {
                 </div>
 
                 {/* Pages List */}
-                {pages.length === 0 ? (
+                {pages.length === 0 && (
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                         <CardContent className="py-12 text-center">
                             <FileTextIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                             <p className="text-sm text-gray-500 dark:text-gray-400">No pages available yet.</p>
                         </CardContent>
                     </Card>
-                ) : (
-                    <div className="space-y-4">
-                        {pages.map((page) => (
-                            <PageSection key={page.id} page={page} />
-                        ))}
-                    </div>
                 )}
+                <div className="space-y-4">
+                    {pages.map((page) => (
+                        <PageSection key={page.id} page={page} />
+                    ))}
+
+                    {/* Static Article Pages */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <BuildingIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <span className="break-words">Contract Rex Org</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                                <li>
+                                    <Link
+                                        href="/pages/contract-rex"
+                                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
+                                    >
+                                        <FileTextIcon className="w-4 h-4 text-blue-600 shrink-0" />
+                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            View Contract Rex Organization Page
+                                        </span>
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    </Link>
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
+                </div>
             </main>
 
             {/* Footer */}
