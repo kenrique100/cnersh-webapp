@@ -107,7 +107,7 @@ export default async function Home() {
                                                 width={64}
                                                 height={64}
                                                 className="w-full h-full object-cover"
-                                                {...(navUser.image.startsWith("data:") ? { unoptimized: true } : {})}
+                                                {...(navUser.image?.startsWith("data:") ? { unoptimized: true } : {})}
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center bg-blue-600 text-white text-xl font-bold">
