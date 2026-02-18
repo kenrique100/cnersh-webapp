@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDownIcon, FileTextIcon, ExternalLinkIcon, DownloadIcon } from "lucide-react";
+import Link from "next/link";
+import { ChevronDownIcon, FileTextIcon, ExternalLinkIcon, DownloadIcon, BuildingIcon, UsersIcon } from "lucide-react";
 
 interface PageItem {
     id: string;
@@ -87,15 +88,56 @@ function PageNode({ page }: { page: Page }) {
 }
 
 export default function PagesDropdown({ pages }: { pages: Page[] }) {
-    if (pages.length === 0) {
-        return null;
-    }
-
     return (
         <div className="space-y-1">
             {pages.map((page) => (
                 <PageNode key={page.id} page={page} />
             ))}
+            {/* Separator when dynamic pages exist */}
+            {pages.length > 0 && (
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+            )}
+            {/* Static Article Pages */}
+            <div>
+                <Link
+                    href="/pages/about"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <UsersIcon className="w-3 h-3 text-purple-500" />
+                    About Us
+                </Link>
+            </div>
+            <div>
+                <Link
+                    href="/pages/contract-rex"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <BuildingIcon className="w-3 h-3 text-purple-500" />
+                    Contract Rex Org
+                </Link>
+            </div>
+            <div>
+                <a
+                    href="/membership.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <DownloadIcon className="w-3 h-3 text-purple-500" />
+                    Membership
+                </a>
+            </div>
+            <div>
+                <a
+                    href="/Fiche d'Evaluation CNERSH.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
+                >
+                    <DownloadIcon className="w-3 h-3 text-purple-500" />
+                    Reviews
+                </a>
+            </div>
         </div>
     );
 }

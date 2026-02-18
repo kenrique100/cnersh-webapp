@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusIcon, TrashIcon, UploadIcon, FileTextIcon, XIcon, PencilIcon, CheckIcon, FolderPlusIcon } from "lucide-react";
+import { PlusIcon, TrashIcon, UploadIcon, FileTextIcon, XIcon, PencilIcon, CheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createPage, deletePage, addPageItem, deletePageItem, updatePage, updatePageItem } from "@/app/actions/page";
@@ -48,7 +48,8 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     const router = useRouter();
     const [pageName, setPageName] = useState("");
     const [parentId, setParentId] = useState<string>("");
-    const [items, setItems] = useState<NewItem[]>([{ name: "", url: "", file: null }]);
+    const [pageUrl, setPageUrl] = useState("");
+    const [pageFile, setPageFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // For adding items to existing pages
@@ -77,31 +78,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     };
     const allPages = flattenPages(pages);
 
-    const addItemRow = () => {
-        setItems([...items, { name: "", url: "", file: null }]);
-    };
-
-    const removeItemRow = (index: number) => {
-        if (items.length > 1) {
-            setItems(items.filter((_, i) => i !== index));
-        }
-    };
-
-    const updateItem = (index: number, field: keyof NewItem, value: string | File | null) => {
-        const updated = [...items];
-        if (field === "file") {
-            const file = value as File | null;
-            if (file && !validateFileType(file)) {
-                toast.error("Only PDF, DOC, and DOCX files are allowed");
-                return;
-            }
-            updated[index] = { ...updated[index], file };
-        } else {
-            updated[index] = { ...updated[index], [field]: value as string };
-        }
-        setItems(updated);
-    };
-
     const uploadFile = async (file: File): Promise<string> => {
         const formData = new FormData();
         formData.append("file", file);
@@ -121,24 +97,18 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
             return;
         }
 
-        const validItems = items.filter((item) => item.name.trim());
-        if (validItems.length === 0) {
-            toast.error("At least one item with a name is required");
-            return;
-        }
-
         setIsSubmitting(true);
         try {
-            const itemsData: { name: string; url?: string; fileUrl?: string }[] = [];
+            let fileUrl: string | undefined;
+            if (pageFile) {
+                fileUrl = await uploadFile(pageFile);
+            }
 
-            for (const item of validItems) {
-                let fileUrl: string | undefined;
-                if (item.file) {
-                    fileUrl = await uploadFile(item.file);
-                }
-                itemsData.push({
-                    name: item.name.trim(),
-                    url: item.url.trim() || undefined,
+            const items: { name: string; url?: string; fileUrl?: string }[] = [];
+            if (fileUrl || pageUrl.trim()) {
+                items.push({
+                    name: pageName.trim(),
+                    url: pageUrl.trim() || undefined,
                     fileUrl,
                 });
             }
@@ -146,12 +116,13 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
             await createPage({
                 name: pageName.trim(),
                 parentId: parentId || undefined,
-                items: itemsData,
+                items,
             });
             toast.success("Page created successfully");
             setPageName("");
             setParentId("");
-            setItems([{ name: "", url: "", file: null }]);
+            setPageUrl("");
+            setPageFile(null);
             router.refresh();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to create page");
@@ -477,7 +448,7 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     <form onSubmit={handleCreatePage} className="space-y-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Page Name
+                                Page Name *
                             </label>
                             <Input
                                 value={pageName}
@@ -505,69 +476,54 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                             </select>
                         </div>
 
-                        <div className="space-y-3">
+                        <div>
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Page Items
+                                URL (optional — link to another website)
                             </label>
-                            {items.map((item, index) => (
-                                <div
-                                    key={index}
-                                    className="flex flex-col sm:flex-row gap-2 p-3 border rounded-lg bg-gray-50 dark:bg-gray-900"
-                                >
-                                    <Input
-                                        value={item.name}
-                                        onChange={(e) => updateItem(index, "name", e.target.value)}
-                                        placeholder="Item name *"
-                                        className="flex-1"
+                            <Input
+                                value={pageUrl}
+                                onChange={(e) => setPageUrl(e.target.value)}
+                                placeholder="https://example.com"
+                                className="mt-1"
+                                disabled={!!pageFile}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Upload Document (optional — PDF, DOC, DOCX)
+                            </label>
+                            <div className="mt-1 flex items-center gap-2">
+                                <label className="cursor-pointer flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-2">
+                                    <UploadIcon className="w-4 h-4" />
+                                    {pageFile ? pageFile.name.slice(0, 25) + (pageFile.name.length > 25 ? "..." : "") : "Choose File"}
+                                    <input
+                                        type="file"
+                                        accept={ACCEPTED_FILE_TYPES}
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            if (file && !validateFileType(file)) {
+                                                toast.error("Only PDF, DOC, and DOCX files are allowed");
+                                                e.target.value = "";
+                                                return;
+                                            }
+                                            setPageFile(file);
+                                        }}
                                     />
-                                    <Input
-                                        value={item.url}
-                                        onChange={(e) => updateItem(index, "url", e.target.value)}
-                                        placeholder="URL (optional)"
-                                        className="flex-1"
-                                    />
-                                    <div className="flex gap-2 items-center">
-                                        <label className="cursor-pointer flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1.5">
-                                            <UploadIcon className="w-3 h-3" />
-                                            {item.file ? item.file.name.slice(0, 15) + "..." : "Upload"}
-                                            <input
-                                                type="file"
-                                                accept={ACCEPTED_FILE_TYPES}
-                                                className="hidden"
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0] || null;
-                                                    if (file && !validateFileType(file)) {
-                                                        toast.error("Only PDF, DOC, and DOCX files are allowed");
-                                                        e.target.value = "";
-                                                        return;
-                                                    }
-                                                    updateItem(index, "file", file);
-                                                }}
-                                            />
-                                        </label>
-                                        {items.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => removeItemRow(index)}
-                                                className="text-red-500 hover:text-red-700 h-8 w-8"
-                                            >
-                                                <XIcon className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addItemRow}
-                                className="text-xs"
-                            >
-                                <PlusIcon className="w-3 h-3 mr-1" /> Add Another Item
-                            </Button>
+                                </label>
+                                {pageFile && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setPageFile(null)}
+                                        className="text-red-500 hover:text-red-700 h-8 w-8"
+                                    >
+                                        <XIcon className="w-4 h-4" />
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">

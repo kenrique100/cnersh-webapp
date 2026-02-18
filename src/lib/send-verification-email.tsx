@@ -23,7 +23,7 @@ export const sendVerificationEmail = async ({
     await getResend().emails.send({
         from: process.env.EMAIL_FROM!,
         to,
-        subject: 'Welcome to Cameroon National Ethics Community - CNEC',
+        subject: 'Welcome to Cameroon National Ethics Community - CNERSH',
         react: (
             <VerificationEmail verificationUrl={verificationUrl} userName={userName} />
         ),

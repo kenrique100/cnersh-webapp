@@ -222,7 +222,7 @@ export function SignUpForm() {
                             Create Account
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-                            Register for Cameroon National Ethics Community (CNEC)
+                            Register for Cameroon National Ethics Community (CNERSH)
                         </CardDescription>
                     </div>
                 </div>
@@ -458,10 +458,10 @@ export function SignUpForm() {
                                                 <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
                                                     <DialogTitle className="text-xl font-semibold flex items-center gap-2">
                                                         <FileText className="w-5 h-5 text-blue-600" />
-                                                        CNEC Terms and Conditions
+                                                        CNERSH Terms and Conditions
                                                     </DialogTitle>
                                                     <DialogDescription>
-                                                        Cameroon National Ethics Committee (CNEC) - Research Ethics Framework
+                                                        Cameroon National Ethics Committee (CNERSH) - Research Ethics Framework
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 {/* ScrollArea - ONLY the terms content, no button */}
@@ -922,10 +922,10 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* CNEC SPECIFIC ETHICAL FRAMEWORK */}
+                                                        {/* CNERSH SPECIFIC ETHICAL FRAMEWORK */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
-                                                                CAMEROON NATIONAL ETHICS COMMITTEE (CNEC) FRAMEWORK
+                                                                CAMEROON NATIONAL ETHICS COMMITTEE (CNERSH) FRAMEWORK
                                                             </h3>
 
                                                             <div className="space-y-4">
@@ -972,7 +972,7 @@ export function SignUpForm() {
                                                                     <h4 className="font-medium text-gray-900 dark:text-gray-100">CLINICAL TRIALS AND GCP</h4>
                                                                     <p className="text-gray-700 dark:text-gray-300">
                                                                         All clinical trials involving human subjects must adhere to Good Clinical Practice (GCP) standards.
-                                                                        The CNEC reviews protocols to ensure compliance with international ethical and scientific quality requirements.
+                                                                        The CNERSH reviews protocols to ensure compliance with international ethical and scientific quality requirements.
                                                                     </p>
                                                                 </div>
 
@@ -1088,7 +1088,7 @@ export function SignUpForm() {
 
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center border-t border-gray-200 dark:border-gray-800 pt-4 mt-2">
                                                             By accepting these terms, you acknowledge that you have read, understood, and agree to comply with
-                                                            all CNEC ethical guidelines and submission requirements as mandated by Cameroonian law and international ethical standards.
+                                                            all CNERSH ethical guidelines and submission requirements as mandated by Cameroonian law and international ethical standards.
                                                             You commit to uphold the highest standards of integrity, transparency, and accountability in the service of Cameroon.
                                                         </p>
                                                     </div>
@@ -1197,7 +1197,7 @@ export function SignUpForm() {
 
             <div className="px-6 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                    &copy; 2026 CNEC - Cameroon National Ethics Community. All rights reserved.
+                    &copy; 2026 CNERSH - Cameroon National Ethics Community. All rights reserved.
                 </p>
             </div>
         </Card>

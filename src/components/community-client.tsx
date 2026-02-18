@@ -424,7 +424,7 @@ export default function CommunityClient({
 
     const getDisplayName = (user: TopicUser) => {
         if (user.role === "admin" || user.role === "superadmin") {
-            return "CNEC Admin";
+            return "CNERSH Admin";
         }
         return user.name || "Unknown";
     };
@@ -459,7 +459,7 @@ export default function CommunityClient({
             {/* Server Header */}
             <div className="h-12 px-4 flex items-center border-b border-gray-200 dark:border-gray-800 shadow-sm">
                 <h2 className="font-semibold text-gray-900 dark:text-white truncate text-sm">
-                    CNEC Community
+                    CNERSH Community
                 </h2>
             </div>
 
@@ -1195,7 +1195,7 @@ export default function CommunityClient({
                 <HashIcon className="h-12 w-12 text-indigo-500" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Welcome to CNEC Community
+                Welcome to CNERSH Community
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">
                 Select a channel from the sidebar to start chatting, or
@@ -1345,7 +1345,7 @@ export default function CommunityClient({
                                 <div>
                                     <p className="font-semibold text-lg">
                                         {selectedUser.role === "admin" || selectedUser.role === "superadmin"
-                                            ? "CNEC Admin"
+                                            ? "CNERSH Admin"
                                             : selectedUser.name || "Unknown"}
                                     </p>
                                     <Badge className="text-xs mt-0.5">{selectedUser.role || "user"}</Badge>

@@ -71,7 +71,22 @@ export async function getPosts(page: number = 1, limit: number = 10) {
                 include: {
                     user: { select: { id: true, name: true, image: true } },
                     _count: { select: { comments: true, likes: true } },
-                    likes: { select: { userId: true } },
+                    likes: {
+                        select: {
+                            userId: true,
+                            user: { select: { id: true, name: true, image: true } },
+                        },
+                        orderBy: { createdAt: "desc" },
+                        take: 5,
+                    },
+                    comments: {
+                        where: { deleted: false },
+                        select: {
+                            user: { select: { id: true, name: true, image: true } },
+                        },
+                        orderBy: { createdAt: "desc" },
+                        take: 3,
+                    },
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
@@ -80,7 +95,33 @@ export async function getPosts(page: number = 1, limit: number = 10) {
             db.post.count({ where: { deleted: false } }),
         ]);
 
-        return { posts, total, pages: Math.ceil(total / limit) };
+        // Build recentActivity for each post
+        const postsWithActivity = posts.map((post) => {
+            // Deduplicate users from likes and comments
+            const activityUsers = new Map<string, { id: string; name: string | null; image: string | null }>();
+            for (const like of post.likes) {
+                if (!activityUsers.has(like.user.id)) {
+                    activityUsers.set(like.user.id, like.user);
+                }
+            }
+            for (const comment of post.comments) {
+                if (!activityUsers.has(comment.user.id)) {
+                    activityUsers.set(comment.user.id, comment.user);
+                }
+            }
+
+            return {
+                ...post,
+                likes: post.likes.map((l) => ({ userId: l.userId })),
+                recentActivity: {
+                    users: Array.from(activityUsers.values()).slice(0, 5),
+                    likeCount: post._count.likes,
+                    commentCount: post._count.comments,
+                },
+            };
+        });
+
+        return { posts: postsWithActivity, total, pages: Math.ceil(total / limit) };
     } catch (error) {
         console.error("Error fetching posts:", error);
         return { posts: [], total: 0, pages: 0 };

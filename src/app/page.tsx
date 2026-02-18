@@ -68,44 +68,8 @@ export default async function Home() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Navbar - Use app navbar for authenticated users, simple navbar for guests */}
-            {session ? (
-                <Navbar user={navUser} notificationCount={notificationCount} />
-            ) : (
-                <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:bg-gray-950/80 dark:border-gray-800 shadow-sm">
-                    <div className="container mx-auto max-w-7xl">
-                        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                            <Link href="/" className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
-                                    <Image
-                                        src="/logo.png"
-                                        alt="CNEC"
-                                        width={32}
-                                        height={32}
-                                        className="w-8 h-8 object-contain"
-                                        priority
-                                    />
-                                </div>
-                                <span className="hidden sm:block text-xl font-bold text-gray-900 dark:text-gray-100">
-                                    CNEC
-                                </span>
-                            </Link>
-                            <div className="flex items-center gap-3">
-                                <Link href="/sign-in">
-                                    <Button variant="ghost" className="text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950">
-                                        Sign In
-                                    </Button>
-                                </Link>
-                                <Link href="/sign-up">
-                                    <Button className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all">
-                                        Sign Up
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </nav>
-            )}
+            {/* Navbar - Use app navbar for all users (handles guest and authenticated states) */}
+            <Navbar user={navUser} notificationCount={notificationCount} />
 
             <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col lg:flex-row gap-6 py-6">
@@ -163,7 +127,7 @@ export default async function Home() {
                                         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-md">
                                             <Image
                                                 src="/logo.png"
-                                                alt="CNEC Logo"
+                                                alt="CNERSH Logo"
                                                 width={56}
                                                 height={56}
                                                 className="w-14 h-14 object-contain"
@@ -171,7 +135,7 @@ export default async function Home() {
                                             />
                                         </div>
                                     </div>
-                                    <h1 className="text-lg font-bold text-white">CNEC</h1>
+                                    <h1 className="text-lg font-bold text-white">CNERSH</h1>
                                     <p className="text-xs text-blue-100 mt-0.5">National Ethics Committee for Health Research on Humans</p>
                                 </div>
                                 <CardContent className="pt-4 pb-3">
@@ -239,7 +203,7 @@ export default async function Home() {
                                             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md">
                                                 <Image
                                                     src="/logo.png"
-                                                    alt="CNEC"
+                                                    alt="CNERSH"
                                                     width={40}
                                                     height={40}
                                                     className="w-10 h-10 object-contain"
@@ -247,7 +211,7 @@ export default async function Home() {
                                                 />
                                             </div>
                                         </div>
-                                        <h1 className="text-lg font-bold text-white">Welcome to CNEC</h1>
+                                        <h1 className="text-lg font-bold text-white">Welcome to CNERSH</h1>
                                         <p className="text-xs text-blue-100 mt-1 mb-3">National Ethics Committee for Health Research on Humans</p>
                                         <div className="flex items-center justify-center gap-2">
                                             <Link href="/sign-up">
@@ -285,6 +249,26 @@ export default async function Home() {
                         ) : (
                             <PublicFeedClient posts={JSON.parse(JSON.stringify(publicPosts))} />
                         )}
+
+                        {/* Our Pages - Mobile only (shown below feed on small screens) */}
+                        <div className="lg:hidden mt-6">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <FileTextIcon className="w-4 h-4 text-purple-600" />
+                                            Our Pages
+                                        </CardTitle>
+                                        <Link href="/pages" className="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
+                                            View All
+                                        </Link>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
 
                     {/* Right Sidebar (hidden on mobile) */}
@@ -301,7 +285,7 @@ export default async function Home() {
                                 <div className="p-2.5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Platform Launch</p>
                                     <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                                        CNEC platform is live. Start submitting projects and join discussions.
+                                        CNERSH platform is live. Start submitting projects and join discussions.
                                     </p>
                                 </div>
                                 <div className="p-2.5 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
@@ -316,10 +300,15 @@ export default async function Home() {
                         {/* Pages Card - Dynamic from DB */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                    <FileTextIcon className="w-4 h-4 text-purple-600" />
-                                    Our Pages
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <FileTextIcon className="w-4 h-4 text-purple-600" />
+                                        Our Pages
+                                    </CardTitle>
+                                    <Link href="/pages" className="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
+                                        View All
+                                    </Link>
+                                </div>
                             </CardHeader>
                             <CardContent className="pt-0">
                                 <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
@@ -363,7 +352,7 @@ export default async function Home() {
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
                 <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    &copy; {new Date().getFullYear()} CNEC - National Ethics Committee for Health Research on Humans. All rights reserved.
+                    &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
                     </p>
                 </div>
             </footer>

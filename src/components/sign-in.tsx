@@ -120,7 +120,7 @@ export function SignInForm() {
                             Sign In
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Access your CNEC Account
+                            Access your CNERSH Account
                         </CardDescription>
                     </div>
                 </div>
@@ -289,7 +289,7 @@ export function SignInForm() {
             {/* FOOTER ADDED HERE - Copyright section */}
             <div className="px-6 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                    &copy; 2026 CNEC - Cameroon National Ethics Community. All rights reserved.
+                    &copy; 2026 CNERSH - Cameroon National Ethics Community. All rights reserved.
                 </p>
             </div>
         </Card>
