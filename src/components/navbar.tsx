@@ -128,14 +128,25 @@ function TranslationDropdown() {
         }
     }, []);
 
+    // Keep a ref to initWidget so the global callback always calls the latest version
+    const initWidgetRef = React.useRef(initWidget);
     React.useEffect(() => {
+        initWidgetRef.current = initWidget;
+    });
+
+    React.useEffect(() => {
+        // If the script tag already exists (e.g. after client-side navigation), try
+        // to initialise the widget straight away since the API may already be loaded.
         if (document.getElementById("google-translate-script") || scriptLoadedRef.current) {
             scriptLoadedRef.current = true;
+            initWidgetRef.current();
             return;
         }
 
+        // Set the callback that Google's script calls when it has finished loading.
         window.googleTranslateElementInit = () => {
             scriptLoadedRef.current = true;
+            initWidgetRef.current();
         };
 
         const script = document.createElement("script");
@@ -517,8 +528,8 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
 
                                 {/* Mobile Menu Toggle - opens from RIGHT */}
                                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                                    <SheetTrigger asChild className="md:hidden">
-                                        <Button variant="ghost" size="icon">
+                                    <SheetTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="md:hidden">
                                             <MenuIcon className="h-6 w-6" />
                                         </Button>
                                     </SheetTrigger>
@@ -623,8 +634,8 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
 
                                 {/* Mobile: Hamburger menu with Our Pages + Sign In/Up */}
                                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                                    <SheetTrigger asChild className="sm:hidden">
-                                        <Button variant="ghost" size="icon">
+                                    <SheetTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="sm:hidden">
                                             <MenuIcon className="h-6 w-6" />
                                         </Button>
                                     </SheetTrigger>

@@ -1,6 +1,8 @@
 import RequestPasswordEmail from "@/emails/request-password-email";
 import { Resend } from "resend";
 
+const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
+
 let resend: Resend | null = null;
 function getResend() {
     if (!resend) {
@@ -21,7 +23,7 @@ export const sendResetPasswordEmail = async ({
                                                  subject,
                                              }: EmailProps) => {
     await getResend().emails.send({
-        from: process.env.EMAIL_FROM!,
+        from: process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
         to,
         subject,
         react: <RequestPasswordEmail url={url} to={to} />,

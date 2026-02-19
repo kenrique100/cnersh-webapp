@@ -47,15 +47,26 @@ export default function TranslatePopup() {
         }
     }, []);
 
+    // Keep a ref to initWidget so the global callback always calls the latest version
+    const initWidgetRef = useRef(initWidget);
+    useEffect(() => {
+        initWidgetRef.current = initWidget;
+    });
+
     // Load script eagerly on mount
     useEffect(() => {
+        // If the script tag already exists (e.g. after client-side navigation), try
+        // to initialise the widget straight away since the API may already be loaded.
         if (document.getElementById("google-translate-script") || scriptLoadedRef.current) {
             scriptLoadedRef.current = true;
+            initWidgetRef.current();
             return;
         }
 
+        // Set the callback that Google's script calls when it has finished loading.
         window.googleTranslateElementInit = () => {
             scriptLoadedRef.current = true;
+            initWidgetRef.current();
         };
 
         const script = document.createElement("script");

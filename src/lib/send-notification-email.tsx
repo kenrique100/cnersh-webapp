@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 import NotificationEmail from "@/emails/notification-email";
 
+const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
+
 let resend: Resend | null = null;
 function getResend() {
     if (!resend) {
@@ -25,8 +27,8 @@ export async function sendNotificationEmail({
     actionUrl,
 }: SendNotificationEmailProps) {
     try {
-        if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
-            console.warn("Resend API key or EMAIL_FROM not configured, skipping email notification");
+        if (!process.env.RESEND_API_KEY) {
+            console.warn("Resend API key not configured. Set RESEND_API_KEY environment variable to enable email notifications.");
             return;
         }
 
@@ -34,7 +36,7 @@ export async function sendNotificationEmail({
         const fullActionUrl = actionUrl && baseUrl ? `${baseUrl}${actionUrl}` : undefined;
 
         await getResend().emails.send({
-            from: process.env.EMAIL_FROM,
+            from: process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
             to,
             subject: `CNERSH Notification: ${notificationType.replace(/_/g, " ")}`,
             react: (
