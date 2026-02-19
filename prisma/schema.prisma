@@ -260,19 +260,34 @@ model CommunityTopicLike {
 }
 
 model CommunityReply {
-  id        String          @id @default(uuid())
-  content   String
-  image     String?
-  topicId   String
-  topic     CommunityTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  parentId  String?
-  parent    CommunityReply? @relation("ReplyToReply", fields: [parentId], references: [id])
-  children  CommunityReply[] @relation("ReplyToReply")
-  userId    String
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deleted   Boolean         @default(false)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id          String          @id @default(uuid())
+  content     String
+  image       String?
+  images      String[]        @default([])
+  video       String?
+  videos      String[]        @default([])
+  audio       String?
+  audios      String[]        @default([])
+  voiceNote   String?
+  document    String?
+  documents   String[]        @default([])
+  linkUrl     String?
+  pollQuestion String?
+  pollOptions  String[]       @default([])
+  pollVotes    Json?
+  eventTitle   String?
+  eventDate    DateTime?
+  eventLocation String?
+  topicId     String
+  topic       CommunityTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      CommunityReply? @relation("ReplyToReply", fields: [parentId], references: [id])
+  children    CommunityReply[] @relation("ReplyToReply")
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deleted     Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@index([topicId])
   @@index([userId])

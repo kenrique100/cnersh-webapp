@@ -146,6 +146,20 @@ export async function addReply(data: {
     content: string;
     parentId?: string;
     image?: string;
+    images?: string[];
+    video?: string;
+    videos?: string[];
+    audio?: string;
+    audios?: string[];
+    voiceNote?: string;
+    document?: string;
+    documents?: string[];
+    linkUrl?: string;
+    pollQuestion?: string;
+    pollOptions?: string[];
+    eventTitle?: string;
+    eventDate?: string;
+    eventLocation?: string;
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -156,6 +170,21 @@ export async function addReply(data: {
             topicId: data.topicId,
             parentId: data.parentId || null,
             image: data.image || null,
+            images: data.images || [],
+            video: data.video || null,
+            videos: data.videos || [],
+            audio: data.audio || null,
+            audios: data.audios || [],
+            voiceNote: data.voiceNote || null,
+            document: data.document || null,
+            documents: data.documents || [],
+            linkUrl: data.linkUrl || null,
+            pollQuestion: data.pollQuestion || null,
+            pollOptions: data.pollOptions || [],
+            pollVotes: data.pollQuestion ? {} : undefined,
+            eventTitle: data.eventTitle || null,
+            eventDate: data.eventDate ? new Date(data.eventDate) : null,
+            eventLocation: data.eventLocation || null,
             userId: session.user.id,
         },
         include: {
@@ -415,4 +444,33 @@ export async function toggleTopicLike(topicId: string, isDislike: boolean = fals
         });
         return { action: isDislike ? "disliked" : "liked" };
     }
+}
+
+export async function voteOnPoll(replyId: string, optionIndex: number) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const reply = await db.communityReply.findUnique({
+        where: { id: replyId },
+        select: { pollVotes: true, pollOptions: true },
+    });
+
+    if (!reply || !reply.pollOptions.length) throw new Error("Poll not found");
+
+    const votes = (reply.pollVotes as Record<string, number>) || {};
+    const voteKey = `${session.user.id}`;
+    
+    // Remove previous vote if any
+    const previousVote = Object.entries(votes).find(([, v]) => v === undefined);
+    if (previousVote) delete votes[previousVote[0]];
+    
+    // Set new vote
+    votes[voteKey] = optionIndex;
+
+    await db.communityReply.update({
+        where: { id: replyId },
+        data: { pollVotes: votes },
+    });
+
+    return { success: true, votes };
 }
