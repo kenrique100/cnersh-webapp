@@ -9,18 +9,76 @@ export async function createTopic(data: {
     title: string;
     content: string;
     category: string;
+    image?: string;
+    video?: string;
+    linkUrl?: string;
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    return db.communityTopic.create({
+    // Only admins can create announcements
+    if (data.category === "Announcements") {
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+        if (!isAdmin) throw new Error("Only admins can create announcements");
+    }
+
+    const topic = await db.communityTopic.create({
         data: {
             title: data.title,
             content: data.content,
             category: data.category,
+            image: data.image || null,
+            video: data.video || null,
+            linkUrl: data.linkUrl || null,
             userId: session.user.id,
         },
     });
+
+    // If it's an announcement, notify all users and send emails
+    if (data.category === "Announcements") {
+        try {
+            const allUsers = await db.user.findMany({
+                where: {
+                    id: { not: session.user.id },
+                    banned: { not: true },
+                },
+                select: { id: true, email: true, name: true },
+            });
+
+            if (allUsers.length > 0) {
+                const announcementMessage = `New announcement: ${data.title}`;
+                await db.notification.createMany({
+                    data: allUsers.map((u) => ({
+                        type: "ANNOUNCEMENT" as const,
+                        message: announcementMessage,
+                        link: "/community",
+                        userId: u.id,
+                    })),
+                });
+
+                // Send email notifications (non-blocking)
+                for (const u of allUsers) {
+                    if (u.email) {
+                        sendNotificationEmail({
+                            to: u.email,
+                            userName: u.name || "User",
+                            notificationMessage: announcementMessage,
+                            notificationType: "ANNOUNCEMENT",
+                            actionUrl: "/community",
+                        }).catch((err) => console.error("Error sending announcement email:", err));
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error sending announcement notifications:", error);
+        }
+    }
+
+    return topic;
 }
 
 export async function getTopics(category?: string, page: number = 1, limit: number = 10) {
@@ -35,7 +93,8 @@ export async function getTopics(category?: string, page: number = 1, limit: numb
                 },
                 include: {
                     user: { select: { id: true, name: true, image: true, role: true } },
-                    _count: { select: { replies: true } },
+                    _count: { select: { replies: true, likes: true } },
+                    likes: { select: { userId: true, isDislike: true } },
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
@@ -61,6 +120,7 @@ export async function getTopicWithReplies(topicId: string) {
         where: { id: topicId, deleted: false },
         include: {
             user: { select: { id: true, name: true, image: true, role: true } },
+            likes: { select: { userId: true, isDislike: true } },
             replies: {
                 where: { deleted: false, parentId: null },
                 include: {
@@ -86,6 +146,20 @@ export async function addReply(data: {
     content: string;
     parentId?: string;
     image?: string;
+    images?: string[];
+    video?: string;
+    videos?: string[];
+    audio?: string;
+    audios?: string[];
+    voiceNote?: string;
+    document?: string;
+    documents?: string[];
+    linkUrl?: string;
+    pollQuestion?: string;
+    pollOptions?: string[];
+    eventTitle?: string;
+    eventDate?: string;
+    eventLocation?: string;
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -96,6 +170,21 @@ export async function addReply(data: {
             topicId: data.topicId,
             parentId: data.parentId || null,
             image: data.image || null,
+            images: data.images || [],
+            video: data.video || null,
+            videos: data.videos || [],
+            audio: data.audio || null,
+            audios: data.audios || [],
+            voiceNote: data.voiceNote || null,
+            document: data.document || null,
+            documents: data.documents || [],
+            linkUrl: data.linkUrl || null,
+            pollQuestion: data.pollQuestion || null,
+            pollOptions: data.pollOptions || [],
+            pollVotes: data.pollQuestion ? {} : undefined,
+            eventTitle: data.eventTitle || null,
+            eventDate: data.eventDate ? new Date(data.eventDate) : null,
+            eventLocation: data.eventLocation || null,
             userId: session.user.id,
         },
         include: {
@@ -290,4 +379,98 @@ export async function editReply(replyId: string, content: string) {
     });
 
     return updated;
+}
+
+export async function editTopic(topicId: string, data: {
+    title?: string;
+    content?: string;
+    image?: string | null;
+    video?: string | null;
+    linkUrl?: string | null;
+}) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const topic = await db.communityTopic.findUnique({
+        where: { id: topicId },
+        select: { userId: true, category: true },
+    });
+
+    if (!topic) throw new Error("Topic not found");
+
+    // For announcements, only admins can edit
+    if (topic.category === "Announcements") {
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+        if (!isAdmin) throw new Error("Only admins can edit announcements");
+    } else {
+        if (topic.userId !== session.user.id) throw new Error("Forbidden");
+    }
+
+    return db.communityTopic.update({
+        where: { id: topicId },
+        data: {
+            ...(data.title !== undefined ? { title: data.title } : {}),
+            ...(data.content !== undefined ? { content: data.content } : {}),
+            ...(data.image !== undefined ? { image: data.image } : {}),
+            ...(data.video !== undefined ? { video: data.video } : {}),
+            ...(data.linkUrl !== undefined ? { linkUrl: data.linkUrl } : {}),
+        },
+    });
+}
+
+export async function toggleTopicLike(topicId: string, isDislike: boolean = false) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const existing = await db.communityTopicLike.findUnique({
+        where: { topicId_userId: { topicId, userId: session.user.id } },
+    });
+
+    if (existing) {
+        if (existing.isDislike === isDislike) {
+            await db.communityTopicLike.delete({ where: { id: existing.id } });
+            return { action: "removed" };
+        } else {
+            await db.communityTopicLike.update({ where: { id: existing.id }, data: { isDislike } });
+            return { action: isDislike ? "disliked" : "liked" };
+        }
+    } else {
+        await db.communityTopicLike.create({
+            data: { topicId, userId: session.user.id, isDislike },
+        });
+        return { action: isDislike ? "disliked" : "liked" };
+    }
+}
+
+export async function voteOnPoll(replyId: string, optionIndex: number) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const reply = await db.communityReply.findUnique({
+        where: { id: replyId },
+        select: { pollVotes: true, pollOptions: true },
+    });
+
+    if (!reply || !reply.pollOptions.length) throw new Error("Poll not found");
+
+    const votes = (reply.pollVotes as Record<string, number>) || {};
+    const voteKey = `${session.user.id}`;
+    
+    // Toggle vote: if voting for same option, remove vote; otherwise set new vote
+    if (votes[voteKey] === optionIndex) {
+        delete votes[voteKey];
+    } else {
+        votes[voteKey] = optionIndex;
+    }
+
+    await db.communityReply.update({
+        where: { id: replyId },
+        data: { pollVotes: votes },
+    });
+
+    return { success: true, votes };
 }

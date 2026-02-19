@@ -42,6 +42,18 @@ import {
     CheckIcon,
     ShieldAlertIcon,
     BanIcon,
+    VideoIcon,
+    LinkIcon,
+    ExternalLinkIcon,
+    ThumbsUpIcon,
+    ThumbsDownIcon,
+    MegaphoneIcon,
+    FileIcon,
+    MicIcon,
+    BarChart3Icon,
+    CalendarIcon,
+    BookUserIcon,
+    Music2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +63,9 @@ import {
     deleteTopic,
     deleteReply,
     editReply,
+    editTopic,
+    toggleTopicLike,
+    voteOnPoll,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 
@@ -75,15 +90,34 @@ interface TopicData {
     title: string;
     content: string;
     category: string;
+    image?: string | null;
+    video?: string | null;
+    linkUrl?: string | null;
     createdAt: Date;
     user: TopicUser;
-    _count: { replies: number };
+    _count: { replies: number; likes?: number };
+    likes?: { userId: string; isDislike: boolean }[];
 }
 
 interface ReplyData {
     id: string;
     content: string;
     image?: string | null;
+    images?: string[];
+    video?: string | null;
+    videos?: string[];
+    audio?: string | null;
+    audios?: string[];
+    voiceNote?: string | null;
+    document?: string | null;
+    documents?: string[];
+    linkUrl?: string | null;
+    pollQuestion?: string | null;
+    pollOptions?: string[];
+    pollVotes?: Record<string, number> | null;
+    eventTitle?: string | null;
+    eventDate?: string | null;
+    eventLocation?: string | null;
     createdAt: Date;
     user: TopicUser;
     parentId?: string | null;
@@ -95,12 +129,17 @@ interface TopicDetail {
     title: string;
     content: string;
     category: string;
+    image?: string | null;
+    video?: string | null;
+    linkUrl?: string | null;
     createdAt: Date;
     user: TopicUser;
     replies: ReplyData[];
+    likes?: { userId: string; isDislike: boolean }[];
 }
 
 const CATEGORIES = [
+    "Announcements",
     "General",
     "Ethics",
     "Research",
@@ -119,6 +158,7 @@ const EMOJI_LIST = [
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
+    Announcements: "bg-yellow-500",
     General: "bg-gray-500",
     Ethics: "bg-purple-500",
     Research: "bg-blue-500",
@@ -169,10 +209,31 @@ export default function CommunityClient({
     const [banReason, setBanReason] = React.useState("");
     const [showBanDialog, setShowBanDialog] = React.useState(false);
     const [showWarningDialog, setShowWarningDialog] = React.useState(false);
+    const [showAttachmentPanel, setShowAttachmentPanel] = React.useState(false);
+    const [pendingImages, setPendingImages] = React.useState<string[]>([]);
+    const [pendingVideos, setPendingVideos] = React.useState<string[]>([]);
+    const [pendingAudios, setPendingAudios] = React.useState<string[]>([]);
+    const [pendingDocuments, setPendingDocuments] = React.useState<string[]>([]);
+    const [pendingVoiceNote, setPendingVoiceNote] = React.useState<string | null>(null);
+    const [pendingLinkUrl, setPendingLinkUrl] = React.useState("");
+    const [pendingPollQuestion, setPendingPollQuestion] = React.useState("");
+    const [pendingPollOptions, setPendingPollOptions] = React.useState<string[]>(["", ""]);
+    const [pendingEventTitle, setPendingEventTitle] = React.useState("");
+    const [pendingEventDate, setPendingEventDate] = React.useState("");
+    const [pendingEventLocation, setPendingEventLocation] = React.useState("");
+    const [showPollCreator, setShowPollCreator] = React.useState(false);
+    const [showEventCreator, setShowEventCreator] = React.useState(false);
+    const [showLinkInput, setShowLinkInput] = React.useState(false);
+    const [isRecording, setIsRecording] = React.useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
     const [newTopic, setNewTopic] = React.useState({
         title: "",
         content: "",
         category: "",
+        image: "",
+        video: "",
+        linkUrl: "",
     });
 
     const scrollToBottom = useCallback(() => {
@@ -192,11 +253,20 @@ export default function CommunityClient({
             toast.error("Please fill in all fields");
             return;
         }
+        if (newTopic.category === "Announcements" && !isAdmin) {
+            toast.error("Only admins can create announcements");
+            return;
+        }
         try {
-            await createTopic(newTopic);
+            await createTopic({
+                ...newTopic,
+                image: newTopic.image || undefined,
+                video: newTopic.video || undefined,
+                linkUrl: newTopic.linkUrl || undefined,
+            });
             setShowCreate(false);
-            setNewTopic({ title: "", content: "", category: "" });
-            toast.success("Channel created!");
+            setNewTopic({ title: "", content: "", category: "", image: "", video: "", linkUrl: "" });
+            toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
             router.refresh();
         } catch {
             toast.error("Failed to create channel");
@@ -217,14 +287,29 @@ export default function CommunityClient({
     };
 
     const handleSendMessage = async () => {
-        if ((!messageText.trim() && !pendingImage) || !selectedTopic) return;
+        if ((!messageText.trim() && !pendingImage && pendingImages.length === 0 && pendingVideos.length === 0 && pendingAudios.length === 0 && pendingDocuments.length === 0 && !pendingVoiceNote && !pendingPollQuestion && !pendingEventTitle) || !selectedTopic) return;
         try {
             const reply = await addReply({
                 topicId: selectedTopic.id,
                 content: messageText.trim(),
                 parentId: replyingTo?.id,
                 image: pendingImage || undefined,
+                images: pendingImages.length > 0 ? pendingImages : undefined,
+                video: pendingVideos.length === 1 ? pendingVideos[0] : undefined,
+                videos: pendingVideos.length > 1 ? pendingVideos : undefined,
+                audio: pendingAudios.length === 1 ? pendingAudios[0] : undefined,
+                audios: pendingAudios.length > 1 ? pendingAudios : undefined,
+                voiceNote: pendingVoiceNote || undefined,
+                document: pendingDocuments.length === 1 ? pendingDocuments[0] : undefined,
+                documents: pendingDocuments.length > 1 ? pendingDocuments : undefined,
+                linkUrl: pendingLinkUrl.trim() || undefined,
+                pollQuestion: pendingPollQuestion.trim() || undefined,
+                pollOptions: pendingPollQuestion.trim() ? pendingPollOptions.filter((o) => o.trim()) : undefined,
+                eventTitle: pendingEventTitle.trim() || undefined,
+                eventDate: pendingEventDate || undefined,
+                eventLocation: pendingEventLocation.trim() || undefined,
             });
+            const replyData = { ...reply, children: [], pollVotes: (reply.pollVotes as Record<string, number> | null) || null } as ReplyData;
             setSelectedTopic((prev) => {
                 if (!prev) return prev;
                 if (replyingTo?.id) {
@@ -233,12 +318,12 @@ export default function CommunityClient({
                         ...prev,
                         replies: prev.replies.map((r) =>
                             r.id === replyingTo.id
-                                ? { ...r, children: [...(r.children || []), { ...reply, children: [] }] }
+                                ? { ...r, children: [...(r.children || []), replyData] }
                                 : {
                                       ...r,
                                       children: (r.children || []).map((c) =>
                                           c.id === replyingTo.id
-                                              ? { ...c, children: [...(c.children || []), { ...reply, children: [] }] }
+                                              ? { ...c, children: [...(c.children || []), replyData] }
                                               : c
                                       ),
                                   }
@@ -248,11 +333,26 @@ export default function CommunityClient({
                 // Top-level reply
                 return {
                     ...prev,
-                    replies: [...prev.replies, { ...reply, children: [] }],
+                    replies: [...prev.replies, replyData],
                 };
             });
             setMessageText("");
             setPendingImage(null);
+            setPendingImages([]);
+            setPendingVideos([]);
+            setPendingAudios([]);
+            setPendingDocuments([]);
+            setPendingVoiceNote(null);
+            setPendingLinkUrl("");
+            setPendingPollQuestion("");
+            setPendingPollOptions(["", ""]);
+            setPendingEventTitle("");
+            setPendingEventDate("");
+            setPendingEventLocation("");
+            setShowPollCreator(false);
+            setShowEventCreator(false);
+            setShowLinkInput(false);
+            setShowAttachmentPanel(false);
             setReplyingTo(null);
             scrollToBottom();
         } catch {
@@ -380,6 +480,164 @@ export default function CommunityClient({
         }
     };
 
+    const handleToggleTopicLike = async (topicId: string, isDislike: boolean) => {
+        try {
+            await toggleTopicLike(topicId, isDislike);
+            // Update local state
+            setTopics((prev) =>
+                prev.map((t) => {
+                    if (t.id !== topicId) return t;
+                    const existingLikes = t.likes || [];
+                    const existing = existingLikes.find((l) => l.userId === currentUserId);
+                    let newLikes;
+                    if (existing) {
+                        if (existing.isDislike === isDislike) {
+                            newLikes = existingLikes.filter((l) => l.userId !== currentUserId);
+                        } else {
+                            newLikes = existingLikes.map((l) =>
+                                l.userId === currentUserId ? { ...l, isDislike } : l
+                            );
+                        }
+                    } else {
+                        newLikes = [...existingLikes, { userId: currentUserId || "", isDislike }];
+                    }
+                    return { ...t, likes: newLikes };
+                })
+            );
+            if (selectedTopic?.id === topicId) {
+                setSelectedTopic((prev) => {
+                    if (!prev) return prev;
+                    const existingLikes = prev.likes || [];
+                    const existing = existingLikes.find((l) => l.userId === currentUserId);
+                    let newLikes;
+                    if (existing) {
+                        if (existing.isDislike === isDislike) {
+                            newLikes = existingLikes.filter((l) => l.userId !== currentUserId);
+                        } else {
+                            newLikes = existingLikes.map((l) =>
+                                l.userId === currentUserId ? { ...l, isDislike } : l
+                            );
+                        }
+                    } else {
+                        newLikes = [...existingLikes, { userId: currentUserId || "", isDislike }];
+                    }
+                    return { ...prev, likes: newLikes };
+                });
+            }
+        } catch {
+            toast.error("Failed to react");
+        }
+    };
+
+    const handleEditTopic = async (topicId: string, data: { title?: string; content?: string }) => {
+        try {
+            await editTopic(topicId, data);
+            setTopics((prev) =>
+                prev.map((t) =>
+                    t.id === topicId ? { ...t, ...data } : t
+                )
+            );
+            if (selectedTopic?.id === topicId) {
+                setSelectedTopic((prev) =>
+                    prev ? { ...prev, ...data } : prev
+                );
+            }
+            toast.success("Updated successfully");
+        } catch {
+            toast.error("Failed to update");
+        }
+    };
+
+    const handleMentionAll = () => {
+        const mentionableUsers = users.filter((u) => u.name && u.id !== currentUserId);
+        const allNames = mentionableUsers.map((u) => `@${u.name}`).join(" ");
+        setMessageText((prev) => (prev ? prev + " " + allNames + " " : allNames + " "));
+        toast.success(`Mentioned ${mentionableUsers.length} users`);
+    };
+
+    const handleStartRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+                try {
+                    const formData = new FormData();
+                    formData.append("file", audioBlob, "voice-note.webm");
+                    const res = await fetch("/api/upload", { method: "POST", body: formData });
+                    if (!res.ok) throw new Error("Upload failed");
+                    const data = await res.json();
+                    if (data.url) setPendingVoiceNote(data.url);
+                } catch {
+                    toast.error("Failed to upload voice note");
+                }
+                stream.getTracks().forEach((track) => track.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch {
+            toast.error("Microphone access denied");
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const handleFileUpload = async (file: File, type: "image" | "video" | "audio" | "document") => {
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            if (!res.ok) throw new Error("Upload failed");
+            const data = await res.json();
+            if (data.url) {
+                switch (type) {
+                    case "image": setPendingImages((prev) => [...prev, data.url]); break;
+                    case "video": setPendingVideos((prev) => [...prev, data.url]); break;
+                    case "audio": setPendingAudios((prev) => [...prev, data.url]); break;
+                    case "document": setPendingDocuments((prev) => [...prev, data.url]); break;
+                }
+            }
+        } catch {
+            toast.error(`Failed to upload ${type}`);
+        }
+    };
+
+    const handleVotePoll = async (replyId: string, optionIndex: number) => {
+        try {
+            const result = await voteOnPoll(replyId, optionIndex);
+            if (selectedTopic) {
+                setSelectedTopic({
+                    ...selectedTopic,
+                    replies: selectedTopic.replies.map((r) =>
+                        r.id === replyId ? { ...r, pollVotes: result.votes } : {
+                            ...r,
+                            children: (r.children || []).map((c) =>
+                                c.id === replyId ? { ...c, pollVotes: result.votes } : c
+                            ),
+                        }
+                    ),
+                });
+            }
+        } catch {
+            toast.error("Failed to vote");
+        }
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -446,6 +704,152 @@ export default function CommunityClient({
         });
     };
 
+    const renderMessageAttachments = (reply: ReplyData) => {
+        const attachments: React.ReactNode[] = [];
+
+        // Multiple images
+        const allImages = [...(reply.image ? [reply.image] : []), ...(reply.images || [])];
+        if (allImages.length > 0) {
+            attachments.push(
+                <div key="images" className={`mt-1 ${allImages.length > 1 ? "grid grid-cols-2 gap-1 max-w-sm" : "max-w-sm"}`}>
+                    {allImages.map((img, idx) => (
+                        <Image key={idx} src={img} alt={`Attachment ${idx + 1}`} width={400} height={300} unoptimized className="rounded-lg max-h-[300px] w-auto object-contain border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90" />
+                    ))}
+                </div>
+            );
+        }
+
+        // Multiple videos
+        const allVideos = [...(reply.video ? [reply.video] : []), ...(reply.videos || [])];
+        if (allVideos.length > 0) {
+            attachments.push(
+                <div key="videos" className="mt-1 space-y-1 max-w-sm">
+                    {allVideos.map((vid, idx) => (
+                        <video key={idx} src={vid} controls className="rounded-lg max-h-[300px] w-full object-contain bg-black" />
+                    ))}
+                </div>
+            );
+        }
+
+        // Voice note
+        if (reply.voiceNote) {
+            attachments.push(
+                <div key="voice" className="mt-1 flex items-center gap-2 bg-green-50 dark:bg-green-950 rounded-xl px-3 py-2 max-w-xs">
+                    <MicIcon className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                    <audio src={reply.voiceNote} controls className="h-8 flex-1" />
+                </div>
+            );
+        }
+
+        // Audio files
+        const allAudios = [...(reply.audio ? [reply.audio] : []), ...(reply.audios || [])];
+        if (allAudios.length > 0) {
+            attachments.push(
+                <div key="audios" className="mt-1 space-y-1 max-w-sm">
+                    {allAudios.map((aud, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950 rounded-xl px-3 py-2">
+                            <Music2Icon className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                            <audio src={aud} controls className="h-8 flex-1" />
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // Documents
+        const allDocs = [...(reply.document ? [reply.document] : []), ...(reply.documents || [])];
+        if (allDocs.length > 0) {
+            attachments.push(
+                <div key="docs" className="mt-1 space-y-1">
+                    {allDocs.map((doc, idx) => (
+                        <a key={idx} href={doc} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950 rounded-xl px-3 py-2 max-w-xs hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
+                            <FileIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <span className="text-sm text-blue-600 dark:text-blue-400 truncate flex-1">Document {idx + 1}</span>
+                            <ExternalLinkIcon className="h-3 w-3 text-blue-400 shrink-0" />
+                        </a>
+                    ))}
+                </div>
+            );
+        }
+
+        // Link attachment
+        if (reply.linkUrl) {
+            attachments.push(
+                <a key="link" href={reply.linkUrl} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 max-w-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700">
+                    <LinkIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium truncate">Click here</p>
+                        <p className="text-xs text-gray-500 truncate">{reply.linkUrl}</p>
+                    </div>
+                    <ExternalLinkIcon className="h-3 w-3 text-gray-400 shrink-0" />
+                </a>
+            );
+        }
+
+        // Poll
+        if (reply.pollQuestion && reply.pollOptions && reply.pollOptions.length > 0) {
+            const votes = (reply.pollVotes || {}) as Record<string, number>;
+            const totalVotes = Object.keys(votes).length;
+            const userVote = currentUserId ? votes[currentUserId] : undefined;
+            const optionCounts: Record<number, number> = {};
+            Object.values(votes).forEach((v) => {
+                optionCounts[v] = (optionCounts[v] || 0) + 1;
+            });
+
+            attachments.push(
+                <div key="poll" className="mt-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 max-w-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                        <BarChart3Icon className="h-4 w-4 text-indigo-500" />
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{reply.pollQuestion}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                        {reply.pollOptions.map((option, idx) => {
+                            const count = optionCounts[idx] || 0;
+                            const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                            const isSelected = userVote === idx;
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => handleVotePoll(reply.id, idx)}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm relative overflow-hidden transition-colors ${isSelected ? "ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950" : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+                                >
+                                    <div className="absolute inset-y-0 left-0 bg-indigo-100 dark:bg-indigo-900/30 transition-all" style={{ width: `${pct}%` }} />
+                                    <div className="relative flex justify-between items-center">
+                                        <span className="font-medium text-gray-800 dark:text-gray-200">{option}</span>
+                                        {totalVotes > 0 && <span className="text-xs text-gray-500">{pct}%</span>}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</p>
+                </div>
+            );
+        }
+
+        // Event
+        if (reply.eventTitle) {
+            attachments.push(
+                <div key="event" className="mt-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 max-w-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                        <CalendarIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{reply.eventTitle}</p>
+                    </div>
+                    {reply.eventDate && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                            📅 {new Date(reply.eventDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                    )}
+                    {reply.eventLocation && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 ml-6 mt-0.5">📍 {reply.eventLocation}</p>
+                    )}
+                </div>
+            );
+        }
+
+        return attachments.length > 0 ? <>{attachments}</> : null;
+    };
+
     const filteredUsers = users.filter(
         (u) =>
             u.name &&
@@ -484,10 +888,10 @@ export default function CommunityClient({
                     return (
                         <div key={cat}>
                             <div className="flex items-center gap-1 px-1 mb-0.5">
-                                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <span className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     {cat}
                                 </span>
-                                <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
                                     — {catTopics.length}
                                 </span>
                             </div>
@@ -508,7 +912,7 @@ export default function CommunityClient({
                                         {topic.title.toLowerCase().replace(/\s+/g, "-")}
                                     </span>
                                     {topic._count.replies > 0 && (
-                                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">
                                             {topic._count.replies}
                                         </span>
                                     )}
@@ -535,7 +939,7 @@ export default function CommunityClient({
                 ).length > 0 && (
                     <div>
                         <div className="flex items-center gap-1 px-1 mb-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            <span className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Other
                             </span>
                         </div>
@@ -608,7 +1012,7 @@ export default function CommunityClient({
                     {selectedTopic.content.length > 100 ? "…" : ""}
                 </p>
                 <Badge
-                    className={`${CATEGORY_COLORS[selectedTopic.category] || "bg-gray-500"} text-white text-[10px] border-0 shrink-0`}
+                    className={`${CATEGORY_COLORS[selectedTopic.category] || "bg-gray-500"} text-white text-xs border-0 shrink-0`}
                 >
                     {selectedTopic.category}
                 </Badge>
@@ -618,26 +1022,110 @@ export default function CommunityClient({
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
                 {/* Welcome Message */}
                 <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                    <div className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center mb-3">
-                        <HashIcon className="h-8 w-8 text-white" />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 ${selectedTopic.category === "Announcements" ? "bg-yellow-500" : "bg-indigo-500"}`}>
+                        {selectedTopic.category === "Announcements" ? (
+                            <MegaphoneIcon className="h-8 w-8 text-white" />
+                        ) : (
+                            <HashIcon className="h-8 w-8 text-white" />
+                        )}
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                        Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!
+                        {selectedTopic.category === "Announcements" ? (
+                            <>📢 {selectedTopic.title}</>
+                        ) : (
+                            <>Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!</>
+                        )}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        This is the start of the{" "}
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                            #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
-                        </span>{" "}
-                        channel. Created by{" "}
+                        {selectedTopic.category === "Announcements" ? "Announcement" : "This is the start of the"}{" "}
+                        {selectedTopic.category !== "Announcements" && (
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                                #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
+                            </span>
+                        )}{" "}
+                        {selectedTopic.category !== "Announcements" && "channel. "}
+                        {selectedTopic.category === "Announcements" ? "Posted" : "Created"} by{" "}
                         <span className="font-semibold text-gray-900 dark:text-white">
                             {getDisplayName(selectedTopic.user)}
                         </span>{" "}
                         on {formatDate(selectedTopic.createdAt)}.
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-base text-gray-700 dark:text-gray-300 mt-2 whitespace-pre-wrap">
                         {selectedTopic.content}
                     </p>
+                    {/* Announcement Media */}
+                    {selectedTopic.image && (
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <Image src={selectedTopic.image} alt="Attachment" width={600} height={400} className="w-full max-h-[400px] object-cover" unoptimized />
+                        </div>
+                    )}
+                    {selectedTopic.video && (
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <video src={selectedTopic.video} controls className="w-full max-h-[400px] object-contain bg-black" />
+                        </div>
+                    )}
+                    {/* Link Attachment */}
+                    {selectedTopic.linkUrl && (
+                        <a
+                            href={selectedTopic.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                        >
+                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
+                                <ExternalLinkIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline truncate">Click here to open link</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{selectedTopic.linkUrl}</p>
+                            </div>
+                            <ExternalLinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                        </a>
+                    )}
+                    {/* Like/Dislike for Announcements */}
+                    {selectedTopic.category === "Announcements" && (
+                        <div className="mt-3 flex items-center gap-4">
+                            {(() => {
+                                const topicLikes = selectedTopic.likes || [];
+                                const likes = topicLikes.filter((l) => !l.isDislike);
+                                const dislikes = topicLikes.filter((l) => l.isDislike);
+                                const userLiked = likes.some((l) => l.userId === currentUserId);
+                                const userDisliked = dislikes.some((l) => l.userId === currentUserId);
+                                return (
+                                    <>
+                                        <button
+                                            onClick={() => handleToggleTopicLike(selectedTopic.id, false)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${userLiked ? "text-blue-600 bg-blue-50 dark:bg-blue-950" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                                        >
+                                            <ThumbsUpIcon className={`h-4 w-4 ${userLiked ? "fill-current" : ""}`} />
+                                            {likes.length > 0 && <span>{likes.length}</span>}
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleTopicLike(selectedTopic.id, true)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${userDisliked ? "text-red-600 bg-red-50 dark:bg-red-950" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                                        >
+                                            <ThumbsDownIcon className={`h-4 w-4 ${userDisliked ? "fill-current" : ""}`} />
+                                            {dislikes.length > 0 && <span>{dislikes.length}</span>}
+                                        </button>
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => {
+                                                    const newTitle = prompt("Edit announcement title:", selectedTopic.title);
+                                                    if (newTitle && newTitle.trim()) {
+                                                        handleEditTopic(selectedTopic.id, { title: newTitle.trim() });
+                                                    }
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-auto"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                                Edit
+                                            </button>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
                 </div>
 
                 {/* Messages List */}
@@ -674,7 +1162,7 @@ export default function CommunityClient({
                                                 undefined
                                             }
                                         />
-                                        <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
+                                        <AvatarFallback className="text-xs bg-indigo-500 text-white">
                                             {getDisplayName(parentReply.user)
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
@@ -705,7 +1193,7 @@ export default function CommunityClient({
                                     </Avatar>
                                 ) : (
                                     <div className="w-10 shrink-0 flex items-center justify-center">
-                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100">
                                             {formatTime(reply.createdAt)}
                                         </span>
                                     </div>
@@ -719,7 +1207,7 @@ export default function CommunityClient({
                                             >
                                                 {getDisplayName(reply.user)}
                                             </span>
-                                            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">
                                                 {formatDate(reply.createdAt)}{" "}
                                                 {formatTime(reply.createdAt)}
                                             </span>
@@ -771,18 +1259,7 @@ export default function CommunityClient({
                                             renderMessageContent(reply.content)
                                         )}
                                     </p>
-                                    {reply.image && (
-                                        <div className="mt-1 max-w-sm">
-                                            <Image
-                                                src={reply.image}
-                                                alt="Attachment"
-                                                width={400}
-                                                height={300}
-                                                unoptimized
-                                                className="rounded-lg max-h-[300px] w-auto object-contain border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90"
-                                            />
-                                        </div>
-                                    )}
+                                    {renderMessageAttachments(reply)}
                                     {/* Nested replies inline */}
                                     {reply.children &&
                                         reply.children.length > 0 && (
@@ -803,7 +1280,7 @@ export default function CommunityClient({
                                                                         undefined
                                                                     }
                                                                 />
-                                                                <AvatarFallback className="text-[10px] bg-indigo-500 text-white">
+                                                                <AvatarFallback className="text-xs bg-indigo-500 text-white">
                                                                     {getDisplayName(child.user)
                                                                         ?.charAt(
                                                                             0
@@ -817,7 +1294,7 @@ export default function CommunityClient({
                                                                     <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                                                                         {getDisplayName(child.user)}
                                                                     </span>
-                                                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                                    <span className="text-xs text-gray-400 dark:text-gray-500">
                                                                         {formatDate(child.createdAt)}{" "}
                                                                         {formatTime(child.createdAt)}
                                                                     </span>
@@ -847,16 +1324,7 @@ export default function CommunityClient({
                                                                         {renderMessageContent(child.content)}
                                                                     </p>
                                                                 )}
-                                                                {child.image && (
-                                                                    <Image
-                                                                        src={child.image}
-                                                                        alt="Attachment"
-                                                                        width={200}
-                                                                        height={150}
-                                                                        unoptimized
-                                                                        className="mt-1 rounded max-h-[150px] w-auto object-contain border border-gray-200 dark:border-gray-800"
-                                                                    />
-                                                                )}
+                                                                {renderMessageAttachments(child)}
                                                                 {/* Child reply actions */}
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <button
@@ -867,7 +1335,7 @@ export default function CommunityClient({
                                                                             const userName = getDisplayName(child.user).replace(/\s+/g, "");
                                                                             setMessageText(`@${userName} `);
                                                                         }}
-                                                                        className="text-[10px] text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
+                                                                        className="text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
                                                                     >
                                                                         Reply
                                                                     </button>
@@ -878,7 +1346,7 @@ export default function CommunityClient({
                                                                                 setEditingReplyId(child.id);
                                                                                 setEditingContent(child.content);
                                                                             }}
-                                                                            className="text-[10px] text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                                                            className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
                                                                         >
                                                                             Edit
                                                                         </button>
@@ -889,7 +1357,7 @@ export default function CommunityClient({
                                                                                 e.stopPropagation();
                                                                                 handleDeleteReply(child.id);
                                                                             }}
-                                                                            className="text-[10px] text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
+                                                                            className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
                                                                         >
                                                                             Delete
                                                                         </button>
@@ -982,75 +1450,258 @@ export default function CommunityClient({
                     </div>
                 )}
 
-                {/* Pending image preview */}
-                {pendingImage && (
-                    <div className="relative inline-block mb-1 px-3 py-2 rounded-t-lg bg-gray-100 dark:bg-gray-900">
-                        <Image
-                            src={pendingImage}
-                            alt="Upload preview"
-                            width={200}
-                            height={120}
-                            unoptimized
-                            className="max-h-[120px] w-auto rounded"
-                        />
-                        <button
-                            onClick={() => setPendingImage(null)}
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
-                        >
-                            <XIcon className="h-3 w-3" />
-                        </button>
+                {/* Pending attachments preview */}
+                {(pendingImage || pendingImages.length > 0 || pendingVideos.length > 0 || pendingAudios.length > 0 || pendingDocuments.length > 0 || pendingVoiceNote || pendingLinkUrl || pendingPollQuestion || pendingEventTitle) && (
+                    <div className="px-3 py-2 mb-1 rounded-t-lg bg-gray-100 dark:bg-gray-900 space-y-2">
+                        {/* Image previews */}
+                        {(pendingImage || pendingImages.length > 0) && (
+                            <div className="flex flex-wrap gap-2">
+                                {pendingImage && (
+                                    <div className="relative">
+                                        <Image src={pendingImage} alt="Preview" width={80} height={60} unoptimized className="h-[60px] w-auto rounded" />
+                                        <button onClick={() => setPendingImage(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
+                                    </div>
+                                )}
+                                {pendingImages.map((img, idx) => (
+                                    <div key={idx} className="relative">
+                                        <Image src={img} alt={`Preview ${idx + 1}`} width={80} height={60} unoptimized className="h-[60px] w-auto rounded" />
+                                        <button onClick={() => setPendingImages((prev) => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {/* Video previews */}
+                        {pendingVideos.length > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {pendingVideos.map((vid, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded px-2 py-1 text-xs">
+                                        <VideoIcon className="h-3 w-3 text-green-500" />
+                                        <span className="truncate max-w-[100px]">Video {idx + 1}</span>
+                                        <button onClick={() => setPendingVideos((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {/* Audio previews */}
+                        {pendingAudios.length > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {pendingAudios.map((aud, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded px-2 py-1 text-xs">
+                                        <Music2Icon className="h-3 w-3 text-purple-500" />
+                                        <span>Audio {idx + 1}</span>
+                                        <button onClick={() => setPendingAudios((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {/* Document previews */}
+                        {pendingDocuments.length > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {pendingDocuments.map((doc, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded px-2 py-1 text-xs">
+                                        <FileIcon className="h-3 w-3 text-blue-500" />
+                                        <span>Document {idx + 1}</span>
+                                        <button onClick={() => setPendingDocuments((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {/* Voice note preview */}
+                        {pendingVoiceNote && (
+                            <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950 rounded px-2 py-1">
+                                <MicIcon className="h-3 w-3 text-green-500" />
+                                <audio src={pendingVoiceNote} controls className="h-7 flex-1" />
+                                <button onClick={() => setPendingVoiceNote(null)} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                            </div>
+                        )}
+                        {/* Link preview */}
+                        {pendingLinkUrl && (
+                            <div className="flex items-center gap-2 text-xs">
+                                <LinkIcon className="h-3 w-3 text-blue-500" />
+                                <span className="truncate text-blue-500">{pendingLinkUrl}</span>
+                                <button onClick={() => { setPendingLinkUrl(""); setShowLinkInput(false); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                            </div>
+                        )}
+                        {/* Poll preview */}
+                        {pendingPollQuestion && (
+                            <div className="flex items-center gap-2 text-xs">
+                                <BarChart3Icon className="h-3 w-3 text-indigo-500" />
+                                <span>Poll: {pendingPollQuestion}</span>
+                                <button onClick={() => { setPendingPollQuestion(""); setPendingPollOptions(["", ""]); setShowPollCreator(false); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                            </div>
+                        )}
+                        {/* Event preview */}
+                        {pendingEventTitle && (
+                            <div className="flex items-center gap-2 text-xs">
+                                <CalendarIcon className="h-3 w-3 text-green-500" />
+                                <span>Event: {pendingEventTitle}</span>
+                                <button onClick={() => { setPendingEventTitle(""); setPendingEventDate(""); setPendingEventLocation(""); setShowEventCreator(false); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Poll Creator */}
+                {showPollCreator && (
+                    <div className="px-3 py-2 mb-1 rounded-lg bg-gray-100 dark:bg-gray-900 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                <BarChart3Icon className="h-4 w-4 text-indigo-500" /> Create Poll
+                            </div>
+                            <button onClick={() => setShowPollCreator(false)} className="text-gray-400"><XIcon className="h-4 w-4" /></button>
+                        </div>
+                        <Input placeholder="Ask a question..." value={pendingPollQuestion} onChange={(e) => setPendingPollQuestion(e.target.value)} className="text-sm h-8" />
+                        {pendingPollOptions.map((opt, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                                <Input placeholder={`Option ${idx + 1}`} value={opt} onChange={(e) => { const newOpts = [...pendingPollOptions]; newOpts[idx] = e.target.value; setPendingPollOptions(newOpts); }} className="text-sm h-7 flex-1" />
+                                {pendingPollOptions.length > 2 && (
+                                    <button onClick={() => setPendingPollOptions((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                )}
+                            </div>
+                        ))}
+                        <button onClick={() => setPendingPollOptions((prev) => [...prev, ""])} className="text-xs text-indigo-500 hover:text-indigo-600">+ Add option</button>
+                    </div>
+                )}
+
+                {/* Event Creator */}
+                {showEventCreator && (
+                    <div className="px-3 py-2 mb-1 rounded-lg bg-gray-100 dark:bg-gray-900 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                <CalendarIcon className="h-4 w-4 text-green-500" /> Create Event
+                            </div>
+                            <button onClick={() => setShowEventCreator(false)} className="text-gray-400"><XIcon className="h-4 w-4" /></button>
+                        </div>
+                        <Input placeholder="Event title..." value={pendingEventTitle} onChange={(e) => setPendingEventTitle(e.target.value)} className="text-sm h-8" />
+                        <Input type="datetime-local" value={pendingEventDate} onChange={(e) => setPendingEventDate(e.target.value)} className="text-sm h-8" />
+                        <Input placeholder="Location (optional)" value={pendingEventLocation} onChange={(e) => setPendingEventLocation(e.target.value)} className="text-sm h-8" />
+                    </div>
+                )}
+
+                {/* Link Input */}
+                {showLinkInput && (
+                    <div className="px-3 py-2 mb-1 rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center gap-2">
+                        <LinkIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                        <Input placeholder="Paste a link URL..." value={pendingLinkUrl} onChange={(e) => setPendingLinkUrl(e.target.value)} className="text-sm h-8 flex-1" />
+                        <button onClick={() => setShowLinkInput(false)} className="text-gray-400"><XIcon className="h-4 w-4" /></button>
                     </div>
                 )}
 
                 <div
                     className={`flex items-end gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 ${
-                        replyingTo || pendingImage
+                        replyingTo || pendingImage || pendingImages.length > 0 || pendingVideos.length > 0 || pendingDocuments.length > 0 || pendingAudios.length > 0 || pendingVoiceNote || pendingPollQuestion || pendingEventTitle || pendingLinkUrl
                             ? "rounded-t-none"
                             : ""
                     }`}
                 >
-                    {/* Upload button */}
-                    <div className="shrink-0 mb-0.5">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            id="community-image-upload"
-                            onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                if (file.size > 4 * 1024 * 1024) {
-                                    toast.error("Image must be less than 4MB");
-                                    return;
-                                }
-                                try {
-                                    const formData = new FormData();
-                                    formData.append("file", file);
-                                    const res = await fetch("/api/upload", {
-                                        method: "POST",
-                                        body: formData,
-                                    });
-                                    if (!res.ok) throw new Error("Upload failed");
-                                    const data = await res.json();
-                                    if (data.url) {
-                                        setPendingImage(data.url);
-                                    }
-                                } catch {
-                                    toast.error("Image upload failed");
-                                }
-                                e.target.value = "";
-                            }}
-                        />
+                    {/* Attachment panel toggle (WhatsApp-style) */}
+                    <div className="relative shrink-0 mb-0.5">
                         <button
                             type="button"
-                            onClick={() =>
-                                document
-                                    .getElementById("community-image-upload")
-                                    ?.click()
-                            }
+                            onClick={() => setShowAttachmentPanel(!showAttachmentPanel)}
                             className="p-1 h-8 w-8 rounded-full text-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
-                            <ImageIcon className="h-5 w-5" />
+                            <PlusIcon className="h-5 w-5" />
+                        </button>
+
+                        {/* WhatsApp-style attachment panel */}
+                        {showAttachmentPanel && (
+                            <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-3 w-64 z-50">
+                                <div className="grid grid-cols-3 gap-2">
+                                    {/* Image */}
+                                    <label className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                                            <ImageIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Image</span>
+                                        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => {
+                                            const files = e.target.files;
+                                            if (files) Array.from(files).forEach((f) => handleFileUpload(f, "image"));
+                                            e.target.value = "";
+                                            setShowAttachmentPanel(false);
+                                        }} />
+                                    </label>
+                                    {/* Video */}
+                                    <label className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                            <VideoIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Video</span>
+                                        <input type="file" accept="video/*" multiple className="hidden" onChange={(e) => {
+                                            const files = e.target.files;
+                                            if (files) Array.from(files).forEach((f) => handleFileUpload(f, "video"));
+                                            e.target.value = "";
+                                            setShowAttachmentPanel(false);
+                                        }} />
+                                    </label>
+                                    {/* Document */}
+                                    <label className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                            <FileIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Document</span>
+                                        <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" multiple className="hidden" onChange={(e) => {
+                                            const files = e.target.files;
+                                            if (files) Array.from(files).forEach((f) => handleFileUpload(f, "document"));
+                                            e.target.value = "";
+                                            setShowAttachmentPanel(false);
+                                        }} />
+                                    </label>
+                                    {/* Audio */}
+                                    <label className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                                            <Music2Icon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Audio</span>
+                                        <input type="file" accept="audio/*" multiple className="hidden" onChange={(e) => {
+                                            const files = e.target.files;
+                                            if (files) Array.from(files).forEach((f) => handleFileUpload(f, "audio"));
+                                            e.target.value = "";
+                                            setShowAttachmentPanel(false);
+                                        }} />
+                                    </label>
+                                    {/* Poll */}
+                                    <button onClick={() => { setShowPollCreator(true); setShowAttachmentPanel(false); }} className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                            <BarChart3Icon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Poll</span>
+                                    </button>
+                                    {/* Event */}
+                                    <button onClick={() => { setShowEventCreator(true); setShowAttachmentPanel(false); }} className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+                                            <CalendarIcon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Event</span>
+                                    </button>
+                                    {/* Link */}
+                                    <button onClick={() => { setShowLinkInput(true); setShowAttachmentPanel(false); }} className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center">
+                                            <LinkIcon className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Link</span>
+                                    </button>
+                                    {/* Contact - placeholder */}
+                                    <button onClick={() => toast.info("Contact sharing will open your phone's contacts")} className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+                                            <BookUserIcon className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                                        </div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Contact</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Voice recording button */}
+                    <div className="shrink-0 mb-0.5">
+                        <button
+                            type="button"
+                            onClick={isRecording ? handleStopRecording : handleStartRecording}
+                            className={`p-1 h-8 w-8 rounded-full transition-colors ${isRecording ? "text-red-500 bg-red-50 dark:bg-red-950 animate-pulse" : "text-gray-600 hover:text-green-600"}`}
+                            title={isRecording ? "Stop recording" : "Record voice note"}
+                        >
+                            <MicIcon className="h-5 w-5" />
                         </button>
                     </div>
 
@@ -1152,7 +1803,7 @@ export default function CommunityClient({
                                                     u.image || undefined
                                                 }
                                             />
-                                            <AvatarFallback className="text-[9px] bg-indigo-500 text-white">
+                                            <AvatarFallback className="text-xs bg-indigo-500 text-white">
                                                 {u.name
                                                     ?.charAt(0)
                                                     ?.toUpperCase() || "U"}
@@ -1160,7 +1811,7 @@ export default function CommunityClient({
                                         </Avatar>
                                         <span>{u.name}</span>
                                         {u.role === "admin" && (
-                                            <Badge className="text-[9px] bg-red-500/20 text-red-400 border-0 ml-auto">
+                                            <Badge className="text-xs bg-red-500/20 text-red-400 border-0 ml-auto">
                                                 Admin
                                             </Badge>
                                         )}
@@ -1168,6 +1819,17 @@ export default function CommunityClient({
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    {/* @mention all button */}
+                    <div className="shrink-0 mb-0.5">
+                        <button
+                            onClick={handleMentionAll}
+                            className="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:text-orange-500 transition-colors"
+                            title="Mention all users"
+                        >
+                            <UsersIcon className="h-5 w-5" />
+                        </button>
                     </div>
 
                     {/* Send button */}
@@ -1238,21 +1900,25 @@ export default function CommunityClient({
 
             {/* Create Topic Dialog */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white">
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-gray-900 dark:text-white">
-                            Create Channel
+                            {newTopic.category === "Announcements" ? "Create Announcement" : "Create Channel"}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
                             <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                Channel Name
+                                {newTopic.category === "Announcements" ? "Announcement Title" : "Channel Name"}
                             </label>
                             <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                <HashIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                {newTopic.category === "Announcements" ? (
+                                    <MegaphoneIcon className="h-4 w-4 text-yellow-500" />
+                                ) : (
+                                    <HashIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                )}
                                 <Input
-                                    placeholder="new-channel"
+                                    placeholder={newTopic.category === "Announcements" ? "Announcement title..." : "new-channel"}
                                     value={newTopic.title}
                                     onChange={(e) =>
                                         setNewTopic((p) => ({
@@ -1281,7 +1947,7 @@ export default function CommunityClient({
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-                                    {CATEGORIES.map((cat) => (
+                                    {CATEGORIES.filter((cat) => cat !== "Announcements" || isAdmin).map((cat) => (
                                         <SelectItem
                                             key={cat}
                                             value={cat}
@@ -1303,7 +1969,7 @@ export default function CommunityClient({
                                 Description
                             </label>
                             <Textarea
-                                placeholder="What is this channel about?"
+                                placeholder={newTopic.category === "Announcements" ? "Write your announcement..." : "What is this channel about?"}
                                 value={newTopic.content}
                                 onChange={(e) =>
                                     setNewTopic((p) => ({
@@ -1314,11 +1980,60 @@ export default function CommunityClient({
                                 className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 min-h-[80px]"
                             />
                         </div>
+                        {/* Optional Image URL */}
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                Image URL (optional)
+                            </label>
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <ImageIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                <Input
+                                    placeholder="https://example.com/image.jpg"
+                                    value={newTopic.image}
+                                    onChange={(e) => setNewTopic((p) => ({ ...p, image: e.target.value }))}
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
+                        {/* Optional Video URL */}
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                Video URL (optional)
+                            </label>
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <VideoIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                <Input
+                                    placeholder="https://example.com/video.mp4"
+                                    value={newTopic.video}
+                                    onChange={(e) => setNewTopic((p) => ({ ...p, video: e.target.value }))}
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
+                        {/* Optional Link Attachment */}
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                Link Attachment (optional)
+                            </label>
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                <Input
+                                    placeholder="https://example.com/document.pdf"
+                                    value={newTopic.linkUrl}
+                                    onChange={(e) => setNewTopic((p) => ({ ...p, linkUrl: e.target.value }))}
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
                         <Button
                             onClick={handleCreateTopic}
-                            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white"
+                            className={`w-full text-white ${newTopic.category === "Announcements" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-indigo-500 hover:bg-indigo-600"}`}
                         >
-                            Create Channel
+                            {newTopic.category === "Announcements" ? (
+                                <><MegaphoneIcon className="h-4 w-4 mr-2" /> Publish Announcement</>
+                            ) : (
+                                "Create Channel"
+                            )}
                         </Button>
                     </div>
                 </DialogContent>

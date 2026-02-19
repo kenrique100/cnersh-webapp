@@ -35,6 +35,7 @@ model User {
   notifications      Notification[]
   auditLogs          AuditLog[]
   commentLikes       CommentLike[]
+  communityTopicLikes CommunityTopicLike[]
 
   @@map("user")
 }
@@ -105,6 +106,7 @@ model Post {
   images    String[]    @default([])
   videos    String[]    @default([])
   tags      String[]    @default([])
+  linkUrl   String?
   userId    String
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments  Comment[]
@@ -221,16 +223,20 @@ enum ProjectStatus {
 // ─── Community Discussion System ───────────────────────────
 
 model CommunityTopic {
-  id        String           @id @default(uuid())
-  title     String
-  content   String
-  category  String
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replies   CommunityReply[]
-  deleted   Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id          String           @id @default(uuid())
+  title       String
+  content     String
+  category    String
+  image       String?
+  video       String?
+  linkUrl     String?
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies     CommunityReply[]
+  likes       CommunityTopicLike[]
+  deleted     Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([userId])
   @@index([category])
@@ -238,20 +244,50 @@ model CommunityTopic {
   @@map("community_topic")
 }
 
-model CommunityReply {
-  id        String          @id @default(uuid())
-  content   String
-  image     String?
+model CommunityTopicLike {
+  id        String         @id @default(uuid())
   topicId   String
-  topic     CommunityTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  parentId  String?
-  parent    CommunityReply? @relation("ReplyToReply", fields: [parentId], references: [id])
-  children  CommunityReply[] @relation("ReplyToReply")
+  topic     CommunityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
   userId    String
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deleted   Boolean         @default(false)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDislike Boolean        @default(false)
+  createdAt DateTime       @default(now())
+
+  @@unique([topicId, userId])
+  @@index([topicId])
+  @@index([userId])
+  @@map("community_topic_like")
+}
+
+model CommunityReply {
+  id          String          @id @default(uuid())
+  content     String
+  image       String?
+  images      String[]        @default([])
+  video       String?
+  videos      String[]        @default([])
+  audio       String?
+  audios      String[]        @default([])
+  voiceNote   String?
+  document    String?
+  documents   String[]        @default([])
+  linkUrl     String?
+  pollQuestion String?
+  pollOptions  String[]       @default([])
+  pollVotes    Json?
+  eventTitle   String?
+  eventDate    DateTime?
+  eventLocation String?
+  topicId     String
+  topic       CommunityTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      CommunityReply? @relation("ReplyToReply", fields: [parentId], references: [id])
+  children    CommunityReply[] @relation("ReplyToReply")
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deleted     Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@index([topicId])
   @@index([userId])
@@ -318,6 +354,7 @@ enum NotificationType {
   LIKE
   MENTION
   SYSTEM
+  ANNOUNCEMENT
 
   @@map("notification_type")
 }

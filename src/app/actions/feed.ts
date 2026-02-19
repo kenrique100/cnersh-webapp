@@ -7,7 +7,7 @@ import { sendNotificationEmail } from "@/lib/send-notification-email";
 
 const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
 
-export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[] }) {
+export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -19,6 +19,7 @@ export async function createPost(data: { content: string; image?: string; video?
             images: data.images || [],
             videos: data.videos || [],
             tags: data.tags || [],
+            linkUrl: data.linkUrl || null,
             userId: session.user.id,
         },
     });
@@ -488,6 +489,23 @@ export async function searchUsers(query: string) {
         },
         select: { id: true, name: true, image: true },
         take: 8,
+    });
+
+    return users;
+}
+
+export async function getAllUsers() {
+    const session = await authSession();
+    if (!session) return [];
+
+    const users = await db.user.findMany({
+        where: {
+            id: { not: session.user.id },
+            banned: { not: true },
+        },
+        select: { id: true, name: true, image: true },
+        orderBy: { name: "asc" },
+        take: 500,
     });
 
     return users;
