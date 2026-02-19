@@ -46,6 +46,7 @@ const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: s
     LIKE: { icon: HeartIcon, color: "text-pink-600", bg: "bg-pink-100 dark:bg-pink-900", label: "Like" },
     COMMENT: { icon: MessageCircleIcon, color: "text-green-600", bg: "bg-green-100 dark:bg-green-900", label: "Comment" },
     PROJECT_STATUS: { icon: FolderIcon, color: "text-purple-600", bg: "bg-purple-100 dark:bg-purple-900", label: "Project Status" },
+    REVIEW_ASSIGNED: { icon: FolderIcon, color: "text-indigo-600", bg: "bg-indigo-100 dark:bg-indigo-900", label: "Review Assigned" },
     SYSTEM: { icon: AlertCircleIcon, color: "text-orange-600", bg: "bg-orange-100 dark:bg-orange-900", label: "System" },
     MENTION: { icon: InfoIcon, color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900", label: "Mention" },
 };

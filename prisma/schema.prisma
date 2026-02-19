@@ -28,7 +28,8 @@ model User {
   posts              Post[]
   comments           Comment[]
   likes              Like[]
-  projects           Project[]
+  projects           Project[]           @relation("ProjectOwner")
+  assignedProjects   Project[]           @relation("ProjectReviewer")
   communityTopics    CommunityTopic[]
   communityReplies   CommunityReply[]
   reports            Report[]        @relation("ReportAuthor")
@@ -185,13 +186,16 @@ model Project {
   status      ProjectStatus       @default(DRAFT)
   feedback    String?
   userId      String
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?              @relation("ProjectReviewer", fields: [assignedToId], references: [id], onDelete: SetNull)
   statusHistory ProjectStatusHistory[]
   deleted     Boolean             @default(false)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
   @@index([userId])
+  @@index([assignedToId])
   @@index([status])
   @@index([createdAt])
   @@map("project")
@@ -350,6 +354,7 @@ model Notification {
 
 enum NotificationType {
   PROJECT_STATUS
+  REVIEW_ASSIGNED
   COMMENT
   LIKE
   MENTION

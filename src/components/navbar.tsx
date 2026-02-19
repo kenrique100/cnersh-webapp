@@ -36,6 +36,7 @@ import {
     BuildingIcon,
     DownloadIcon,
     ClipboardListIcon,
+    GlobeIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -63,14 +64,12 @@ const userMobileNavItems: NavItem[] = [
     { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
     { href: "/projects/submit", label: "Submit Project", icon: FolderPlusIcon },
     { href: "/projects", label: "My Projects", icon: FolderIcon },
-    { href: "/community", label: "Community", icon: MessageSquareIcon },
     { href: "/notifications", label: "Notifications", icon: BellIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 const adminMobileNavItems: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-    { href: "/admin", label: "Admin Overview", icon: BarChart3Icon },
+    { href: "/admin", label: "Admin Dashboard", icon: BarChart3Icon },
     { href: "/user-management", label: "User Management", icon: UsersIcon },
     { href: "/admin/pages", label: "Manage Pages", icon: FileTextIcon },
     { href: "/admin/project-review", label: "Project Review", icon: CheckSquareIcon },
@@ -85,6 +84,39 @@ const adminMobileNavItems: NavItem[] = [
     { href: "/update-profile", label: "My Profile", icon: UserIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
+
+const languages = [
+    { code: "en", label: "English", flag: "🇬🇧" },
+    { code: "fr", label: "Français", flag: "🇫🇷" },
+    { code: "es", label: "Español", flag: "🇪🇸" },
+    { code: "de", label: "Deutsch", flag: "🇩🇪" },
+    { code: "pt", label: "Português", flag: "🇵🇹" },
+];
+
+function TranslationDropdown() {
+    const [selectedLang, setSelectedLang] = React.useState("en");
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" title="Translate">
+                    <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+                {languages.map((lang) => (
+                    <DropdownMenuItem
+                        key={lang.code}
+                        className={cn("cursor-pointer", selectedLang === lang.code && "bg-blue-50 dark:bg-blue-950")}
+                        onClick={() => setSelectedLang(lang.code)}
+                    >
+                        <span className="mr-2">{lang.flag}</span>
+                        {lang.label}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
 
 function SOPsDropdown({ onNavigate }: { onNavigate: () => void }) {
     const [isOpen, setIsOpen] = React.useState(false);
@@ -296,6 +328,9 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                     <div className="flex items-center gap-2 sm:gap-4">
                         {user ? (
                             <>
+                                {/* Translation Dropdown */}
+                                <TranslationDropdown />
+
                                 <NotificationDropdown count={notificationCount} />
 
                                 {/* Desktop: User Avatar Dropdown */}
@@ -377,8 +412,13 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                                         {user.email}
                                                     </p>
                                                     {isAdmin && (
-                                                        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 w-fit">
-                                                            Admin
+                                                        <span className={cn(
+                                                            "mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium w-fit",
+                                                            user?.role === "superadmin"
+                                                                ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+                                                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                                        )}>
+                                                            {user?.role === "superadmin" ? "Super Admin" : "Admin"}
                                                         </span>
                                                     )}
                                                 </div>
@@ -436,6 +476,9 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                             </>
                         ) : (
                             <>
+                                {/* Translation Dropdown (for non-logged-in users) */}
+                                <TranslationDropdown />
+
                                 {/* Desktop: Sign In + Sign Up buttons */}
                                 <div className="hidden sm:flex items-center gap-3">
                                     <Link href="/sign-in">

@@ -331,3 +331,104 @@ export async function forwardProjectToFeed(projectId: string, data: {
 
     return post;
 }
+
+export async function getAdminUsers() {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "superadmin") {
+        throw new Error("Forbidden: Only super admins can list admin users");
+    }
+
+    return db.user.findMany({
+        where: {
+            role: { in: ["admin", "superadmin"] },
+            banned: { not: true },
+        },
+        select: { id: true, name: true, email: true, image: true, role: true },
+        orderBy: { name: "asc" },
+    });
+}
+
+export async function assignProjectReviewer(projectId: string, adminId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "superadmin") {
+        throw new Error("Forbidden: Only super admins can assign reviewers");
+    }
+
+    const admin = await db.user.findUnique({
+        where: { id: adminId },
+        select: { id: true, name: true, email: true, role: true },
+    });
+
+    if (!admin || (admin.role !== "admin" && admin.role !== "superadmin")) {
+        throw new Error("Selected user is not an admin");
+    }
+
+    const project = await db.project.update({
+        where: { id: projectId },
+        data: {
+            assignedToId: adminId,
+            status: "PENDING_REVIEW",
+            statusHistory: {
+                create: {
+                    status: "PENDING_REVIEW",
+                    changedBy: session.user.id,
+                    comment: `Assigned to ${admin.name || admin.email} for review`,
+                },
+            },
+        },
+        include: {
+            user: { select: { id: true, name: true, email: true } },
+        },
+    });
+
+    // Notify the assigned admin
+    await db.notification.create({
+        data: {
+            type: "REVIEW_ASSIGNED",
+            message: `You have been assigned to review the project: "${project.title}"`,
+            link: `/projects/${projectId}`,
+            userId: adminId,
+        },
+    });
+
+    // Send email notification to the assigned admin
+    try {
+        if (admin.email) {
+            sendNotificationEmail({
+                to: admin.email,
+                userName: admin.name || "Admin",
+                notificationMessage: `You have been assigned to review the project: "${project.title}" submitted by ${project.user.name || "a user"}.`,
+                notificationType: "REVIEW_ASSIGNED",
+                actionUrl: `/projects/${projectId}`,
+            }).catch((err) => console.error("Error sending review assignment email:", err));
+        }
+    } catch (error) {
+        console.error("Error sending review assignment email:", error);
+    }
+
+    // Create audit log
+    await db.auditLog.create({
+        data: {
+            action: "ASSIGN_REVIEWER",
+            details: `Assigned ${admin.name || admin.email} to review project "${project.title}"`,
+            targetId: projectId,
+            userId: session.user.id,
+        },
+    });
+
+    return project;
+}

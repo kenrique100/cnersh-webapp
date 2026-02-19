@@ -66,7 +66,12 @@ export default async function UserManagementPage() {
                 banned: dbUser?.banned || false,
             };
         })
-        .filter((f) => ["user", "admin"].includes(f.role as Role));
+        .filter((f) => {
+            // Super admin can see all users (user, admin, superadmin)
+            if (currentUser?.role === "superadmin") return true;
+            // Admin can only see users and other admins, not superadmins
+            return ["user", "admin"].includes(f.role as Role);
+        });
 
     return (
         <div className="w-full p-6 shadow-lg mx-auto max-w-7xl min-h-dvh rounded-2xl h-full flex gap-6 justify-center items-start">
