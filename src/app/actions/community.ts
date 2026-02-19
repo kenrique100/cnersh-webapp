@@ -16,15 +16,13 @@ export async function createTopic(data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    // Only admins can create announcements
-    if (data.category === "Announcements") {
-        const user = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true },
-        });
-        const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-        if (!isAdmin) throw new Error("Only admins can create announcements");
-    }
+    // Only admins and superadmins can access the community
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    if (!isAdmin) throw new Error("Only admins and superadmins can access the community");
 
     const topic = await db.communityTopic.create({
         data: {
@@ -170,6 +168,15 @@ export async function addReply(data: {
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+
+    // Only admins and superadmins can access the community
+    const currentUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        throw new Error("Only admins and superadmins can access the community");
+    }
 
     const reply = await db.communityReply.create({
         data: {
@@ -372,6 +379,15 @@ export async function editReply(replyId: string, content: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
+    // Only admins and superadmins can access the community
+    const currentUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        throw new Error("Only admins and superadmins can access the community");
+    }
+
     const reply = await db.communityReply.findUnique({
         where: { id: replyId },
         select: { userId: true },
@@ -398,24 +414,21 @@ export async function editTopic(topicId: string, data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
+    // Only admins and superadmins can access the community
+    const currentUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        throw new Error("Only admins and superadmins can access the community");
+    }
+
     const topic = await db.communityTopic.findUnique({
         where: { id: topicId },
         select: { userId: true, category: true },
     });
 
     if (!topic) throw new Error("Topic not found");
-
-    // For announcements, only admins can edit
-    if (topic.category === "Announcements") {
-        const user = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true },
-        });
-        const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-        if (!isAdmin) throw new Error("Only admins can edit announcements");
-    } else {
-        if (topic.userId !== session.user.id) throw new Error("Forbidden");
-    }
 
     return db.communityTopic.update({
         where: { id: topicId },
@@ -432,6 +445,15 @@ export async function editTopic(topicId: string, data: {
 export async function toggleTopicLike(topicId: string, isDislike: boolean = false) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+
+    // Only admins and superadmins can access the community
+    const currentUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        throw new Error("Only admins and superadmins can access the community");
+    }
 
     const existing = await db.communityTopicLike.findUnique({
         where: { topicId_userId: { topicId, userId: session.user.id } },
@@ -456,6 +478,15 @@ export async function toggleTopicLike(topicId: string, isDislike: boolean = fals
 export async function voteOnPoll(replyId: string, optionIndex: number) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+
+    // Only admins and superadmins can access the community
+    const currentUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        throw new Error("Only admins and superadmins can access the community");
+    }
 
     const reply = await db.communityReply.findUnique({
         where: { id: replyId },
