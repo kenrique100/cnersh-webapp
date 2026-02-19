@@ -47,7 +47,7 @@ function PageSection({ page, depth = 0 }: { page: Page; depth?: number }) {
                                 return (
                                     <li key={item.id} className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900">
                                         <FileTextIcon className="w-4 h-4 text-gray-400 shrink-0" />
-                                        <span className="text-sm text-gray-700 dark:text-gray-300 break-words">{item.name}</span>
+                                        <span className="text-base text-gray-700 dark:text-gray-300 break-words">{item.name}</span>
                                     </li>
                                 );
                             }
@@ -65,7 +65,7 @@ function PageSection({ page, depth = 0 }: { page: Page; depth?: number }) {
                                         ) : (
                                             <ExternalLinkIcon className="w-4 h-4 text-blue-600 shrink-0" />
                                         )}
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             {item.name}
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -85,7 +85,7 @@ function PageSection({ page, depth = 0 }: { page: Page; depth?: number }) {
                 )}
 
                 {page.items.length === 0 && (!page.children || page.children.length === 0) && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 py-2">No content available yet.</p>
+                    <p className="text-base text-gray-500 dark:text-gray-400 py-2">No content available yet.</p>
                 )}
             </CardContent>
         </Card>
@@ -187,7 +187,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             Documents &amp; Calendar
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -215,7 +215,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Dossier Composition
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -229,7 +229,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Clearance Form
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -260,7 +260,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Protocol Content
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -274,7 +274,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Evaluation Form
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -305,7 +305,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <ExternalLinkIcon className="w-4 h-4 text-blue-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             WHO links for training
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -319,7 +319,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             CIOMS
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -333,7 +333,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             Helsinki Declaration
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -347,7 +347,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             Tuskegee Syphilis Trials
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -375,7 +375,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Law on Human Subjects
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -389,7 +389,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Medical Research
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -403,7 +403,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Finance Law 2024
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -417,7 +417,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Data Protection Law
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -437,7 +437,7 @@ export default async function OurPagesPage() {
                                             className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                         >
                                             <FileTextIcon className="w-4 h-4 text-blue-600 shrink-0" />
-                                            <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                            <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                 Article
                                             </span>
                                             <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -466,7 +466,7 @@ export default async function OurPagesPage() {
                                                     className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                                 >
                                                     <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                                    <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                                    <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                                         Ministerial Decision
                                                     </span>
                                                     <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -495,7 +495,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <FileTextIcon className="w-4 h-4 text-blue-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             View About Us Page
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -520,7 +520,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <FileTextIcon className="w-4 h-4 text-blue-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             View Contract Rex Organization Page
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -547,7 +547,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             Download Membership Document
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
@@ -574,7 +574,7 @@ export default async function OurPagesPage() {
                                         className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors group"
                                     >
                                         <DownloadIcon className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="text-sm text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
+                                        <span className="text-base text-blue-700 dark:text-blue-400 group-hover:underline break-words flex-1">
                                             Download Fiche d&apos;Evaluation CNERSH
                                         </span>
                                         <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />

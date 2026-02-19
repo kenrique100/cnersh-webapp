@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import LinkPreview from "@/components/link-preview";
 import {
     Dialog,
     DialogContent,
@@ -712,9 +713,9 @@ export default function CommunityClient({
         const allImages = [...(reply.image ? [reply.image] : []), ...(reply.images || [])];
         if (allImages.length > 0) {
             attachments.push(
-                <div key="images" className={`mt-1 ${allImages.length > 1 ? "grid grid-cols-2 gap-1 max-w-sm" : "max-w-sm"}`}>
+                <div key="images" className={`mt-1 ${allImages.length > 1 ? "grid grid-cols-2 gap-1 max-w-xs" : "max-w-xs"}`}>
                     {allImages.map((img, idx) => (
-                        <Image key={idx} src={img} alt={`Attachment ${idx + 1}`} width={400} height={300} unoptimized className="rounded-lg max-h-[300px] w-auto object-contain border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90" />
+                        <Image key={idx} src={img} alt={`Attachment ${idx + 1}`} width={280} height={200} unoptimized className="rounded-lg max-h-[200px] w-auto object-contain border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90" />
                     ))}
                 </div>
             );
@@ -724,9 +725,9 @@ export default function CommunityClient({
         const allVideos = [...(reply.video ? [reply.video] : []), ...(reply.videos || [])];
         if (allVideos.length > 0) {
             attachments.push(
-                <div key="videos" className="mt-1 space-y-1 max-w-sm">
+                <div key="videos" className="mt-1 space-y-1 max-w-xs">
                     {allVideos.map((vid, idx) => (
-                        <video key={idx} src={vid} controls className="rounded-lg max-h-[300px] w-full object-contain bg-black" />
+                        <video key={idx} src={vid} controls className="rounded-lg max-h-[200px] w-full object-contain bg-black" />
                     ))}
                 </div>
             );
@@ -776,14 +777,7 @@ export default function CommunityClient({
         // Link attachment
         if (reply.linkUrl) {
             attachments.push(
-                <a key="link" href={reply.linkUrl} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 max-w-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700">
-                    <LinkIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium truncate">Click here</p>
-                        <p className="text-xs text-gray-500 truncate">{reply.linkUrl}</p>
-                    </div>
-                    <ExternalLinkIcon className="h-3 w-3 text-gray-400 shrink-0" />
-                </a>
+                <LinkPreview key="link" url={reply.linkUrl} />
             );
         }
 
@@ -1056,32 +1050,18 @@ export default function CommunityClient({
                     </p>
                     {/* Announcement Media */}
                     {selectedTopic.image && (
-                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <Image src={selectedTopic.image} alt="Attachment" width={600} height={400} className="w-full max-h-[400px] object-cover" unoptimized />
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-md">
+                            <Image src={selectedTopic.image} alt="Attachment" width={400} height={280} className="w-full max-h-[280px] object-contain" unoptimized />
                         </div>
                     )}
                     {selectedTopic.video && (
-                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <video src={selectedTopic.video} controls className="w-full max-h-[400px] object-contain bg-black" />
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-md">
+                            <video src={selectedTopic.video} controls className="w-full max-h-[280px] object-contain bg-black" />
                         </div>
                     )}
                     {/* Link Attachment */}
                     {selectedTopic.linkUrl && (
-                        <a
-                            href={selectedTopic.linkUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-3 flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                        >
-                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
-                                <ExternalLinkIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline truncate">Click here to open link</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{selectedTopic.linkUrl}</p>
-                            </div>
-                            <ExternalLinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                        </a>
+                        <LinkPreview url={selectedTopic.linkUrl} />
                     )}
                     {/* Like/Dislike for Announcements */}
                     {selectedTopic.category === "Announcements" && (
@@ -1984,51 +1964,53 @@ export default function CommunityClient({
                                 className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 min-h-[80px]"
                             />
                         </div>
-                        {/* Optional Image URL */}
-                        <div>
-                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                Image URL (optional)
-                            </label>
-                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                <ImageIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                <Input
-                                    placeholder="https://example.com/image.jpg"
-                                    value={newTopic.image}
-                                    onChange={(e) => setNewTopic((p) => ({ ...p, image: e.target.value }))}
-                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
-                                />
-                            </div>
-                        </div>
-                        {/* Optional Video URL */}
-                        <div>
-                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                Video URL (optional)
-                            </label>
-                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                <VideoIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                <Input
-                                    placeholder="https://example.com/video.mp4"
-                                    value={newTopic.video}
-                                    onChange={(e) => setNewTopic((p) => ({ ...p, video: e.target.value }))}
-                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
-                                />
-                            </div>
-                        </div>
-                        {/* Optional Link Attachment */}
-                        <div>
-                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                Link Attachment (optional)
-                            </label>
-                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                <Input
-                                    placeholder="https://example.com/document.pdf"
-                                    value={newTopic.linkUrl}
-                                    onChange={(e) => setNewTopic((p) => ({ ...p, linkUrl: e.target.value }))}
-                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
-                                />
-                            </div>
-                        </div>
+                        {/* Optional Image/Video/Link - Only for Announcements */}
+                        {newTopic.category === "Announcements" && (
+                            <>
+                                <div>
+                                    <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                        Image URL (optional)
+                                    </label>
+                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                        <ImageIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <Input
+                                            placeholder="https://example.com/image.jpg"
+                                            value={newTopic.image}
+                                            onChange={(e) => setNewTopic((p) => ({ ...p, image: e.target.value }))}
+                                            className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                        Video URL (optional)
+                                    </label>
+                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                        <VideoIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <Input
+                                            placeholder="https://example.com/video.mp4"
+                                            value={newTopic.video}
+                                            onChange={(e) => setNewTopic((p) => ({ ...p, video: e.target.value }))}
+                                            className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                        Link Attachment (optional)
+                                    </label>
+                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                        <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <Input
+                                            placeholder="https://example.com/document.pdf"
+                                            value={newTopic.linkUrl}
+                                            onChange={(e) => setNewTopic((p) => ({ ...p, linkUrl: e.target.value }))}
+                                            className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
                         <Button
                             onClick={handleCreateTopic}
                             className={`w-full text-white ${newTopic.category === "Announcements" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-indigo-500 hover:bg-indigo-600"}`}

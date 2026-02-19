@@ -224,8 +224,8 @@ export default async function AboutUsPage() {
                                         <ShieldCheckIcon className="w-4 h-4 text-blue-700 dark:text-blue-400" />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Integrity</h3>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Upholding the highest standards of honesty and transparency in all our operations.</p>
+                                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Integrity</h3>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Upholding the highest standards of honesty and transparency in all our operations.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
@@ -233,8 +233,8 @@ export default async function AboutUsPage() {
                                         <UsersIcon className="w-4 h-4 text-green-700 dark:text-green-400" />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Respect for Human Dignity</h3>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Ensuring the protection and well-being of all research participants.</p>
+                                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Respect for Human Dignity</h3>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Ensuring the protection and well-being of all research participants.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
@@ -242,8 +242,8 @@ export default async function AboutUsPage() {
                                         <GlobeIcon className="w-4 h-4 text-purple-700 dark:text-purple-400" />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Accountability</h3>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Taking responsibility for ethical oversight and governance in health research.</p>
+                                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Accountability</h3>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Taking responsibility for ethical oversight and governance in health research.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
@@ -251,8 +251,8 @@ export default async function AboutUsPage() {
                                         <EyeIcon className="w-4 h-4 text-orange-700 dark:text-orange-400" />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Transparency</h3>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Fostering open communication and clear ethical guidelines for all stakeholders.</p>
+                                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Transparency</h3>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Fostering open communication and clear ethical guidelines for all stakeholders.</p>
                                     </div>
                                 </div>
                             </div>
