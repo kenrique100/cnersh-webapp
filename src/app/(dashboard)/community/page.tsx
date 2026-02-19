@@ -8,16 +8,26 @@ export const dynamic = "force-dynamic";
 export default async function CommunityPage() {
     const session = await authIsRequired();
 
-    const [{ topics }, users, user] = await Promise.all([
-        getTopics(undefined, 1, 50),
-        getCommunityUsers(),
-        db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true },
-        }),
-    ]);
+    let topics: Awaited<ReturnType<typeof getTopics>>["topics"] = [];
+    let users: Awaited<ReturnType<typeof getCommunityUsers>> = [];
+    let isAdmin = false;
 
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    try {
+        const [topicsResult, usersResult, user] = await Promise.all([
+            getTopics(undefined, 1, 50),
+            getCommunityUsers(),
+            db.user.findUnique({
+                where: { id: session.user.id },
+                select: { role: true },
+            }),
+        ]);
+
+        topics = topicsResult.topics;
+        users = usersResult;
+        isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    } catch (error) {
+        console.error("Error loading community page data:", error);
+    }
 
     return (
         <CommunityClient
