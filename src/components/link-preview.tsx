@@ -27,8 +27,8 @@ function getFaviconUrl(url: string): string {
 
 export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
     const [faviconError, setFaviconError] = React.useState(false);
-    const domain = getDomain(url);
-    const faviconUrl = getFaviconUrl(url);
+    const domain = React.useMemo(() => getDomain(url), [url]);
+    const faviconUrl = React.useMemo(() => getFaviconUrl(url), [url]);
 
     return (
         <a
