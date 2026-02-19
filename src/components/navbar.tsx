@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
     MenuIcon,
     LogOutIcon,
@@ -181,7 +181,7 @@ function TranslationDropdown() {
                     display: none !important;
                 }
                 body { top: 0 !important; }
-                .skiptranslate { display: none !important; }
+                body > .skiptranslate { display: none !important; }
                 #google_translate_element_navbar .goog-te-gadget {
                     font-size: 0 !important;
                 }
@@ -216,7 +216,7 @@ function TranslationDropdown() {
                 </button>
                 <div
                     className={cn(
-                        "absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 min-w-[260px] transition-all duration-200 z-50",
+                        "fixed sm:absolute right-2 sm:right-0 top-16 sm:top-full sm:mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-[calc(100vw-1rem)] sm:w-auto sm:min-w-[260px] max-w-[320px] transition-all duration-200 z-50",
                         isOpen
                             ? "opacity-100 scale-100 pointer-events-auto"
                             : "opacity-0 scale-95 pointer-events-none"
@@ -239,7 +239,7 @@ function TranslationDropdown() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                         Select a language to translate this page
                     </p>
-                    <div id="google_translate_element_navbar" />
+                    <div id="google_translate_element_navbar" className="notranslate" />
                 </div>
             </div>
         </>
@@ -523,6 +523,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                         </Button>
                                     </SheetTrigger>
                                     <SheetContent side="right" className="w-[280px] sm:w-[320px] p-0 overflow-y-auto">
+                                        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                                         <div className="flex flex-col gap-2 p-4 pt-8">
                                             {/* User Info Header */}
                                             <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
@@ -629,6 +630,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                         </Button>
                                     </SheetTrigger>
                                     <SheetContent side="right" className="w-[280px] sm:w-[320px] p-0 overflow-y-auto">
+                                        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                                         <div className="flex flex-col gap-2 p-4 pt-8">
                                             {/* Sign In / Sign Up */}
                                             <div className="flex flex-col gap-2 pb-4 border-b border-gray-200 dark:border-gray-800">

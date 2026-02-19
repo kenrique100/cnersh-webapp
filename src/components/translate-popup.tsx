@@ -107,7 +107,7 @@ export default function TranslatePopup() {
                     display: none !important;
                 }
                 body { top: 0 !important; }
-                .skiptranslate { display: none !important; }
+                body > .skiptranslate { display: none !important; }
                 #google_translate_element .goog-te-gadget {
                     font-size: 0 !important;
                 }
@@ -154,7 +154,7 @@ export default function TranslatePopup() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                         Select a language to translate this page
                     </p>
-                    <div id="google_translate_element" />
+                    <div id="google_translate_element" className="notranslate" />
                 </div>
                 <Button
                     onClick={() => setIsOpen(!isOpen)}

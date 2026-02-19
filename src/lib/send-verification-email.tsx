@@ -15,17 +15,30 @@ type EmailProps = {
     userName: string;
 };
 
+const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
+
 export const sendVerificationEmail = async ({
                                                 to,
                                                 verificationUrl,
                                                 userName,
                                             }: EmailProps) => {
-    await getResend().emails.send({
-        from: process.env.EMAIL_FROM!,
-        to,
-        subject: 'Welcome to Cameroon National Ethics Community - CNERSH',
-        react: (
-            <VerificationEmail verificationUrl={verificationUrl} userName={userName} />
-        ),
-    });
+    try {
+        if (!process.env.RESEND_API_KEY) {
+            console.warn("Resend API key not configured, skipping verification email");
+            return;
+        }
+
+        const emailFrom = process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM;
+
+        await getResend().emails.send({
+            from: emailFrom,
+            to,
+            subject: 'Welcome to Cameroon National Ethics Community - CNERSH',
+            react: (
+                <VerificationEmail verificationUrl={verificationUrl} userName={userName} />
+            ),
+        });
+    } catch (error) {
+        console.error("Error sending verification email:", error);
+    }
 }

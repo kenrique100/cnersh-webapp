@@ -25,16 +25,17 @@ export async function sendNotificationEmail({
     actionUrl,
 }: SendNotificationEmailProps) {
     try {
-        if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
-            console.warn("Resend API key or EMAIL_FROM not configured, skipping email notification");
+        if (!process.env.RESEND_API_KEY) {
+            console.warn("Resend API key not configured, skipping email notification");
             return;
         }
 
+        const emailFrom = process.env.EMAIL_FROM || "CNERSH <info@cameroon-national-ethics-com.net>";
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "";
         const fullActionUrl = actionUrl && baseUrl ? `${baseUrl}${actionUrl}` : undefined;
 
         await getResend().emails.send({
-            from: process.env.EMAIL_FROM,
+            from: emailFrom,
             to,
             subject: `CNERSH Notification: ${notificationType.replace(/_/g, " ")}`,
             react: (
