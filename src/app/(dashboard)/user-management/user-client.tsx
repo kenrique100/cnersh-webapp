@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -145,6 +146,9 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle> {!!user.id ? "Edit" : "Create user"} </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            {!!user.id ? "Edit user details" : "Create a new user"}
+                        </DialogDescription>
                     </DialogHeader>
 
                     <form

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -215,6 +216,7 @@ export default function NotificationsClient({
                                     </div>
                                     <span>Notification Details</span>
                                 </DialogTitle>
+                                <DialogDescription className="sr-only">View notification details and actions</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-2">
                                 <div className="flex items-center gap-2">

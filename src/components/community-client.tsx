@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -1905,6 +1906,9 @@ export default function CommunityClient({
                         <DialogTitle className="text-gray-900 dark:text-white">
                             {newTopic.category === "Announcements" ? "Create Announcement" : "Create Channel"}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            {newTopic.category === "Announcements" ? "Create a new announcement" : "Create a new channel"}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
@@ -2047,6 +2051,7 @@ export default function CommunityClient({
                 <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>User Profile</DialogTitle>
+                        <DialogDescription className="sr-only">View user profile details and admin actions</DialogDescription>
                     </DialogHeader>
                     {selectedUser && (
                         <div className="space-y-4">
@@ -2099,6 +2104,7 @@ export default function CommunityClient({
                 <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Send Warning to {selectedUser?.name}</DialogTitle>
+                        <DialogDescription className="sr-only">Send a warning message to this user</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <Textarea
@@ -2127,6 +2133,7 @@ export default function CommunityClient({
                 <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Ban {selectedUser?.name}</DialogTitle>
+                        <DialogDescription className="sr-only">Ban this user from the community</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <Textarea
@@ -2155,6 +2162,7 @@ export default function CommunityClient({
                 <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Report Message</DialogTitle>
+                        <DialogDescription className="sr-only">Report this message for review</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <Select value={reportCategory} onValueChange={setReportCategory}>
