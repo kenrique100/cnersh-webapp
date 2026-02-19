@@ -460,12 +460,12 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
     const votes = (reply.pollVotes as Record<string, number>) || {};
     const voteKey = `${session.user.id}`;
     
-    // Remove previous vote if any
-    const previousVote = Object.entries(votes).find(([, v]) => v === undefined);
-    if (previousVote) delete votes[previousVote[0]];
-    
-    // Set new vote
-    votes[voteKey] = optionIndex;
+    // Toggle vote: if voting for same option, remove vote; otherwise set new vote
+    if (votes[voteKey] === optionIndex) {
+        delete votes[voteKey];
+    } else {
+        votes[voteKey] = optionIndex;
+    }
 
     await db.communityReply.update({
         where: { id: replyId },

@@ -549,12 +549,10 @@ export default function CommunityClient({
     };
 
     const handleMentionAll = () => {
-        const allNames = users
-            .filter((u) => u.name && u.id !== currentUserId)
-            .map((u) => `@${u.name}`)
-            .join(" ");
+        const mentionableUsers = users.filter((u) => u.name && u.id !== currentUserId);
+        const allNames = mentionableUsers.map((u) => `@${u.name}`).join(" ");
         setMessageText((prev) => (prev ? prev + " " + allNames + " " : allNames + " "));
-        toast.success(`Mentioned ${users.length} users`);
+        toast.success(`Mentioned ${mentionableUsers.length} users`);
     };
 
     const handleStartRecording = async () => {

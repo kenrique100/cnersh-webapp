@@ -505,6 +505,7 @@ export async function getAllUsers() {
         },
         select: { id: true, name: true, image: true },
         orderBy: { name: "asc" },
+        take: 500,
     });
 
     return users;
