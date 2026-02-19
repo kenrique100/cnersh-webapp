@@ -85,6 +85,39 @@ const adminMobileNavItems: NavItem[] = [
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+const languages = [
+    { code: "en", label: "English", flag: "🇬🇧" },
+    { code: "fr", label: "Français", flag: "🇫🇷" },
+    { code: "es", label: "Español", flag: "🇪🇸" },
+    { code: "de", label: "Deutsch", flag: "🇩🇪" },
+    { code: "pt", label: "Português", flag: "🇵🇹" },
+];
+
+function TranslationDropdown() {
+    const [selectedLang, setSelectedLang] = React.useState("en");
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" title="Translate">
+                    <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+                {languages.map((lang) => (
+                    <DropdownMenuItem
+                        key={lang.code}
+                        className={cn("cursor-pointer", selectedLang === lang.code && "bg-blue-50 dark:bg-blue-950")}
+                        onClick={() => setSelectedLang(lang.code)}
+                    >
+                        <span className="mr-2">{lang.flag}</span>
+                        {lang.label}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
 function SOPsDropdown({ onNavigate }: { onNavigate: () => void }) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [englishOpen, setEnglishOpen] = React.useState(false);
@@ -296,35 +329,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                         {user ? (
                             <>
                                 {/* Translation Dropdown */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" title="Translate">
-                                            <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* English - default */ }}>
-                                            <span className="mr-2">🇬🇧</span>
-                                            English
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* French */ }}>
-                                            <span className="mr-2">🇫🇷</span>
-                                            Français
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Spanish */ }}>
-                                            <span className="mr-2">🇪🇸</span>
-                                            Español
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* German */ }}>
-                                            <span className="mr-2">🇩🇪</span>
-                                            Deutsch
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Portuguese */ }}>
-                                            <span className="mr-2">🇵🇹</span>
-                                            Português
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <TranslationDropdown />
 
                                 <NotificationDropdown count={notificationCount} />
 
@@ -472,35 +477,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                         ) : (
                             <>
                                 {/* Translation Dropdown (for non-logged-in users) */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" title="Translate">
-                                            <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* English - default */ }}>
-                                            <span className="mr-2">🇬🇧</span>
-                                            English
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* French */ }}>
-                                            <span className="mr-2">🇫🇷</span>
-                                            Français
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Spanish */ }}>
-                                            <span className="mr-2">🇪🇸</span>
-                                            Español
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* German */ }}>
-                                            <span className="mr-2">🇩🇪</span>
-                                            Deutsch
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Portuguese */ }}>
-                                            <span className="mr-2">🇵🇹</span>
-                                            Português
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <TranslationDropdown />
 
                                 {/* Desktop: Sign In + Sign Up buttons */}
                                 <div className="hidden sm:flex items-center gap-3">
