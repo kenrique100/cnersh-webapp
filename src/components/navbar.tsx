@@ -36,6 +36,7 @@ import {
     BuildingIcon,
     DownloadIcon,
     ClipboardListIcon,
+    GlobeIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -63,14 +64,12 @@ const userMobileNavItems: NavItem[] = [
     { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
     { href: "/projects/submit", label: "Submit Project", icon: FolderPlusIcon },
     { href: "/projects", label: "My Projects", icon: FolderIcon },
-    { href: "/community", label: "Community", icon: MessageSquareIcon },
     { href: "/notifications", label: "Notifications", icon: BellIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 const adminMobileNavItems: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-    { href: "/admin", label: "Admin Overview", icon: BarChart3Icon },
+    { href: "/admin", label: "Admin Dashboard", icon: BarChart3Icon },
     { href: "/user-management", label: "User Management", icon: UsersIcon },
     { href: "/admin/pages", label: "Manage Pages", icon: FileTextIcon },
     { href: "/admin/project-review", label: "Project Review", icon: CheckSquareIcon },
@@ -296,6 +295,37 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                     <div className="flex items-center gap-2 sm:gap-4">
                         {user ? (
                             <>
+                                {/* Translation Dropdown */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" title="Translate">
+                                            <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* English - default */ }}>
+                                            <span className="mr-2">🇬🇧</span>
+                                            English
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* French */ }}>
+                                            <span className="mr-2">🇫🇷</span>
+                                            Français
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Spanish */ }}>
+                                            <span className="mr-2">🇪🇸</span>
+                                            Español
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* German */ }}>
+                                            <span className="mr-2">🇩🇪</span>
+                                            Deutsch
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Portuguese */ }}>
+                                            <span className="mr-2">🇵🇹</span>
+                                            Português
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
                                 <NotificationDropdown count={notificationCount} />
 
                                 {/* Desktop: User Avatar Dropdown */}
@@ -377,8 +407,13 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                                         {user.email}
                                                     </p>
                                                     {isAdmin && (
-                                                        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 w-fit">
-                                                            Admin
+                                                        <span className={cn(
+                                                            "mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium w-fit",
+                                                            user?.role === "superadmin"
+                                                                ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+                                                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                                        )}>
+                                                            {user?.role === "superadmin" ? "Super Admin" : "Admin"}
                                                         </span>
                                                     )}
                                                 </div>
@@ -436,6 +471,37 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                             </>
                         ) : (
                             <>
+                                {/* Translation Dropdown (for non-logged-in users) */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" title="Translate">
+                                            <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* English - default */ }}>
+                                            <span className="mr-2">🇬🇧</span>
+                                            English
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* French */ }}>
+                                            <span className="mr-2">🇫🇷</span>
+                                            Français
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Spanish */ }}>
+                                            <span className="mr-2">🇪🇸</span>
+                                            Español
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* German */ }}>
+                                            <span className="mr-2">🇩🇪</span>
+                                            Deutsch
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => { /* Portuguese */ }}>
+                                            <span className="mr-2">🇵🇹</span>
+                                            Português
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
                                 {/* Desktop: Sign In + Sign Up buttons */}
                                 <div className="hidden sm:flex items-center gap-3">
                                     <Link href="/sign-in">

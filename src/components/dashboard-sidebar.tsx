@@ -45,13 +45,11 @@ const userNavItems: NavItem[] = [
     { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
     { href: "/projects/submit", label: "Submit Project", icon: FolderPlusIcon },
     { href: "/projects", label: "My Projects", icon: FolderIcon },
-    { href: "/community", label: "Community", icon: MessageSquareIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 const adminNavItems: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-    { href: "/admin", label: "Admin Overview", icon: BarChart3Icon },
+    { href: "/admin", label: "Admin Dashboard", icon: BarChart3Icon },
     { href: "/user-management", label: "User Management", icon: UsersIcon },
     { href: "/admin/pages", label: "Manage Pages", icon: FileTextIcon },
     { href: "/admin/project-review", label: "Project Review", icon: CheckSquareIcon },

@@ -1,5 +1,5 @@
 import { authIsRequired } from "@/lib/auth-utils";
-import { getAllProjects } from "@/app/actions/project";
+import { getAllProjects, getAdminUsers } from "@/app/actions/project";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import ProjectReviewClient from "@/components/project-review-client";
@@ -19,6 +19,17 @@ export default async function ProjectReviewPage() {
     }
 
     const projects = await getAllProjects();
+    const isSuperAdmin = user?.role === "superadmin";
+
+    // Super admin can see the list of admins to assign reviewers
+    let adminUsers: Awaited<ReturnType<typeof getAdminUsers>> = [];
+    if (isSuperAdmin) {
+        try {
+            adminUsers = await getAdminUsers();
+        } catch {
+            adminUsers = [];
+        }
+    }
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -31,7 +42,11 @@ export default async function ProjectReviewPage() {
                         Review and manage project submissions
                     </p>
                 </div>
-                <ProjectReviewClient projects={JSON.parse(JSON.stringify(projects))} />
+                <ProjectReviewClient
+                    projects={JSON.parse(JSON.stringify(projects))}
+                    isSuperAdmin={isSuperAdmin}
+                    adminUsers={JSON.parse(JSON.stringify(adminUsers))}
+                />
             </div>
         </div>
     );

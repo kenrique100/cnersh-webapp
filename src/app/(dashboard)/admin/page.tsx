@@ -30,6 +30,7 @@ export default async function AdminOverviewPage() {
         redirect("/dashboard");
     }
 
+    const isSuperAdmin = user?.role === "superadmin";
     const stats = await getAdminStats();
 
     const statCards = [
@@ -118,10 +119,10 @@ export default async function AdminOverviewPage() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                Admin Dashboard
+                                {isSuperAdmin ? "Super Admin Dashboard" : "Admin Dashboard"}
                             </h1>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Platform overview and analytics
+                                {isSuperAdmin ? "Full platform overview and management" : "Platform overview and analytics"}
                             </p>
                         </div>
                     </div>

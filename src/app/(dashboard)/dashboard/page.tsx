@@ -2,7 +2,7 @@ import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PenSquareIcon, FolderIcon, MessageSquareIcon, BellIcon } from "lucide-react";
+import { PenSquareIcon, FolderIcon, BellIcon } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
                 </Card>
 
                 {/* Quick Access Grid */}
-                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-8">
                     <Link href="/feeds">
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow cursor-pointer h-full">
                             <CardContent className="flex flex-col items-center justify-center py-6 text-center">
@@ -70,18 +70,6 @@ export default async function DashboardPage() {
                                 </div>
                                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Projects</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Track submissions</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    <Link href="/community">
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow cursor-pointer h-full">
-                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 mb-3">
-                                    <MessageSquareIcon className="w-6 h-6 text-purple-700 dark:text-purple-400" />
-                                </div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Community</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Discussions</p>
                             </CardContent>
                         </Card>
                     </Link>
