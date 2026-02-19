@@ -35,6 +35,7 @@ import {
     ChevronDownIcon,
     BuildingIcon,
     DownloadIcon,
+    ClipboardListIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -84,6 +85,92 @@ const adminMobileNavItems: NavItem[] = [
     { href: "/update-profile", label: "My Profile", icon: UserIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
+
+function SOPsDropdown({ onNavigate }: { onNavigate: () => void }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [englishOpen, setEnglishOpen] = React.useState(false);
+    const [frenchOpen, setFrenchOpen] = React.useState(false);
+    return (
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors w-full text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+            >
+                <ClipboardListIcon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">SOP&apos;s</span>
+                <ChevronDownIcon className={cn("h-3 w-3 transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && (
+                <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
+                    {/* English */}
+                    <button
+                        onClick={() => setEnglishOpen(!englishOpen)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors w-full text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                    >
+                        <span className="flex-1 text-left">English</span>
+                        <ChevronDownIcon className={cn("h-3 w-3 transition-transform", englishOpen && "rotate-180")} />
+                    </button>
+                    {englishOpen && (
+                        <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
+                            <a
+                                href="/SOP1- Current Edit-06-25-24.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={onNavigate}
+                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                                <DownloadIcon className="h-4 w-4 shrink-0" />
+                                SOP 1
+                            </a>
+                            <a
+                                href="/SOP2 - Current edit-06-26-24.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={onNavigate}
+                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                                <DownloadIcon className="h-4 w-4 shrink-0" />
+                                SOP 2
+                            </a>
+                        </div>
+                    )}
+                    {/* French */}
+                    <button
+                        onClick={() => setFrenchOpen(!frenchOpen)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors w-full text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                    >
+                        <span className="flex-1 text-left">French</span>
+                        <ChevronDownIcon className={cn("h-3 w-3 transition-transform", frenchOpen && "rotate-180")} />
+                    </button>
+                    {frenchOpen && (
+                        <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
+                            <a
+                                href="/SOP1- Current Edit-06-25-24 French.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={onNavigate}
+                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                                <DownloadIcon className="h-4 w-4 shrink-0" />
+                                SOP 1
+                            </a>
+                            <a
+                                href="/SOP2 - Current edit-06-26-24.French.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={onNavigate}
+                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                                <DownloadIcon className="h-4 w-4 shrink-0" />
+                                SOP 2
+                            </a>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
     const [isOpen, setIsOpen] = React.useState(false);
@@ -145,6 +232,7 @@ function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNaviga
                         <DownloadIcon className="h-4 w-4 shrink-0" />
                         Reviews
                     </a>
+                    <SOPsDropdown onNavigate={onNavigate} />
                     <Link
                         href="/pages"
                         onClick={onNavigate}
