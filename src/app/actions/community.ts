@@ -129,6 +129,13 @@ export async function getTopicWithReplies(topicId: string) {
                         where: { deleted: false },
                         include: {
                             user: { select: { id: true, name: true, image: true, role: true } },
+                            children: {
+                                where: { deleted: false },
+                                include: {
+                                    user: { select: { id: true, name: true, image: true, role: true } },
+                                },
+                                orderBy: { createdAt: "asc" },
+                            },
                         },
                         orderBy: { createdAt: "asc" },
                     },

@@ -713,9 +713,9 @@ export default function CommunityClient({
         const allImages = [...(reply.image ? [reply.image] : []), ...(reply.images || [])];
         if (allImages.length > 0) {
             attachments.push(
-                <div key="images" className={`mt-1 ${allImages.length > 1 ? "grid grid-cols-2 gap-1 max-w-xs" : "max-w-xs"}`}>
+                <div key="images" className={`mt-1 ${allImages.length > 1 ? "grid grid-cols-2 gap-1 max-w-md" : "max-w-md"}`}>
                     {allImages.map((img, idx) => (
-                        <Image key={idx} src={img} alt={`Attachment ${idx + 1}`} width={280} height={200} unoptimized className="rounded-lg max-h-[200px] w-auto object-contain border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90" />
+                        <Image key={idx} src={img} alt={`Attachment ${idx + 1}`} width={400} height={300} unoptimized className="rounded-lg max-h-[300px] w-full object-contain bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-90" />
                     ))}
                 </div>
             );
@@ -725,9 +725,9 @@ export default function CommunityClient({
         const allVideos = [...(reply.video ? [reply.video] : []), ...(reply.videos || [])];
         if (allVideos.length > 0) {
             attachments.push(
-                <div key="videos" className="mt-1 space-y-1 max-w-xs">
+                <div key="videos" className="mt-1 space-y-1 max-w-md">
                     {allVideos.map((vid, idx) => (
-                        <video key={idx} src={vid} controls className="rounded-lg max-h-[200px] w-full object-contain bg-black" />
+                        <video key={idx} src={vid} controls className="rounded-lg max-h-[300px] w-full object-contain bg-black" />
                     ))}
                 </div>
             );
@@ -1050,13 +1050,13 @@ export default function CommunityClient({
                     </p>
                     {/* Announcement Media */}
                     {selectedTopic.image && (
-                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-md">
-                            <Image src={selectedTopic.image} alt="Attachment" width={400} height={280} className="w-full max-h-[280px] object-contain" unoptimized />
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-lg">
+                            <Image src={selectedTopic.image} alt="Attachment" width={600} height={400} className="w-full max-h-[400px] object-contain bg-gray-50 dark:bg-gray-900" unoptimized />
                         </div>
                     )}
                     {selectedTopic.video && (
-                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-md">
-                            <video src={selectedTopic.video} controls className="w-full max-h-[280px] object-contain bg-black" />
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-lg">
+                            <video src={selectedTopic.video} controls className="w-full max-h-[400px] object-contain bg-black" />
                         </div>
                     )}
                     {/* Link Attachment */}

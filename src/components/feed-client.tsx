@@ -1106,7 +1106,7 @@ export default function FeedClient({
                                                     alt="Post attachment"
                                                     width={700}
                                                     height={400}
-                                                    className="w-full object-cover max-h-[500px]"
+                                                    className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
                                                     unoptimized
                                                 />
                                             );
@@ -1120,7 +1120,7 @@ export default function FeedClient({
                                                         alt={`Post attachment ${idx + 1}`}
                                                         width={350}
                                                         height={250}
-                                                        className={`w-full object-cover ${allImages.length > 1 ? "max-h-[250px]" : "max-h-[500px]"} ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
+                                                        className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
                                                         unoptimized
                                                     />
                                                 ))}
