@@ -24,6 +24,9 @@ import {
     ReplyIcon,
     PencilIcon,
     Loader2,
+    LinkIcon,
+    UsersIcon,
+    ExternalLinkIcon,
 } from "lucide-react";
 import {
     Dialog,
@@ -45,7 +48,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getPostLikers } from "@/app/actions/feed";
+import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
 
@@ -79,6 +82,7 @@ interface PostData {
     images: string[];
     videos: string[];
     tags: string[];
+    linkUrl: string | null;
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
@@ -219,6 +223,8 @@ export default function FeedClient({
     const [commentReportCategory, setCommentReportCategory] = React.useState("");
     const [commentReportDetails, setCommentReportDetails] = React.useState("");
     const [showCommentEmoji, setShowCommentEmoji] = React.useState<string | null>(null);
+    const [newPostLinkUrl, setNewPostLinkUrl] = React.useState<string>("");
+    const [showLinkInput, setShowLinkInput] = React.useState(false);
 
     // @mention autocomplete state
     const [mentionResults, setMentionResults] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
@@ -279,6 +285,27 @@ export default function FeedClient({
         setMentionResults([]);
     };
 
+    const handleMentionAll = async (source: string) => {
+        try {
+            const allUsers = await getAllUsers();
+            const mentionText = allUsers
+                .filter((u) => u.name)
+                .map((u) => `@${u.name}`)
+                .join(" ");
+            if (source === "new-post") {
+                setNewPostContent((prev) => (prev ? prev + " " + mentionText + " " : mentionText + " "));
+            } else {
+                setCommentTexts((prev) => ({
+                    ...prev,
+                    [source]: (prev[source] || "") + " " + mentionText + " ",
+                }));
+            }
+            toast.success(`Mentioned ${allUsers.length} users`);
+        } catch {
+            toast.error("Failed to fetch users");
+        }
+    };
+
     const handleShowLikers = async (postId: string) => {
         setLikersPostId(postId);
         setLoadingLikers(true);
@@ -303,6 +330,7 @@ export default function FeedClient({
                 images: newPostImages.length > 0 ? newPostImages : undefined,
                 videos: newPostVideos.length > 0 ? newPostVideos : undefined,
                 tags: newPostTags.length > 0 ? newPostTags : undefined,
+                linkUrl: newPostLinkUrl.trim() || undefined,
             });
             setNewPostContent("");
             setNewPostImage(null);
@@ -311,6 +339,8 @@ export default function FeedClient({
             setNewPostVideos([]);
             setNewPostTags([]);
             setTagInput("");
+            setNewPostLinkUrl("");
+            setShowLinkInput(false);
             setShowImageUpload(false);
             setShowVideoUpload(false);
             toast.success("Post published successfully");
@@ -638,7 +668,7 @@ export default function FeedClient({
                                         setNewPostContent(e.target.value);
                                         handleMentionSearch(e.target.value, "new-post");
                                     }}
-                                    className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm"
+                                    className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-base"
                                 />
                                 {/* @Mention Dropdown for Post */}
                                 {showMentionDropdown === "new-post" && mentionResults.length > 0 && (
@@ -761,6 +791,28 @@ export default function FeedClient({
                                     />
                                 </div>
                             )}
+                            {/* Link URL Input */}
+                            {showLinkInput && (
+                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
+                                    <div className="flex items-center gap-2">
+                                        <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <input
+                                            type="url"
+                                            placeholder="Paste a link URL (e.g. https://example.com/file.pdf)"
+                                            value={newPostLinkUrl}
+                                            onChange={(e) => setNewPostLinkUrl(e.target.value)}
+                                            className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowLinkInput(false); setNewPostLinkUrl(""); }}
+                                            className="p-1 text-gray-400 hover:text-red-500"
+                                        >
+                                            <XIcon className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-1">
                                     <Button
@@ -773,7 +825,7 @@ export default function FeedClient({
                                         className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-9 px-3 rounded-lg"
                                     >
                                         <ImageIcon className="h-4 w-4 mr-1.5" />
-                                        <span className="text-xs font-medium">Photo</span>
+                                        <span className="text-sm font-medium">Photo</span>
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -785,7 +837,26 @@ export default function FeedClient({
                                         className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 h-9 px-3 rounded-lg"
                                     >
                                         <VideoIcon className="h-4 w-4 mr-1.5" />
-                                        <span className="text-xs font-medium">Video</span>
+                                        <span className="text-sm font-medium">Video</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowLinkInput(!showLinkInput)}
+                                        className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 h-9 px-3 rounded-lg"
+                                    >
+                                        <LinkIcon className="h-4 w-4 mr-1.5" />
+                                        <span className="text-sm font-medium">Link</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleMentionAll("new-post")}
+                                        className="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-orange-400 h-9 px-3 rounded-lg"
+                                        title="Mention all users"
+                                    >
+                                        <UsersIcon className="h-4 w-4 mr-1.5" />
+                                        <span className="text-sm font-medium">@All</span>
                                     </Button>
                                 </div>
                                 <Button
@@ -854,7 +925,7 @@ export default function FeedClient({
                                             return (
                                                 <Avatar key={activityUser.id} className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0">
                                                     <AvatarImage src={activityUser.image || undefined} alt={activityUser.name || ""} />
-                                                    <AvatarFallback className="text-[8px] bg-gray-200 dark:bg-gray-700 font-medium">
+                                                    <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">
                                                         {initials}
                                                     </AvatarFallback>
                                                 </Avatar>
@@ -900,13 +971,13 @@ export default function FeedClient({
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
-                                            <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                                            <p className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight">
                                                 {post.user.name || "Anonymous"}
                                             </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                                                 Community Member
                                             </p>
-                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5" title={formatFullDate(post.createdAt)}>
+                                            <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5" title={formatFullDate(post.createdAt)}>
                                                 {formatDate(post.createdAt)}
                                             </p>
                                         </div>
@@ -941,7 +1012,7 @@ export default function FeedClient({
                             {/* Post Content */}
                             {post.content && (
                                 <div className="px-4 py-3">
-                                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                    <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                                         {renderPostContent(post.content)}
                                     </p>
                                 </div>
@@ -1018,9 +1089,34 @@ export default function FeedClient({
                                 </div>
                             )}
 
+                            {/* Link Attachment */}
+                            {post.linkUrl && (
+                                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                                    <a
+                                        href={post.linkUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                                    >
+                                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
+                                            <ExternalLinkIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline truncate">
+                                                Click here to open link
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                {post.linkUrl}
+                                            </p>
+                                        </div>
+                                        <ExternalLinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                    </a>
+                                </div>
+                            )}
+
                             {/* Engagement Stats */}
                             {(post._count.likes > 0 || post._count.comments > 0) && (
-                                <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                                     <div className="flex items-center gap-1.5">
                                         {post._count.likes > 0 && (
                                             <button
@@ -1105,16 +1201,16 @@ export default function FeedClient({
                                                     <div className="flex-1 min-w-0">
                                                         <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2">
                                                             <div className="flex items-center gap-2 flex-wrap">
-                                                                <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                                     {comment.user.name || "Anonymous"}
                                                                 </p>
                                                                 {isPostAuthor && (
-                                                                    <Badge className="text-[9px] px-1.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-4">Author</Badge>
+                                                                    <Badge className="text-xs px-1.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-4">Author</Badge>
                                                                 )}
                                                                 {isCommentAdmin && (
-                                                                    <Badge className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 leading-4">Admin</Badge>
+                                                                    <Badge className="text-xs px-1.5 py-0 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 leading-4">Admin</Badge>
                                                                 )}
-                                                                <p className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
+                                                                <p className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
                                                                     {formatDate(comment.createdAt)}
                                                                 </p>
                                                             </div>
@@ -1153,7 +1249,7 @@ export default function FeedClient({
                                                                     <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setEditingCommentId(null); setEditingCommentContent(""); }}>Cancel</Button>
                                                                 </div>
                                                             ) : (
-                                                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap">
+                                                                <p className="text-base text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap">
                                                                     {renderPostContent(comment.content)}
                                                                 </p>
                                                             )}
@@ -1213,31 +1309,31 @@ export default function FeedClient({
                                                                 <div key={reply.id} className="flex gap-2 mt-2 ml-6">
                                                                     <Avatar className="h-6 w-6 shrink-0">
                                                                         <AvatarImage src={reply.user.image || undefined} />
-                                                                        <AvatarFallback className="text-[10px] bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback>
+                                                                        <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback>
                                                                     </Avatar>
                                                                     <div className="flex-1 min-w-0">
                                                                         <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5">
                                                                             <div className="flex items-center gap-1.5 flex-wrap">
-                                                                                <p className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">{reply.user.name || "Anonymous"}</p>
-                                                                                {isReplyPostAuthor && <Badge className="text-[8px] px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-3">Author</Badge>}
-                                                                                {isReplyAdmin && <Badge className="text-[8px] px-1 py-0 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 leading-3">Admin</Badge>}
-                                                                                <span className="text-[9px] text-gray-400 ml-auto">{formatDate(reply.createdAt)}</span>
+                                                                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{reply.user.name || "Anonymous"}</p>
+                                                                                {isReplyPostAuthor && <Badge className="text-xs px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-3">Author</Badge>}
+                                                                                {isReplyAdmin && <Badge className="text-xs px-1 py-0 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 leading-3">Admin</Badge>}
+                                                                                <span className="text-xs text-gray-400 ml-auto">{formatDate(reply.createdAt)}</span>
                                                                             </div>
                                                                             {editingCommentId === reply.id ? (
                                                                                 <div className="mt-1 flex gap-1">
                                                                                     <input type="text" value={editingCommentContent} onChange={(e) => setEditingCommentContent(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(post.id, reply.id); if (e.key === "Escape") { setEditingCommentId(null); setEditingCommentContent(""); } }} className="flex-1 text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500" autoFocus />
-                                                                                    <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => handleEditComment(post.id, reply.id)}>Save</Button>
+                                                                                    <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => handleEditComment(post.id, reply.id)}>Save</Button>
                                                                                 </div>
                                                                             ) : (
                                                                                 <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{renderPostContent(reply.content)}</p>
                                                                             )}
                                                                         </div>
                                                                         <div className="flex items-center gap-2 mt-0.5 px-1">
-                                                                            <button onClick={() => handleCommentLike(post.id, reply.id, false)} className={`flex items-center gap-0.5 text-[10px] ${rUserLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
+                                                                            <button onClick={() => handleCommentLike(post.id, reply.id, false)} className={`flex items-center gap-0.5 text-xs ${rUserLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
                                                                                 <ThumbsUpIcon className={`h-2.5 w-2.5 ${rUserLiked ? "fill-current" : ""}`} />
                                                                                 {rLikes.length > 0 && rLikes.length}
                                                                             </button>
-                                                                            <button onClick={() => handleCommentLike(post.id, reply.id, true)} className={`flex items-center gap-0.5 text-[10px] ${rUserDisliked ? "text-red-600" : "text-gray-500 hover:text-red-600"}`}>
+                                                                            <button onClick={() => handleCommentLike(post.id, reply.id, true)} className={`flex items-center gap-0.5 text-xs ${rUserDisliked ? "text-red-600" : "text-gray-500 hover:text-red-600"}`}>
                                                                                 <ThumbsDownIcon className={`h-2.5 w-2.5 ${rUserDisliked ? "fill-current" : ""}`} />
                                                                                 {rDislikes.length > 0 && rDislikes.length}
                                                                             </button>
@@ -1245,13 +1341,13 @@ export default function FeedClient({
                                                                                 const replyUserName = reply.user.name || "Anonymous";
                                                                                 setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: replyUserName } }));
                                                                                 setCommentTexts((prev) => ({ ...prev, [post.id]: `@${replyUserName.replace(/\s+/g, "")} ` }));
-                                                                            }} className="flex items-center gap-0.5 text-[10px] text-gray-500 hover:text-blue-600">
+                                                                            }} className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-blue-600">
                                                                                 <ReplyIcon className="h-2.5 w-2.5" />
                                                                                 Reply
                                                                             </button>
-                                                                            {isReplyAuthor && <button onClick={() => { setEditingCommentId(reply.id); setEditingCommentContent(reply.content); }} className="text-[10px] text-gray-500 hover:text-green-600">Edit</button>}
-                                                                            {(isReplyAuthor || isAdmin) && <button onClick={() => handleDeleteComment(post.id, reply.id)} className="text-[10px] text-gray-500 hover:text-red-600">Delete</button>}
-                                                                            {!isReplyAuthor && <button onClick={() => setReportingCommentId(reply.id)} className="text-[10px] text-gray-500 hover:text-orange-600">Report</button>}
+                                                                            {isReplyAuthor && <button onClick={() => { setEditingCommentId(reply.id); setEditingCommentContent(reply.content); }} className="text-xs text-gray-500 hover:text-green-600">Edit</button>}
+                                                                            {(isReplyAuthor || isAdmin) && <button onClick={() => handleDeleteComment(post.id, reply.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}
+                                                                            {!isReplyAuthor && <button onClick={() => setReportingCommentId(reply.id)} className="text-xs text-gray-500 hover:text-orange-600">Report</button>}
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1314,7 +1410,7 @@ export default function FeedClient({
                                                     onKeyDown={(e) => {
                                                         if (e.key === "Enter" && showMentionDropdown !== post.id) handleComment(post.id);
                                                     }}
-                                                    className="flex-1 h-9 px-4 text-sm rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+                                                    className="flex-1 h-9 px-4 text-base rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
                                                 />
                                                 <Button
                                                     size="icon"
@@ -1338,7 +1434,7 @@ export default function FeedClient({
                                                         >
                                                             <Avatar className="h-6 w-6 shrink-0">
                                                                 <AvatarImage src={user.image || undefined} />
-                                                                <AvatarFallback className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback>
+                                                                <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback>
                                                             </Avatar>
                                                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
                                                         </button>
