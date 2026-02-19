@@ -430,6 +430,9 @@ export async function editTopic(topicId: string, data: {
 
     if (!topic) throw new Error("Topic not found");
 
+    // Only the topic owner can edit their own topic
+    if (topic.userId !== session.user.id) throw new Error("Forbidden");
+
     return db.communityTopic.update({
         where: { id: topicId },
         data: {
