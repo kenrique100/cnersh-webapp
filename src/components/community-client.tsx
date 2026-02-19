@@ -42,6 +42,18 @@ import {
     CheckIcon,
     ShieldAlertIcon,
     BanIcon,
+    VideoIcon,
+    LinkIcon,
+    ExternalLinkIcon,
+    ThumbsUpIcon,
+    ThumbsDownIcon,
+    MegaphoneIcon,
+    FileIcon,
+    MicIcon,
+    BarChart3Icon,
+    CalendarIcon,
+    BookUserIcon,
+    Music2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +63,8 @@ import {
     deleteTopic,
     deleteReply,
     editReply,
+    editTopic,
+    toggleTopicLike,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 
@@ -75,9 +89,13 @@ interface TopicData {
     title: string;
     content: string;
     category: string;
+    image?: string | null;
+    video?: string | null;
+    linkUrl?: string | null;
     createdAt: Date;
     user: TopicUser;
-    _count: { replies: number };
+    _count: { replies: number; likes?: number };
+    likes?: { userId: string; isDislike: boolean }[];
 }
 
 interface ReplyData {
@@ -95,12 +113,17 @@ interface TopicDetail {
     title: string;
     content: string;
     category: string;
+    image?: string | null;
+    video?: string | null;
+    linkUrl?: string | null;
     createdAt: Date;
     user: TopicUser;
     replies: ReplyData[];
+    likes?: { userId: string; isDislike: boolean }[];
 }
 
 const CATEGORIES = [
+    "Announcements",
     "General",
     "Ethics",
     "Research",
@@ -119,6 +142,7 @@ const EMOJI_LIST = [
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
+    Announcements: "bg-yellow-500",
     General: "bg-gray-500",
     Ethics: "bg-purple-500",
     Research: "bg-blue-500",
@@ -173,6 +197,9 @@ export default function CommunityClient({
         title: "",
         content: "",
         category: "",
+        image: "",
+        video: "",
+        linkUrl: "",
     });
 
     const scrollToBottom = useCallback(() => {
@@ -192,11 +219,20 @@ export default function CommunityClient({
             toast.error("Please fill in all fields");
             return;
         }
+        if (newTopic.category === "Announcements" && !isAdmin) {
+            toast.error("Only admins can create announcements");
+            return;
+        }
         try {
-            await createTopic(newTopic);
+            await createTopic({
+                ...newTopic,
+                image: newTopic.image || undefined,
+                video: newTopic.video || undefined,
+                linkUrl: newTopic.linkUrl || undefined,
+            });
             setShowCreate(false);
-            setNewTopic({ title: "", content: "", category: "" });
-            toast.success("Channel created!");
+            setNewTopic({ title: "", content: "", category: "", image: "", video: "", linkUrl: "" });
+            toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
             router.refresh();
         } catch {
             toast.error("Failed to create channel");
@@ -380,6 +416,83 @@ export default function CommunityClient({
         }
     };
 
+    const handleToggleTopicLike = async (topicId: string, isDislike: boolean) => {
+        try {
+            await toggleTopicLike(topicId, isDislike);
+            // Update local state
+            setTopics((prev) =>
+                prev.map((t) => {
+                    if (t.id !== topicId) return t;
+                    const existingLikes = t.likes || [];
+                    const existing = existingLikes.find((l) => l.userId === currentUserId);
+                    let newLikes;
+                    if (existing) {
+                        if (existing.isDislike === isDislike) {
+                            newLikes = existingLikes.filter((l) => l.userId !== currentUserId);
+                        } else {
+                            newLikes = existingLikes.map((l) =>
+                                l.userId === currentUserId ? { ...l, isDislike } : l
+                            );
+                        }
+                    } else {
+                        newLikes = [...existingLikes, { userId: currentUserId || "", isDislike }];
+                    }
+                    return { ...t, likes: newLikes };
+                })
+            );
+            if (selectedTopic?.id === topicId) {
+                setSelectedTopic((prev) => {
+                    if (!prev) return prev;
+                    const existingLikes = prev.likes || [];
+                    const existing = existingLikes.find((l) => l.userId === currentUserId);
+                    let newLikes;
+                    if (existing) {
+                        if (existing.isDislike === isDislike) {
+                            newLikes = existingLikes.filter((l) => l.userId !== currentUserId);
+                        } else {
+                            newLikes = existingLikes.map((l) =>
+                                l.userId === currentUserId ? { ...l, isDislike } : l
+                            );
+                        }
+                    } else {
+                        newLikes = [...existingLikes, { userId: currentUserId || "", isDislike }];
+                    }
+                    return { ...prev, likes: newLikes };
+                });
+            }
+        } catch {
+            toast.error("Failed to react");
+        }
+    };
+
+    const handleEditTopic = async (topicId: string, data: { title?: string; content?: string }) => {
+        try {
+            await editTopic(topicId, data);
+            setTopics((prev) =>
+                prev.map((t) =>
+                    t.id === topicId ? { ...t, ...data } : t
+                )
+            );
+            if (selectedTopic?.id === topicId) {
+                setSelectedTopic((prev) =>
+                    prev ? { ...prev, ...data } : prev
+                );
+            }
+            toast.success("Updated successfully");
+        } catch {
+            toast.error("Failed to update");
+        }
+    };
+
+    const handleMentionAll = () => {
+        const allNames = users
+            .filter((u) => u.name && u.id !== currentUserId)
+            .map((u) => `@${u.name}`)
+            .join(" ");
+        setMessageText((prev) => (prev ? prev + " " + allNames + " " : allNames + " "));
+        toast.success(`Mentioned ${users.length} users`);
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -484,10 +597,10 @@ export default function CommunityClient({
                     return (
                         <div key={cat}>
                             <div className="flex items-center gap-1 px-1 mb-0.5">
-                                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <span className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     {cat}
                                 </span>
-                                <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
                                     — {catTopics.length}
                                 </span>
                             </div>
@@ -508,7 +621,7 @@ export default function CommunityClient({
                                         {topic.title.toLowerCase().replace(/\s+/g, "-")}
                                     </span>
                                     {topic._count.replies > 0 && (
-                                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">
                                             {topic._count.replies}
                                         </span>
                                     )}
@@ -535,7 +648,7 @@ export default function CommunityClient({
                 ).length > 0 && (
                     <div>
                         <div className="flex items-center gap-1 px-1 mb-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            <span className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Other
                             </span>
                         </div>
@@ -608,7 +721,7 @@ export default function CommunityClient({
                     {selectedTopic.content.length > 100 ? "…" : ""}
                 </p>
                 <Badge
-                    className={`${CATEGORY_COLORS[selectedTopic.category] || "bg-gray-500"} text-white text-[10px] border-0 shrink-0`}
+                    className={`${CATEGORY_COLORS[selectedTopic.category] || "bg-gray-500"} text-white text-xs border-0 shrink-0`}
                 >
                     {selectedTopic.category}
                 </Badge>
@@ -618,26 +731,110 @@ export default function CommunityClient({
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
                 {/* Welcome Message */}
                 <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                    <div className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center mb-3">
-                        <HashIcon className="h-8 w-8 text-white" />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 ${selectedTopic.category === "Announcements" ? "bg-yellow-500" : "bg-indigo-500"}`}>
+                        {selectedTopic.category === "Announcements" ? (
+                            <MegaphoneIcon className="h-8 w-8 text-white" />
+                        ) : (
+                            <HashIcon className="h-8 w-8 text-white" />
+                        )}
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                        Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!
+                        {selectedTopic.category === "Announcements" ? (
+                            <>📢 {selectedTopic.title}</>
+                        ) : (
+                            <>Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!</>
+                        )}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        This is the start of the{" "}
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                            #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
-                        </span>{" "}
-                        channel. Created by{" "}
+                        {selectedTopic.category === "Announcements" ? "Announcement" : "This is the start of the"}{" "}
+                        {selectedTopic.category !== "Announcements" && (
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                                #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}
+                            </span>
+                        )}{" "}
+                        {selectedTopic.category !== "Announcements" && "channel. "}
+                        {selectedTopic.category === "Announcements" ? "Posted" : "Created"} by{" "}
                         <span className="font-semibold text-gray-900 dark:text-white">
                             {getDisplayName(selectedTopic.user)}
                         </span>{" "}
                         on {formatDate(selectedTopic.createdAt)}.
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-base text-gray-700 dark:text-gray-300 mt-2 whitespace-pre-wrap">
                         {selectedTopic.content}
                     </p>
+                    {/* Announcement Media */}
+                    {selectedTopic.image && (
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <Image src={selectedTopic.image} alt="Attachment" width={600} height={400} className="w-full max-h-[400px] object-cover" unoptimized />
+                        </div>
+                    )}
+                    {selectedTopic.video && (
+                        <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <video src={selectedTopic.video} controls className="w-full max-h-[400px] object-contain bg-black" />
+                        </div>
+                    )}
+                    {/* Link Attachment */}
+                    {selectedTopic.linkUrl && (
+                        <a
+                            href={selectedTopic.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                        >
+                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
+                                <ExternalLinkIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline truncate">Click here to open link</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{selectedTopic.linkUrl}</p>
+                            </div>
+                            <ExternalLinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                        </a>
+                    )}
+                    {/* Like/Dislike for Announcements */}
+                    {selectedTopic.category === "Announcements" && (
+                        <div className="mt-3 flex items-center gap-4">
+                            {(() => {
+                                const topicLikes = selectedTopic.likes || [];
+                                const likes = topicLikes.filter((l) => !l.isDislike);
+                                const dislikes = topicLikes.filter((l) => l.isDislike);
+                                const userLiked = likes.some((l) => l.userId === currentUserId);
+                                const userDisliked = dislikes.some((l) => l.userId === currentUserId);
+                                return (
+                                    <>
+                                        <button
+                                            onClick={() => handleToggleTopicLike(selectedTopic.id, false)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${userLiked ? "text-blue-600 bg-blue-50 dark:bg-blue-950" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                                        >
+                                            <ThumbsUpIcon className={`h-4 w-4 ${userLiked ? "fill-current" : ""}`} />
+                                            {likes.length > 0 && <span>{likes.length}</span>}
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleTopicLike(selectedTopic.id, true)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${userDisliked ? "text-red-600 bg-red-50 dark:bg-red-950" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                                        >
+                                            <ThumbsDownIcon className={`h-4 w-4 ${userDisliked ? "fill-current" : ""}`} />
+                                            {dislikes.length > 0 && <span>{dislikes.length}</span>}
+                                        </button>
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => {
+                                                    const newTitle = prompt("Edit announcement title:", selectedTopic.title);
+                                                    if (newTitle && newTitle.trim()) {
+                                                        handleEditTopic(selectedTopic.id, { title: newTitle.trim() });
+                                                    }
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-auto"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                                Edit
+                                            </button>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
                 </div>
 
                 {/* Messages List */}
@@ -674,7 +871,7 @@ export default function CommunityClient({
                                                 undefined
                                             }
                                         />
-                                        <AvatarFallback className="text-[8px] bg-indigo-500 text-white">
+                                        <AvatarFallback className="text-xs bg-indigo-500 text-white">
                                             {getDisplayName(parentReply.user)
                                                 ?.charAt(0)
                                                 ?.toUpperCase() || "U"}
@@ -705,7 +902,7 @@ export default function CommunityClient({
                                     </Avatar>
                                 ) : (
                                     <div className="w-10 shrink-0 flex items-center justify-center">
-                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100">
                                             {formatTime(reply.createdAt)}
                                         </span>
                                     </div>
@@ -719,7 +916,7 @@ export default function CommunityClient({
                                             >
                                                 {getDisplayName(reply.user)}
                                             </span>
-                                            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">
                                                 {formatDate(reply.createdAt)}{" "}
                                                 {formatTime(reply.createdAt)}
                                             </span>
@@ -803,7 +1000,7 @@ export default function CommunityClient({
                                                                         undefined
                                                                     }
                                                                 />
-                                                                <AvatarFallback className="text-[10px] bg-indigo-500 text-white">
+                                                                <AvatarFallback className="text-xs bg-indigo-500 text-white">
                                                                     {getDisplayName(child.user)
                                                                         ?.charAt(
                                                                             0
@@ -817,7 +1014,7 @@ export default function CommunityClient({
                                                                     <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                                                                         {getDisplayName(child.user)}
                                                                     </span>
-                                                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                                    <span className="text-xs text-gray-400 dark:text-gray-500">
                                                                         {formatDate(child.createdAt)}{" "}
                                                                         {formatTime(child.createdAt)}
                                                                     </span>
@@ -867,7 +1064,7 @@ export default function CommunityClient({
                                                                             const userName = getDisplayName(child.user).replace(/\s+/g, "");
                                                                             setMessageText(`@${userName} `);
                                                                         }}
-                                                                        className="text-[10px] text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
+                                                                        className="text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
                                                                     >
                                                                         Reply
                                                                     </button>
@@ -878,7 +1075,7 @@ export default function CommunityClient({
                                                                                 setEditingReplyId(child.id);
                                                                                 setEditingContent(child.content);
                                                                             }}
-                                                                            className="text-[10px] text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                                                            className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
                                                                         >
                                                                             Edit
                                                                         </button>
@@ -889,7 +1086,7 @@ export default function CommunityClient({
                                                                                 e.stopPropagation();
                                                                                 handleDeleteReply(child.id);
                                                                             }}
-                                                                            className="text-[10px] text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
+                                                                            className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
                                                                         >
                                                                             Delete
                                                                         </button>
@@ -1152,7 +1349,7 @@ export default function CommunityClient({
                                                     u.image || undefined
                                                 }
                                             />
-                                            <AvatarFallback className="text-[9px] bg-indigo-500 text-white">
+                                            <AvatarFallback className="text-xs bg-indigo-500 text-white">
                                                 {u.name
                                                     ?.charAt(0)
                                                     ?.toUpperCase() || "U"}
@@ -1160,7 +1357,7 @@ export default function CommunityClient({
                                         </Avatar>
                                         <span>{u.name}</span>
                                         {u.role === "admin" && (
-                                            <Badge className="text-[9px] bg-red-500/20 text-red-400 border-0 ml-auto">
+                                            <Badge className="text-xs bg-red-500/20 text-red-400 border-0 ml-auto">
                                                 Admin
                                             </Badge>
                                         )}
@@ -1168,6 +1365,17 @@ export default function CommunityClient({
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    {/* @mention all button */}
+                    <div className="shrink-0 mb-0.5">
+                        <button
+                            onClick={handleMentionAll}
+                            className="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:text-orange-500 transition-colors"
+                            title="Mention all users"
+                        >
+                            <UsersIcon className="h-5 w-5" />
+                        </button>
                     </div>
 
                     {/* Send button */}
@@ -1238,21 +1446,25 @@ export default function CommunityClient({
 
             {/* Create Topic Dialog */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white">
+                <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-gray-900 dark:text-white">
-                            Create Channel
+                            {newTopic.category === "Announcements" ? "Create Announcement" : "Create Channel"}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
                             <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                Channel Name
+                                {newTopic.category === "Announcements" ? "Announcement Title" : "Channel Name"}
                             </label>
                             <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                <HashIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                {newTopic.category === "Announcements" ? (
+                                    <MegaphoneIcon className="h-4 w-4 text-yellow-500" />
+                                ) : (
+                                    <HashIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                )}
                                 <Input
-                                    placeholder="new-channel"
+                                    placeholder={newTopic.category === "Announcements" ? "Announcement title..." : "new-channel"}
                                     value={newTopic.title}
                                     onChange={(e) =>
                                         setNewTopic((p) => ({
@@ -1281,7 +1493,7 @@ export default function CommunityClient({
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-                                    {CATEGORIES.map((cat) => (
+                                    {CATEGORIES.filter((cat) => cat !== "Announcements" || isAdmin).map((cat) => (
                                         <SelectItem
                                             key={cat}
                                             value={cat}
@@ -1303,7 +1515,7 @@ export default function CommunityClient({
                                 Description
                             </label>
                             <Textarea
-                                placeholder="What is this channel about?"
+                                placeholder={newTopic.category === "Announcements" ? "Write your announcement..." : "What is this channel about?"}
                                 value={newTopic.content}
                                 onChange={(e) =>
                                     setNewTopic((p) => ({
@@ -1314,11 +1526,60 @@ export default function CommunityClient({
                                 className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 min-h-[80px]"
                             />
                         </div>
+                        {/* Optional Image URL */}
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                Image URL (optional)
+                            </label>
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <ImageIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                <Input
+                                    placeholder="https://example.com/image.jpg"
+                                    value={newTopic.image}
+                                    onChange={(e) => setNewTopic((p) => ({ ...p, image: e.target.value }))}
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
+                        {/* Optional Video URL */}
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                Video URL (optional)
+                            </label>
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <VideoIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                <Input
+                                    placeholder="https://example.com/video.mp4"
+                                    value={newTopic.video}
+                                    onChange={(e) => setNewTopic((p) => ({ ...p, video: e.target.value }))}
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
+                        {/* Optional Link Attachment */}
+                        <div>
+                            <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                Link Attachment (optional)
+                            </label>
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
+                                <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                <Input
+                                    placeholder="https://example.com/document.pdf"
+                                    value={newTopic.linkUrl}
+                                    onChange={(e) => setNewTopic((p) => ({ ...p, linkUrl: e.target.value }))}
+                                    className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
+                                />
+                            </div>
+                        </div>
                         <Button
                             onClick={handleCreateTopic}
-                            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white"
+                            className={`w-full text-white ${newTopic.category === "Announcements" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-indigo-500 hover:bg-indigo-600"}`}
                         >
-                            Create Channel
+                            {newTopic.category === "Announcements" ? (
+                                <><MegaphoneIcon className="h-4 w-4 mr-2" /> Publish Announcement</>
+                            ) : (
+                                "Create Channel"
+                            )}
                         </Button>
                     </div>
                 </DialogContent>
