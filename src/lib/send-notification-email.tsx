@@ -1,13 +1,5 @@
-import { Resend } from "resend";
 import NotificationEmail from "@/emails/notification-email";
-
-let resend: Resend | null = null;
-function getResend() {
-    if (!resend) {
-        resend = new Resend(process.env.RESEND_API_KEY);
-    }
-    return resend;
-}
+import { getResend, getEmailFrom } from "@/lib/email-config";
 
 type SendNotificationEmailProps = {
     to: string;
@@ -30,12 +22,11 @@ export async function sendNotificationEmail({
             return;
         }
 
-        const emailFrom = process.env.EMAIL_FROM || "CNERSH <info@cameroon-national-ethics-com.net>";
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "";
         const fullActionUrl = actionUrl && baseUrl ? `${baseUrl}${actionUrl}` : undefined;
 
         await getResend().emails.send({
-            from: emailFrom,
+            from: getEmailFrom(),
             to,
             subject: `CNERSH Notification: ${notificationType.replace(/_/g, " ")}`,
             react: (
