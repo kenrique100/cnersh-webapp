@@ -48,9 +48,10 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers } from "@/app/actions/feed";
+import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers, updatePost } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
+import LinkPreview from "@/components/link-preview";
 
 interface PostUser {
     id: string;
@@ -225,6 +226,8 @@ export default function FeedClient({
     const [showCommentEmoji, setShowCommentEmoji] = React.useState<string | null>(null);
     const [newPostLinkUrl, setNewPostLinkUrl] = React.useState<string>("");
     const [showLinkInput, setShowLinkInput] = React.useState(false);
+    const [editingPostId, setEditingPostId] = React.useState<string | null>(null);
+    const [editingPostContent, setEditingPostContent] = React.useState("");
 
     // @mention autocomplete state
     const [mentionResults, setMentionResults] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
@@ -421,6 +424,23 @@ export default function FeedClient({
             toast.success("Post removed");
         } catch {
             toast.error("Failed to delete post");
+        }
+    };
+
+    const handleEditPost = async (postId: string) => {
+        if (!editingPostContent.trim()) return;
+        try {
+            await updatePost(postId, editingPostContent);
+            setPosts((prev) =>
+                prev.map((p) =>
+                    p.id === postId ? { ...p, content: editingPostContent } : p
+                )
+            );
+            setEditingPostId(null);
+            setEditingPostContent("");
+            toast.success("Post updated");
+        } catch {
+            toast.error("Failed to update post");
         }
     };
 
@@ -994,6 +1014,20 @@ export default function FeedClient({
                                                 <FlagIcon className="h-4 w-4" />
                                             </Button>
                                         )}
+                                        {post.user.id === currentUserId && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-full"
+                                                onClick={() => {
+                                                    setEditingPostId(post.id);
+                                                    setEditingPostContent(post.content);
+                                                }}
+                                                title="Edit post"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                         {(post.user.id === currentUserId || isAdmin) && (
                                             <Button
                                                 variant="ghost"
@@ -1012,9 +1046,37 @@ export default function FeedClient({
                             {/* Post Content */}
                             {post.content && (
                                 <div className="px-4 py-3">
-                                    <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                        {renderPostContent(post.content)}
-                                    </p>
+                                    {editingPostId === post.id ? (
+                                        <div className="space-y-2">
+                                            <Textarea
+                                                value={editingPostContent}
+                                                onChange={(e) => setEditingPostContent(e.target.value)}
+                                                className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl text-base"
+                                            />
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => { setEditingPostId(null); setEditingPostContent(""); }}
+                                                    className="rounded-lg"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleEditPost(post.id)}
+                                                    disabled={!editingPostContent.trim()}
+                                                    className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg"
+                                                >
+                                                    Save
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                            {renderPostContent(post.content)}
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
@@ -1044,7 +1106,7 @@ export default function FeedClient({
                                                     alt="Post attachment"
                                                     width={700}
                                                     height={400}
-                                                    className="w-full object-cover max-h-[500px]"
+                                                    className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
                                                     unoptimized
                                                 />
                                             );
@@ -1058,7 +1120,7 @@ export default function FeedClient({
                                                         alt={`Post attachment ${idx + 1}`}
                                                         width={350}
                                                         height={250}
-                                                        className={`w-full object-cover ${allImages.length > 1 ? "max-h-[250px]" : "max-h-[500px]"} ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
+                                                        className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
                                                         unoptimized
                                                     />
                                                 ))}
@@ -1092,25 +1154,7 @@ export default function FeedClient({
                             {/* Link Attachment */}
                             {post.linkUrl && (
                                 <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                                    <a
-                                        href={post.linkUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                                    >
-                                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
-                                            <ExternalLinkIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline truncate">
-                                                Click here to open link
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                {post.linkUrl}
-                                            </p>
-                                        </div>
-                                        <ExternalLinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                    </a>
+                                    <LinkPreview url={post.linkUrl} />
                                 </div>
                             )}
 

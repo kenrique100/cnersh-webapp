@@ -186,7 +186,7 @@ export default async function ContractRexPage() {
                                     </div>
                                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Resources</h3>
                                 </div>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                                     Access organizational resources, documentation, and contract management tools provided by Contract Rex.
                                 </p>
                             </CardContent>
@@ -199,7 +199,7 @@ export default async function ContractRexPage() {
                                     </div>
                                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Documentation</h3>
                                 </div>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                                     Comprehensive documentation and guidelines for contract management and organizational compliance.
                                 </p>
                             </CardContent>

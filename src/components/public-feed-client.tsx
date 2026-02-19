@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import LinkPreview from "@/components/link-preview";
 import {
     MessageCircleIcon,
     ThumbsUpIcon,
@@ -27,6 +28,7 @@ interface PublicPostData {
     images: string[];
     videos: string[];
     tags: string[];
+    linkUrl: string | null;
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
@@ -174,7 +176,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                                 alt="Post attachment"
                                                 width={700}
                                                 height={400}
-                                                className="w-full object-cover max-h-[500px]"
+                                                className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
                                                 unoptimized
                                             />
                                         );
@@ -188,7 +190,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                                     alt={`Post attachment ${idx + 1}`}
                                                     width={350}
                                                     height={250}
-                                                    className={`w-full object-cover max-h-[250px] ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
+                                                    className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
                                                     unoptimized
                                                 />
                                             ))}
@@ -207,6 +209,13 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                 {(post.videos || []).map((vid, idx) => (
                                     <video key={idx} src={vid} controls className="w-full max-h-[500px] object-contain bg-black" />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Link Attachment */}
+                        {post.linkUrl && (
+                            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                                <LinkPreview url={post.linkUrl} />
                             </div>
                         )}
 
