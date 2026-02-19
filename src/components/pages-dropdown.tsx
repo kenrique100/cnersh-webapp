@@ -557,7 +557,7 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
             </div>
             <div>
                 <a
-                    href="/Fiche d'Evaluation CNERSH.pdf"
+                    href="/CNRESH Study Review & Follow up Form.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
