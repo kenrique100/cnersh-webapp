@@ -97,7 +97,7 @@ export default async function Home() {
                         {session && navUser ? (
                             /* Authenticated: User Profile Card (LinkedIn-style) */
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-                                <div className="bg-gradient-to-r from-blue-600 to-blue-800 h-16" />
+                                <div className="bg-linear-to-r from-blue-600 to-blue-800 h-16" />
                                 <div className="flex flex-col items-center -mt-8 pb-4 px-4">
                                     <div className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-950 overflow-hidden bg-gray-200 dark:bg-gray-700">
                                         {navUser.image ? (
@@ -141,7 +141,7 @@ export default async function Home() {
                         ) : (
                             /* Guest: Welcome card with sign-in/sign-up */
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-                                <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-4 pb-6 text-center">
+                                <div className="bg-linear-to-r from-blue-600 to-blue-800 p-4 pb-6 text-center">
                                     <div className="flex justify-center mb-2">
                                         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-md">
                                             <Image
@@ -216,7 +216,7 @@ export default async function Home() {
                         {/* Mobile Hero Banner - only for unauthenticated users */}
                         {!session && (
                             <div className="lg:hidden mb-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl overflow-hidden">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-linear-to-r from-blue-600 to-blue-800 rounded-xl overflow-hidden">
                                     <CardContent className="py-4 text-center">
                                         <div className="flex justify-center mb-2">
                                             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md">
