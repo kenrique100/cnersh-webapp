@@ -1,9 +1,9 @@
 -- AlterTable: Add trackingCode column with a temporary default
 ALTER TABLE "project" ADD COLUMN "trackingCode" TEXT;
 
--- Backfill existing rows with a unique tracking code derived from their ID
+-- Backfill existing rows with a unique tracking code including the year from createdAt
 UPDATE "project"
-SET "trackingCode" = 'CNERSH-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 4)) || '-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 5, 4)) || '-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 9, 4))
+SET "trackingCode" = 'CNERSH-' || EXTRACT(YEAR FROM COALESCE("createdAt", NOW()))::TEXT || '-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 8))
 WHERE "trackingCode" IS NULL;
 
 -- Make the column NOT NULL after backfill

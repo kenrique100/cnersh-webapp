@@ -14,7 +14,7 @@ import { randomBytes } from "crypto";
 async function generateTrackingCode(): Promise<string> {
     const year = new Date().getFullYear();
     for (let attempt = 0; attempt < 10; attempt++) {
-        const random = randomBytes(5).toString("hex").toUpperCase().slice(0, 8);
+        const random = randomBytes(4).toString("hex").toUpperCase();
         const code = `CNERSH-${year}-${random}`;
         const existing = await db.project.findUnique({ where: { trackingCode: code } });
         if (!existing) return code;

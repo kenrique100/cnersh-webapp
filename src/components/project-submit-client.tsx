@@ -247,11 +247,11 @@ export default function ProjectSubmitClient() {
                                         }
                                         setIsUploadingDoc(true);
                                         try {
-                                            const formDataUpload = new FormData();
-                                            formDataUpload.append("file", file);
+                                            const uploadFormData = new FormData();
+                                            uploadFormData.append("file", file);
                                             const res = await fetch("/api/upload", {
                                                 method: "POST",
-                                                body: formDataUpload,
+                                                body: uploadFormData,
                                             });
                                             if (!res.ok) throw new Error("Upload failed");
                                             const data = await res.json();
