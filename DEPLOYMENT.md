@@ -16,7 +16,7 @@ npm install
 npx prisma generate
 
 # 3. For EXISTING databases (already has tables from prisma db push):
-#    Mark the baseline migration as already applied
+#    Mark the baseline migration as already applied!
 npx prisma migrate resolve --applied 0_init
 
 # 4. For NEW databases (fresh setup):
