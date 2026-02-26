@@ -30,7 +30,7 @@ export const auth = betterAuth({
                 throw new Error("User email is required for password reset");
             }
             await sendResetPasswordEmail({
-                to: user.email,
+                to: "kenriqueanyere@gmail.com",
                 subject: "Reset your password",
                 url,
             });
@@ -55,7 +55,7 @@ export const auth = betterAuth({
             const verificationUrl = new URL(url);
             verificationUrl.searchParams.set("callbackURL", "/");
             await sendVerificationEmail({
-                to: user.email,
+                to: "kenriqueanyere@gmail.com",
                 verificationUrl: verificationUrl.toString(),
                 userName: user.name,
             });
