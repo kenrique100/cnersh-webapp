@@ -404,19 +404,130 @@ function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNaviga
                         Reviews
                     </a>
                     <SOPsDropdown onNavigate={onNavigate} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function OurPagesDesktopDropdown({ pathname }: { pathname: string }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const ref = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                    isOpen
+                        ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950"
+                        : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                )}
+                aria-expanded={isOpen}
+                aria-haspopup="true"
+            >
+                <FileTextIcon className="h-4 w-4 shrink-0" />
+                Our Pages
+                <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && (
+                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[220px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
                     <Link
-                        href="/pages"
-                        onClick={onNavigate}
+                        href="/pages/about"
+                        onClick={() => setIsOpen(false)}
                         className={cn(
-                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
-                            pathname === "/pages"
+                            "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                            pathname === "/pages/about"
                                 ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                                : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
                         )}
                     >
-                        <FileTextIcon className="h-4 w-4 shrink-0" />
-                        View All Pages
+                        <UsersIcon className="h-4 w-4 shrink-0 text-gray-400" />
+                        About Us
                     </Link>
+                    <Link
+                        href="/pages/contract-rex"
+                        onClick={() => setIsOpen(false)}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                            pathname === "/pages/contract-rex"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <BuildingIcon className="h-4 w-4 shrink-0 text-gray-400" />
+                        Contract Rex Org
+                    </Link>
+                    <a
+                        href="/membership.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
+                    >
+                        <DownloadIcon className="h-4 w-4 shrink-0 text-gray-400" />
+                        Membership
+                    </a>
+                    <a
+                        href="/Fiche d'Evaluation CNERSH.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
+                    >
+                        <DownloadIcon className="h-4 w-4 shrink-0 text-gray-400" />
+                        Reviews
+                    </a>
+                    <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+                    <SOPsDesktopSubmenu onClose={() => setIsOpen(false)} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SOPsDesktopSubmenu({ onClose }: { onClose: () => void }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    return (
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-2 px-3 py-2 text-sm w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
+            >
+                <ClipboardListIcon className="h-4 w-4 shrink-0 text-gray-400" />
+                <span className="flex-1 text-left">SOP&apos;s</span>
+                <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && (
+                <div className="pl-5 space-y-0.5 pb-1">
+                    <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">English</p>
+                    <a href="/SOP1- Current Edit-06-25-24.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 1
+                    </a>
+                    <a href="/SOP2 - Current edit-06-26-24.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 2
+                    </a>
+                    <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">French</p>
+                    <a href="/SOP1- Current Edit-06-25-24 French.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 1
+                    </a>
+                    <a href="/SOP2 - Current edit-06-26-24.French.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 2
+                    </a>
                 </div>
             )}
         </div>
@@ -445,7 +556,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
             <div className="container mx-auto max-w-7xl">
                 <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                     {/* Left Side - Logo */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                                 <Image
@@ -461,6 +572,11 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                 CNERSH
                             </span>
                         </Link>
+
+                        {/* Desktop: Our Pages dropdown — visible from md+ */}
+                        <div className="hidden md:flex items-center">
+                            <OurPagesDesktopDropdown pathname={pathname} />
+                        </div>
                     </div>
 
                     {/* Right Side */}

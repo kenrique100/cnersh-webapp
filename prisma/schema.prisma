@@ -174,29 +174,31 @@ model Like {
 // ─── Project Submission System ─────────────────────────────
 
 model Project {
-  id          String              @id @default(uuid())
-  title       String
-  description String
-  objectives  String?
-  category    String
-  location    String?
-  timeline    String?
-  budget      String?
-  document    String?
-  status      ProjectStatus       @default(DRAFT)
-  feedback    String?
-  userId      String
-  user        User                @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
+  id           String              @id @default(uuid())
+  trackingCode String              @unique
+  title        String
+  description  String
+  objectives   String?
+  category     String
+  location     String?
+  timeline     String?
+  budget       String?
+  document     String?
+  status       ProjectStatus       @default(DRAFT)
+  feedback     String?
+  userId       String
+  user         User                @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
   assignedToId String?
-  assignedTo   User?              @relation("ProjectReviewer", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo   User?               @relation("ProjectReviewer", fields: [assignedToId], references: [id], onDelete: SetNull)
   statusHistory ProjectStatusHistory[]
-  deleted     Boolean             @default(false)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  deleted      Boolean             @default(false)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
 
   @@index([userId])
   @@index([assignedToId])
   @@index([status])
+  @@index([trackingCode])
   @@index([createdAt])
   @@map("project")
 }

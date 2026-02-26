@@ -5,6 +5,24 @@ import { db } from "@/lib/db";
 import { ProjectStatus } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { randomBytes } from "crypto";
+
+/** Generate a unique, human-readable project tracking code.
+ *  Format: CNERSH-{YEAR}-{8 uppercase alphanumeric chars}
+ *  Example: CNERSH-2026-A3F7B29C
+ */
+async function generateTrackingCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    for (let attempt = 0; attempt < 10; attempt++) {
+        const random = randomBytes(5).toString("hex").toUpperCase().slice(0, 8);
+        const code = `CNERSH-${year}-${random}`;
+        const existing = await db.project.findUnique({ where: { trackingCode: code } });
+        if (!existing) return code;
+    }
+    // Fallback: use timestamp-based unique code
+    const ts = Date.now().toString(36).toUpperCase();
+    return `CNERSH-${year}-${ts}`;
+}
 
 export async function submitProject(data: {
     title: string;
@@ -30,8 +48,11 @@ export async function submitProject(data: {
     const projectStatus = isAdmin ? ProjectStatus.APPROVED : ProjectStatus.SUBMITTED;
     const statusComment = isAdmin ? "Project submitted and auto-approved by admin" : "Project submitted";
 
+    const trackingCode = await generateTrackingCode();
+
     const project = await db.project.create({
         data: {
+            trackingCode,
             title: data.title,
             description: data.description,
             objectives: data.objectives || null,
@@ -431,4 +452,37 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     });
 
     return project;
+}
+
+/**
+ * Public project tracker — looks up a project by tracking code.
+ * Returns safe, limited data (no submitter PII, no reviewer identity).
+ * Accessible without authentication.
+ */
+export async function trackProjectByCode(trackingCode: string) {
+    const code = trackingCode.trim().toUpperCase();
+
+    const project = await db.project.findUnique({
+        where: { trackingCode: code, deleted: false },
+        select: {
+            id: true,
+            trackingCode: true,
+            title: true,
+            category: true,
+            location: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            statusHistory: {
+                orderBy: { createdAt: "desc" },
+                select: {
+                    status: true,
+                    comment: true,
+                    createdAt: true,
+                },
+            },
+        },
+    });
+
+    return project ?? null;
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, FileTextIcon, EyeIcon, TargetIcon } from "lucide-react";
+import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, EyeIcon, TargetIcon, SearchIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
 import { getPosts, getPublicPosts } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
@@ -10,7 +10,7 @@ import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
-import PagesDropdown from "@/components/pages-dropdown";
+import ProjectTracker from "@/components/project-tracker";
 
 export const dynamic = "force-dynamic";
 
@@ -26,42 +26,6 @@ export default async function Home() {
 
     // For unauthenticated users, get public posts
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
-
-    // Fetch dynamic pages for the sidebar (started early, awaited in parallel below)
-    const dynamicPagesPromise = db.page.findMany({
-        where: { parentId: null },
-        select: {
-            id: true,
-            name: true,
-            items: {
-                select: { id: true, name: true, url: true, fileUrl: true },
-                orderBy: { createdAt: "asc" },
-            },
-            children: {
-                select: {
-                    id: true,
-                    name: true,
-                    items: {
-                        select: { id: true, name: true, url: true, fileUrl: true },
-                        orderBy: { createdAt: "asc" },
-                    },
-                    children: {
-                        select: {
-                            id: true,
-                            name: true,
-                            items: {
-                                select: { id: true, name: true, url: true, fileUrl: true },
-                                orderBy: { createdAt: "asc" },
-                            },
-                        },
-                        orderBy: { createdAt: "asc" },
-                    },
-                },
-                orderBy: { createdAt: "asc" },
-            },
-        },
-        orderBy: { createdAt: "asc" },
-    });
 
     if (session) {
         const [user, unreadCount, postsResult] = await Promise.all([
@@ -82,8 +46,6 @@ export default async function Home() {
     } else {
         publicPosts = await getPublicPosts(20);
     }
-
-    const dynamicPages = await dynamicPagesPromise;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -268,45 +230,23 @@ export default async function Home() {
                         ) : (
                             <PublicFeedClient posts={JSON.parse(JSON.stringify(publicPosts))} />
                         )}
-
-                        {/* Our Pages - Mobile only (shown below feed on small screens) */}
-                        <div className="lg:hidden mt-6">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                                <CardHeader className="pb-2">
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                            <FileTextIcon className="w-4 h-4 text-purple-600" />
-                                            Our Pages
-                                        </CardTitle>
-                                        <Link href="/pages" className="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
-                                            View All
-                                        </Link>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="pt-0">
-                                    <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
-                                </CardContent>
-                            </Card>
-                        </div>
                     </div>
 
                     {/* Right Sidebar (hidden on mobile) */}
                     <aside className="hidden lg:block w-72 shrink-0 space-y-4">
-                        {/* Pages Card - Dynamic from DB */}
+                        {/* Project Tracker Card */}
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                             <CardHeader className="pb-2">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                        <FileTextIcon className="w-4 h-4 text-purple-600" />
-                                        Our Pages
-                                    </CardTitle>
-                                    <Link href="/pages" className="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
-                                        View All
-                                    </Link>
-                                </div>
+                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <SearchIcon className="w-4 h-4 text-blue-600" />
+                                    Track Your Project
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                    Enter your project tracking code to check the current status.
+                                </p>
                             </CardHeader>
                             <CardContent className="pt-0">
-                                <PagesDropdown pages={JSON.parse(JSON.stringify(dynamicPages))} />
+                                <ProjectTracker />
                             </CardContent>
                         </Card>
 
@@ -364,6 +304,24 @@ export default async function Home() {
                             </CardContent>
                         </Card>
                     </aside>
+                </div>
+
+                {/* Mobile Project Tracker - shown below feed on small screens */}
+                <div className="lg:hidden pb-6">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <SearchIcon className="w-4 h-4 text-blue-600" />
+                                Track Your Project
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                Enter your project tracking code to check status.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <ProjectTracker />
+                        </CardContent>
+                    </Card>
                 </div>
             </main>
 
