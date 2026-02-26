@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { submitProject } from "@/app/actions/project";
-import { FileTextIcon, TrashIcon, Loader2, UploadIcon } from "lucide-react";
+import { FileTextIcon, TrashIcon, Loader2, UploadIcon, CheckCircleIcon, CopyIcon } from "lucide-react";
 
 const PROJECT_CATEGORIES = [
     "Health",
@@ -29,6 +29,7 @@ export default function ProjectSubmitClient() {
     const [isUploadingDoc, setIsUploadingDoc] = React.useState(false);
     const [documentUrl, setDocumentUrl] = React.useState<string | null>(null);
     const [documentName, setDocumentName] = React.useState<string | null>(null);
+    const [submittedTrackingCode, setSubmittedTrackingCode] = React.useState<string | null>(null);
     const [formData, setFormData] = React.useState({
         title: "",
         description: "",
@@ -47,15 +48,71 @@ export default function ProjectSubmitClient() {
         }
         setIsSubmitting(true);
         try {
-            await submitProject({ ...formData, document: documentUrl || undefined });
+            const project = await submitProject({ ...formData, document: documentUrl || undefined });
+            setSubmittedTrackingCode(project.trackingCode);
             toast.success("Project submitted successfully!");
-            router.push("/projects");
         } catch {
             toast.error("Failed to submit project");
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    const handleCopyCode = () => {
+        if (submittedTrackingCode) {
+            navigator.clipboard.writeText(submittedTrackingCode);
+            toast.success("Tracking code copied to clipboard!");
+        }
+    };
+
+    // Success screen after submission
+    if (submittedTrackingCode) {
+        return (
+            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
+                <CardContent className="py-12 flex flex-col items-center gap-6 text-center">
+                    <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                        <CheckCircleIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                            Project Submitted Successfully!
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Your project has been submitted for ethical review. Use the tracking code below to check your project status.
+                        </p>
+                    </div>
+                    <div className="w-full max-w-sm p-4 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 uppercase tracking-wide">
+                            Your Project Tracking Code
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className="flex-1 text-xl font-bold font-mono text-blue-900 dark:text-blue-100 tracking-widest">
+                                {submittedTrackingCode}
+                            </span>
+                            <button
+                                onClick={handleCopyCode}
+                                className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                                title="Copy tracking code"
+                            >
+                                <CopyIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">
+                        Save this code. You can use it on the homepage to track your project status at any time — even without logging in.
+                    </p>
+                    <div className="flex gap-3">
+                        <Button variant="outline" onClick={() => router.push("/projects")}>
+                            View My Projects
+                        </Button>
+                        <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => router.push("/")}>
+                            Go to Homepage
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
@@ -190,11 +247,11 @@ export default function ProjectSubmitClient() {
                                         }
                                         setIsUploadingDoc(true);
                                         try {
-                                            const formData = new FormData();
-                                            formData.append("file", file);
+                                            const uploadFormData = new FormData();
+                                            uploadFormData.append("file", file);
                                             const res = await fetch("/api/upload", {
                                                 method: "POST",
-                                                body: formData,
+                                                body: uploadFormData,
                                             });
                                             if (!res.ok) throw new Error("Upload failed");
                                             const data = await res.json();

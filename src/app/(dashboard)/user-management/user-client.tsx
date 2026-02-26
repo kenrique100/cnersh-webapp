@@ -37,6 +37,12 @@ import { columns } from "./columns";
 const ROLE_OPTIONS = ["user", "admin", "superadmin"] as const;
 export type Role = (typeof ROLE_OPTIONS)[number];
 
+/** Roles an actor is allowed to assign. Admins can only assign "user" role. */
+function getAllowedRoles(currentRole: string): readonly Role[] {
+    if (currentRole === "superadmin") return ROLE_OPTIONS;
+    return ["user"] as const;
+}
+
 const formSchema = z.object({
     name: z.string().min(3, "Name is required"),
     email: z.email("Email is required"),
@@ -44,8 +50,10 @@ const formSchema = z.object({
     password: z.string().min(6, "Password is required").optional(),
 });
 
-export default function UserManagementForm({ users }: { users: UserProps[] }) {
+export default function UserManagementForm({ users, currentRole }: { users: UserProps[]; currentRole: string }) {
     const router = useRouter();
+
+    const allowedRoles = getAllowedRoles(currentRole);
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -229,7 +237,7 @@ export default function UserManagementForm({ users }: { users: UserProps[] }) {
                                                 <SelectValue placeholder="Role" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {ROLE_OPTIONS.map((role) => (
+                                                {allowedRoles.map((role) => (
                                                     <SelectItem key={role} value={role}>
                                                         {role}{" "}
                                                     </SelectItem>
