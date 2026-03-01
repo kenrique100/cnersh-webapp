@@ -9,7 +9,7 @@ declare global {
         google?: {
             translate: {
                 TranslateElement: new (
-                    options: { pageLanguage: string; layout: unknown; autoDisplay: boolean },
+                    options: { pageLanguage: string; includedLanguages?: string; layout: unknown; autoDisplay: boolean },
                     elementId: string
                 ) => unknown;
             };
@@ -35,6 +35,7 @@ export default function TranslatePopup() {
             new window.google.translate.TranslateElement(
                 {
                     pageLanguage: "en",
+                    includedLanguages: "en,fr",
                     layout: 0,
                     autoDisplay: false,
                 },

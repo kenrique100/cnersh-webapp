@@ -1,6 +1,7 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
+import { getPages } from "@/app/actions/page-actions";
 import Navbar from "@/components/navbar";
 import DashboardShell from "@/components/dashboard-shell";
 import ChatBox from "@/components/chat-box";
@@ -12,9 +13,10 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }>) {
     await authIsRequired();
-    const [user, unreadCount] = await Promise.all([
+    const [user, unreadCount, pages] = await Promise.all([
         updateProfile(),
         getUnreadNotificationCount(),
+        getPages(),
     ]);
 
     return (
@@ -24,7 +26,7 @@ export default async function DashboardLayout({
                 email: user.email,
                 image: user.image,
                 role: user.role,
-            } : null} notificationCount={unreadCount} />
+            } : null} notificationCount={unreadCount} pages={pages} />
             <DashboardShell role={user?.role}>
                 {children}
             </DashboardShell>
