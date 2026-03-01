@@ -37,10 +37,27 @@ import {
     DownloadIcon,
     ClipboardListIcon,
     GlobeIcon,
+    SunIcon,
+    MoonIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import NotificationDropdown from "@/components/notification-dropdown";
+import { useTheme } from "next-themes";
+
+interface NavbarPageItem {
+    id: string;
+    name: string;
+    url: string | null;
+    fileUrl: string | null;
+}
+
+interface NavbarPage {
+    id: string;
+    name: string;
+    items: NavbarPageItem[];
+    children?: NavbarPage[];
+}
 
 interface NavbarProps {
     user?: {
@@ -50,6 +67,7 @@ interface NavbarProps {
         role?: string | null;
     } | null;
     notificationCount?: number;
+    pages?: NavbarPage[];
 }
 
 interface NavItem {
@@ -99,6 +117,38 @@ declare global {
     }
 }
 
+function NavbarThemeToggle() {
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) {
+        return (
+            <div className="p-2 h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        );
+    }
+
+    const isDark = theme === "dark";
+
+    return (
+        <button
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        >
+            {isDark ? (
+                <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            ) : (
+                <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            )}
+        </button>
+    );
+}
+
 function TranslationDropdown() {
     const [isOpen, setIsOpen] = React.useState(false);
     const widgetInitialized = React.useRef(false);
@@ -116,6 +166,7 @@ function TranslationDropdown() {
             new window.google.translate.TranslateElement(
                 {
                     pageLanguage: "en",
+                    includedLanguages: "en,fr",
                     layout: 0,
                     autoDisplay: false,
                 },
@@ -410,7 +461,36 @@ function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNaviga
     );
 }
 
-function OurPagesDesktopDropdown({ pathname }: { pathname: string }) {
+function DesktopNavLink({ href, label, pathname }: { href: string; label: string; pathname: string }) {
+    return (
+        <Link
+            href={href}
+            className={cn(
+                "px-2.5 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap",
+                pathname === href
+                    ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950"
+                    : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+            )}
+        >
+            {label}
+        </Link>
+    );
+}
+
+function DesktopNavPdfLink({ href, label }: { href: string; label: string }) {
+    return (
+        <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2.5 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+        >
+            {label}
+        </a>
+    );
+}
+
+function SOPsDesktopSubmenuNav() {
     const [isOpen, setIsOpen] = React.useState(false);
     const ref = React.useRef<HTMLDivElement>(null);
 
@@ -428,103 +508,33 @@ function OurPagesDesktopDropdown({ pathname }: { pathname: string }) {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                    "flex items-center gap-1 px-2.5 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap",
                     isOpen
                         ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950"
                         : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
                 )}
                 aria-expanded={isOpen}
-                aria-haspopup="true"
             >
-                <FileTextIcon className="h-4 w-4 shrink-0" />
-                Our Pages
+                SOP&apos;s
                 <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
             </button>
             {isOpen && (
-                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[220px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
-                    <Link
-                        href="/pages/about"
-                        onClick={() => setIsOpen(false)}
-                        className={cn(
-                            "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
-                            pathname === "/pages/about"
-                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                        )}
-                    >
-                        <UsersIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                        About Us
-                    </Link>
-                    <Link
-                        href="/pages/contract-rex"
-                        onClick={() => setIsOpen(false)}
-                        className={cn(
-                            "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
-                            pathname === "/pages/contract-rex"
-                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                                : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                        )}
-                    >
-                        <BuildingIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                        Contract Rex Org
-                    </Link>
-                    <a
-                        href="/membership.pdf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
-                    >
-                        <DownloadIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                        Membership
-                    </a>
-                    <a
-                        href="/Fiche d'Evaluation CNERSH.pdf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
-                    >
-                        <DownloadIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                        Reviews
-                    </a>
-                    <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-                    <SOPsDesktopSubmenu onClose={() => setIsOpen(false)} />
-                </div>
-            )}
-        </div>
-    );
-}
-
-function SOPsDesktopSubmenu({ onClose }: { onClose: () => void }) {
-    const [isOpen, setIsOpen] = React.useState(false);
-    return (
-        <div>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 py-2 text-sm w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
-            >
-                <ClipboardListIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                <span className="flex-1 text-left">SOP&apos;s</span>
-                <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
-            </button>
-            {isOpen && (
-                <div className="pl-5 space-y-0.5 pb-1">
+                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[180px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
                     <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">English</p>
-                    <a href="/SOP1- Current Edit-06-25-24.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                    <a href="/SOP1- Current Edit-06-25-24.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 1
                     </a>
-                    <a href="/SOP2 - Current edit-06-26-24.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                    <a href="/SOP2 - Current edit-06-26-24.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 2
                     </a>
                     <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">French</p>
-                    <a href="/SOP1- Current Edit-06-25-24 French.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                    <a href="/SOP1- Current Edit-06-25-24 French.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 1
                     </a>
-                    <a href="/SOP2 - Current edit-06-26-24.French.pdf" target="_blank" rel="noopener noreferrer" onClick={onClose}
+                    <a href="/SOP2 - Current edit-06-26-24.French.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 2
                     </a>
@@ -534,7 +544,174 @@ function SOPsDesktopSubmenu({ onClose }: { onClose: () => void }) {
     );
 }
 
-export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
+function DynamicPageDesktopDropdown({ page }: { page: NavbarPage }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const ref = React.useRef<HTMLDivElement>(null);
+    const hasContent = page.items.length > 0 || (page.children && page.children.length > 0);
+
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
+
+    if (!hasContent) {
+        return (
+            <span className="px-2.5 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                {page.name}
+            </span>
+        );
+    }
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                    "flex items-center gap-1 px-2.5 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap",
+                    isOpen
+                        ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950"
+                        : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                )}
+                aria-expanded={isOpen}
+            >
+                {page.name}
+                <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && (
+                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[200px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
+                    {page.items.map((item) => {
+                        const href = item.url || item.fileUrl;
+                        if (!href) return null;
+                        return (
+                            <a
+                                key={item.id}
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
+                            >
+                                {!item.url && item.fileUrl ? (
+                                    <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                ) : (
+                                    <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                )}
+                                {item.name}
+                            </a>
+                        );
+                    })}
+                    {page.children && page.children.map((child) => (
+                        <DynamicPageDesktopChildItem key={child.id} page={child} onClose={() => setIsOpen(false)} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function DynamicPageDesktopChildItem({ page, onClose }: { page: NavbarPage; onClose: () => void }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const hasContent = page.items.length > 0 || (page.children && page.children.length > 0);
+
+    return (
+        <div>
+            <button
+                onClick={() => hasContent ? setIsOpen(!isOpen) : undefined}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors"
+            >
+                <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                <span className="flex-1 text-left">{page.name}</span>
+                {hasContent && <ChevronDownIcon className={cn("h-3 w-3 transition-transform", isOpen && "rotate-180")} />}
+            </button>
+            {isOpen && hasContent && (
+                <div className="pl-5 space-y-0.5 pb-1">
+                    {page.items.map((item) => {
+                        const href = item.url || item.fileUrl;
+                        if (!href) return null;
+                        return (
+                            <a
+                                key={item.id}
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={onClose}
+                                className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md"
+                            >
+                                {!item.url && item.fileUrl ? (
+                                    <DownloadIcon className="h-3 w-3 shrink-0 text-gray-400" />
+                                ) : (
+                                    <FileTextIcon className="h-3 w-3 shrink-0 text-gray-400" />
+                                )}
+                                {item.name}
+                            </a>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MobileDynamicPageDropdown({ page, onNavigate }: { page: NavbarPage; onNavigate: () => void }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const hasContent = page.items.length > 0 || (page.children && page.children.length > 0);
+
+    if (!hasContent) {
+        return (
+            <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <FileTextIcon className="h-5 w-5 shrink-0" />
+                <span>{page.name}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+            >
+                <FileTextIcon className="h-5 w-5 shrink-0" />
+                <span className="flex-1 text-left">{page.name}</span>
+                <ChevronDownIcon className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && (
+                <div className="ml-6 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-2">
+                    {page.items.map((item) => {
+                        const href = item.url || item.fileUrl;
+                        if (!href) return null;
+                        return (
+                            <a
+                                key={item.id}
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={onNavigate}
+                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                                {!item.url && item.fileUrl ? (
+                                    <DownloadIcon className="h-4 w-4 shrink-0" />
+                                ) : (
+                                    <FileTextIcon className="h-4 w-4 shrink-0" />
+                                )}
+                                {item.name}
+                            </a>
+                        );
+                    })}
+                    {page.children && page.children.map((child) => (
+                        <MobileDynamicPageDropdown key={child.id} page={child} onNavigate={onNavigate} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function Navbar({ user, notificationCount = 0, pages = [] }: NavbarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -573,9 +750,17 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                             </span>
                         </Link>
 
-                        {/* Desktop: Our Pages dropdown — visible from md+ */}
-                        <div className="hidden md:flex items-center">
-                            <OurPagesDesktopDropdown pathname={pathname} />
+                        {/* Desktop: Individual page items — visible from md+ */}
+                        <div className="hidden md:flex items-center gap-1">
+                            <DesktopNavLink href="/pages/about" label="About Us" pathname={pathname} />
+                            <DesktopNavLink href="/pages/contract-rex" label="Contract Rex" pathname={pathname} />
+                            <DesktopNavPdfLink href="/membership.pdf" label="Membership" />
+                            <DesktopNavPdfLink href="/Fiche d'Evaluation CNERSH.pdf" label="Reviews" />
+                            <SOPsDesktopSubmenuNav />
+                            {/* Admin-created dynamic pages */}
+                            {pages.map((page) => (
+                                <DynamicPageDesktopDropdown key={page.id} page={page} />
+                            ))}
                         </div>
                     </div>
 
@@ -583,6 +768,9 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                     <div className="flex items-center gap-2 sm:gap-4">
                         {user ? (
                             <>
+                                {/* Theme Toggle */}
+                                <NavbarThemeToggle />
+
                                 {/* Translation Dropdown */}
                                 <TranslationDropdown />
 
@@ -712,6 +900,10 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                             {/* Our Pages Section */}
                                             <div className="border-t border-gray-200 dark:border-gray-800 pt-2">
                                                 <OurPagesDropdown pathname={pathname} onNavigate={() => setIsMobileMenuOpen(false)} />
+                                                {/* Admin-created dynamic pages */}
+                                                {pages.map((page) => (
+                                                    <MobileDynamicPageDropdown key={page.id} page={page} onNavigate={() => setIsMobileMenuOpen(false)} />
+                                                ))}
                                             </div>
 
                                             {/* Logout */}
@@ -731,6 +923,9 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                             </>
                         ) : (
                             <>
+                                {/* Theme Toggle (for non-logged-in users) */}
+                                <NavbarThemeToggle />
+
                                 {/* Translation Dropdown (for non-logged-in users) */}
                                 <TranslationDropdown />
 
@@ -774,6 +969,10 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
                                             {/* Our Pages Dropdown */}
                                             <div className="py-2">
                                                 <OurPagesDropdown pathname={pathname} onNavigate={() => setIsMobileMenuOpen(false)} />
+                                                {/* Admin-created dynamic pages */}
+                                                {pages.map((page) => (
+                                                    <MobileDynamicPageDropdown key={page.id} page={page} onNavigate={() => setIsMobileMenuOpen(false)} />
+                                                ))}
                                             </div>
                                         </div>
                                     </SheetContent>

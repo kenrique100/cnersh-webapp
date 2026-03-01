@@ -35,6 +35,7 @@ export default function TranslatePopup() {
             new window.google.translate.TranslateElement(
                 {
                     pageLanguage: "en",
+                    includedLanguages: "en,fr",
                     layout: 0,
                     autoDisplay: false,
                 },

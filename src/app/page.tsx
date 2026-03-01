@@ -10,6 +10,7 @@ import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
+import { getPages } from "@/app/actions/page-actions";
 import ProjectTracker from "@/components/project-tracker";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,9 @@ export default async function Home() {
 
     // For unauthenticated users, get public posts
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
+
+    // Fetch dynamic pages for navbar
+    const pages = await getPages();
 
     if (session) {
         const [user, unreadCount, postsResult] = await Promise.all([
@@ -50,7 +54,7 @@ export default async function Home() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Navbar - Use app navbar for all users (handles guest and authenticated states) */}
-            <Navbar user={navUser} notificationCount={notificationCount} />
+            <Navbar user={navUser} notificationCount={notificationCount} pages={pages} />
 
             <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col lg:flex-row gap-6 py-6">

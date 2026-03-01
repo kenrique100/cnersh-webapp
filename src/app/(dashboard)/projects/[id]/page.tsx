@@ -105,6 +105,21 @@ export default async function ProjectDetailPage({
                     </Badge>
                 </div>
 
+                {/* Project Actions (for owners and admins) - shown at top for visibility */}
+                {(isOwner || isAdmin) && (
+                    <div className="mb-6">
+                        <ProjectDetailActions
+                            projectId={project.id}
+                            currentStatus={project.status}
+                            isOwner={isOwner}
+                            isAdmin={isAdmin}
+                            projectTitle={project.title}
+                            projectObjectives={project.objectives}
+                            projectDescription={project.description}
+                        />
+                    </div>
+                )}
+
                 {/* Project Details */}
                 <div className="space-y-6">
                     {/* Description */}
@@ -322,18 +337,6 @@ export default async function ProjectDetailPage({
                         </Card>
                     )}
 
-                    {/* Project Actions (for owners and admins) */}
-                    {(isOwner || isAdmin) && (
-                        <ProjectDetailActions
-                            projectId={project.id}
-                            currentStatus={project.status}
-                            isOwner={isOwner}
-                            isAdmin={isAdmin}
-                            projectTitle={project.title}
-                            projectObjectives={project.objectives}
-                            projectDescription={project.description}
-                        />
-                    )}
                 </div>
             </div>
         </div>
