@@ -1857,7 +1857,7 @@ export default function CommunityClient({
     /* ─── Main Layout ──────────────────────────────────── */
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+        <div className="h-[calc(100vh-6rem)] flex overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
             {/* Desktop Sidebar */}
             <div className="hidden md:block w-60 shrink-0 border-r border-gray-200 dark:border-gray-800">
                 {channelSidebar}

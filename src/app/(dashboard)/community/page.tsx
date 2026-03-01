@@ -35,11 +35,13 @@ export default async function CommunityPage() {
     }
 
     return (
-        <CommunityClient
-            initialTopics={JSON.parse(JSON.stringify(topics))}
-            users={JSON.parse(JSON.stringify(users))}
-            isAdmin={true}
-            currentUserId={session.user.id}
-        />
+        <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3F2EF] dark:bg-gray-900 px-2 sm:px-4 lg:px-6 py-4">
+            <CommunityClient
+                initialTopics={JSON.parse(JSON.stringify(topics))}
+                users={JSON.parse(JSON.stringify(users))}
+                isAdmin={true}
+                currentUserId={session.user.id}
+            />
+        </div>
     );
 }

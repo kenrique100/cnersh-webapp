@@ -668,7 +668,7 @@ export default function FeedClient({
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
             {/* Create Post Card - LinkedIn Style */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
                 <CardContent className="p-4">
