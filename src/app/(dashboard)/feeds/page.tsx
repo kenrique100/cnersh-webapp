@@ -25,7 +25,7 @@ export default async function FeedsPage() {
             <div className="mx-auto max-w-[1200px] px-4 py-6">
                 <div className="flex gap-6 justify-center">
                     {/* Left Sidebar - Profile Summary (hidden on mobile/tablet) */}
-                    <aside className="hidden lg:block w-[225px] shrink-0 sticky top-20 self-start">
+                    <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedLeftSidebar
                             userName={user?.name}
                             userImage={user?.image}
@@ -45,7 +45,7 @@ export default async function FeedsPage() {
                     </main>
 
                     {/* Right Sidebar - Trending/Suggestions (hidden on mobile/tablet) */}
-                    <aside className="hidden xl:block w-[300px] shrink-0 sticky top-20 self-start">
+                    <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedRightSidebar />
                     </aside>
                 </div>
