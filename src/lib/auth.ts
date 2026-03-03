@@ -71,6 +71,16 @@ export const auth = betterAuth({
                 validate: (value: string) =>
                     ["male", "female"].includes(value) || "Invalid gender value",
             },
+            profession: {
+                type: "string",
+                required: false,
+                input: true,
+            },
+            title: {
+                type: "string",
+                required: false,
+                input: true,
+            },
         },
     },
 

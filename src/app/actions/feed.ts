@@ -70,7 +70,7 @@ export async function getPosts(page: number = 1, limit: number = 10) {
             db.post.findMany({
                 where: { deleted: false },
                 include: {
-                    user: { select: { id: true, name: true, image: true } },
+                    user: { select: { id: true, name: true, image: true, profession: true, title: true } },
                     _count: { select: { comments: true, likes: true } },
                     likes: {
                         select: {
@@ -327,13 +327,13 @@ export async function getPostComments(postId: string) {
     return db.comment.findMany({
         where: { postId, deleted: false, parentId: null },
         include: {
-            user: { select: { id: true, name: true, image: true, role: true } },
+            user: { select: { id: true, name: true, image: true, role: true, profession: true, title: true } },
             _count: { select: { commentLikes: true, replies: true } },
             commentLikes: { select: { userId: true, isDislike: true } },
             replies: {
                 where: { deleted: false },
                 include: {
-                    user: { select: { id: true, name: true, image: true, role: true } },
+                    user: { select: { id: true, name: true, image: true, role: true, profession: true, title: true } },
                     _count: { select: { commentLikes: true } },
                     commentLikes: { select: { userId: true, isDislike: true } },
                 },

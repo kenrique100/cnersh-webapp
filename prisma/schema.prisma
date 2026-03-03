@@ -19,6 +19,8 @@ model User {
   emailVerified       Boolean     @default(false)
   image               String?
   gender              Gender?
+  profession          String?
+  title               String?
   sessions            Session[]
   accounts            Account[]
   banned              Boolean?

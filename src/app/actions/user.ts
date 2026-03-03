@@ -17,6 +17,8 @@ export async function updateProfile() {
             name: true,
             image: true,
             role: true,
+            profession: true,
+            title: true,
         },
     });
 }

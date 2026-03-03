@@ -21,21 +21,27 @@ interface ProfileFormProps {
     email: string;
     name: string;
     image: string;
+    profession: string;
+    title: string;
 }
 
 const formSchema = z.object({
     email: z.string().email("Enter a valid email"),
     name: z.string().min(3, "Name must be at least 3 characters"),
     image: z.string().optional(),
+    profession: z.string().optional(),
+    title: z.string().optional(),
 });
 
-export function UpdateProfile({ name, email, image}: ProfileFormProps) {
+export function UpdateProfile({ name, email, image, profession, title}: ProfileFormProps) {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name,
             email,
             image: image || "",
+            profession: profession || "",
+            title: title || "",
         },
     });
 
@@ -45,6 +51,8 @@ export function UpdateProfile({ name, email, image}: ProfileFormProps) {
                 {
                     name: data.name,
                     image: data.image || "",
+                    profession: data.profession || "",
+                    title: data.title || "",
                 },
                 {
                     onSuccess: async () => {
@@ -112,6 +120,40 @@ export function UpdateProfile({ name, email, image}: ProfileFormProps) {
                                     className="text-xs text-red-600 dark:text-red-400 mt-1"
                                 />
                             )}
+                        </Field>
+                    )}
+                />
+                <Controller
+                    name="profession"
+                    control={form.control}
+                    render={({ field }) => (
+                        <Field className="gap-1.5">
+                            <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Profession
+                            </FieldLabel>
+                            <Input
+                                {...field}
+                                autoComplete="organization-title"
+                                placeholder="e.g. Researcher, Doctor, Professor"
+                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                            />
+                        </Field>
+                    )}
+                />
+                <Controller
+                    name="title"
+                    control={form.control}
+                    render={({ field }) => (
+                        <Field className="gap-1.5">
+                            <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Title
+                            </FieldLabel>
+                            <Input
+                                {...field}
+                                autoComplete="honorific-prefix"
+                                placeholder="e.g. Dr., Prof., Mr., Mrs."
+                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                            />
                         </Field>
                     )}
                 />

@@ -153,6 +153,7 @@ function NavbarThemeToggle() {
 
 function TranslationDropdown() {
     const [isOpen, setIsOpen] = React.useState(false);
+    const [currentLang, setCurrentLang] = React.useState<"en" | "fr">("en");
     const widgetInitialized = React.useRef(false);
     const scriptLoadedRef = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -188,15 +189,16 @@ function TranslationDropdown() {
     });
 
     React.useEffect(() => {
-        // If the script tag already exists (e.g. after client-side navigation), try
-        // to initialise the widget straight away since the API may already be loaded.
+        // Detect current language from Google Translate cookie
+        const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
+        if (match?.[1] === "fr") setCurrentLang("fr");
+
         if (document.getElementById("google-translate-script") || scriptLoadedRef.current) {
             scriptLoadedRef.current = true;
             initWidgetRef.current();
             return;
         }
 
-        // Set the callback that Google's script calls when it has finished loading.
         window.googleTranslateElementInit = () => {
             scriptLoadedRef.current = true;
             initWidgetRef.current();
@@ -238,6 +240,27 @@ function TranslationDropdown() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
 
+    const selectLanguage = (lang: "en" | "fr") => {
+        setCurrentLang(lang);
+
+        // Try to use the Google Translate widget's select element
+        const combo = document.querySelector<HTMLSelectElement>(
+            "#google_translate_element_navbar .goog-te-combo"
+        );
+        if (combo) {
+            combo.value = lang;
+            combo.dispatchEvent(new Event("change"));
+        } else {
+            // Fallback: set the googtrans cookie and reload
+            const value = lang === "en" ? "" : `/en/${lang}`;
+            document.cookie = `googtrans=${value};path=/`;
+            document.cookie = `googtrans=${value};path=/;domain=${window.location.hostname}`;
+            window.location.reload();
+        }
+
+        setIsOpen(false);
+    };
+
     return (
         <>
             <style jsx global>{`
@@ -246,26 +269,12 @@ function TranslationDropdown() {
                 }
                 body { top: 0 !important; }
                 .skiptranslate { display: none !important; }
-                #google_translate_element_navbar .goog-te-gadget {
-                    font-size: 0 !important;
-                }
-                #google_translate_element_navbar .goog-te-gadget > span {
-                    display: none !important;
-                }
-                #google_translate_element_navbar .goog-te-gadget .goog-te-combo {
-                    padding: 6px 10px;
-                    border-radius: 6px;
-                    border: 1px solid #d1d5db;
-                    font-size: 14px;
-                    background: white;
-                    cursor: pointer;
-                    width: 100%;
-                    outline: none;
-                }
-                .dark #google_translate_element_navbar .goog-te-gadget .goog-te-combo {
-                    background: #1f2937;
-                    border-color: #374151;
-                    color: #e5e7eb;
+                #google_translate_element_navbar {
+                    position: absolute !important;
+                    width: 1px !important;
+                    height: 1px !important;
+                    overflow: hidden !important;
+                    clip: rect(0, 0, 0, 0) !important;
                 }
             `}</style>
             <div className="relative" ref={dropdownRef}>
@@ -280,13 +289,13 @@ function TranslationDropdown() {
                 </button>
                 <div
                     className={cn(
-                        "absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 min-w-[260px] transition-all duration-200 z-50",
+                        "absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[200px] transition-all duration-200 z-50",
                         isOpen
                             ? "opacity-100 scale-100 pointer-events-auto"
                             : "opacity-0 scale-95 pointer-events-none"
                     )}
                 >
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                             <GlobeIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             Translate Page
@@ -300,11 +309,36 @@ function TranslationDropdown() {
                             ✕
                         </button>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        Select a language to translate this page
-                    </p>
-                    <div id="google_translate_element_navbar" />
+                    <div className="space-y-1">
+                        <button
+                            onClick={() => selectLanguage("en")}
+                            className={cn(
+                                "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md transition-colors",
+                                currentLang === "en"
+                                    ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950 dark:text-blue-400"
+                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                            )}
+                        >
+                            <span className="text-base">🇬🇧</span>
+                            English
+                            {currentLang === "en" && <span className="ml-auto text-blue-600 dark:text-blue-400 text-xs">✓</span>}
+                        </button>
+                        <button
+                            onClick={() => selectLanguage("fr")}
+                            className={cn(
+                                "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md transition-colors",
+                                currentLang === "fr"
+                                    ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950 dark:text-blue-400"
+                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                            )}
+                        >
+                            <span className="text-base">🇫🇷</span>
+                            Français
+                            {currentLang === "fr" && <span className="ml-auto text-blue-600 dark:text-blue-400 text-xs">✓</span>}
+                        </button>
+                    </div>
                 </div>
+                <div id="google_translate_element_navbar" />
             </div>
         </>
     );
@@ -990,7 +1024,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
             <div className="container mx-auto max-w-7xl">
                 <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                     {/* Left Side - Logo */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center shrink-0">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                                 <Image
@@ -1006,21 +1040,21 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 CNERSH
                             </span>
                         </Link>
+                    </div>
 
-                        {/* Desktop: Individual page items — visible from md+ */}
-                        <div className="hidden md:flex items-center gap-1">
-                            <DesktopNavLink href="/pages/about" label="About Us" pathname={pathname} />
-                            <DesktopNavLink href="/pages/contract-rex" label="Contract Rex" pathname={pathname} />
-                            <DesktopNavPdfLink href="/membership.pdf" label="Membership" />
-                            <DesktopNavPdfLink href="/Fiche d'Evaluation CNERSH.pdf" label="Reviews" />
-                            <ResourcesDesktopDropdown />
-                            <EthicalClearanceDesktopDropdown />
-                            <SOPsDesktopSubmenuNav />
-                            {/* Admin-created dynamic pages */}
-                            {pages.map((page) => (
-                                <DynamicPageDesktopDropdown key={page.id} page={page} />
-                            ))}
-                        </div>
+                    {/* Center - Desktop nav items — visible from lg+ */}
+                    <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-4">
+                        <DesktopNavLink href="/pages/about" label="About Us" pathname={pathname} />
+                        <DesktopNavLink href="/pages/contract-rex" label="Contract Rex" pathname={pathname} />
+                        <DesktopNavPdfLink href="/membership.pdf" label="Membership" />
+                        <DesktopNavPdfLink href="/Fiche d'Evaluation CNERSH.pdf" label="Reviews" />
+                        <ResourcesDesktopDropdown />
+                        <EthicalClearanceDesktopDropdown />
+                        <SOPsDesktopSubmenuNav />
+                        {/* Admin-created dynamic pages */}
+                        {pages.map((page) => (
+                            <DynamicPageDesktopDropdown key={page.id} page={page} />
+                        ))}
                     </div>
 
                     {/* Right Side */}
@@ -1036,7 +1070,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 <NotificationDropdown count={notificationCount} />
 
                                 {/* Desktop: User Avatar Dropdown */}
-                                <div className="hidden md:block">
+                                <div className="hidden lg:block">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button className="flex items-center gap-3 cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -1046,7 +1080,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                                         {userInitials}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div className="hidden lg:block text-left">
+                                                <div className="hidden xl:block text-left">
                                                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                                         {user.name || "User"}
                                                     </p>
@@ -1092,7 +1126,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 {/* Mobile Menu Toggle - opens from RIGHT */}
                                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                                     <SheetTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="md:hidden">
+                                        <Button variant="ghost" size="icon" className="lg:hidden">
                                             <MenuIcon className="h-6 w-6" />
                                         </Button>
                                     </SheetTrigger>

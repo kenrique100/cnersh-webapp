@@ -7,7 +7,7 @@ import * as z from "zod";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Users, Check, X, FileText } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Users, Check, X, FileText, Briefcase, Award } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +46,8 @@ interface SignUpData {
     email: string;
     password: string;
     gender: string;
+    profession?: string;
+    title?: string;
 }
 
 // Email validation schema
@@ -74,6 +76,8 @@ const formSchema = z
         gender: z.enum(["male", "female"], {
             message: "Please select a gender",
         }),
+        profession: z.string().optional(),
+        title: z.string().optional(),
         password: passwordSchema,
         confirmPassword: z
             .string()
@@ -108,6 +112,8 @@ export function SignUpForm() {
             name: "",
             email: "",
             gender: "male",
+            profession: "",
+            title: "",
             password: "",
             confirmPassword: "",
             termsAccepted: false,
@@ -163,6 +169,8 @@ export function SignUpForm() {
                     email: data.email,
                     password: data.password,
                     gender: data.gender,
+                    profession: data.profession || undefined,
+                    title: data.title || undefined,
                 } as SignUpData,
                 {
                     onSuccess: async () => {
@@ -171,6 +179,8 @@ export function SignUpForm() {
                             name: "",
                             email: "",
                             gender: "male",
+                            profession: "",
+                            title: "",
                             password: "",
                             confirmPassword: "",
                             termsAccepted: false,
@@ -315,6 +325,34 @@ export function SignUpForm() {
                                     className="text-xs text-red-600 dark:text-red-400 mt-1"
                                 />
                             )}
+                        </Field>
+
+                        {/* Profession Field */}
+                        <Field className="gap-1.5">
+                            <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-gray-500" />
+                                Profession
+                            </FieldLabel>
+                            <Input
+                                {...form.register("profession")}
+                                placeholder="e.g. Researcher, Doctor, Professor"
+                                autoComplete="organization-title"
+                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                            />
+                        </Field>
+
+                        {/* Title Field */}
+                        <Field className="gap-1.5">
+                            <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <Award className="w-4 h-4 text-gray-500" />
+                                Title
+                            </FieldLabel>
+                            <Input
+                                {...form.register("title")}
+                                placeholder="e.g. Dr., Prof., Mr., Mrs."
+                                autoComplete="honorific-prefix"
+                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                            />
                         </Field>
 
                         {/* Password Field */}
