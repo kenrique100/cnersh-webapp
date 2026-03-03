@@ -53,7 +53,7 @@ export function UpdateProfile({ name, email, image, profession, title}: ProfileF
                     image: data.image || "",
                     profession: data.profession || "",
                     title: data.title || "",
-                },
+                } as Parameters<typeof authClient.updateUser>[0],
                 {
                     onSuccess: async () => {
                         toast.success("Profile updated successfully");
