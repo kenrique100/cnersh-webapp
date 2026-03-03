@@ -58,6 +58,8 @@ interface PostUser {
     name: string | null;
     image: string | null;
     role?: string | null;
+    profession?: string | null;
+    title?: string | null;
 }
 
 interface CommentLikeData {
@@ -226,6 +228,7 @@ export default function FeedClient({
     const [showCommentEmoji, setShowCommentEmoji] = React.useState<string | null>(null);
     const [newPostLinkUrl, setNewPostLinkUrl] = React.useState<string>("");
     const [showLinkInput, setShowLinkInput] = React.useState(false);
+    const [visibleCommentCount, setVisibleCommentCount] = React.useState<Record<string, number>>({});
     const [editingPostId, setEditingPostId] = React.useState<string | null>(null);
     const [editingPostContent, setEditingPostContent] = React.useState("");
 
@@ -992,10 +995,10 @@ export default function FeedClient({
                                         </Avatar>
                                         <div className="flex flex-col">
                                             <p className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight">
-                                                {post.user.name || "Anonymous"}
+                                                {post.user.title ? `${post.user.title} ` : ""}{post.user.name || "Anonymous"}
                                             </p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                                Community Member
+                                                {post.user.profession || "Community Member"}
                                             </p>
                                             <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5" title={formatFullDate(post.createdAt)}>
                                                 {formatDate(post.createdAt)}
@@ -1221,7 +1224,16 @@ export default function FeedClient({
                             {/* Comments Section */}
                             {expandedComments.has(post.id) && (
                                 <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-3">
-                                    {(postComments[post.id] || []).map((comment) => {
+                                    {(() => {
+                                        const allComments = postComments[post.id] || [];
+                                        const INITIAL_COMMENTS = 3;
+                                        const visibleCount = visibleCommentCount[post.id] || INITIAL_COMMENTS;
+                                        const visibleItems = allComments.slice(0, visibleCount);
+                                        const hasMore = allComments.length > visibleCount;
+
+                                        return (
+                                            <>
+                                                {visibleItems.map((comment) => {
                                         const commentInitials = comment.user.name
                                             ? comment.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
                                             : "U";
@@ -1402,6 +1414,20 @@ export default function FeedClient({
                                             </div>
                                         );
                                     })}
+                                                {hasMore && visibleItems.length > 0 && (
+                                                    <button
+                                                        onClick={() => setVisibleCommentCount((prev) => ({
+                                                            ...prev,
+                                                            [post.id]: visibleCount + 5,
+                                                        }))}
+                                                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                                    >
+                                                        Load more comments ({allComments.length - visibleCount} remaining)
+                                                    </button>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
 
                                     {/* Reply indicator */}
                                     {replyingTo[post.id] && (

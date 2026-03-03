@@ -49,6 +49,30 @@ export function DataTable<TData, TValue>({
         React.useState<VisibilityState>({});
     const [rowSelection, setRowSelection] = React.useState({});
 
+    // Auto-hide less important columns on small screens
+    React.useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 640) {
+                setColumnVisibility((prev) => ({
+                    ...prev,
+                    select: false,
+                    emailVerified: false,
+                    banned: false,
+                }));
+            } else {
+                setColumnVisibility((prev) => ({
+                    ...prev,
+                    select: true,
+                    emailVerified: true,
+                    banned: true,
+                }));
+            }
+        };
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     const table = useReactTable({
         data,
         columns,

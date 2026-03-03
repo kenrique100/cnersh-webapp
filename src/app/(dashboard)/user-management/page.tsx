@@ -74,7 +74,7 @@ export default async function UserManagementPage() {
         });
 
     return (
-        <div className="w-full p-6 shadow-lg mx-auto max-w-7xl min-h-dvh rounded-2xl h-full flex gap-6 justify-center items-start">
+        <div className="w-full p-2 sm:p-6 shadow-lg mx-auto max-w-7xl min-h-dvh rounded-2xl h-full flex gap-6 justify-center items-start">
             <UserManagementForm users={formattedUsers} currentRole={currentUser?.role ?? "admin"} />
         </div>
     );
