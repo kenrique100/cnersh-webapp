@@ -191,7 +191,7 @@ function TranslationDropdown() {
     React.useEffect(() => {
         // Detect current language from Google Translate cookie
         const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
-        if (match?.[1] === "fr") setCurrentLang("fr");
+        setCurrentLang(match?.[1] === "fr" ? "fr" : "en");
 
         if (document.getElementById("google-translate-script") || scriptLoadedRef.current) {
             scriptLoadedRef.current = true;
@@ -338,6 +338,7 @@ function TranslationDropdown() {
                         </button>
                     </div>
                 </div>
+                {/* Hidden but must remain in DOM for Google Translate API to initialize the combo selector */}
                 <div id="google_translate_element_navbar" />
             </div>
         </>

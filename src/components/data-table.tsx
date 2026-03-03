@@ -59,6 +59,13 @@ export function DataTable<TData, TValue>({
                     emailVerified: false,
                     banned: false,
                 }));
+            } else {
+                setColumnVisibility((prev) => ({
+                    ...prev,
+                    select: true,
+                    emailVerified: true,
+                    banned: true,
+                }));
             }
         };
         handleResize();

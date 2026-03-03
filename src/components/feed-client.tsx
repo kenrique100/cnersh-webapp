@@ -1233,17 +1233,6 @@ export default function FeedClient({
 
                                         return (
                                             <>
-                                                {hasMore && (
-                                                    <button
-                                                        onClick={() => setVisibleCommentCount((prev) => ({
-                                                            ...prev,
-                                                            [post.id]: visibleCount + 5,
-                                                        }))}
-                                                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                                                    >
-                                                        Load more comments ({allComments.length - visibleCount} remaining)
-                                                    </button>
-                                                )}
                                                 {visibleItems.map((comment) => {
                                         const commentInitials = comment.user.name
                                             ? comment.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
