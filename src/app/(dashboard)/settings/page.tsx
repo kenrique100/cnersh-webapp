@@ -52,7 +52,6 @@ export default async function SettingsPage() {
                                 name={user.name ?? ""}
                                 image={user.image ?? ""}
                                 profession={user.profession ?? ""}
-                                title={user.title ?? ""}
                             />
                         </CardContent>
                     </Card>

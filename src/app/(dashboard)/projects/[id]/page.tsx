@@ -14,6 +14,7 @@ import {
     UserIcon,
     ArrowLeftIcon,
     DownloadIcon,
+    HashIcon,
 } from "lucide-react";
 import Link from "next/link";
 import ProjectDetailActions from "./project-detail-actions";
@@ -78,6 +79,15 @@ export default async function ProjectDetailPage({
                     <ArrowLeftIcon className="h-4 w-4" />
                     Back to Projects
                 </Link>
+
+                {/* Tracking Code Banner */}
+                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 w-fit">
+                    <HashIcon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium uppercase tracking-wide">Tracking Code</span>
+                    <code className="text-sm font-mono font-bold text-indigo-800 dark:text-indigo-200 tracking-widest">
+                        {project.trackingCode}
+                    </code>
+                </div>
 
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4 mb-8">

@@ -2,7 +2,7 @@ import { authIsRequired } from "@/lib/auth-utils";
 import { getUserProjects } from "@/app/actions/project";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FolderIcon, CalendarIcon, MapPinIcon, TagIcon } from "lucide-react";
+import { FolderIcon, CalendarIcon, MapPinIcon, TagIcon, HashIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -154,6 +154,12 @@ export default async function ProjectsPage() {
                                                             <Badge className={`${config.color} shrink-0 text-xs`}>
                                                                 {config.label}
                                                             </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
+                                                            <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                                                                {project.trackingCode}
+                                                            </code>
                                                         </div>
                                                     </CardHeader>
                                                     <CardContent className="pt-0">

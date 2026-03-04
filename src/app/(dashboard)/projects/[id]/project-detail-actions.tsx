@@ -57,7 +57,11 @@ export default function ProjectDetailActions({
 
     const handleStatusUpdate = async (status: "APPROVED" | "REJECTED" | "PENDING_REVIEW") => {
         if (status === "REJECTED" && !feedback.trim()) {
-            toast.error("Please provide feedback for rejection");
+            toast.error("Please provide a rejection reason before rejecting");
+            return;
+        }
+        if (status === "PENDING_REVIEW" && !feedback.trim()) {
+            toast.error("Please specify what additional documentation is required");
             return;
         }
         setIsSubmitting(true);
@@ -300,17 +304,22 @@ export default function ProjectDetailActions({
                 <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/50 rounded-xl">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            Admin Review Actions
+                            Review Actions
                         </CardTitle>
-                        <p className="text-xs text-gray-500">Current status: {currentStatus.replace(/_/g, " ")}</p>
+                        <p className="text-xs text-gray-500">
+                            Current status: <span className="font-medium">{currentStatus.replace(/_/g, " ")}</span>
+                        </p>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         <Textarea
-                            placeholder="Provide feedback (required for rejection)"
+                            placeholder="Required for rejection or documentation request — add a reason or specify what documentation is needed"
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             className="min-h-[80px]"
                         />
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                            Feedback is required when rejecting or requesting additional documentation.
+                        </p>
                         <div className="flex flex-wrap gap-2">
                             <Button
                                 onClick={() => handleStatusUpdate("APPROVED")}
@@ -334,7 +343,7 @@ export default function ProjectDetailActions({
                                 variant="outline"
                             >
                                 <ClockIcon className="h-4 w-4 mr-1" />
-                                Request Revision
+                                Request Additional Documentation
                             </Button>
                         </div>
                     </CardContent>

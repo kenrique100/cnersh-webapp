@@ -13,7 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { assignProjectReviewer } from "@/app/actions/project";
 import { toast } from "sonner";
-import { UserCheckIcon } from "lucide-react";
+import { UserCheckIcon, HashIcon } from "lucide-react";
 
 interface ProjectUser {
     id: string;
@@ -32,6 +32,7 @@ interface AdminUser {
 
 interface ProjectData {
     id: string;
+    trackingCode: string;
     title: string;
     description: string;
     objectives: string | null;
@@ -110,6 +111,12 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
                                         <p className="text-xs text-gray-500 mt-1">
                                             by {project.user.name} • {formatDate(project.createdAt)}
                                         </p>
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
+                                            <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                                                {project.trackingCode}
+                                            </code>
+                                        </div>
                                     </div>
                                     <Badge className={statusColors[project.status] || ""}>
                                         {project.status.replace("_", " ")}
