@@ -59,7 +59,6 @@ interface PostUser {
     image: string | null;
     role?: string | null;
     profession?: string | null;
-    title?: string | null;
 }
 
 interface CommentLikeData {
@@ -837,7 +836,7 @@ export default function FeedClient({
                                 </div>
                             )}
                             <div className="flex items-center justify-between pt-1">
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5 sm:gap-1">
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -845,10 +844,10 @@ export default function FeedClient({
                                             setShowVideoUpload(false);
                                             setShowImageUpload(!showImageUpload);
                                         }}
-                                        className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-9 px-3 rounded-lg"
+                                        className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-9 px-2 sm:px-3 rounded-lg"
                                     >
-                                        <ImageIcon className="h-4 w-4 mr-1.5" />
-                                        <span className="text-sm font-medium">Photo</span>
+                                        <ImageIcon className="h-4 w-4 sm:mr-1.5" />
+                                        <span className="hidden sm:inline text-sm font-medium">Photo</span>
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -857,29 +856,29 @@ export default function FeedClient({
                                             setShowImageUpload(false);
                                             setShowVideoUpload(!showVideoUpload);
                                         }}
-                                        className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 h-9 px-3 rounded-lg"
+                                        className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 h-9 px-2 sm:px-3 rounded-lg"
                                     >
-                                        <VideoIcon className="h-4 w-4 mr-1.5" />
-                                        <span className="text-sm font-medium">Video</span>
+                                        <VideoIcon className="h-4 w-4 sm:mr-1.5" />
+                                        <span className="hidden sm:inline text-sm font-medium">Video</span>
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => setShowLinkInput(!showLinkInput)}
-                                        className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 h-9 px-3 rounded-lg"
+                                        className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 h-9 px-2 sm:px-3 rounded-lg"
                                     >
-                                        <LinkIcon className="h-4 w-4 mr-1.5" />
-                                        <span className="text-sm font-medium">Link</span>
+                                        <LinkIcon className="h-4 w-4 sm:mr-1.5" />
+                                        <span className="hidden sm:inline text-sm font-medium">Link</span>
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleMentionAll("new-post")}
-                                        className="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-orange-400 h-9 px-3 rounded-lg"
+                                        className="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-orange-400 h-9 px-2 sm:px-3 rounded-lg"
                                         title="Mention all users"
                                     >
-                                        <UsersIcon className="h-4 w-4 mr-1.5" />
-                                        <span className="text-sm font-medium">@All</span>
+                                        <UsersIcon className="h-4 w-4 sm:mr-1.5" />
+                                        <span className="hidden sm:inline text-sm font-medium">@All</span>
                                     </Button>
                                 </div>
                                 <Button
@@ -995,7 +994,7 @@ export default function FeedClient({
                                         </Avatar>
                                         <div className="flex flex-col">
                                             <p className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight">
-                                                {post.user.title ? `${post.user.title} ` : ""}{post.user.name || "Anonymous"}
+                                                {post.user.name || "Anonymous"}
                                             </p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                                                 {post.user.profession || "Community Member"}

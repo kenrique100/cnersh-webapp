@@ -22,7 +22,6 @@ interface ProfileFormProps {
     name: string;
     image: string;
     profession: string;
-    title: string;
 }
 
 const formSchema = z.object({
@@ -30,10 +29,9 @@ const formSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters"),
     image: z.string().optional(),
     profession: z.string().optional(),
-    title: z.string().optional(),
 });
 
-export function UpdateProfile({ name, email, image, profession, title}: ProfileFormProps) {
+export function UpdateProfile({ name, email, image, profession}: ProfileFormProps) {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -41,7 +39,6 @@ export function UpdateProfile({ name, email, image, profession, title}: ProfileF
             email,
             image: image || "",
             profession: profession || "",
-            title: title || "",
         },
     });
 
@@ -52,7 +49,6 @@ export function UpdateProfile({ name, email, image, profession, title}: ProfileF
                     name: data.name,
                     image: data.image || "",
                     profession: data.profession || "",
-                    title: data.title || "",
                 } as Parameters<typeof authClient.updateUser>[0],
                 {
                     onSuccess: async () => {
@@ -135,23 +131,6 @@ export function UpdateProfile({ name, email, image, profession, title}: ProfileF
                                 {...field}
                                 autoComplete="organization-title"
                                 placeholder="e.g. Researcher, Doctor, Professor"
-                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
-                            />
-                        </Field>
-                    )}
-                />
-                <Controller
-                    name="title"
-                    control={form.control}
-                    render={({ field }) => (
-                        <Field className="gap-1.5">
-                            <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Title
-                            </FieldLabel>
-                            <Input
-                                {...field}
-                                autoComplete="honorific-prefix"
-                                placeholder="e.g. Dr., Prof., Mr., Mrs."
                                 className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
                             />
                         </Field>
