@@ -407,7 +407,8 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
                 create: {
                     status: "PENDING_REVIEW",
                     changedBy: session.user.id,
-                    comment: `Assigned to ${admin.name || admin.email} for review`,
+                    // Keep reviewer identity anonymous in public-facing history
+                    comment: "Project assigned for review",
                 },
             },
         },
