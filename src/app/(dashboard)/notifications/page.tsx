@@ -22,7 +22,7 @@ export default async function NotificationsPage() {
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
                         Notifications
                         {unreadCount > 0 && (
                             <span className="ml-2 text-sm font-normal text-blue-600">

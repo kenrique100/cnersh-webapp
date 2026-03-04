@@ -55,13 +55,13 @@ export default async function ProjectsPage() {
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-violet-600 text-white">
+                        <div className="p-2.5 rounded-xl bg-violet-600 text-white shrink-0">
                             <FolderIcon className="h-6 w-6" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                 My Projects
                             </h1>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -69,7 +69,7 @@ export default async function ProjectsPage() {
                             </p>
                         </div>
                     </div>
-                    <Link href="/projects/submit">
+                    <Link href="/projects/submit" className="self-start sm:self-auto">
                         <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm">
                             Submit New Project
                         </Button>

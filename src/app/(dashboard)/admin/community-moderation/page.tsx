@@ -33,7 +33,7 @@ export default async function CommunityModerationPage() {
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
                         Community Moderation
                     </h1>
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -69,7 +69,7 @@ export default async function CommunityModerationPage() {
                                                 {new Date(topic.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
-                                        <div className="ml-auto flex gap-2">
+                                        <div className="ml-auto flex flex-wrap gap-1.5 shrink-0">
                                             <Badge variant="secondary">{topic.category}</Badge>
                                             <Badge variant="secondary">
                                                 {topic._count.replies} replies
