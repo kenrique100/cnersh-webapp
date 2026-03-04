@@ -23,8 +23,8 @@ export default async function SettingsPage() {
             <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Page Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        <SettingsIcon className="w-7 h-7" />
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <SettingsIcon className="w-6 h-6 sm:w-7 sm:h-7" />
                         Settings
                     </h1>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">

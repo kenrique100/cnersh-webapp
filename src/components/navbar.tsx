@@ -811,6 +811,14 @@ function ResourcesDesktopDropdown() {
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Data Protection Law
                     </a>
+                    <a href="/Organisation_et_fonctionnement__évaluation_recherche_12.11.2023-good version.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Ministerial Decision
+                    </a>
+                    <Link href="/pages/article" onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Article
+                    </Link>
                 </div>
             )}
         </div>
@@ -875,6 +883,14 @@ function ResourcesMobileDropdown({ onNavigate }: { onNavigate: () => void }) {
                             </a>
                         </div>
                     )}
+                    <a href="/Organisation_et_fonctionnement__évaluation_recherche_12.11.2023-good version.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                        <DownloadIcon className="h-4 w-4 shrink-0" />Ministerial Decision
+                    </a>
+                    <Link href="/pages/article" onClick={onNavigate}
+                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                        <FileTextIcon className="h-4 w-4 shrink-0" />Article
+                    </Link>
                 </div>
             )}
         </div>
@@ -1044,7 +1060,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                     </div>
 
                     {/* Center - Desktop nav items — visible from lg+ */}
-                    <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-4">
+                    <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         <DesktopNavLink href="/pages/about" label="About Us" pathname={pathname} />
                         <DesktopNavLink href="/pages/contract-rex" label="Contract Rex" pathname={pathname} />
                         <DesktopNavPdfLink href="/membership.pdf" label="Membership" />
