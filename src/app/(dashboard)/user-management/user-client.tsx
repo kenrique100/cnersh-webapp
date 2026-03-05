@@ -33,6 +33,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { columns } from "./columns";
+import { MobileUserCard } from "./MobileUserCard";
 
 const ROLE_OPTIONS = ["user", "admin", "superadmin"] as const;
 export type Role = (typeof ROLE_OPTIONS)[number];
@@ -259,11 +260,19 @@ export default function UserManagementForm({ users, currentRole }: { users: User
                     </Button>
                 </div>
 
-                <div className="flex flex-col py-4 sm:py-6 w-full overflow-x-auto">
-                    {/* Mobile: Horizontal scroll with min-width */}
-                    <div className="min-w-160 sm:min-w-0">
-                        <DataTable data={users} columns={columns} />
-                    </div>
+                {/* Mobile: card list */}
+                <div className="flex flex-col gap-3 py-4 sm:hidden">
+                    {users.map((user) => (
+                        <MobileUserCard key={user.id} user={user} />
+                    ))}
+                    {users.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-6">No users found.</p>
+                    )}
+                </div>
+
+                {/* Desktop: data table */}
+                <div className="hidden sm:flex flex-col py-6 w-full">
+                    <DataTable data={users} columns={columns} />
                 </div>
             </div>
         </>
