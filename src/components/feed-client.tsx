@@ -27,8 +27,6 @@ import {
     LinkIcon,
     UsersIcon,
     ExternalLinkIcon,
-    HeartIcon,
-    PartyPopperIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
 } from "lucide-react";
@@ -254,8 +252,31 @@ export default function FeedClient({
     const [reactionHoverPostId, setReactionHoverPostId] = React.useState<string | null>(null);
     const reactionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-    // Share counts (tracked locally)
-    const [shareCounts, setShareCounts] = React.useState<Record<string, number>>({});
+    // Clean up reaction timeout on unmount
+    React.useEffect(() => {
+        return () => {
+            if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current);
+        };
+    }, []);
+
+    // Share counts (tracked in localStorage for persistence)
+    const [shareCounts, setShareCounts] = React.useState<Record<string, number>>(() => {
+        if (typeof window === "undefined") return {};
+        try {
+            const stored = localStorage.getItem("feed-share-counts");
+            return stored ? JSON.parse(stored) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    React.useEffect(() => {
+        try {
+            localStorage.setItem("feed-share-counts", JSON.stringify(shareCounts));
+        } catch {
+            // localStorage may be unavailable
+        }
+    }, [shareCounts]);
 
     const REACTIONS = [
         { emoji: "👍", label: "Like" },
@@ -716,9 +737,12 @@ export default function FeedClient({
         }, 300);
     };
 
-    const handleReaction = (postId: string, _reaction: string) => {
+    const handleReaction = (postId: string, reaction: string) => {
         setReactionHoverPostId(null);
         handleLike(postId);
+        if (reaction !== "Like") {
+            toast.success(`Reacted with ${reaction}!`);
+        }
     };
 
     return (
