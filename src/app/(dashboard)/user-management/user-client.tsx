@@ -1,3 +1,4 @@
+// user-client.tsx (updated)
 "use client";
 
 import { DataTable } from "@/components/data-table";
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,7 +28,7 @@ import { UserProps, useUsers } from "@/hooks/use-user";
 import { authClient } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import {useEffect, useState} from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -37,7 +37,6 @@ import { columns } from "./columns";
 const ROLE_OPTIONS = ["user", "admin", "superadmin"] as const;
 export type Role = (typeof ROLE_OPTIONS)[number];
 
-/** Roles an actor is allowed to assign. Admins can only assign "user" role. */
 function getAllowedRoles(currentRole: string): readonly Role[] {
     if (currentRole === "superadmin") return ROLE_OPTIONS;
     return ["user"] as const;
@@ -45,15 +44,15 @@ function getAllowedRoles(currentRole: string): readonly Role[] {
 
 const formSchema = z.object({
     name: z.string().min(3, "Name is required"),
-    email: z.email("Email is required"),
+    email: z.string().email("Email is required"),
     role: z.enum(ROLE_OPTIONS, "Role is required"),
     password: z.string().min(6, "Password is required").optional(),
 });
 
 export default function UserManagementForm({ users, currentRole }: { users: UserProps[]; currentRole: string }) {
     const router = useRouter();
-
     const allowedRoles = getAllowedRoles(currentRole);
+    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -84,12 +83,11 @@ export default function UserManagementForm({ users, currentRole }: { users: User
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
             if (!user.id) {
-                // Creating new user - password is required
                 if (!values.password) {
                     toast.error("Password is required for new user");
                     return;
                 }
-                
+
                 await authClient.admin.createUser({
                     name: values.name,
                     email: values.email,
@@ -110,11 +108,9 @@ export default function UserManagementForm({ users, currentRole }: { users: User
 
                 toast.success("User updated successfully");
             }
-            
-            // Only cleanup on success
+
             setIsOpen(false);
             form.reset();
-
             setUser({
                 id: "",
                 name: "",
@@ -132,31 +128,12 @@ export default function UserManagementForm({ users, currentRole }: { users: User
 
     return (
         <>
-            <Dialog
-                open={isOpen}
-                onOpenChange={(isOpen) => {
-                    setIsOpen(isOpen);
-
-                    if (!isOpen) {
-                        form.reset();
-
-                        setUser({
-                            id: "",
-                            name: "",
-                            role: "",
-                            email: "",
-                            emailVerified: false,
-                            hasDeletePermission: false,
-                        });
-                    }
-                }}
-            >
-                <DialogContent>
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogContent className="w-[95%] sm:w-full max-w-md rounded-lg mx-auto p-4 sm:p-6">
                     <DialogHeader>
-                        <DialogTitle> {!!user.id ? "Edit" : "Create user"} </DialogTitle>
-                        <DialogDescription className="sr-only">
-                            {!!user.id ? "Edit user details" : "Create a new user"}
-                        </DialogDescription>
+                        <DialogTitle className="text-base sm:text-lg">
+                            {!!user.id ? "Edit user" : "Create user"}
+                        </DialogTitle>
                     </DialogHeader>
 
                     <form
@@ -164,17 +141,18 @@ export default function UserManagementForm({ users, currentRole }: { users: User
                         id="user-management"
                         className="flex flex-col items-end justify-center"
                     >
-                        <FieldGroup>
+                        <FieldGroup className="w-full space-y-4">
                             <Controller
                                 name="name"
                                 control={form.control}
                                 render={({ field, fieldState }) => (
                                     <Field data-invalid={fieldState.invalid} className="gap-1">
-                                        <FieldLabel>Name</FieldLabel>
+                                        <FieldLabel className="text-sm">Name</FieldLabel>
                                         <Input
                                             {...field}
                                             autoComplete="off"
                                             aria-invalid={fieldState.invalid}
+                                            className="h-9 sm:h-10 text-sm"
                                         />
                                         {fieldState.invalid && (
                                             <FieldError errors={[fieldState.error]} />
@@ -188,11 +166,12 @@ export default function UserManagementForm({ users, currentRole }: { users: User
                                 control={form.control}
                                 render={({ field, fieldState }) => (
                                     <Field data-invalid={fieldState.invalid} className="gap-1">
-                                        <FieldLabel>Email</FieldLabel>
+                                        <FieldLabel className="text-sm">Email</FieldLabel>
                                         <Input
                                             {...field}
                                             autoComplete="off"
                                             aria-invalid={fieldState.invalid}
+                                            className="h-9 sm:h-10 text-sm"
                                         />
                                         {fieldState.invalid && (
                                             <FieldError errors={[fieldState.error]} />
@@ -207,12 +186,13 @@ export default function UserManagementForm({ users, currentRole }: { users: User
                                     control={form.control}
                                     render={({ field, fieldState }) => (
                                         <Field data-invalid={fieldState.invalid} className="gap-1">
-                                            <FieldLabel>Password</FieldLabel>
+                                            <FieldLabel className="text-sm">Password</FieldLabel>
                                             <Input
                                                 {...field}
                                                 autoComplete="off"
                                                 aria-invalid={fieldState.invalid}
                                                 type="password"
+                                                className="h-9 sm:h-10 text-sm"
                                             />
                                             {fieldState.invalid && (
                                                 <FieldError errors={[fieldState.error]} />
@@ -227,19 +207,19 @@ export default function UserManagementForm({ users, currentRole }: { users: User
                                 control={form.control}
                                 render={({ field, fieldState }) => (
                                     <Field data-invalid={fieldState.invalid} className="gap-1">
-                                        <FieldLabel>Role</FieldLabel>
+                                        <FieldLabel className="text-sm">Role</FieldLabel>
                                         <Select
                                             {...field}
                                             onValueChange={field.onChange}
                                             defaultValue={user.role}
                                         >
-                                            <SelectTrigger className="w-full">
+                                            <SelectTrigger className="w-full h-9 sm:h-10 text-sm">
                                                 <SelectValue placeholder="Role" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {allowedRoles.map((role) => (
-                                                    <SelectItem key={role} value={role}>
-                                                        {role}{" "}
+                                                    <SelectItem key={role} value={role} className="text-sm">
+                                                        {role}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -254,12 +234,12 @@ export default function UserManagementForm({ users, currentRole }: { users: User
 
                         <Button
                             type="submit"
-                            className="cursor-pointer max-w-40 self-end my-6"
+                            className="cursor-pointer w-full sm:w-auto sm:self-end mt-6 h-9 sm:h-10 text-sm"
                             disabled={form.formState.isSubmitting}
                             form="user-management"
                         >
                             {form.formState.isSubmitting ? (
-                                <Spinner className="size-6" />
+                                <Spinner className="size-5" />
                             ) : (
                                 "Save changes"
                             )}
@@ -268,16 +248,22 @@ export default function UserManagementForm({ users, currentRole }: { users: User
                 </DialogContent>
             </Dialog>
 
-            <div className="flex flex-col px-3 sm:px-8 py-4 sm:py-6 w-full">
+            <div className="flex flex-col px-2 sm:px-8 py-4 sm:py-6 w-full">
                 <div className="flex flex-col sm:flex-row w-full justify-between gap-3 sm:items-center">
                     <h1 className="text-lg font-semibold">User management</h1>
-                    <Button className="cursor-pointer w-full sm:w-auto" onClick={() => setIsOpen(true)}>
+                    <Button
+                        className="cursor-pointer w-full sm:w-auto h-9 sm:h-10 text-sm"
+                        onClick={() => setIsOpen(true)}
+                    >
                         Create new user
                     </Button>
                 </div>
 
-                <div className="flex flex-col py-4 sm:py-6 w-full overflow-hidden">
-                    <DataTable data={users} columns={columns} />
+                <div className="flex flex-col py-4 sm:py-6 w-full overflow-x-auto">
+                    {/* Mobile: Horizontal scroll with min-width */}
+                    <div className="min-w-160 sm:min-w-0">
+                        <DataTable data={users} columns={columns} />
+                    </div>
                 </div>
             </div>
         </>

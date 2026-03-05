@@ -1,3 +1,4 @@
+// columns.tsx (updated)
 import { Button } from "@/components/ui/button";
 import { UserProps } from "@/hooks/use-user";
 import { Checkbox } from "@radix-ui/react-checkbox";
@@ -18,6 +19,7 @@ export const columns: ColumnDef<UserProps>[] = [
                 }
                 onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                 aria-label="Select all"
+                className="ml-1 sm:ml-0"
             />
         ),
         cell: ({ row }) => (
@@ -25,6 +27,7 @@ export const columns: ColumnDef<UserProps>[] = [
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
                 aria-label="Select row"
+                className="ml-1 sm:ml-0"
             />
         ),
         enableSorting: false,
@@ -36,18 +39,22 @@ export const columns: ColumnDef<UserProps>[] = [
         cell: ({ row }) => {
             const name = row.getValue("name") as string;
             const image = row.original.image;
+            const email = row.original.email;
             const initials = name
                 ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
                 : "U";
             return (
-                <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-35 sm:min-w-0">
+                    <Avatar className="h-7 w-7 sm:h-8 sm:w-8 border border-gray-200 dark:border-gray-700 shrink-0">
                         <AvatarImage src={image || undefined} alt={name || ""} />
                         <AvatarFallback className="bg-blue-700 text-white text-xs font-semibold">
                             {initials}
                         </AvatarFallback>
                     </Avatar>
-                    <span className="capitalize font-medium">{name}</span>
+                    <div className="flex flex-col sm:block truncate">
+                        <span className="capitalize font-medium text-sm sm:text-base truncate">{name}</span>
+                        <span className="text-xs text-gray-500 sm:hidden truncate">{email}</span>
+                    </div>
                 </div>
             );
         },
@@ -59,13 +66,14 @@ export const columns: ColumnDef<UserProps>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="hidden sm:inline-flex"
                 >
                     Email
-                    <ArrowUpDown />
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
-        cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+        cell: ({ row }) => <div className="hidden sm:block lowercase">{row.getValue("email")}</div>,
     },
     {
         accessorKey: "role",
@@ -78,7 +86,7 @@ export const columns: ColumnDef<UserProps>[] = [
                 superadmin: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
             };
             return (
-                <Badge className={`${roleColors[role] || ""} capitalize`}>
+                <Badge className={`${roleColors[role] || ""} capitalize text-xs sm:text-sm px-1.5 sm:px-2.5`}>
                     {role}
                 </Badge>
             );
@@ -90,11 +98,11 @@ export const columns: ColumnDef<UserProps>[] = [
         cell: ({ row }) => {
             const banned = row.original.banned;
             return banned ? (
-                <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+                <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 text-xs sm:text-sm px-1.5 sm:px-2.5">
                     Banned
                 </Badge>
             ) : (
-                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs sm:text-sm px-1.5 sm:px-2.5">
                     Active
                 </Badge>
             );
@@ -104,7 +112,7 @@ export const columns: ColumnDef<UserProps>[] = [
         accessorKey: "emailVerified",
         header: "Email verified",
         cell: ({ row }) => (
-            <div className="capitalize">
+            <div className="hidden lg:block capitalize text-sm">
                 {row.getValue("emailVerified")?.toString()}
             </div>
         ),

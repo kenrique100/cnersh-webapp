@@ -1,3 +1,4 @@
+// cell-actions.tsx (fixed)
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,16 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { UserProps, useUsers } from "@/hooks/use-user";
 import { authClient } from "@/lib/auth-client";
-import { Edit, Trash, ShieldBan, ShieldCheck } from "lucide-react";
+import { Edit, Trash, ShieldBan, ShieldCheck, MoreVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const CellActions = ({
                                 id,
@@ -27,16 +34,14 @@ export const CellActions = ({
                                 banned,
                             }: UserProps) => {
     const router = useRouter();
-
     const { setIsOpen, setUser } = useUsers();
-
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isBanModalOpen, setIsBanModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const onRemoveUser = async () => {
         setIsLoading(true);
-        
         try {
             const { error } = await authClient.admin.removeUser({ userId: id });
 
@@ -45,12 +50,11 @@ export const CellActions = ({
                 setIsLoading(false);
                 return;
             }
-            
-            // Only cleanup on success
             toast.success("User removed successfully");
             router.refresh();
             setIsLoading(false);
             setIsDeleteModalOpen(false);
+            setIsMobileMenuOpen(false);
         } catch {
             toast.error("Something went wrong");
             setIsLoading(false);
@@ -83,131 +87,174 @@ export const CellActions = ({
             router.refresh();
             setIsLoading(false);
             setIsBanModalOpen(false);
+            setIsMobileMenuOpen(false);
         } catch {
             toast.error("Something went wrong");
             setIsLoading(false);
         }
     };
 
+    const handleEdit = () => {
+        setIsOpen(true);
+        setUser({
+            id,
+            name,
+            role,
+            email,
+            emailVerified,
+            hasDeletePermission,
+            image,
+            banned,
+        });
+        setIsMobileMenuOpen(false);
+    };
+
     return (
         <>
-            <div className="flex justify-end gap-3">
-                <div
-                    className="cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            {/* Desktop view - horizontal icons */}
+            <div className="hidden sm:flex justify-end gap-2">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
                     title="Edit"
-                    onClick={() => {
-                        setIsOpen(true);
-                        setUser({
-                            id,
-                            name,
-                            role,
-                            email,
-                            emailVerified,
-                            hasDeletePermission,
-                            image,
-                            banned,
-                        });
-                    }}
+                    onClick={handleEdit}
                 >
                     <Edit className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                </div>
+                </Button>
 
-                <div
-                    className="cursor-pointer p-1.5 rounded-md hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-8 w-8 rounded-md hover:bg-orange-50 dark:hover:bg-orange-950 ${
+                        banned ? "text-green-600" : "text-orange-500"
+                    }`}
                     title={banned ? "Unban user" : "Ban user"}
                     onClick={() => setIsBanModalOpen(true)}
                 >
                     {banned ? (
-                        <ShieldCheck className="h-4 w-4 text-green-600" />
+                        <ShieldCheck className="h-4 w-4" />
                     ) : (
-                        <ShieldBan className="h-4 w-4 text-orange-500" />
+                        <ShieldBan className="h-4 w-4" />
                     )}
-                </div>
+                </Button>
 
                 {hasDeletePermission && (
-                    <div
-                        className="cursor-pointer p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-md hover:bg-red-50 dark:hover:bg-red-950"
                         title="Delete user"
-                        onClick={() => {
-                            setIsDeleteModalOpen(true);
-                        }}
+                        onClick={() => setIsDeleteModalOpen(true)}
                     >
                         <Trash className="h-4 w-4 text-rose-500" />
-                    </div>
+                    </Button>
                 )}
             </div>
 
-            {/* Delete Dialog */}
-            <Dialog
-                open={isDeleteModalOpen}
-                onOpenChange={(isOpen) => {
-                    setIsDeleteModalOpen(isOpen);
-                }}
-            >
-                <DialogContent className="flex flex-col items-start justify-center">
-                    <DialogHeader>
-                        <DialogTitle>Delete user</DialogTitle>
-                    </DialogHeader>
+            {/* Mobile view - dropdown menu */}
+            <div className="sm:hidden">
+                <DropdownMenu open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={() => setIsBanModalOpen(true)}
+                            className={`cursor-pointer ${banned ? "text-green-600" : "text-orange-500"}`}
+                        >
+                            {banned ? (
+                                <>
+                                    <ShieldCheck className="h-4 w-4 mr-2" />
+                                    Unban
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldBan className="h-4 w-4 mr-2" />
+                                    Ban
+                                </>
+                            )}
+                        </DropdownMenuItem>
+                        {hasDeletePermission && (
+                            <DropdownMenuItem
+                                onClick={() => setIsDeleteModalOpen(true)}
+                                className="cursor-pointer text-rose-500"
+                            >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Delete
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
-                    <DialogDescription>
+            {/* Delete Dialog */}
+            <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+                <DialogContent className="w-[90%] sm:w-full max-w-md rounded-lg mx-auto p-4 sm:p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-base sm:text-lg">Delete user</DialogTitle>
+                    </DialogHeader>
+                    <DialogDescription className="text-sm sm:text-base">
                         Are you sure you want to delete {name}? <br />
                         This action cannot be undone.
                     </DialogDescription>
-
-                    <div className="flex gap-2 self-end my-4">
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end mt-4">
                         <Button
                             variant="outline"
                             onClick={() => setIsDeleteModalOpen(false)}
+                            className="w-full sm:w-auto"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            className="cursor-pointer"
+                            className="cursor-pointer w-full sm:w-auto"
                             variant="destructive"
                             onClick={onRemoveUser}
                             disabled={isLoading}
                         >
-                            {isLoading ? <Spinner className="size-6" /> : "Delete"}
+                            {isLoading ? <Spinner className="size-5" /> : "Delete"}
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Ban/Unban Dialog */}
-            <Dialog
-                open={isBanModalOpen}
-                onOpenChange={(isOpen) => {
-                    setIsBanModalOpen(isOpen);
-                }}
-            >
-                <DialogContent className="flex flex-col items-start justify-center">
+            <Dialog open={isBanModalOpen} onOpenChange={setIsBanModalOpen}>
+                <DialogContent className="w-[90%] sm:w-full max-w-md rounded-lg mx-auto p-4 sm:p-6">
                     <DialogHeader>
-                        <DialogTitle>{banned ? "Unban" : "Ban"} user</DialogTitle>
+                        <DialogTitle className="text-base sm:text-lg">
+                            {banned ? "Unban" : "Ban"} user
+                        </DialogTitle>
                     </DialogHeader>
-
-                    <DialogDescription>
+                    <DialogDescription className="text-sm sm:text-base">
                         {banned
                             ? `Are you sure you want to unban ${name}? They will regain access to the platform.`
                             : `Are you sure you want to ban ${name}? They will lose access to the platform.`}
                     </DialogDescription>
-
-                    <div className="flex gap-2 self-end my-4">
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end mt-4">
                         <Button
                             variant="outline"
                             onClick={() => setIsBanModalOpen(false)}
+                            className="w-full sm:w-auto"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            className="cursor-pointer"
+                            className="cursor-pointer w-full sm:w-auto"
                             variant={banned ? "default" : "destructive"}
                             onClick={onToggleBan}
                             disabled={isLoading}
                         >
                             {isLoading ? (
-                                <Spinner className="size-6" />
+                                <Spinner className="size-5" />
                             ) : banned ? (
                                 "Unban"
                             ) : (
