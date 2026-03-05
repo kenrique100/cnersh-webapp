@@ -8,10 +8,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import LinkPreview from "@/components/link-preview";
 import {
+    Dialog,
+    DialogContent,
+} from "@/components/ui/dialog";
+import {
     MessageCircleIcon,
     ThumbsUpIcon,
     ShareIcon,
     LockIcon,
+    ExternalLinkIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
 } from "lucide-react";
 
 interface PostUser {
@@ -39,6 +46,11 @@ interface PublicFeedClientProps {
 }
 
 export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
+    // Image modal state
+    const [imageModalOpen, setImageModalOpen] = React.useState(false);
+    const [imageModalPost, setImageModalPost] = React.useState<PublicPostData | null>(null);
+    const [imageModalIndex, setImageModalIndex] = React.useState(0);
+
     const formatDate = (date: Date) => {
         const now = new Date();
         const postDate = new Date(date);
@@ -96,6 +108,12 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
         return result.length > 0 ? result : content;
     };
 
+    const openImageModal = (post: PublicPostData, imageIndex: number = 0) => {
+        setImageModalPost(post);
+        setImageModalIndex(imageIndex);
+        setImageModalOpen(true);
+    };
+
     if (posts.length === 0) {
         return (
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
@@ -116,9 +134,9 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                 return (
                     <Card
                         key={post.id}
-                        className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm"
+                        className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                     >
-                        {/* Post Header */}
+                        {/* Post Header - LinkedIn style with user info */}
                         <div className="p-4 pb-0">
                             <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
@@ -128,13 +146,13 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col">
-                                    <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                                    <p className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight">
                                         {post.user.name || "Anonymous"}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                                         Community Member
                                     </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
                                         {formatDate(post.createdAt)}
                                     </p>
                                 </div>
@@ -144,7 +162,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                         {/* Post Content */}
                         {post.content && (
                             <div className="px-4 py-3">
-                                <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                                     {renderPostContent(post.content)}
                                 </p>
                             </div>
@@ -161,7 +179,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             </div>
                         )}
 
-                        {/* Post Image(s) */}
+                        {/* Post Image(s) - Clickable for modal */}
                         {(post.image || (post.images && post.images.length > 0)) && (
                             <div className="border-t border-b border-gray-100 dark:border-gray-800">
                                 {(() => {
@@ -171,28 +189,40 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                     ];
                                     if (allImages.length === 1) {
                                         return (
-                                            <Image
-                                                src={allImages[0]}
-                                                alt="Post attachment"
-                                                width={700}
-                                                height={400}
-                                                className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
-                                                unoptimized
-                                            />
+                                            <button
+                                                type="button"
+                                                className="w-full cursor-pointer focus:outline-none"
+                                                onClick={() => openImageModal(post, 0)}
+                                            >
+                                                <Image
+                                                    src={allImages[0]}
+                                                    alt="Post attachment"
+                                                    width={700}
+                                                    height={400}
+                                                    className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
+                                                    unoptimized
+                                                />
+                                            </button>
                                         );
                                     }
                                     return (
                                         <div className="grid gap-1 grid-cols-2">
                                             {allImages.map((img, idx) => (
-                                                <Image
+                                                <button
                                                     key={idx}
-                                                    src={img}
-                                                    alt={`Post attachment ${idx + 1}`}
-                                                    width={350}
-                                                    height={250}
-                                                    className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
-                                                    unoptimized
-                                                />
+                                                    type="button"
+                                                    className="cursor-pointer focus:outline-none"
+                                                    onClick={() => openImageModal(post, idx)}
+                                                >
+                                                    <Image
+                                                        src={img}
+                                                        alt={`Post attachment ${idx + 1}`}
+                                                        width={350}
+                                                        height={250}
+                                                        className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
+                                                        unoptimized
+                                                    />
+                                                </button>
                                             ))}
                                         </div>
                                     );
@@ -221,7 +251,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
                         {/* Engagement Stats */}
                         {(post._count.likes > 0 || post._count.comments > 0) && (
-                            <div className="px-4 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                            <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                                 <div className="flex items-center gap-1.5">
                                     {post._count.likes > 0 && (
                                         <span className="flex items-center gap-1.5">
@@ -240,18 +270,18 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             </div>
                         )}
 
-                        {/* Action Buttons - Disabled for unauthenticated */}
+                        {/* Action Buttons - Styled like dashboard feed */}
                         <div className="border-t border-gray-100 dark:border-gray-800 px-2 py-1">
                             <div className="flex items-center justify-around">
-                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                     <ThumbsUpIcon className="h-4 w-4" />
                                     <span className="hidden sm:inline">Like</span>
                                 </Link>
-                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                     <MessageCircleIcon className="h-4 w-4" />
                                     <span className="hidden sm:inline">Comment</span>
                                 </Link>
-                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                     <ShareIcon className="h-4 w-4" />
                                     <span className="hidden sm:inline">Share</span>
                                 </Link>
@@ -281,6 +311,136 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Image Modal - Shows full image, post info, and links */}
+            <Dialog open={imageModalOpen} onOpenChange={(open) => {
+                if (!open) { setImageModalOpen(false); setImageModalPost(null); }
+            }}>
+                <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 overflow-hidden">
+                    {imageModalPost && (() => {
+                        const allImages = [
+                            ...(imageModalPost.image ? [imageModalPost.image] : []),
+                            ...(imageModalPost.images || []),
+                        ];
+                        const currentImage = allImages[imageModalIndex] || allImages[0];
+                        const hasMultiple = allImages.length > 1;
+
+                        return (
+                            <div className="flex flex-col md:flex-row h-full max-h-[85vh]">
+                                {/* Image Section */}
+                                <div className="relative flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+                                    {currentImage && (
+                                        <Image
+                                            src={currentImage}
+                                            alt="Post attachment"
+                                            width={800}
+                                            height={600}
+                                            className="max-w-full max-h-[60vh] md:max-h-[80vh] object-contain"
+                                            unoptimized
+                                        />
+                                    )}
+                                    {/* Navigation arrows */}
+                                    {hasMultiple && (
+                                        <>
+                                            <button
+                                                onClick={() => setImageModalIndex((prev) => (prev - 1 + allImages.length) % allImages.length)}
+                                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                            >
+                                                <ChevronLeftIcon className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => setImageModalIndex((prev) => (prev + 1) % allImages.length)}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                            >
+                                                <ChevronRightIcon className="h-5 w-5" />
+                                            </button>
+                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
+                                                {imageModalIndex + 1} / {allImages.length}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Post Info Sidebar */}
+                                <div className="w-full md:w-[320px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-y-auto max-h-[40vh] md:max-h-none">
+                                    {/* Author Header */}
+                                    <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700">
+                                                <AvatarImage src={imageModalPost.user.image || undefined} alt={imageModalPost.user.name || ""} />
+                                                <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
+                                                    {imageModalPost.user.name
+                                                        ? imageModalPost.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                                                        : "U"}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                                                    {imageModalPost.user.name || "Anonymous"}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    Community Member
+                                                </p>
+                                                <p className="text-xs text-gray-400 dark:text-gray-500">
+                                                    {formatDate(imageModalPost.createdAt)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Post Content */}
+                                    {imageModalPost.content && (
+                                        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                                            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                                {renderPostContent(imageModalPost.content)}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Tags */}
+                                    {imageModalPost.tags && imageModalPost.tags.length > 0 && (
+                                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800 flex flex-wrap gap-1.5">
+                                            {imageModalPost.tags.map((tag, idx) => (
+                                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-medium">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Link Attachment */}
+                                    {imageModalPost.linkUrl && (
+                                        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                                            <a
+                                                href={imageModalPost.linkUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline text-sm break-all"
+                                            >
+                                                <ExternalLinkIcon className="h-4 w-4 shrink-0" />
+                                                {imageModalPost.linkUrl}
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Engagement Stats */}
+                                    <div className="p-4 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                        {imageModalPost._count.likes > 0 && (
+                                            <span className="flex items-center gap-1">
+                                                <ThumbsUpIcon className="h-3.5 w-3.5 text-blue-600" />
+                                                {imageModalPost._count.likes} {imageModalPost._count.likes === 1 ? "like" : "likes"}
+                                            </span>
+                                        )}
+                                        {imageModalPost._count.comments > 0 && (
+                                            <span>{imageModalPost._count.comments} comment{imageModalPost._count.comments !== 1 ? "s" : ""}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
