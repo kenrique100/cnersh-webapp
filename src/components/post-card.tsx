@@ -454,7 +454,6 @@ export function PostEngagementSummary({
                         {formatCount(shareCount)} repost{shareCount !== 1 ? "s" : ""}
                     </span>
                 )}
-                {commentCount > 0 && shareCount > 0 && null}
             </div>
         </div>
     );
