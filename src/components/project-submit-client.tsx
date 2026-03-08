@@ -380,7 +380,11 @@ export default function ProjectSubmitClient() {
                                                 method: "POST",
                                                 body: uploadFormData,
                                             });
-                                            if (!res.ok) throw new Error("Upload failed");
+                                            if (!res.ok) {
+                                                let errorMessage = "Upload failed";
+                                                try { const d = await res.json(); errorMessage = d.error || errorMessage; } catch { if (res.status === 413) errorMessage = "File is too large for the server."; }
+                                                throw new Error(errorMessage);
+                                            }
                                             const data = await res.json();
                                             if (data.url) {
                                                 setDocumentUrl(data.url);
