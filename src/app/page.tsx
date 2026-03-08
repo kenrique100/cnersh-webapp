@@ -2,15 +2,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheckIcon, UsersIcon, MegaphoneIcon, FolderIcon, EyeIcon, TargetIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
-import { getPosts, getPublicPosts } from "@/app/actions/feed";
+import { getPosts, getPublicPosts, getTrendingTags } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
 import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import { getPages } from "@/app/actions/page-actions";
+import FeedLeftSidebar from "@/components/feed-left-sidebar";
+import FeedRightSidebar from "@/components/feed-right-sidebar";
 import ProjectTracker from "@/components/project-tracker";
 
 export const dynamic = "force-dynamic";
@@ -28,8 +30,11 @@ export default async function Home() {
     // For unauthenticated users, get public posts
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
 
-    // Fetch dynamic pages for navbar
-    const pages = await getPages();
+    // Fetch dynamic pages for navbar and trending tags
+    const [pages, trendingTags] = await Promise.all([
+        getPages(),
+        getTrendingTags(5),
+    ]);
 
     if (session) {
         const [user, unreadCount, postsResult] = await Promise.all([
@@ -52,137 +57,34 @@ export default async function Home() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Navbar - Use app navbar for all users (handles guest and authenticated states) */}
+        <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
+            {/* Navbar */}
             <Navbar user={navUser} notificationCount={notificationCount} pages={pages} />
 
-            <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col lg:flex-row gap-6 py-6">
-                    {/* Left Sidebar (hidden on mobile, shown on lg) */}
-                    <aside className="hidden lg:block w-72 shrink-0 space-y-4">
+            <div className="mx-auto max-w-[1200px] px-2 sm:px-4 py-4 sm:py-6">
+                <div className="flex gap-6 justify-center">
+                    {/* Left Sidebar (hidden on mobile/tablet) */}
+                    <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
                         {session && navUser ? (
-                            /* Authenticated: User Profile Card (LinkedIn-style) */
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-                                <div className="bg-linear-to-r from-blue-600 to-blue-800 h-16" />
-                                <div className="flex flex-col items-center -mt-8 pb-4 px-4">
-                                    <div className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-950 overflow-hidden bg-gray-200 dark:bg-gray-700">
-                                        {navUser.image ? (
-                                            <Image
-                                                src={navUser.image}
-                                                alt={navUser.name || "Profile"}
-                                                width={64}
-                                                height={64}
-                                                className="w-full h-full object-cover"
-                                                {...(navUser.image?.startsWith("data:") ? { unoptimized: true } : {})}
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-blue-600 text-white text-xl font-bold">
-                                                {navUser.name?.charAt(0)?.toUpperCase() || "U"}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100 text-center">
-                                        {navUser.name || "User"}
-                                    </h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center truncate max-w-full">
-                                        {navUser.email}
-                                    </p>
-                                    {userGender && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
-                                            {userGender}
-                                        </p>
-                                    )}
-                                    <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 capitalize">
-                                        {navUser.role || "user"}
-                                    </span>
-                                </div>
-                                <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3">
-                                    <Link href="/dashboard">
-                                        <Button size="sm" className="w-full bg-blue-700 hover:bg-blue-800 text-white text-xs">
-                                            Go to Dashboard
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </Card>
+                            <FeedLeftSidebar
+                                userName={navUser.name}
+                                userImage={navUser.image}
+                                userEmail={navUser.email}
+                                userGender={userGender}
+                                userRole={navUser.role}
+                                isAdmin={isAdmin}
+                            />
                         ) : (
-                            /* Guest: Welcome card with sign-in/sign-up */
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-                                <div className="bg-linear-to-r from-blue-600 to-blue-800 p-4 pb-6 text-center">
-                                    <div className="flex justify-center mb-2">
-                                        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-md">
-                                            <Image
-                                                src="/logo.png"
-                                                alt="CNERSH Logo"
-                                                width={56}
-                                                height={56}
-                                                className="w-14 h-14 object-contain"
-                                                priority
-                                            />
-                                        </div>
-                                    </div>
-                                    <h1 className="text-lg font-bold text-white">CNERSH</h1>
-                                    <p className="text-xs text-blue-100 mt-0.5">National Ethics Committee for Health Research on Humans</p>
-                                </div>
-                                <CardContent className="pt-4 pb-3">
-                                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        Reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.
-                                    </p>
-                                    <div className="flex flex-col gap-2 mt-3">
-                                        <Link href="/sign-up">
-                                            <Button size="sm" className="w-full bg-blue-700 hover:bg-blue-800 text-white text-xs">
-                                                Get Started
-                                            </Button>
-                                        </Link>
-                                        <Link href="/sign-in">
-                                            <Button size="sm" variant="outline" className="w-full text-xs">
-                                                Sign In
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <FeedLeftSidebar isGuest isAdmin={false} />
                         )}
-
-                        {/* Features */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardContent className="py-4 space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
-                                        <ShieldCheckIcon className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Secure Access</p>
-                                        <p className="text-[10px] text-gray-500 dark:text-gray-400">Role-based access control</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900 shrink-0">
-                                        <UsersIcon className="w-4 h-4 text-green-700 dark:text-green-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Community</p>
-                                        <p className="text-[10px] text-gray-500 dark:text-gray-400">Collaborate nationwide</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900 shrink-0">
-                                        <FolderIcon className="w-4 h-4 text-purple-700 dark:text-purple-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Project Submissions</p>
-                                        <p className="text-[10px] text-gray-500 dark:text-gray-400">Submit for ethical review</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </aside>
 
                     {/* Main Feed Column */}
-                    <div className="flex-1 min-w-0 max-w-2xl mx-auto lg:mx-0">
+                    <main className="w-full max-w-[600px] min-w-0">
                         {/* Mobile Hero Banner - only for unauthenticated users */}
                         {!session && (
                             <div className="lg:hidden mb-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-linear-to-r from-blue-600 to-blue-800 rounded-xl overflow-hidden">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl overflow-hidden">
                                     <CardContent className="py-4 text-center">
                                         <div className="flex justify-center mb-2">
                                             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md">
@@ -234,84 +136,16 @@ export default async function Home() {
                         ) : (
                             <PublicFeedClient posts={JSON.parse(JSON.stringify(publicPosts))} />
                         )}
-                    </div>
+                    </main>
 
-                    {/* Right Sidebar (hidden on mobile) */}
-                    <aside className="hidden lg:block w-72 shrink-0 space-y-4">
-                        {/* Project Tracker Card */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                    <SearchIcon className="w-4 h-4 text-blue-600" />
-                                    Track Your Project
-                                </CardTitle>
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                    Enter your project tracking code to check the current status.
-                                </p>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                                <ProjectTracker />
-                            </CardContent>
-                        </Card>
-
-                        {/* Announcements */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                    <MegaphoneIcon className="w-4 h-4 text-blue-600" />
-                                    Announcements
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-0 space-y-2">
-                                <div className="p-2.5 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                                    <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Platform Launch</p>
-                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                                        CNERSH platform is live. Start submitting projects and join discussions.
-                                    </p>
-                                </div>
-                                <div className="p-2.5 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                                    <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Ethics Review</p>
-                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                                        All projects undergo thorough ethical review before approval.
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* About Us */}
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">About Us</CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-0 space-y-3">
-                                <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    We are dedicated to ensuring the highest ethical standards in health research and clinical trials across Cameroon. Our commitment lies in safeguarding human participants, fostering transparency, and promoting integrity in every aspect of research.
-                                </p>
-                                <div>
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                        <EyeIcon className="w-3.5 h-3.5 text-blue-600" />
-                                        <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">Our Vision</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        To be a globally recognized leader in ethical research governance, ensuring that all health research and clinical trials conducted in Cameroon adhere to the principles of integrity, accountability, and respect for human dignity, while fostering innovation and improving public health outcomes.
-                                    </p>
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                        <TargetIcon className="w-3.5 h-3.5 text-green-600" />
-                                        <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100">Our Mission</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        To uphold the highest ethical standards in health research and clinical trials in Cameroon by ensuring the protection of human participants, fostering transparency and integrity in research, and strengthening the ethical review process across regional and institutional levels. Through robust policy frameworks and collaboration, we strive to enhance public trust, advance scientific excellence, and contribute to an equitable and resilient health system.
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                    {/* Right Sidebar (hidden on mobile/tablet) */}
+                    <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
+                        <FeedRightSidebar trendingTags={trendingTags} />
                     </aside>
                 </div>
 
                 {/* Mobile Project Tracker - shown below feed on small screens */}
-                <div className="lg:hidden pb-6">
+                <div className="xl:hidden pb-6 mt-4">
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -327,7 +161,7 @@ export default async function Home() {
                         </CardContent>
                     </Card>
                 </div>
-            </main>
+            </div>
 
             {/* Footer */}
             <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">

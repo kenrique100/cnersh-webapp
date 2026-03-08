@@ -148,6 +148,39 @@ export async function getPublicPosts(limit: number = 10) {
     }
 }
 
+export async function getTrendingTags(limit: number = 5) {
+    try {
+        const posts = await db.post.findMany({
+            where: { deleted: false, tags: { isEmpty: false } },
+            select: { tags: true },
+        });
+
+        // Aggregate tag counts
+        const tagCounts = new Map<string, number>();
+        for (const post of posts) {
+            for (const tag of post.tags) {
+                const normalized = tag.trim().toLowerCase();
+                if (normalized) {
+                    tagCounts.set(normalized, (tagCounts.get(normalized) || 0) + 1);
+                }
+            }
+        }
+
+        // Sort by count descending and take top N
+        const sorted = Array.from(tagCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, limit);
+
+        return sorted.map(([tag, count]) => ({
+            tag: tag.charAt(0).toUpperCase() + tag.slice(1),
+            posts: count,
+        }));
+    } catch (error) {
+        console.error("Error fetching trending tags:", error);
+        return [];
+    }
+}
+
 export async function toggleLike(postId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
