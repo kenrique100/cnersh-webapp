@@ -54,6 +54,21 @@ import { createPost, toggleLike, addComment, deletePost, getPostComments, toggle
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
 import LinkPreview from "@/components/link-preview";
+import {
+    PostCard,
+    PostContextBar,
+    PostHeader,
+    PostTextContent,
+    PostTags,
+    PostMediaContent,
+    PostEngagementSummary,
+    PostActionBar,
+    PostCommentsSection,
+    getInitials,
+    formatRelativeDate,
+    formatFullDate,
+    renderPostContent,
+} from "@/components/post-card";
 
 interface PostUser {
     id: string;
@@ -286,9 +301,7 @@ export default function FeedClient({
         { emoji: "🎉", label: "Congrats" },
     ] as const;
 
-    const currentUserInitials = currentUserName
-        ? currentUserName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-        : "U";
+    const currentUserInitials = getInitials(currentUserName);
 
     const handleMentionSearch = (text: string, source: string) => {
         // Check if user is typing @mention
@@ -609,75 +622,10 @@ export default function FeedClient({
         });
     };
 
-    const formatDate = (date: Date) => {
-        const now = new Date();
-        const postDate = new Date(date);
-        const diffMs = now.getTime() - postDate.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return "Just now";
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return postDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: postDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-        });
-    };
-
-    const formatFullDate = (date: Date) => {
-        const postDate = new Date(date);
-        return postDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    };
+    // Use formatRelativeDate as formatDate alias for backward compatibility in this file
+    const formatDate = formatRelativeDate;
 
     const [sharePostId, setSharePostId] = React.useState<string | null>(null);
-
-    const renderPostContent = (content: string) => {
-        const combinedRegex = /(https?:\/\/[^\s]+)|(@\w[\w]*)|(\#\w+)/g;
-        const result: React.ReactNode[] = [];
-        let lastIndex = 0;
-        let match;
-
-        while ((match = combinedRegex.exec(content)) !== null) {
-            if (match.index > lastIndex) {
-                result.push(content.slice(lastIndex, match.index));
-            }
-            const matchStr = match[0];
-            if (matchStr.startsWith("http")) {
-                result.push(
-                    <a key={match.index} href={matchStr} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
-                        {matchStr}
-                    </a>
-                );
-            } else if (matchStr.startsWith("@")) {
-                result.push(
-                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium">
-                        {matchStr}
-                    </span>
-                );
-            } else if (matchStr.startsWith("#")) {
-                result.push(
-                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
-                        {matchStr}
-                    </span>
-                );
-            }
-            lastIndex = match.index + matchStr.length;
-        }
-        if (lastIndex < content.length) {
-            result.push(content.slice(lastIndex));
-        }
-        return result.length > 0 ? result : content;
-    };
 
     const handleShare = (post: PostData) => {
         setSharePostId(post.id);
@@ -1006,81 +954,27 @@ export default function FeedClient({
             ) : (
                 posts.map((post) => {
                     const isLiked = post.likes.some((l) => l.userId === currentUserId);
-                    const userInitials = post.user.name
-                        ? post.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                        : "U";
 
                     return (
                         <div key={post.id} className="space-y-0">
-                            {/* LinkedIn-style Recent Activity Banner */}
+                            {/* Post Context Bar - LinkedIn-style Recent Activity */}
                             {post.recentActivity && post.recentActivity.users.length > 0 && (
-                                <div className="flex items-center gap-2 px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                                    <div className="flex -space-x-2">
-                                        {post.recentActivity.users.slice(0, 3).map((activityUser) => {
-                                            const initials = activityUser.name
-                                                ? activityUser.name.split(" ").filter(n => n).map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                                : "U";
-                                            return (
-                                                <Avatar key={activityUser.id} className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0">
-                                                    <AvatarImage src={activityUser.image || undefined} alt={activityUser.name || ""} />
-                                                    <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">
-                                                        {initials}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            );
-                                        })}
-                                    </div>
-                                    <span className="truncate">
-                                        {(() => {
-                                            const names = post.recentActivity.users.slice(0, 2).map(u => u.name || "Someone");
-                                            const totalEngaged = post.recentActivity.likeCount + post.recentActivity.commentCount;
-                                            const remaining = totalEngaged - names.length;
-                                            const actions: string[] = [];
-                                            if (post.recentActivity.likeCount > 0) actions.push("liked");
-                                            if (post.recentActivity.commentCount > 0) actions.push("commented on");
-                                            const actionText = actions.join(" and ") || "engaged with";
-
-                                            if (names.length === 1 && remaining <= 0) {
-                                                return `${names[0]} ${actionText} this`;
-                                            } else if (names.length === 2 && remaining <= 0) {
-                                                return `${names[0]} and ${names[1]} ${actionText} this`;
-                                            } else if (remaining > 0) {
-                                                return `${names[0]}${names.length > 1 ? `, ${names[1]}` : ""} and ${remaining} other${remaining !== 1 ? "s" : ""} ${actionText} this`;
-                                            }
-                                            return `${names.join(", ")} ${actionText} this`;
-                                        })()}
-                                    </span>
-                                </div>
+                                <PostContextBar
+                                    users={post.recentActivity.users}
+                                    likeCount={post.recentActivity.likeCount}
+                                    commentCount={post.recentActivity.commentCount}
+                                />
                             )}
-                        <Card
-                            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                        >
+
+                        <PostCard>
                             {/* Post Header */}
-                            <div className="p-4 pb-0">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
-                                            <AvatarImage
-                                                src={post.user.image || undefined}
-                                                alt={post.user.name || ""}
-                                            />
-                                            <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
-                                                {userInitials}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex flex-col">
-                                            <p className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight">
-                                                {post.user.name || "Anonymous"}
-                                            </p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                                {post.user.profession || "Community Member"}
-                                            </p>
-                                            <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5" title={formatFullDate(post.createdAt)}>
-                                                {formatDate(post.createdAt)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1">
+                            <PostHeader
+                                userName={post.user.name}
+                                userImage={post.user.image}
+                                userProfession={post.user.profession}
+                                createdAt={post.createdAt}
+                                actions={
+                                    <>
                                         {post.user.id !== currentUserId && (
                                             <Button
                                                 variant="ghost"
@@ -1117,14 +1011,15 @@ export default function FeedClient({
                                                 <TrashIcon className="h-4 w-4" />
                                             </Button>
                                         )}
-                                    </div>
-                                </div>
-                            </div>
+                                    </>
+                                }
+                            />
 
-                            {/* Post Content */}
+                            {/* Post Text Content */}
                             {post.content && (
-                                <div className="px-4 py-3">
-                                    {editingPostId === post.id ? (
+                                <PostTextContent
+                                    content={post.content}
+                                    customRender={editingPostId === post.id ? (
                                         <div className="space-y-2">
                                             <Textarea
                                                 value={editingPostContent}
@@ -1150,95 +1045,22 @@ export default function FeedClient({
                                                 </Button>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                            {renderPostContent(post.content)}
-                                        </p>
-                                    )}
-                                </div>
+                                    ) : undefined}
+                                />
                             )}
 
                             {/* Post Tags */}
-                            {post.tags && post.tags.length > 0 && (
-                                <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                                    {post.tags.map((tag, idx) => (
-                                        <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-medium">
-                                            #{tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
+                            <PostTags tags={post.tags} />
 
-                            {/* Post Image(s) - Clickable for modal */}
-                            {(post.image || (post.images && post.images.length > 0)) && (
-                                <div className="border-t border-b border-gray-100 dark:border-gray-800">
-                                    {(() => {
-                                        const allImages = [
-                                            ...(post.image ? [post.image] : []),
-                                            ...(post.images || []),
-                                        ];
-                                        if (allImages.length === 1) {
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    className="w-full cursor-pointer focus:outline-none"
-                                                    onClick={() => openImageModal(post, 0)}
-                                                >
-                                                    <Image
-                                                        src={allImages[0]}
-                                                        alt="Post attachment"
-                                                        width={700}
-                                                        height={400}
-                                                        className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
-                                                        unoptimized
-                                                    />
-                                                </button>
-                                            );
-                                        }
-                                        return (
-                                            <div className="grid gap-1 grid-cols-2">
-                                                {allImages.map((img, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        className="cursor-pointer focus:outline-none"
-                                                        onClick={() => openImageModal(post, idx)}
-                                                    >
-                                                        <Image
-                                                            src={img}
-                                                            alt={`Post attachment ${idx + 1}`}
-                                                            width={350}
-                                                            height={250}
-                                                            className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
-                                                            unoptimized
-                                                        />
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            )}
-
-                            {/* Post Video(s) */}
-                            {(post.video || (post.videos && post.videos.length > 0)) && (
-                                <div className="border-t border-b border-gray-100 dark:border-gray-800 space-y-1">
-                                    {post.video && (
-                                        <video
-                                            src={post.video}
-                                            controls
-                                            className="w-full max-h-[500px] object-contain bg-black"
-                                        />
-                                    )}
-                                    {(post.videos || []).map((vid, idx) => (
-                                        <video
-                                            key={idx}
-                                            src={vid}
-                                            controls
-                                            className="w-full max-h-[500px] object-contain bg-black"
-                                        />
-                                    ))}
-                                </div>
+                            {/* Post Media Content */}
+                            {(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0)) && (
+                                <PostMediaContent
+                                    image={post.image}
+                                    images={post.images}
+                                    video={post.video}
+                                    videos={post.videos}
+                                    onImageClick={(idx) => openImageModal(post, idx)}
+                                />
                             )}
 
                             {/* Link Attachment */}
@@ -1248,104 +1070,76 @@ export default function FeedClient({
                                 </div>
                             )}
 
-                            {/* Engagement Stats */}
-                            {(post._count.likes > 0 || post._count.comments > 0 || (shareCounts[post.id] || 0) > 0) && (
-                                <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                                    <div className="flex items-center gap-1.5">
-                                        {post._count.likes > 0 && (
-                                            <button
-                                                onClick={() => handleShowLikers(post.id)}
-                                                className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
-                                            >
-                                                <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
-                                                    <ThumbsUpIcon className="h-2.5 w-2.5 text-white" />
-                                                </span>
-                                                <span>{post._count.likes} {post._count.likes === 1 ? "like" : "likes"}</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        {post._count.comments > 0 && (
-                                            <button
-                                                onClick={() => toggleComments(post.id)}
-                                                className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
-                                            >
-                                                {post._count.comments} comment{post._count.comments !== 1 ? "s" : ""}
-                                            </button>
-                                        )}
-                                        {(shareCounts[post.id] || 0) > 0 && (
-                                            <span className="flex items-center gap-1">
-                                                <ShareIcon className="h-3 w-3" />
-                                                {shareCounts[post.id]} share{shareCounts[post.id] !== 1 ? "s" : ""}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                            {/* Engagement Summary */}
+                            <PostEngagementSummary
+                                likeCount={post._count.likes}
+                                commentCount={post._count.comments}
+                                shareCount={shareCounts[post.id] || 0}
+                                onLikeCountClick={() => handleShowLikers(post.id)}
+                                onCommentCountClick={() => toggleComments(post.id)}
+                            />
 
                             {/* Action Buttons - LinkedIn Style with Reaction Popup */}
-                            <div className="border-t border-gray-100 dark:border-gray-800 px-2 py-1">
-                                <div className="flex items-center justify-around">
-                                    {/* Like button with reaction popup */}
-                                    <div
-                                        className="relative w-full"
-                                        onMouseEnter={() => handleReactionEnter(post.id)}
-                                        onMouseLeave={handleReactionLeave}
-                                    >
-                                        {/* Reaction popup */}
-                                        {reactionHoverPostId === post.id && (
-                                            <div
-                                                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
-                                                onMouseEnter={() => handleReactionEnter(post.id)}
-                                                onMouseLeave={handleReactionLeave}
-                                            >
-                                                {REACTIONS.map((reaction) => (
-                                                    <button
-                                                        key={reaction.label}
-                                                        onClick={() => handleReaction(post.id, reaction.label)}
-                                                        className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all hover:scale-125 cursor-pointer"
-                                                        title={reaction.label}
-                                                    >
-                                                        <span className="text-xl sm:text-2xl">{reaction.emoji}</span>
-                                                        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                                            {reaction.label}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={() => handleLike(post.id)}
-                                            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
-                                                isLiked
-                                                    ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
-                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                            }`}
+                            <PostActionBar>
+                                {/* Like button with reaction popup */}
+                                <div
+                                    className="relative w-full"
+                                    onMouseEnter={() => handleReactionEnter(post.id)}
+                                    onMouseLeave={handleReactionLeave}
+                                >
+                                    {/* Reaction popup */}
+                                    {reactionHoverPostId === post.id && (
+                                        <div
+                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                            onMouseEnter={() => handleReactionEnter(post.id)}
+                                            onMouseLeave={handleReactionLeave}
                                         >
-                                            <ThumbsUpIcon className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                                            <span className="hidden sm:inline">Like</span>
-                                        </button>
-                                    </div>
+                                            {REACTIONS.map((reaction) => (
+                                                <button
+                                                    key={reaction.label}
+                                                    onClick={() => handleReaction(post.id, reaction.label)}
+                                                    className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all hover:scale-125 cursor-pointer"
+                                                    title={reaction.label}
+                                                >
+                                                    <span className="text-xl sm:text-2xl">{reaction.emoji}</span>
+                                                    <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                        {reaction.label}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                     <button
-                                        onClick={() => toggleComments(post.id)}
-                                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                        onClick={() => handleLike(post.id)}
+                                        className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
+                                            isLiked
+                                                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        }`}
                                     >
-                                        <MessageCircleIcon className="h-4 w-4" />
-                                        <span className="hidden sm:inline">Comment</span>
-                                    </button>
-                                    <button
-                                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
-                                        onClick={() => handleShare(post)}
-                                    >
-                                        <ShareIcon className="h-4 w-4" />
-                                        <span className="hidden sm:inline">Share</span>
+                                        <ThumbsUpIcon className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+                                        <span className="hidden sm:inline">Like</span>
                                     </button>
                                 </div>
-                            </div>
+                                <button
+                                    onClick={() => toggleComments(post.id)}
+                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                >
+                                    <MessageCircleIcon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Comment</span>
+                                </button>
+                                <button
+                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                    onClick={() => handleShare(post)}
+                                >
+                                    <ShareIcon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Share</span>
+                                </button>
+                            </PostActionBar>
 
                             {/* Comments Section */}
                             {expandedComments.has(post.id) && (
-                                <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-3">
+                                <PostCommentsSection>
                                     {(() => {
                                         const allComments = postComments[post.id] || [];
                                         const INITIAL_COMMENTS = 3;
@@ -1356,9 +1150,7 @@ export default function FeedClient({
                                         return (
                                             <>
                                                 {visibleItems.map((comment) => {
-                                        const commentInitials = comment.user.name
-                                            ? comment.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                            : "U";
+                                        const commentInitials = getInitials(comment.user.name);
                                         const isCommentAuthor = comment.user.id === currentUserId;
                                         const isPostAuthor = comment.user.id === post.user.id;
                                         const isCommentAdmin = comment.user.role === "admin" || comment.user.role === "superadmin";
@@ -1472,9 +1264,7 @@ export default function FeedClient({
 
                                                         {/* Replies */}
                                                         {(comment.replies || []).map((reply) => {
-                                                            const replyInitials = reply.user.name
-                                                                ? reply.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                                                : "U";
+                                                            const replyInitials = getInitials(reply.user.name);
                                                             const isReplyAuthor = reply.user.id === currentUserId;
                                                             const isReplyPostAuthor = reply.user.id === post.user.id;
                                                             const isReplyAdmin = reply.user.role === "admin" || reply.user.role === "superadmin";
@@ -1635,9 +1425,9 @@ export default function FeedClient({
                                             )}
                                         </div>
                                     </div>
-                                </div>
+                                </PostCommentsSection>
                             )}
-                        </Card>
+                        </PostCard>
                         </div>
                     );
                 })
@@ -1818,7 +1608,7 @@ export default function FeedClient({
                                     <Avatar className="h-9 w-9">
                                         <AvatarImage src={user.image || undefined} />
                                         <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                            {(user.name || "U").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                            {getInitials(user.name)}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
@@ -1894,9 +1684,7 @@ export default function FeedClient({
                                             <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700">
                                                 <AvatarImage src={imageModalPost.user.image || undefined} alt={imageModalPost.user.name || ""} />
                                                 <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
-                                                    {imageModalPost.user.name
-                                                        ? imageModalPost.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                                        : "U"}
+                                                    {getInitials(imageModalPost.user.name)}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div>
