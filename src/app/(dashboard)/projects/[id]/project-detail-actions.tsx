@@ -144,7 +144,18 @@ export default function ProjectDetailActions({
             const formData = new FormData();
             formData.append("file", file);
             const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) throw new Error("Upload failed");
+            if (!res.ok) {
+                let errorMessage = "Upload failed";
+                try {
+                    const data = await res.json();
+                    errorMessage = data.error || errorMessage;
+                } catch {
+                    if (res.status === 413) {
+                        errorMessage = "Video file is too large for the server. Please try a smaller file.";
+                    }
+                }
+                throw new Error(errorMessage);
+            }
             const data = await res.json();
             if (data.url) {
                 setForwardVideos((prev) => [...prev, data.url]);

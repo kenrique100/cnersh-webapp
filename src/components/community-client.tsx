@@ -576,7 +576,16 @@ export default function CommunityClient({
                     const formData = new FormData();
                     formData.append("file", audioBlob, "voice-note.webm");
                     const res = await fetch("/api/upload", { method: "POST", body: formData });
-                    if (!res.ok) throw new Error("Upload failed");
+                    if (!res.ok) {
+                        let errorMessage = "Upload failed";
+                        try {
+                            const d = await res.json();
+                            errorMessage = d.error || errorMessage;
+                        } catch {
+                            if (res.status === 413) errorMessage = "File is too large for the server. Please try a smaller file.";
+                        }
+                        throw new Error(errorMessage);
+                    }
                     const data = await res.json();
                     if (data.url) setPendingVoiceNote(data.url);
                 } catch {
@@ -604,7 +613,16 @@ export default function CommunityClient({
             const formData = new FormData();
             formData.append("file", file);
             const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) throw new Error("Upload failed");
+            if (!res.ok) {
+                let errorMessage = "Upload failed";
+                try {
+                    const d = await res.json();
+                    errorMessage = d.error || errorMessage;
+                } catch {
+                    if (res.status === 413) errorMessage = "File is too large for the server. Please try a smaller file.";
+                }
+                throw new Error(errorMessage);
+            }
             const data = await res.json();
             if (data.url) {
                 switch (type) {
