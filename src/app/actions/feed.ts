@@ -148,6 +148,27 @@ export async function getPublicPosts(limit: number = 10) {
     }
 }
 
+export async function getTrendingTags(limit: number = 5) {
+    try {
+        const results = await db.$queryRaw<{ tag: string; count: bigint }[]>`
+            SELECT LOWER(TRIM(t)) as tag, COUNT(*) as count
+            FROM post, unnest(tags) AS t
+            WHERE deleted = false AND TRIM(t) != ''
+            GROUP BY LOWER(TRIM(t))
+            ORDER BY count DESC
+            LIMIT ${limit}
+        `;
+
+        return results.map((r) => ({
+            tag: r.tag.charAt(0).toUpperCase() + r.tag.slice(1),
+            posts: Number(r.count),
+        }));
+    } catch (error) {
+        console.error("Error fetching trending tags:", error);
+        return [];
+    }
+}
+
 export async function toggleLike(postId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
