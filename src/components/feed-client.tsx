@@ -164,7 +164,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
                     errorMessage = data.error || errorMessage;
                 } catch {
                     if (res.status === 413) {
-                        errorMessage = "Video file is too large for the server. Please try a smaller video.";
+                        errorMessage = "Video file is too large for the server. Please try a smaller file.";
                     }
                 }
                 throw new Error(errorMessage);

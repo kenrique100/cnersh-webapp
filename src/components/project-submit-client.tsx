@@ -382,7 +382,12 @@ export default function ProjectSubmitClient() {
                                             });
                                             if (!res.ok) {
                                                 let errorMessage = "Upload failed";
-                                                try { const d = await res.json(); errorMessage = d.error || errorMessage; } catch { if (res.status === 413) errorMessage = "File is too large for the server."; }
+                                                try {
+                                                    const d = await res.json();
+                                                    errorMessage = d.error || errorMessage;
+                                                } catch {
+                                                    if (res.status === 413) errorMessage = "File is too large for the server. Please try a smaller file.";
+                                                }
                                                 throw new Error(errorMessage);
                                             }
                                             const data = await res.json();
