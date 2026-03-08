@@ -1039,7 +1039,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
     return (
         <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white dark:bg-gray-950 dark:border-gray-800 shadow-sm">
             <div className="container mx-auto max-w-7xl">
-                <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+                <div className="flex min-h-16 items-center justify-between px-4 sm:px-6 lg:px-8 py-2">
                     {/* Left Side - Logo */}
                     <div className="flex items-center shrink-0">
                         <Link href="/" className="flex items-center gap-2">
@@ -1060,7 +1060,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                     </div>
 
                     {/* Center - Desktop nav items — visible from lg+ */}
-                    <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-2 flex-wrap">
                         <DesktopNavLink href="/pages/about" label="About Us" pathname={pathname} />
                         <DesktopNavLink href="/pages/contract-rex" label="Contract Rex" pathname={pathname} />
                         <DesktopNavPdfLink href="/membership.pdf" label="Membership" />
@@ -1258,7 +1258,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 {/* Mobile: Hamburger menu with Our Pages + Sign In/Up */}
                                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                                     <SheetTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="sm:hidden">
+                                        <Button variant="ghost" size="icon" className="lg:hidden">
                                             <MenuIcon className="h-6 w-6" />
                                         </Button>
                                     </SheetTrigger>
