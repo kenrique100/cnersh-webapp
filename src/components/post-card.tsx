@@ -41,12 +41,12 @@ export function formatRelativeDate(date: Date): string {
 
 /** Full date for tooltips */
 export function formatFullDate(date: Date): string {
-    return new Date(date).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
+    const postDate = new Date(date);
+    return postDate.toLocaleDateString("en-US", {
+        month: "short",
         day: "numeric",
-        hour: "numeric",
+        year: "numeric",
+        hour: "2-digit",
         minute: "2-digit",
     });
 }
@@ -263,7 +263,7 @@ export function PostTextContent({ content, customRender }: PostTextContentProps)
 // ─── Post Tags ──────────────────────────────────────────────────────────────
 
 interface PostTagsProps {
-    tags: string[];
+    tags?: string[];
 }
 
 export function PostTags({ tags }: PostTagsProps) {
