@@ -105,7 +105,8 @@ interface PostData {
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
-    likes: { userId: string }[];
+    likes: { userId: string; reactionType?: string }[];
+    reactionTypeCounts?: Record<string, number>;
     recentActivity?: {
         users: { id: string; name: string | null; image: string | null }[];
         likeCount: number;
@@ -255,7 +256,7 @@ export default function FeedClient({
 
     // Likers dialog state
     const [likersPostId, setLikersPostId] = React.useState<string | null>(null);
-    const [likersList, setLikersList] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
+    const [likersList, setLikersList] = React.useState<{ id: string; name: string | null; image: string | null; reactionType?: string }[]>([]);
     const [loadingLikers, setLoadingLikers] = React.useState(false);
 
     // Image modal state
@@ -295,10 +296,10 @@ export default function FeedClient({
 
     const REACTIONS = [
         { emoji: "👍", label: "Like" },
-        { emoji: "😊", label: "Happy" },
-        { emoji: "😂", label: "Laugh" },
-        { emoji: "😢", label: "Sad" },
-        { emoji: "🎉", label: "Congrats" },
+        { emoji: "🎉", label: "Celebrate" },
+        { emoji: "❤️", label: "Love" },
+        { emoji: "💡", label: "Insightful" },
+        { emoji: "😂", label: "Funny" },
     ] as const;
 
     const currentUserInitials = getInitials(currentUserName);
@@ -415,26 +416,54 @@ export default function FeedClient({
         }
     };
 
-    const handleLike = async (postId: string) => {
+    const handleLike = async (postId: string, reactionType: string = "Like") => {
         try {
-            const result = await toggleLike(postId);
+            const result = await toggleLike(postId, reactionType);
             setPosts((prev) =>
-                prev.map((p) =>
-                    p.id === postId
-                        ? {
-                              ...p,
-                              _count: {
-                                  ...p._count,
-                                  likes: result.liked
-                                      ? p._count.likes + 1
-                                      : p._count.likes - 1,
-                              },
-                              likes: result.liked
-                                  ? [...p.likes, { userId: currentUserId }]
-                                  : p.likes.filter((l) => l.userId !== currentUserId),
-                          }
-                        : p
-                )
+                prev.map((p) => {
+                    if (p.id !== postId) return p;
+                    const currentUserLike = p.likes.find((l) => l.userId === currentUserId);
+                    const newReactionTypeCounts = { ...(p.reactionTypeCounts || {}) };
+
+                    if (result.liked) {
+                        // Remove old reaction count if switching
+                        if (currentUserLike) {
+                            const oldType = currentUserLike.reactionType || "Like";
+                            newReactionTypeCounts[oldType] = Math.max(0, (newReactionTypeCounts[oldType] || 1) - 1);
+                            if (newReactionTypeCounts[oldType] === 0) delete newReactionTypeCounts[oldType];
+                        }
+                        // Add new reaction count
+                        newReactionTypeCounts[reactionType] = (newReactionTypeCounts[reactionType] || 0) + 1;
+
+                        return {
+                            ...p,
+                            _count: {
+                                ...p._count,
+                                likes: currentUserLike ? p._count.likes : p._count.likes + 1,
+                            },
+                            likes: currentUserLike
+                                ? p.likes.map((l) => l.userId === currentUserId ? { ...l, reactionType } : l)
+                                : [...p.likes, { userId: currentUserId, reactionType }],
+                            reactionTypeCounts: newReactionTypeCounts,
+                        };
+                    } else {
+                        // Remove reaction
+                        if (currentUserLike) {
+                            const oldType = currentUserLike.reactionType || "Like";
+                            newReactionTypeCounts[oldType] = Math.max(0, (newReactionTypeCounts[oldType] || 1) - 1);
+                            if (newReactionTypeCounts[oldType] === 0) delete newReactionTypeCounts[oldType];
+                        }
+                        return {
+                            ...p,
+                            _count: {
+                                ...p._count,
+                                likes: Math.max(0, p._count.likes - 1),
+                            },
+                            likes: p.likes.filter((l) => l.userId !== currentUserId),
+                            reactionTypeCounts: newReactionTypeCounts,
+                        };
+                    }
+                })
             );
         } catch {
             toast.error("Failed to react to post");
@@ -687,10 +716,7 @@ export default function FeedClient({
 
     const handleReaction = (postId: string, reaction: string) => {
         setReactionHoverPostId(null);
-        handleLike(postId);
-        if (reaction !== "Like") {
-            toast.success(`Reacted with ${reaction}!`);
-        }
+        handleLike(postId, reaction);
     };
 
     return (
@@ -953,7 +979,22 @@ export default function FeedClient({
                 </Card>
             ) : (
                 posts.map((post) => {
-                    const isLiked = post.likes.some((l) => l.userId === currentUserId);
+                    const userLike = post.likes.find((l) => l.userId === currentUserId);
+                    const isLiked = !!userLike;
+                    const userReactionType = userLike?.reactionType || "Like";
+                    const userReactionEmoji = isLiked
+                        ? (REACTIONS.find((r) => r.label === userReactionType)?.emoji || "👍")
+                        : null;
+
+                    // Color mapping for reaction types
+                    const reactionColorMap: Record<string, string> = {
+                        Like: "text-blue-600 dark:text-blue-400",
+                        Celebrate: "text-green-600 dark:text-green-400",
+                        Love: "text-red-500 dark:text-red-400",
+                        Insightful: "text-yellow-600 dark:text-yellow-400",
+                        Funny: "text-orange-500 dark:text-orange-400",
+                    };
+                    const activeReactionColor = isLiked ? (reactionColorMap[userReactionType] || reactionColorMap["Like"]) : "";
 
                     return (
                         <div key={post.id} className="space-y-0">
@@ -1075,6 +1116,7 @@ export default function FeedClient({
                                 likeCount={post._count.likes}
                                 commentCount={post._count.comments}
                                 shareCount={shareCounts[post.id] || 0}
+                                reactionTypeCounts={post.reactionTypeCounts}
                                 onLikeCountClick={() => handleShowLikers(post.id)}
                                 onCommentCountClick={() => toggleComments(post.id)}
                             />
@@ -1110,15 +1152,19 @@ export default function FeedClient({
                                         </div>
                                     )}
                                     <button
-                                        onClick={() => handleLike(post.id)}
+                                        onClick={() => handleLike(post.id, userReactionType)}
                                         className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
                                             isLiked
-                                                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                                ? `${activeReactionColor} hover:bg-blue-50 dark:hover:bg-blue-950`
                                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                                         }`}
                                     >
-                                        <ThumbsUpIcon className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                                        <span className="hidden sm:inline">Like</span>
+                                        {isLiked && userReactionEmoji ? (
+                                            <span className="text-base leading-none">{userReactionEmoji}</span>
+                                        ) : (
+                                            <ThumbsUpIcon className="h-4 w-4" />
+                                        )}
+                                        <span className="hidden sm:inline">{isLiked ? userReactionType : "Like"}</span>
                                     </button>
                                 </div>
                                 <button
@@ -1133,7 +1179,18 @@ export default function FeedClient({
                                     onClick={() => handleShare(post)}
                                 >
                                     <ShareIcon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Share</span>
+                                    <span className="hidden sm:inline">Repost</span>
+                                </button>
+                                <button
+                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                    onClick={() => {
+                                        const shareUrl = typeof window !== "undefined" ? window.location.origin + "/feeds" : "";
+                                        navigator.clipboard.writeText(shareUrl);
+                                        toast.success("Link copied to clipboard!");
+                                    }}
+                                >
+                                    <SendIcon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Send</span>
                                 </button>
                             </PostActionBar>
 
@@ -1603,7 +1660,9 @@ export default function FeedClient({
                         ) : likersList.length === 0 ? (
                             <p className="text-center text-sm text-gray-500 py-4">No likes yet</p>
                         ) : (
-                            likersList.map((user) => (
+                            likersList.map((user) => {
+                                const reactionEmoji = REACTIONS.find((r) => r.label === (user.reactionType || "Like"))?.emoji || "👍";
+                                return (
                                 <div key={user.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <Avatar className="h-9 w-9">
                                         <AvatarImage src={user.image || undefined} />
@@ -1613,15 +1672,14 @@ export default function FeedClient({
                                     </Avatar>
                                     <div>
                                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name || "Anonymous"}</p>
-                                        <p className="text-xs text-gray-500">Member</p>
+                                        <p className="text-xs text-gray-500">{user.reactionType || "Like"}</p>
                                     </div>
                                     <div className="ml-auto">
-                                        <span className="flex items-center justify-center w-6 h-6 bg-blue-600 rounded-full">
-                                            <ThumbsUpIcon className="h-3 w-3 text-white" />
-                                        </span>
+                                        <span className="text-lg">{reactionEmoji}</span>
                                     </div>
                                 </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </DialogContent>

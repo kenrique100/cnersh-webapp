@@ -364,25 +364,53 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
     );
 }
 
+// ─── Reaction Icon Mapping ──────────────────────────────────────────────────
+
+const REACTION_ICON_MAP: Record<string, { emoji: string; bg: string }> = {
+    Like:       { emoji: "👍", bg: "bg-blue-600" },
+    Celebrate:  { emoji: "🎉", bg: "bg-green-600" },
+    Love:       { emoji: "❤️", bg: "bg-red-500" },
+    Insightful: { emoji: "💡", bg: "bg-yellow-500" },
+    Funny:      { emoji: "😂", bg: "bg-orange-400" },
+};
+
+/** Format a number with commas (e.g. 1156 → "1,156") */
+function formatCount(n: number): string {
+    return n.toLocaleString();
+}
+
 // ─── Post Engagement Summary ────────────────────────────────────────────────
 
 interface PostEngagementSummaryProps {
     likeCount: number;
     commentCount: number;
     shareCount?: number;
+    reactionTypeCounts?: Record<string, number>;
     onLikeCountClick?: () => void;
     onCommentCountClick?: () => void;
 }
 
-/** Shows total reactions, comment count, and repost/share count */
+/** Shows total reactions with overlapping icons, comment count, and repost/share count */
 export function PostEngagementSummary({
     likeCount,
     commentCount,
     shareCount = 0,
+    reactionTypeCounts,
     onLikeCountClick,
     onCommentCountClick,
 }: PostEngagementSummaryProps) {
     if (likeCount === 0 && commentCount === 0 && shareCount === 0) return null;
+
+    // Get top reaction types sorted by count (descending), max 3
+    const topReactions = reactionTypeCounts
+        ? Object.entries(reactionTypeCounts)
+              .filter(([, count]) => count > 0)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([type]) => REACTION_ICON_MAP[type] || REACTION_ICON_MAP["Like"])
+        : likeCount > 0
+        ? [REACTION_ICON_MAP["Like"]]
+        : [];
 
     return (
         <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
@@ -393,13 +421,20 @@ export function PostEngagementSummary({
                         className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
                         type="button"
                     >
-                        <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
-                            <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
-                            </svg>
+                        {/* Overlapping reaction icons */}
+                        <span className="flex items-center -space-x-1">
+                            {topReactions.map((reaction, idx) => (
+                                <span
+                                    key={idx}
+                                    className={`flex items-center justify-center w-5 h-5 rounded-full border-2 border-white dark:border-gray-950 ${reaction.bg}`}
+                                    style={{ zIndex: topReactions.length - idx }}
+                                >
+                                    <span className="text-[10px] leading-none">{reaction.emoji}</span>
+                                </span>
+                            ))}
                         </span>
                         <span>
-                            {likeCount} {likeCount === 1 ? "like" : "likes"}
+                            {formatCount(likeCount)}
                         </span>
                     </button>
                 )}
@@ -411,17 +446,15 @@ export function PostEngagementSummary({
                         className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
                         type="button"
                     >
-                        {commentCount} comment{commentCount !== 1 ? "s" : ""}
+                        {formatCount(commentCount)} comment{commentCount !== 1 ? "s" : ""}
                     </button>
                 )}
                 {shareCount > 0 && (
                     <span className="flex items-center gap-1">
-                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" x2="12" y1="2" y2="15" />
-                        </svg>
-                        {shareCount} share{shareCount !== 1 ? "s" : ""}
+                        {formatCount(shareCount)} repost{shareCount !== 1 ? "s" : ""}
                     </span>
                 )}
+                {commentCount > 0 && shareCount > 0 && null}
             </div>
         </div>
     );
