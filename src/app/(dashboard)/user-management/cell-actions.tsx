@@ -208,18 +208,23 @@ export const CellActions = ({
                         <Button
                             variant="outline"
                             onClick={() => setIsDeleteModalOpen(false)}
-                            className="w-full sm:w-auto"
+                            className="w-full sm:w-auto border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            className="cursor-pointer w-full sm:w-auto"
+                            className="cursor-pointer w-full sm:w-auto font-medium"
                             variant="destructive"
                             onClick={onRemoveUser}
                             disabled={isLoading}
                         >
-                            {isLoading ? <Spinner className="size-5" /> : "Delete"}
+                            {isLoading ? <Spinner className="size-5" /> : (
+                                <>
+                                    <Trash className="h-4 w-4 mr-1.5" />
+                                    Delete User
+                                </>
+                            )}
                         </Button>
                     </div>
                 </DialogContent>

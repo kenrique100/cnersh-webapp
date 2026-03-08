@@ -20,6 +20,18 @@ import {
     ChevronLeftIcon,
     ChevronRightIcon,
 } from "lucide-react";
+import {
+    PostCard,
+    PostHeader,
+    PostTextContent,
+    PostTags,
+    PostMediaContent,
+    PostEngagementSummary,
+    PostActionBar,
+    getInitials,
+    formatRelativeDate,
+    renderPostContent,
+} from "@/components/post-card";
 
 interface PostUser {
     id: string;
@@ -51,63 +63,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
     const [imageModalPost, setImageModalPost] = React.useState<PublicPostData | null>(null);
     const [imageModalIndex, setImageModalIndex] = React.useState(0);
 
-    const formatDate = (date: Date) => {
-        const now = new Date();
-        const postDate = new Date(date);
-        const diffMs = now.getTime() - postDate.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return "Just now";
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return postDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: postDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-        });
-    };
-
-    const renderPostContent = (content: string) => {
-        const combinedRegex = /(https?:\/\/[^\s]+)|(@\w[\w]*)|(\#\w+)/g;
-        const result: React.ReactNode[] = [];
-        let lastIndex = 0;
-        let match;
-
-        while ((match = combinedRegex.exec(content)) !== null) {
-            if (match.index > lastIndex) {
-                result.push(content.slice(lastIndex, match.index));
-            }
-            const matchStr = match[0];
-            if (matchStr.startsWith("http")) {
-                result.push(
-                    <a key={match.index} href={matchStr} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
-                        {matchStr}
-                    </a>
-                );
-            } else if (matchStr.startsWith("@")) {
-                result.push(
-                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium">
-                        {matchStr}
-                    </span>
-                );
-            } else if (matchStr.startsWith("#")) {
-                result.push(
-                    <span key={match.index} className="text-blue-600 dark:text-blue-400 font-medium">
-                        {matchStr}
-                    </span>
-                );
-            }
-            lastIndex = match.index + matchStr.length;
-        }
-        if (lastIndex < content.length) {
-            result.push(content.slice(lastIndex));
-        }
-        return result.length > 0 ? result : content;
-    };
-
     const openImageModal = (post: PublicPostData, imageIndex: number = 0) => {
         setImageModalPost(post);
         setImageModalIndex(imageIndex);
@@ -126,120 +81,33 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
     return (
         <div className="space-y-4">
-            {posts.map((post) => {
-                const userInitials = post.user.name
-                    ? post.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                    : "U";
+            {posts.map((post) => (
+                <div key={post.id}>
+                    <PostCard>
+                        {/* Post Header */}
+                        <PostHeader
+                            userName={post.user.name}
+                            userImage={post.user.image}
+                            createdAt={post.createdAt}
+                        />
 
-                return (
-                    <Card
-                        key={post.id}
-                        className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                    >
-                        {/* Post Header - LinkedIn style with user info */}
-                        <div className="p-4 pb-0">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
-                                    <AvatarImage src={post.user.image || undefined} alt={post.user.name || ""} />
-                                    <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
-                                        {userInitials}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col">
-                                    <p className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight">
-                                        {post.user.name || "Anonymous"}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                        Community Member
-                                    </p>
-                                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
-                                        {formatDate(post.createdAt)}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Post Content */}
+                        {/* Post Text Content */}
                         {post.content && (
-                            <div className="px-4 py-3">
-                                <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                    {renderPostContent(post.content)}
-                                </p>
-                            </div>
+                            <PostTextContent content={post.content} />
                         )}
 
                         {/* Post Tags */}
-                        {post.tags && post.tags.length > 0 && (
-                            <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                                {post.tags.map((tag, idx) => (
-                                    <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-medium">
-                                        #{tag}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <PostTags tags={post.tags} />
 
-                        {/* Post Image(s) - Clickable for modal */}
-                        {(post.image || (post.images && post.images.length > 0)) && (
-                            <div className="border-t border-b border-gray-100 dark:border-gray-800">
-                                {(() => {
-                                    const allImages = [
-                                        ...(post.image ? [post.image] : []),
-                                        ...(post.images || []),
-                                    ];
-                                    if (allImages.length === 1) {
-                                        return (
-                                            <button
-                                                type="button"
-                                                className="w-full cursor-pointer focus:outline-none"
-                                                onClick={() => openImageModal(post, 0)}
-                                            >
-                                                <Image
-                                                    src={allImages[0]}
-                                                    alt="Post attachment"
-                                                    width={700}
-                                                    height={400}
-                                                    className="w-full object-contain max-h-[500px] bg-gray-50 dark:bg-gray-900"
-                                                    unoptimized
-                                                />
-                                            </button>
-                                        );
-                                    }
-                                    return (
-                                        <div className="grid gap-1 grid-cols-2">
-                                            {allImages.map((img, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    className="cursor-pointer focus:outline-none"
-                                                    onClick={() => openImageModal(post, idx)}
-                                                >
-                                                    <Image
-                                                        src={img}
-                                                        alt={`Post attachment ${idx + 1}`}
-                                                        width={350}
-                                                        height={250}
-                                                        className={`w-full object-contain max-h-[250px] bg-gray-50 dark:bg-gray-900 ${idx === 0 && allImages.length === 3 ? "col-span-2" : ""}`}
-                                                        unoptimized
-                                                    />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        )}
-
-                        {/* Post Video(s) */}
-                        {(post.video || (post.videos && post.videos.length > 0)) && (
-                            <div className="border-t border-b border-gray-100 dark:border-gray-800 space-y-1">
-                                {post.video && (
-                                    <video src={post.video} controls className="w-full max-h-[500px] object-contain bg-black" />
-                                )}
-                                {(post.videos || []).map((vid, idx) => (
-                                    <video key={idx} src={vid} controls className="w-full max-h-[500px] object-contain bg-black" />
-                                ))}
-                            </div>
+                        {/* Post Media Content */}
+                        {(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0)) && (
+                            <PostMediaContent
+                                image={post.image}
+                                images={post.images}
+                                video={post.video}
+                                videos={post.videos}
+                                onImageClick={(idx) => openImageModal(post, idx)}
+                            />
                         )}
 
                         {/* Link Attachment */}
@@ -249,47 +117,30 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             </div>
                         )}
 
-                        {/* Engagement Stats */}
-                        {(post._count.likes > 0 || post._count.comments > 0) && (
-                            <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                                <div className="flex items-center gap-1.5">
-                                    {post._count.likes > 0 && (
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
-                                                <ThumbsUpIcon className="h-2.5 w-2.5 text-white" />
-                                            </span>
-                                            <span>{post._count.likes} {post._count.likes === 1 ? "like" : "likes"}</span>
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    {post._count.comments > 0 && (
-                                        <span>{post._count.comments} comment{post._count.comments !== 1 ? "s" : ""}</span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                        {/* Engagement Summary */}
+                        <PostEngagementSummary
+                            likeCount={post._count.likes}
+                            commentCount={post._count.comments}
+                        />
 
-                        {/* Action Buttons - Styled like dashboard feed */}
-                        <div className="border-t border-gray-100 dark:border-gray-800 px-2 py-1">
-                            <div className="flex items-center justify-around">
-                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
-                                    <ThumbsUpIcon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Like</span>
-                                </Link>
-                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
-                                    <MessageCircleIcon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Comment</span>
-                                </Link>
-                                <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
-                                    <ShareIcon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Share</span>
-                                </Link>
-                            </div>
-                        </div>
-                    </Card>
-                );
-            })}
+                        {/* Action Buttons - redirect to sign-in for guests */}
+                        <PostActionBar>
+                            <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                                <ThumbsUpIcon className="h-4 w-4" />
+                                <span className="hidden sm:inline">Like</span>
+                            </Link>
+                            <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                                <MessageCircleIcon className="h-4 w-4" />
+                                <span className="hidden sm:inline">Comment</span>
+                            </Link>
+                            <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                                <ShareIcon className="h-4 w-4" />
+                                <span className="hidden sm:inline">Share</span>
+                            </Link>
+                        </PostActionBar>
+                    </PostCard>
+                </div>
+            ))}
 
             {/* Sign in CTA */}
             <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 rounded-xl">
@@ -369,9 +220,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                             <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700">
                                                 <AvatarImage src={imageModalPost.user.image || undefined} alt={imageModalPost.user.name || ""} />
                                                 <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
-                                                    {imageModalPost.user.name
-                                                        ? imageModalPost.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                                        : "U"}
+                                                    {getInitials(imageModalPost.user.name)}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div>
@@ -382,7 +231,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                                     Community Member
                                                 </p>
                                                 <p className="text-xs text-gray-400 dark:text-gray-500">
-                                                    {formatDate(imageModalPost.createdAt)}
+                                                    {formatRelativeDate(imageModalPost.createdAt)}
                                                 </p>
                                             </div>
                                         </div>
