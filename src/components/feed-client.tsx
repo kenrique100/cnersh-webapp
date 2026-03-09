@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
     MessageCircleIcon,
     MessageCircleOffIcon,
@@ -325,12 +326,12 @@ export default function FeedClient({
     }, [shareCounts]);
 
     const REACTIONS = [
-        { emoji: "👍", label: "Like", bg: "bg-blue-500" },
-        { emoji: "👏", label: "Celebrate", bg: "bg-green-500" },
-        { emoji: "🤝", label: "Support", bg: "bg-purple-500" },
-        { emoji: "❤️", label: "Love", bg: "bg-red-500" },
-        { emoji: "💡", label: "Insightful", bg: "bg-yellow-500" },
-        { emoji: "😄", label: "Funny", bg: "bg-teal-500" },
+        { emoji: "👍", label: "Like" },
+        { emoji: "👏", label: "Celebrate" },
+        { emoji: "🤝", label: "Support" },
+        { emoji: "❤️", label: "Love" },
+        { emoji: "💡", label: "Insightful" },
+        { emoji: "😄", label: "Funny" },
     ] as const;
 
     const currentUserInitials = getInitials(currentUserName);
@@ -1036,7 +1037,12 @@ export default function FeedClient({
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className={`h-8 w-8 rounded-full ${post.commentsEnabled === false ? "text-orange-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950" : "text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950"}`}
+                                                className={cn(
+                                                    "h-8 w-8 rounded-full",
+                                                    post.commentsEnabled === false
+                                                        ? "text-orange-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950"
+                                                        : "text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950"
+                                                )}
                                                 onClick={() => handleTogglePostComments(post.id)}
                                                 title={post.commentsEnabled === false ? "Enable comments" : "Disable comments"}
                                             >
@@ -1181,11 +1187,12 @@ export default function FeedClient({
                                 </div>
                                 <button
                                     onClick={() => post.commentsEnabled !== false && toggleComments(post.id)}
-                                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center",
                                         post.commentsEnabled === false
                                             ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                    }`}
+                                    )}
                                     disabled={post.commentsEnabled === false}
                                     title={post.commentsEnabled === false ? "Comments are disabled for this post" : "Comment"}
                                 >
