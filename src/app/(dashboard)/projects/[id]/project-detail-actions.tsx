@@ -135,8 +135,8 @@ export default function ProjectDetailActions({
             toast.error("Please select a video file");
             return;
         }
-        if (file.size > 32 * 1024 * 1024) {
-            toast.error("Video must be less than 32MB");
+        if (file.size > 50 * 1024 * 1024) {
+            toast.error("Video must be less than 50MB");
             return;
         }
         setIsUploadingVideo(true);

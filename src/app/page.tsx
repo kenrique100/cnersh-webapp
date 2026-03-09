@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
-import { getPosts, getPublicPosts, getTrendingTags } from "@/app/actions/feed";
+import { getPosts, getPublicPosts, getTrendingTags, getUserActivity } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
 import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
@@ -36,14 +36,18 @@ export default async function Home() {
         getTrendingTags(5),
     ]);
 
+    // User activity for sidebar
+    let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
+
     if (session) {
-        const [user, unreadCount, postsResult] = await Promise.all([
+        const [user, unreadCount, postsResult, activity] = await Promise.all([
             db.user.findUnique({
                 where: { id: session.user.id },
                 select: { name: true, email: true, image: true, role: true, gender: true },
             }),
             getUnreadNotificationCount(),
             getPosts(1, 20),
+            getUserActivity(session.user.id, 8),
         ]);
         if (user) {
             navUser = { name: user.name, email: user.email, image: user.image, role: user.role };
@@ -52,6 +56,7 @@ export default async function Home() {
         }
         notificationCount = unreadCount;
         authPosts = postsResult.posts;
+        userActivity = activity;
     } else {
         publicPosts = await getPublicPosts(20);
     }
@@ -140,7 +145,7 @@ export default async function Home() {
 
                     {/* Right Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
-                        <FeedRightSidebar trendingTags={trendingTags} />
+                        <FeedRightSidebar trendingTags={trendingTags} userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn={!!session} />
                     </aside>
                 </div>
 

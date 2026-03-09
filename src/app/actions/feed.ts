@@ -404,6 +404,74 @@ export async function updatePost(postId: string, content: string) {
     });
 }
 
+export async function togglePostComments(postId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const post = await db.post.findUnique({ where: { id: postId } });
+    if (!post) throw new Error("Post not found");
+    if (post.userId !== session.user.id) throw new Error("Forbidden");
+
+    const updated = await db.post.update({
+        where: { id: postId },
+        data: { commentsEnabled: !post.commentsEnabled },
+    });
+
+    return { commentsEnabled: updated.commentsEnabled };
+}
+
+export async function getUserActivity(userId: string, limit: number = 10) {
+    try {
+        const [recentPosts, recentComments, recentLikes] = await Promise.all([
+            db.post.findMany({
+                where: { userId, deleted: false },
+                select: { id: true, content: true, createdAt: true },
+                orderBy: { createdAt: "desc" },
+                take: limit,
+            }),
+            db.comment.findMany({
+                where: { userId, deleted: false },
+                select: { id: true, content: true, createdAt: true, post: { select: { id: true, content: true } } },
+                orderBy: { createdAt: "desc" },
+                take: limit,
+            }),
+            db.like.findMany({
+                where: { userId },
+                select: { id: true, createdAt: true, post: { select: { id: true, content: true } } },
+                orderBy: { createdAt: "desc" },
+                take: limit,
+            }),
+        ]);
+
+        const activities = [
+            ...recentPosts.map((p) => ({
+                type: "post" as const,
+                id: p.id,
+                description: p.content.length > 60 ? p.content.slice(0, 60) + "…" : p.content,
+                createdAt: p.createdAt,
+            })),
+            ...recentComments.map((c) => ({
+                type: "comment" as const,
+                id: c.id,
+                description: `Commented: "${c.content.length > 50 ? c.content.slice(0, 50) + "…" : c.content}"`,
+                createdAt: c.createdAt,
+            })),
+            ...recentLikes.map((l) => ({
+                type: "reaction" as const,
+                id: l.id,
+                description: `Liked a post: "${l.post.content.length > 50 ? l.post.content.slice(0, 50) + "…" : l.post.content}"`,
+                createdAt: l.createdAt,
+            })),
+        ];
+
+        activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return activities.slice(0, limit);
+    } catch (error) {
+        console.error("Error fetching user activity:", error);
+        return [];
+    }
+}
+
 export async function toggleCommentLike(commentId: string, isDislike: boolean = false) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");

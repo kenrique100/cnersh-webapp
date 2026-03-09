@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
     MessageCircleIcon,
+    MessageCircleOffIcon,
     SendIcon,
     TrashIcon,
     PenIcon,
@@ -50,7 +51,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers, updatePost } from "@/app/actions/feed";
+import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers, updatePost, togglePostComments } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
 import LinkPreview from "@/components/link-preview";
@@ -102,6 +103,7 @@ interface PostData {
     videos: string[];
     tags: string[];
     linkUrl: string | null;
+    commentsEnabled?: boolean;
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
@@ -129,6 +131,27 @@ const EMOJI_LIST = [
 
 const MENTION_SEARCH_DEBOUNCE_MS = 200;
 
+/** Collapsible comment text with "See more" for long comments */
+function CommentTextWithSeeMore({ content, threshold, isReply = false }: { content: string; threshold: number; isReply?: boolean }) {
+    const [expanded, setExpanded] = React.useState(false);
+    const isLong = content.length > threshold;
+    const displayText = isLong && !expanded ? content.slice(0, threshold) + "…" : content;
+
+    return (
+        <div className={`${isReply ? "text-xs" : "text-sm"} text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap`}>
+            {renderPostContent(displayText)}
+            {isLong && (
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                >
+                    {expanded ? "See less" : "See more"}
+                </button>
+            )}
+        </div>
+    );
+}
+
 function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
     const [isUploading, setIsUploading] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -142,8 +165,8 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
             return;
         }
 
-        if (file.size > 32 * 1024 * 1024) {
-            toast.error("Video must be less than 32MB");
+        if (file.size > 50 * 1024 * 1024) {
+            toast.error("Video must be less than 50MB");
             return;
         }
 
@@ -210,7 +233,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
                     <>
                         <VideoIcon className="h-8 w-8 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a video</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 32MB</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 50MB</span>
                     </>
                 )}
             </button>
@@ -302,11 +325,12 @@ export default function FeedClient({
     }, [shareCounts]);
 
     const REACTIONS = [
-        { emoji: "👍", label: "Like" },
-        { emoji: "😊", label: "Happy" },
-        { emoji: "😂", label: "Laugh" },
-        { emoji: "😢", label: "Sad" },
-        { emoji: "🎉", label: "Congrats" },
+        { emoji: "👍", label: "Like", bg: "bg-blue-500" },
+        { emoji: "👏", label: "Celebrate", bg: "bg-green-500" },
+        { emoji: "🤝", label: "Support", bg: "bg-purple-500" },
+        { emoji: "❤️", label: "Love", bg: "bg-red-500" },
+        { emoji: "💡", label: "Insightful", bg: "bg-yellow-500" },
+        { emoji: "😄", label: "Funny", bg: "bg-teal-500" },
     ] as const;
 
     const currentUserInitials = getInitials(currentUserName);
@@ -610,6 +634,20 @@ export default function FeedClient({
     const insertEmoji = (postId: string, emoji: string) => {
         setCommentTexts((prev) => ({ ...prev, [postId]: (prev[postId] || "") + emoji }));
         setShowCommentEmoji(null);
+    };
+
+    const handleTogglePostComments = async (postId: string) => {
+        try {
+            const result = await togglePostComments(postId);
+            setPosts((prev) =>
+                prev.map((p) =>
+                    p.id === postId ? { ...p, commentsEnabled: result.commentsEnabled } : p
+                )
+            );
+            toast.success(result.commentsEnabled ? "Comments enabled" : "Comments disabled");
+        } catch {
+            toast.error("Failed to toggle comments");
+        }
     };
 
     const toggleComments = async (postId: string) => {
@@ -998,6 +1036,17 @@ export default function FeedClient({
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className={`h-8 w-8 rounded-full ${post.commentsEnabled === false ? "text-orange-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950" : "text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950"}`}
+                                                onClick={() => handleTogglePostComments(post.id)}
+                                                title={post.commentsEnabled === false ? "Enable comments" : "Disable comments"}
+                                            >
+                                                {post.commentsEnabled === false ? <MessageCircleOffIcon className="h-4 w-4" /> : <MessageCircleIcon className="h-4 w-4" />}
+                                            </Button>
+                                        )}
+                                        {post.user.id === currentUserId && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                                 className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-full"
                                                 onClick={() => {
                                                     setEditingPostId(post.id);
@@ -1095,10 +1144,11 @@ export default function FeedClient({
                                     onMouseEnter={() => handleReactionEnter(post.id)}
                                     onMouseLeave={handleReactionLeave}
                                 >
-                                    {/* Reaction popup */}
+                                    {/* Reaction popup - LinkedIn pill style */}
                                     {reactionHoverPostId === post.id && (
                                         <div
-                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-3 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                            style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
                                             onMouseEnter={() => handleReactionEnter(post.id)}
                                             onMouseLeave={handleReactionLeave}
                                         >
@@ -1106,11 +1156,11 @@ export default function FeedClient({
                                                 <button
                                                     key={reaction.label}
                                                     onClick={() => handleReaction(post.id, reaction.label)}
-                                                    className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all hover:scale-125 cursor-pointer"
+                                                    className="group relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-2 cursor-pointer"
                                                     title={reaction.label}
                                                 >
-                                                    <span className="text-xl sm:text-2xl">{reaction.emoji}</span>
-                                                    <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                    <span className="text-2xl drop-shadow-sm">{reaction.emoji}</span>
+                                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
                                                         {reaction.label}
                                                     </span>
                                                 </button>
@@ -1130,10 +1180,16 @@ export default function FeedClient({
                                     </button>
                                 </div>
                                 <button
-                                    onClick={() => toggleComments(post.id)}
-                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                    onClick={() => post.commentsEnabled !== false && toggleComments(post.id)}
+                                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
+                                        post.commentsEnabled === false
+                                            ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    }`}
+                                    disabled={post.commentsEnabled === false}
+                                    title={post.commentsEnabled === false ? "Comments are disabled for this post" : "Comment"}
                                 >
-                                    <MessageCircleIcon className="h-4 w-4" />
+                                    {post.commentsEnabled === false ? <MessageCircleOffIcon className="h-4 w-4" /> : <MessageCircleIcon className="h-4 w-4" />}
                                     <span className="hidden sm:inline">Comment</span>
                                 </button>
                                 <button
@@ -1146,7 +1202,7 @@ export default function FeedClient({
                             </PostActionBar>
 
                             {/* Comments Section */}
-                            {expandedComments.has(post.id) && (
+                            {expandedComments.has(post.id) && post.commentsEnabled !== false && (
                                 <PostCommentsSection>
                                     {(() => {
                                         const allComments = postComments[post.id] || [];
@@ -1154,6 +1210,7 @@ export default function FeedClient({
                                         const visibleCount = visibleCommentCount[post.id] || INITIAL_COMMENTS;
                                         const visibleItems = allComments.slice(0, visibleCount);
                                         const hasMore = allComments.length > visibleCount;
+                                        const COMMENT_COLLAPSE_THRESHOLD = 200;
 
                                         return (
                                             <>
@@ -1166,22 +1223,27 @@ export default function FeedClient({
                                         const dislikes = (comment.commentLikes || []).filter((l) => l.isDislike);
                                         const userLiked = likes.some((l) => l.userId === currentUserId);
                                         const userDisliked = dislikes.some((l) => l.userId === currentUserId);
+                                        const isLongComment = comment.content.length > COMMENT_COLLAPSE_THRESHOLD;
 
                                         return (
-                                            <div key={comment.id} className="space-y-2">
+                                            <div key={comment.id} className="space-y-1">
+                                                {/* LinkedIn-style comment card */}
                                                 <div className="flex gap-2.5">
-                                                    <Avatar className="h-8 w-8 shrink-0">
+                                                    <Avatar className="h-8 w-8 shrink-0 mt-0.5">
                                                         <AvatarImage src={comment.user.image || undefined} />
                                                         <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">
                                                             {commentInitials}
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2">
+                                                        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                                     {comment.user.name || "Anonymous"}
                                                                 </p>
+                                                                {comment.user.profession && (
+                                                                    <span className="text-xs text-gray-500 dark:text-gray-400">· {comment.user.profession}</span>
+                                                                )}
                                                                 {isPostAuthor && (
                                                                     <Badge className="text-xs px-1.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-4">Author</Badge>
                                                                 )}
@@ -1227,108 +1289,131 @@ export default function FeedClient({
                                                                     <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setEditingCommentId(null); setEditingCommentContent(""); }}>Cancel</Button>
                                                                 </div>
                                                             ) : (
-                                                                <p className="text-base text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap">
-                                                                    {renderPostContent(comment.content)}
-                                                                </p>
+                                                                <CommentTextWithSeeMore content={comment.content} threshold={COMMENT_COLLAPSE_THRESHOLD} />
                                                             )}
                                                         </div>
-                                                        {/* Comment Actions */}
+                                                        {/* Comment Actions - LinkedIn style */}
                                                         <div className="flex items-center gap-3 mt-1 px-1">
-                                                            <button onClick={() => handleCommentLike(post.id, comment.id, false)} className={`flex items-center gap-1 text-xs transition-colors ${userLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
+                                                            <button onClick={() => handleCommentLike(post.id, comment.id, false)} className={`flex items-center gap-1 text-xs font-medium transition-colors ${userLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
                                                                 <ThumbsUpIcon className={`h-3 w-3 ${userLiked ? "fill-current" : ""}`} />
-                                                                {likes.length > 0 && <span>{likes.length}</span>}
+                                                                Like{likes.length > 0 && <span className="ml-0.5">· {likes.length}</span>}
                                                             </button>
-                                                            <button onClick={() => handleCommentLike(post.id, comment.id, true)} className={`flex items-center gap-1 text-xs transition-colors ${userDisliked ? "text-red-600" : "text-gray-500 hover:text-red-600"}`}>
-                                                                <ThumbsDownIcon className={`h-3 w-3 ${userDisliked ? "fill-current" : ""}`} />
-                                                                {dislikes.length > 0 && <span>{dislikes.length}</span>}
-                                                            </button>
+                                                            <span className="text-gray-300 dark:text-gray-600">|</span>
                                                             <button onClick={() => {
                                                                 const userName = comment.user.name || "Anonymous";
                                                                 setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: userName } }));
                                                                 setCommentTexts((prev) => ({ ...prev, [post.id]: `@${userName.replace(/\s+/g, "")} ` }));
-                                                            }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors">
+                                                            }} className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors">
                                                                 <ReplyIcon className="h-3 w-3" />
-                                                                Reply{comment.replies && comment.replies.length > 0 ? ` (${comment.replies.length})` : ""}
+                                                                Reply{comment.replies && comment.replies.length > 0 ? ` · ${comment.replies.length}` : ""}
                                                             </button>
                                                             {isCommentAuthor && (
-                                                                <button onClick={() => { setEditingCommentId(comment.id); setEditingCommentContent(comment.content); }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 transition-colors">
-                                                                    <PencilIcon className="h-3 w-3" />
-                                                                    Edit
-                                                                </button>
+                                                                <>
+                                                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                    <button onClick={() => { setEditingCommentId(comment.id); setEditingCommentContent(comment.content); }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 transition-colors">
+                                                                        <PencilIcon className="h-3 w-3" />
+                                                                        Edit
+                                                                    </button>
+                                                                </>
                                                             )}
                                                             {(isCommentAuthor || isAdmin) && (
-                                                                <button onClick={() => handleDeleteComment(post.id, comment.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors">
-                                                                    <TrashIcon className="h-3 w-3" />
-                                                                    Delete
-                                                                </button>
+                                                                <>
+                                                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                    <button onClick={() => handleDeleteComment(post.id, comment.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors">
+                                                                        <TrashIcon className="h-3 w-3" />
+                                                                        Delete
+                                                                    </button>
+                                                                </>
                                                             )}
                                                             {!isCommentAuthor && (
-                                                                <button onClick={() => setReportingCommentId(comment.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-orange-600 transition-colors">
-                                                                    <FlagIcon className="h-3 w-3" />
-                                                                    Report
-                                                                </button>
+                                                                <>
+                                                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                    <button onClick={() => setReportingCommentId(comment.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-orange-600 transition-colors">
+                                                                        <FlagIcon className="h-3 w-3" />
+                                                                        Report
+                                                                    </button>
+                                                                </>
                                                             )}
                                                         </div>
 
-                                                        {/* Replies */}
-                                                        {(comment.replies || []).map((reply) => {
-                                                            const replyInitials = getInitials(reply.user.name);
-                                                            const isReplyAuthor = reply.user.id === currentUserId;
-                                                            const isReplyPostAuthor = reply.user.id === post.user.id;
-                                                            const isReplyAdmin = reply.user.role === "admin" || reply.user.role === "superadmin";
-                                                            const rLikes = (reply.commentLikes || []).filter((l) => !l.isDislike);
-                                                            const rDislikes = (reply.commentLikes || []).filter((l) => l.isDislike);
-                                                            const rUserLiked = rLikes.some((l) => l.userId === currentUserId);
-                                                            const rUserDisliked = rDislikes.some((l) => l.userId === currentUserId);
+                                                        {/* Replies - LinkedIn-style with vertical line */}
+                                                        {(comment.replies || []).length > 0 && (
+                                                            <div className="relative mt-2 ml-2 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                                                {(comment.replies || []).map((reply) => {
+                                                                    const replyInitials = getInitials(reply.user.name);
+                                                                    const isReplyAuthor = reply.user.id === currentUserId;
+                                                                    const isReplyPostAuthor = reply.user.id === post.user.id;
+                                                                    const isReplyAdmin = reply.user.role === "admin" || reply.user.role === "superadmin";
+                                                                    const rLikes = (reply.commentLikes || []).filter((l) => !l.isDislike);
+                                                                    const rDislikes = (reply.commentLikes || []).filter((l) => l.isDislike);
+                                                                    const rUserLiked = rLikes.some((l) => l.userId === currentUserId);
+                                                                    const rUserDisliked = rDislikes.some((l) => l.userId === currentUserId);
 
-                                                            return (
-                                                                <div key={reply.id} className="flex gap-2 mt-2 ml-6">
-                                                                    <Avatar className="h-6 w-6 shrink-0">
-                                                                        <AvatarImage src={reply.user.image || undefined} />
-                                                                        <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback>
-                                                                    </Avatar>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5">
-                                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{reply.user.name || "Anonymous"}</p>
-                                                                                {isReplyPostAuthor && <Badge className="text-xs px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-3">Author</Badge>}
-                                                                                {isReplyAdmin && <Badge className="text-xs px-1 py-0 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 leading-3">Admin</Badge>}
-                                                                                <span className="text-xs text-gray-400 ml-auto">{formatDate(reply.createdAt)}</span>
-                                                                            </div>
-                                                                            {editingCommentId === reply.id ? (
-                                                                                <div className="mt-1 flex gap-1">
-                                                                                    <input type="text" value={editingCommentContent} onChange={(e) => setEditingCommentContent(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(post.id, reply.id); if (e.key === "Escape") { setEditingCommentId(null); setEditingCommentContent(""); } }} className="flex-1 text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500" autoFocus />
-                                                                                    <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => handleEditComment(post.id, reply.id)}>Save</Button>
+                                                                    return (
+                                                                        <div key={reply.id} className="flex gap-2 mb-2">
+                                                                            <Avatar className="h-6 w-6 shrink-0 mt-0.5">
+                                                                                <AvatarImage src={reply.user.image || undefined} />
+                                                                                <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback>
+                                                                            </Avatar>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5 border border-gray-100 dark:border-gray-800">
+                                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{reply.user.name || "Anonymous"}</p>
+                                                                                        {reply.user.profession && (
+                                                                                            <span className="text-xs text-gray-500 dark:text-gray-400">· {reply.user.profession}</span>
+                                                                                        )}
+                                                                                        {isReplyPostAuthor && <Badge className="text-xs px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 leading-3">Author</Badge>}
+                                                                                        {isReplyAdmin && <Badge className="text-xs px-1 py-0 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 leading-3">Admin</Badge>}
+                                                                                        <span className="text-xs text-gray-400 ml-auto">{formatDate(reply.createdAt)}</span>
+                                                                                    </div>
+                                                                                    {editingCommentId === reply.id ? (
+                                                                                        <div className="mt-1 flex gap-1">
+                                                                                            <input type="text" value={editingCommentContent} onChange={(e) => setEditingCommentContent(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleEditComment(post.id, reply.id); if (e.key === "Escape") { setEditingCommentId(null); setEditingCommentContent(""); } }} className="flex-1 text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500" autoFocus />
+                                                                                            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => handleEditComment(post.id, reply.id)}>Save</Button>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <CommentTextWithSeeMore content={reply.content} threshold={COMMENT_COLLAPSE_THRESHOLD} isReply />
+                                                                                    )}
                                                                                 </div>
-                                                                            ) : (
-                                                                                <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{renderPostContent(reply.content)}</p>
-                                                                            )}
+                                                                                <div className="flex items-center gap-2 mt-0.5 px-1">
+                                                                                    <button onClick={() => handleCommentLike(post.id, reply.id, false)} className={`flex items-center gap-0.5 text-xs font-medium ${rUserLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
+                                                                                        <ThumbsUpIcon className={`h-2.5 w-2.5 ${rUserLiked ? "fill-current" : ""}`} />
+                                                                                        Like{rLikes.length > 0 && <span className="ml-0.5">· {rLikes.length}</span>}
+                                                                                    </button>
+                                                                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                                    <button onClick={() => {
+                                                                                        const replyUserName = reply.user.name || "Anonymous";
+                                                                                        setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: replyUserName } }));
+                                                                                        setCommentTexts((prev) => ({ ...prev, [post.id]: `@${replyUserName.replace(/\s+/g, "")} ` }));
+                                                                                    }} className="flex items-center gap-0.5 text-xs font-medium text-gray-500 hover:text-blue-600">
+                                                                                        <ReplyIcon className="h-2.5 w-2.5" />
+                                                                                        Reply
+                                                                                    </button>
+                                                                                    {isReplyAuthor && (
+                                                                                        <>
+                                                                                            <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                                            <button onClick={() => { setEditingCommentId(reply.id); setEditingCommentContent(reply.content); }} className="text-xs text-gray-500 hover:text-green-600">Edit</button>
+                                                                                        </>
+                                                                                    )}
+                                                                                    {(isReplyAuthor || isAdmin) && (
+                                                                                        <>
+                                                                                            <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                                            <button onClick={() => handleDeleteComment(post.id, reply.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>
+                                                                                        </>
+                                                                                    )}
+                                                                                    {!isReplyAuthor && (
+                                                                                        <>
+                                                                                            <span className="text-gray-300 dark:text-gray-600">|</span>
+                                                                                            <button onClick={() => setReportingCommentId(reply.id)} className="text-xs text-gray-500 hover:text-orange-600">Report</button>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex items-center gap-2 mt-0.5 px-1">
-                                                                            <button onClick={() => handleCommentLike(post.id, reply.id, false)} className={`flex items-center gap-0.5 text-xs ${rUserLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
-                                                                                <ThumbsUpIcon className={`h-2.5 w-2.5 ${rUserLiked ? "fill-current" : ""}`} />
-                                                                                {rLikes.length > 0 && rLikes.length}
-                                                                            </button>
-                                                                            <button onClick={() => handleCommentLike(post.id, reply.id, true)} className={`flex items-center gap-0.5 text-xs ${rUserDisliked ? "text-red-600" : "text-gray-500 hover:text-red-600"}`}>
-                                                                                <ThumbsDownIcon className={`h-2.5 w-2.5 ${rUserDisliked ? "fill-current" : ""}`} />
-                                                                                {rDislikes.length > 0 && rDislikes.length}
-                                                                            </button>
-                                                                            <button onClick={() => {
-                                                                                const replyUserName = reply.user.name || "Anonymous";
-                                                                                setReplyingTo((prev) => ({ ...prev, [post.id]: { id: comment.id, name: replyUserName } }));
-                                                                                setCommentTexts((prev) => ({ ...prev, [post.id]: `@${replyUserName.replace(/\s+/g, "")} ` }));
-                                                                            }} className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-blue-600">
-                                                                                <ReplyIcon className="h-2.5 w-2.5" />
-                                                                                Reply
-                                                                            </button>
-                                                                            {isReplyAuthor && <button onClick={() => { setEditingCommentId(reply.id); setEditingCommentContent(reply.content); }} className="text-xs text-gray-500 hover:text-green-600">Edit</button>}
-                                                                            {(isReplyAuthor || isAdmin) && <button onClick={() => handleDeleteComment(post.id, reply.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}
-                                                                            {!isReplyAuthor && <button onClick={() => setReportingCommentId(reply.id)} className="text-xs text-gray-500 hover:text-orange-600">Report</button>}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
