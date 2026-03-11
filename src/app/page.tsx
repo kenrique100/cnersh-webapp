@@ -59,6 +59,8 @@ export default async function Home() {
             authPosts = postsResult.posts;
             userActivity = activity;
         } catch (error) {
+            // Graceful degradation: if auth data fetch fails (e.g., deleted user, DB error),
+            // fall through to display public posts instead of crashing the homepage
             console.error("Error fetching authenticated homepage data:", error);
         }
     }
