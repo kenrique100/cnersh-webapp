@@ -146,13 +146,14 @@ model Comment {
 }
 
 model CommentLike {
-  id        String   @id @default(uuid())
-  commentId String
-  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isDislike Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  commentId    String
+  comment      Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDislike    Boolean  @default(false)
+  reactionType String   @default("Like")
+  createdAt    DateTime @default(now())
 
   @@unique([commentId, userId])
   @@index([commentId])
@@ -161,12 +162,13 @@ model CommentLike {
 }
 
 model Like {
-  id        String   @id @default(uuid())
-  postId    String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  postId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactionType String   @default("Like")
+  createdAt    DateTime @default(now())
 
   @@unique([postId, userId])
   @@index([postId])

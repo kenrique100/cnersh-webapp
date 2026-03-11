@@ -51,6 +51,7 @@ interface PublicPostData {
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
+    likes: { reactionType: string }[];
 }
 
 interface PublicFeedClientProps {
@@ -121,6 +122,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                         <PostEngagementSummary
                             likeCount={post._count.likes}
                             commentCount={post._count.comments}
+                            reactionTypes={post.likes?.map((l) => l.reactionType) || []}
                         />
 
                         {/* Action Buttons - redirect to sign-in for guests */}
