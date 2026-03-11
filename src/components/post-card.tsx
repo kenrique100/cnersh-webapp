@@ -426,6 +426,7 @@ export function PostEngagementSummary({
                         onClick={onLikeCountClick}
                         className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
                         type="button"
+                        aria-label={`${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`}
                     >
                         {topReactions.length > 0 ? (
                             <span className="flex items-center -space-x-1">
