@@ -75,10 +75,10 @@ export async function getPosts(page: number = 1, limit: number = 10) {
                     likes: {
                         select: {
                             userId: true,
+                            reactionType: true,
                             user: { select: { id: true, name: true, image: true } },
                         },
                         orderBy: { createdAt: "desc" },
-                        take: 5,
                     },
                     comments: {
                         where: { deleted: false },
@@ -100,7 +100,7 @@ export async function getPosts(page: number = 1, limit: number = 10) {
         const postsWithActivity = posts.map((post) => {
             // Deduplicate users from likes and comments
             const activityUsers = new Map<string, { id: string; name: string | null; image: string | null }>();
-            for (const like of post.likes) {
+            for (const like of post.likes.slice(0, 5)) {
                 if (!activityUsers.has(like.user.id)) {
                     activityUsers.set(like.user.id, like.user);
                 }
@@ -113,7 +113,7 @@ export async function getPosts(page: number = 1, limit: number = 10) {
 
             return {
                 ...post,
-                likes: post.likes.map((l) => ({ userId: l.userId })),
+                likes: post.likes.map((l) => ({ userId: l.userId, reactionType: l.reactionType })),
                 recentActivity: {
                     users: Array.from(activityUsers.values()).slice(0, 5),
                     likeCount: post._count.likes,
@@ -136,12 +136,18 @@ export async function getPublicPosts(limit: number = 10) {
             include: {
                 user: { select: { id: true, name: true, image: true } },
                 _count: { select: { comments: true, likes: true } },
+                likes: {
+                    select: { reactionType: true },
+                },
             },
             orderBy: { createdAt: "desc" },
             take: limit,
         });
 
-        return posts;
+        return posts.map((post) => ({
+            ...post,
+            likes: post.likes.map((l) => ({ reactionType: l.reactionType })),
+        }));
     } catch (error) {
         console.error("Error fetching public posts:", error);
         return [];
@@ -169,7 +175,7 @@ export async function getTrendingTags(limit: number = 5) {
     }
 }
 
-export async function toggleLike(postId: string) {
+export async function toggleLike(postId: string, reactionType: string = "Like") {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -178,11 +184,21 @@ export async function toggleLike(postId: string) {
     });
 
     if (existing) {
-        await db.like.delete({ where: { id: existing.id } });
-        return { liked: false };
+        if (existing.reactionType === reactionType) {
+            // Same reaction - remove it (toggle off)
+            await db.like.delete({ where: { id: existing.id } });
+            return { liked: false, reactionType: null };
+        } else {
+            // Different reaction - update it
+            await db.like.update({
+                where: { id: existing.id },
+                data: { reactionType },
+            });
+            return { liked: true, reactionType };
+        }
     } else {
         await db.like.create({
-            data: { postId, userId: session.user.id },
+            data: { postId, userId: session.user.id, reactionType },
         });
 
         // Notify post owner of the like
@@ -225,7 +241,7 @@ export async function toggleLike(postId: string) {
             console.error("Error creating like notification:", error);
         }
 
-        return { liked: true };
+        return { liked: true, reactionType };
     }
 }
 
@@ -350,13 +366,13 @@ export async function getPostComments(postId: string) {
         include: {
             user: { select: { id: true, name: true, image: true, role: true, profession: true, title: true } },
             _count: { select: { commentLikes: true, replies: true } },
-            commentLikes: { select: { userId: true, isDislike: true } },
+            commentLikes: { select: { userId: true, isDislike: true, reactionType: true } },
             replies: {
                 where: { deleted: false },
                 include: {
                     user: { select: { id: true, name: true, image: true, role: true, profession: true, title: true } },
                     _count: { select: { commentLikes: true } },
-                    commentLikes: { select: { userId: true, isDislike: true } },
+                    commentLikes: { select: { userId: true, isDislike: true, reactionType: true } },
                 },
                 orderBy: { createdAt: "asc" },
             },
@@ -437,7 +453,7 @@ export async function getUserActivity(userId: string, limit: number = 10) {
             }),
             db.like.findMany({
                 where: { userId },
-                select: { id: true, createdAt: true, post: { select: { id: true, content: true } } },
+                select: { id: true, reactionType: true, createdAt: true, post: { select: { id: true, content: true } } },
                 orderBy: { createdAt: "desc" },
                 take: limit,
             }),
@@ -459,7 +475,7 @@ export async function getUserActivity(userId: string, limit: number = 10) {
             ...recentLikes.map((l) => ({
                 type: "reaction" as const,
                 id: l.id,
-                description: `Liked a post: "${l.post.content.length > 50 ? l.post.content.slice(0, 50) + "…" : l.post.content}"`,
+                description: `Reacted ${l.reactionType} to a post: "${l.post.content.length > 50 ? l.post.content.slice(0, 50) + "…" : l.post.content}"`,
                 createdAt: l.createdAt,
             })),
         ];
@@ -472,7 +488,7 @@ export async function getUserActivity(userId: string, limit: number = 10) {
     }
 }
 
-export async function toggleCommentLike(commentId: string, isDislike: boolean = false) {
+export async function toggleCommentLike(commentId: string, isDislike: boolean = false, reactionType: string = "Like") {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -481,18 +497,18 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
     });
 
     if (existing) {
-        if (existing.isDislike === isDislike) {
-            // Same action - remove
+        if (existing.reactionType === reactionType) {
+            // Same reaction - remove
             await db.commentLike.delete({ where: { id: existing.id } });
-            return { action: "removed" };
+            return { action: "removed", reactionType: null };
         } else {
-            // Switch between like/dislike
-            await db.commentLike.update({ where: { id: existing.id }, data: { isDislike } });
-            return { action: isDislike ? "disliked" : "liked" };
+            // Different reaction - update
+            await db.commentLike.update({ where: { id: existing.id }, data: { reactionType, isDislike: false } });
+            return { action: "reacted", reactionType };
         }
     } else {
         await db.commentLike.create({
-            data: { commentId, userId: session.user.id, isDislike },
+            data: { commentId, userId: session.user.id, isDislike: false, reactionType },
         });
 
         // Notify comment owner
@@ -525,7 +541,7 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
             console.error("Error creating comment like notification:", error);
         }
 
-        return { action: isDislike ? "disliked" : "liked" };
+        return { action: "reacted", reactionType };
     }
 }
 

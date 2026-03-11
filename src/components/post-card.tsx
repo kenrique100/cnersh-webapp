@@ -364,25 +364,59 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
     );
 }
 
+// ─── Reaction definitions ───────────────────────────────────────────────────
+
+export const REACTIONS = [
+    { emoji: "👍", label: "Like", bg: "bg-blue-500" },
+    { emoji: "👏", label: "Celebrate", bg: "bg-green-500" },
+    { emoji: "🤝", label: "Support", bg: "bg-purple-500" },
+    { emoji: "❤️", label: "Love", bg: "bg-red-500" },
+    { emoji: "💡", label: "Insightful", bg: "bg-yellow-500" },
+    { emoji: "😄", label: "Funny", bg: "bg-teal-500" },
+] as const;
+
+export function getReactionEmoji(label: string): string {
+    return REACTIONS.find((r) => r.label === label)?.emoji || "👍";
+}
+
+export function getReactionBg(label: string): string {
+    return REACTIONS.find((r) => r.label === label)?.bg || "bg-blue-500";
+}
+
 // ─── Post Engagement Summary ────────────────────────────────────────────────
 
 interface PostEngagementSummaryProps {
     likeCount: number;
     commentCount: number;
     shareCount?: number;
+    reactionTypes?: string[];
     onLikeCountClick?: () => void;
     onCommentCountClick?: () => void;
 }
 
-/** Shows total reactions, comment count, and repost/share count */
+/** Shows total reactions with type icons, comment count, and repost/share count */
 export function PostEngagementSummary({
     likeCount,
     commentCount,
     shareCount = 0,
+    reactionTypes,
     onLikeCountClick,
     onCommentCountClick,
 }: PostEngagementSummaryProps) {
     if (likeCount === 0 && commentCount === 0 && shareCount === 0) return null;
+
+    // Get top 3 unique reaction types for the icon display
+    const topReactions: string[] = [];
+    if (reactionTypes && reactionTypes.length > 0) {
+        const counts = new Map<string, number>();
+        for (const rt of reactionTypes) {
+            counts.set(rt, (counts.get(rt) || 0) + 1);
+        }
+        const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+        for (const [label] of sorted.slice(0, 3)) {
+            topReactions.push(label);
+        }
+    }
 
     return (
         <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
@@ -392,14 +426,30 @@ export function PostEngagementSummary({
                         onClick={onLikeCountClick}
                         className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
                         type="button"
+                        aria-label={`${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`}
                     >
-                        <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
-                            <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
-                            </svg>
-                        </span>
+                        {topReactions.length > 0 ? (
+                            <span className="flex items-center -space-x-1">
+                                {topReactions.map((label, idx) => (
+                                    <span
+                                        key={label}
+                                        className={`flex items-center justify-center w-[18px] h-[18px] rounded-full ${getReactionBg(label)} text-white text-[10px] leading-none border border-white dark:border-gray-950`}
+                                        style={{ zIndex: 3 - idx }}
+                                        title={label}
+                                    >
+                                        {getReactionEmoji(label)}
+                                    </span>
+                                ))}
+                            </span>
+                        ) : (
+                            <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
+                                <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
+                                </svg>
+                            </span>
+                        )}
                         <span>
-                            {likeCount} {likeCount === 1 ? "like" : "likes"}
+                            {likeCount}
                         </span>
                     </button>
                 )}

@@ -70,6 +70,8 @@ import {
     formatRelativeDate,
     formatFullDate,
     renderPostContent,
+    REACTIONS,
+    getReactionEmoji,
 } from "@/components/post-card";
 
 interface PostUser {
@@ -83,6 +85,7 @@ interface PostUser {
 interface CommentLikeData {
     userId: string;
     isDislike: boolean;
+    reactionType: string;
 }
 
 interface CommentData {
@@ -108,7 +111,7 @@ interface PostData {
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
-    likes: { userId: string }[];
+    likes: { userId: string; reactionType: string }[];
     recentActivity?: {
         users: { id: string; name: string | null; image: string | null }[];
         likeCount: number;
@@ -325,15 +328,6 @@ export default function FeedClient({
         }
     }, [shareCounts]);
 
-    const REACTIONS = [
-        { emoji: "👍", label: "Like" },
-        { emoji: "👏", label: "Celebrate" },
-        { emoji: "🤝", label: "Support" },
-        { emoji: "❤️", label: "Love" },
-        { emoji: "💡", label: "Insightful" },
-        { emoji: "😄", label: "Funny" },
-    ] as const;
-
     const currentUserInitials = getInitials(currentUserName);
 
     const handleMentionSearch = (text: string, source: string) => {
@@ -448,26 +442,35 @@ export default function FeedClient({
         }
     };
 
-    const handleLike = async (postId: string) => {
+    const handleLike = async (postId: string, reactionType: string = "Like") => {
         try {
-            const result = await toggleLike(postId);
+            const result = await toggleLike(postId, reactionType);
             setPosts((prev) =>
-                prev.map((p) =>
-                    p.id === postId
-                        ? {
-                              ...p,
-                              _count: {
-                                  ...p._count,
-                                  likes: result.liked
-                                      ? p._count.likes + 1
-                                      : p._count.likes - 1,
-                              },
-                              likes: result.liked
-                                  ? [...p.likes, { userId: currentUserId }]
-                                  : p.likes.filter((l) => l.userId !== currentUserId),
-                          }
-                        : p
-                )
+                prev.map((p) => {
+                    if (p.id !== postId) return p;
+                    if (result.liked) {
+                        // Added or changed reaction
+                        const existingIdx = p.likes.findIndex((l) => l.userId === currentUserId);
+                        const newLikes = existingIdx >= 0
+                            ? p.likes.map((l) => l.userId === currentUserId ? { ...l, reactionType: result.reactionType! } : l)
+                            : [...p.likes, { userId: currentUserId, reactionType: result.reactionType! }];
+                        return {
+                            ...p,
+                            _count: {
+                                ...p._count,
+                                likes: existingIdx >= 0 ? p._count.likes : p._count.likes + 1,
+                            },
+                            likes: newLikes,
+                        };
+                    } else {
+                        // Removed reaction
+                        return {
+                            ...p,
+                            _count: { ...p._count, likes: p._count.likes - 1 },
+                            likes: p.likes.filter((l) => l.userId !== currentUserId),
+                        };
+                    }
+                })
             );
         } catch {
             toast.error("Failed to react to post");
@@ -555,9 +558,9 @@ export default function FeedClient({
         }
     };
 
-    const handleCommentLike = async (postId: string, commentId: string, isDislike: boolean = false) => {
+    const handleCommentLike = async (postId: string, commentId: string, isDislike: boolean = false, reactionType: string = "Like") => {
         try {
-            await toggleCommentLike(commentId, isDislike);
+            await toggleCommentLike(commentId, isDislike, reactionType);
             // Refresh comments
             const comments = await getPostComments(postId);
             setPostComments((prev) => ({ ...prev, [postId]: comments }));
@@ -721,6 +724,16 @@ export default function FeedClient({
         setImageModalOpen(true);
     };
 
+    // Comment reaction hover state
+    const [commentReactionHoverId, setCommentReactionHoverId] = React.useState<string | null>(null);
+    const commentReactionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    React.useEffect(() => {
+        return () => {
+            if (commentReactionTimeoutRef.current) clearTimeout(commentReactionTimeoutRef.current);
+        };
+    }, []);
+
     const handleReactionEnter = (postId: string) => {
         if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current);
         setReactionHoverPostId(postId);
@@ -734,10 +747,23 @@ export default function FeedClient({
 
     const handleReaction = (postId: string, reaction: string) => {
         setReactionHoverPostId(null);
-        handleLike(postId);
-        if (reaction !== "Like") {
-            toast.success(`Reacted with ${reaction}!`);
-        }
+        handleLike(postId, reaction);
+    };
+
+    const handleCommentReactionEnter = (commentId: string) => {
+        if (commentReactionTimeoutRef.current) clearTimeout(commentReactionTimeoutRef.current);
+        setCommentReactionHoverId(commentId);
+    };
+
+    const handleCommentReactionLeave = () => {
+        commentReactionTimeoutRef.current = setTimeout(() => {
+            setCommentReactionHoverId(null);
+        }, 300);
+    };
+
+    const handleCommentReaction = (postId: string, commentId: string, reaction: string) => {
+        setCommentReactionHoverId(null);
+        handleCommentLike(postId, commentId, false, reaction);
     };
 
     return (
@@ -1001,6 +1027,8 @@ export default function FeedClient({
             ) : (
                 posts.map((post) => {
                     const isLiked = post.likes.some((l) => l.userId === currentUserId);
+                    const userReaction = post.likes.find((l) => l.userId === currentUserId)?.reactionType;
+                    const userReactionEmoji = userReaction ? getReactionEmoji(userReaction) : null;
 
                     return (
                         <div key={post.id} className="space-y-0">
@@ -1138,6 +1166,7 @@ export default function FeedClient({
                                 likeCount={post._count.likes}
                                 commentCount={post._count.comments}
                                 shareCount={shareCounts[post.id] || 0}
+                                reactionTypes={post.likes.map((l) => l.reactionType)}
                                 onLikeCountClick={() => handleShowLikers(post.id)}
                                 onCommentCountClick={() => toggleComments(post.id)}
                             />
@@ -1174,15 +1203,19 @@ export default function FeedClient({
                                         </div>
                                     )}
                                     <button
-                                        onClick={() => handleLike(post.id)}
+                                        onClick={() => handleLike(post.id, userReaction || "Like")}
                                         className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
                                             isLiked
                                                 ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
                                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                                         }`}
                                     >
-                                        <ThumbsUpIcon className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                                        <span className="hidden sm:inline">Like</span>
+                                        {isLiked && userReactionEmoji ? (
+                                            <span className="text-base leading-none">{userReactionEmoji}</span>
+                                        ) : (
+                                            <ThumbsUpIcon className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+                                        )}
+                                        <span className="hidden sm:inline">{isLiked && userReaction ? userReaction : "Like"}</span>
                                     </button>
                                 </div>
                                 <button
@@ -1226,10 +1259,11 @@ export default function FeedClient({
                                         const isCommentAuthor = comment.user.id === currentUserId;
                                         const isPostAuthor = comment.user.id === post.user.id;
                                         const isCommentAdmin = comment.user.role === "admin" || comment.user.role === "superadmin";
-                                        const likes = (comment.commentLikes || []).filter((l) => !l.isDislike);
-                                        const dislikes = (comment.commentLikes || []).filter((l) => l.isDislike);
-                                        const userLiked = likes.some((l) => l.userId === currentUserId);
-                                        const userDisliked = dislikes.some((l) => l.userId === currentUserId);
+                                        const commentLikes = (comment.commentLikes || []).filter((l) => !l.isDislike);
+                                        const userCommentReaction = (comment.commentLikes || []).find((l) => l.userId === currentUserId && !l.isDislike);
+                                        const userLiked = !!userCommentReaction;
+                                        const userCommentReactionType = userCommentReaction?.reactionType;
+                                        const userCommentReactionEmoji = userCommentReactionType ? getReactionEmoji(userCommentReactionType) : null;
                                         const isLongComment = comment.content.length > COMMENT_COLLAPSE_THRESHOLD;
 
                                         return (
@@ -1299,12 +1333,44 @@ export default function FeedClient({
                                                                 <CommentTextWithSeeMore content={comment.content} threshold={COMMENT_COLLAPSE_THRESHOLD} />
                                                             )}
                                                         </div>
-                                                        {/* Comment Actions - LinkedIn style */}
+                                                        {/* Comment Actions - LinkedIn style with Reaction Popup */}
                                                         <div className="flex items-center gap-3 mt-1 px-1">
-                                                            <button onClick={() => handleCommentLike(post.id, comment.id, false)} className={`flex items-center gap-1 text-xs font-medium transition-colors ${userLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
-                                                                <ThumbsUpIcon className={`h-3 w-3 ${userLiked ? "fill-current" : ""}`} />
-                                                                Like{likes.length > 0 && <span className="ml-0.5">· {likes.length}</span>}
-                                                            </button>
+                                                            <div
+                                                                className="relative"
+                                                                onMouseEnter={() => handleCommentReactionEnter(comment.id)}
+                                                                onMouseLeave={handleCommentReactionLeave}
+                                                            >
+                                                                {commentReactionHoverId === comment.id && (
+                                                                    <div
+                                                                        className="absolute bottom-full left-0 mb-1 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-2 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                                                        style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
+                                                                        onMouseEnter={() => handleCommentReactionEnter(comment.id)}
+                                                                        onMouseLeave={handleCommentReactionLeave}
+                                                                    >
+                                                                        {REACTIONS.map((reaction) => (
+                                                                            <button
+                                                                                key={reaction.label}
+                                                                                onClick={() => handleCommentReaction(post.id, comment.id, reaction.label)}
+                                                                                className="group relative flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-1 cursor-pointer"
+                                                                                title={reaction.label}
+                                                                            >
+                                                                                <span className="text-lg drop-shadow-sm">{reaction.emoji}</span>
+                                                                                <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[10px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
+                                                                                    {reaction.label}
+                                                                                </span>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                <button onClick={() => handleCommentLike(post.id, comment.id, false, userCommentReactionType || "Like")} className={`flex items-center gap-1 text-xs font-medium transition-colors ${userLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
+                                                                    {userLiked && userCommentReactionEmoji ? (
+                                                                        <span className="text-sm leading-none">{userCommentReactionEmoji}</span>
+                                                                    ) : (
+                                                                        <ThumbsUpIcon className={`h-3 w-3 ${userLiked ? "fill-current" : ""}`} />
+                                                                    )}
+                                                                    {userLiked && userCommentReactionType ? userCommentReactionType : "Like"}{commentLikes.length > 0 && <span className="ml-0.5">· {commentLikes.length}</span>}
+                                                                </button>
+                                                            </div>
                                                             <span className="text-gray-300 dark:text-gray-600">|</span>
                                                             <button onClick={() => {
                                                                 const userName = comment.user.name || "Anonymous";
@@ -1352,9 +1418,10 @@ export default function FeedClient({
                                                                     const isReplyPostAuthor = reply.user.id === post.user.id;
                                                                     const isReplyAdmin = reply.user.role === "admin" || reply.user.role === "superadmin";
                                                                     const rLikes = (reply.commentLikes || []).filter((l) => !l.isDislike);
-                                                                    const rDislikes = (reply.commentLikes || []).filter((l) => l.isDislike);
-                                                                    const rUserLiked = rLikes.some((l) => l.userId === currentUserId);
-                                                                    const rUserDisliked = rDislikes.some((l) => l.userId === currentUserId);
+                                                                    const rUserReaction = (reply.commentLikes || []).find((l) => l.userId === currentUserId && !l.isDislike);
+                                                                    const rUserLiked = !!rUserReaction;
+                                                                    const rUserReactionType = rUserReaction?.reactionType;
+                                                                    const rUserReactionEmoji = rUserReactionType ? getReactionEmoji(rUserReactionType) : null;
 
                                                                     return (
                                                                         <div key={reply.id} className="flex gap-2 mb-2">
@@ -1383,10 +1450,42 @@ export default function FeedClient({
                                                                                     )}
                                                                                 </div>
                                                                                 <div className="flex items-center gap-2 mt-0.5 px-1">
-                                                                                    <button onClick={() => handleCommentLike(post.id, reply.id, false)} className={`flex items-center gap-0.5 text-xs font-medium ${rUserLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
-                                                                                        <ThumbsUpIcon className={`h-2.5 w-2.5 ${rUserLiked ? "fill-current" : ""}`} />
-                                                                                        Like{rLikes.length > 0 && <span className="ml-0.5">· {rLikes.length}</span>}
-                                                                                    </button>
+                                                                                    <div
+                                                                                        className="relative"
+                                                                                        onMouseEnter={() => handleCommentReactionEnter(reply.id)}
+                                                                                        onMouseLeave={handleCommentReactionLeave}
+                                                                                    >
+                                                                                        {commentReactionHoverId === reply.id && (
+                                                                                            <div
+                                                                                                className="absolute bottom-full left-0 mb-1 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-2 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                                                                                style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
+                                                                                                onMouseEnter={() => handleCommentReactionEnter(reply.id)}
+                                                                                                onMouseLeave={handleCommentReactionLeave}
+                                                                                            >
+                                                                                                {REACTIONS.map((reaction) => (
+                                                                                                    <button
+                                                                                                        key={reaction.label}
+                                                                                                        onClick={() => handleCommentReaction(post.id, reply.id, reaction.label)}
+                                                                                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-1 cursor-pointer"
+                                                                                                        title={reaction.label}
+                                                                                                    >
+                                                                                                        <span className="text-base drop-shadow-sm">{reaction.emoji}</span>
+                                                                                                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[10px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
+                                                                                                            {reaction.label}
+                                                                                                        </span>
+                                                                                                    </button>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        )}
+                                                                                        <button onClick={() => handleCommentLike(post.id, reply.id, false, rUserReactionType || "Like")} className={`flex items-center gap-0.5 text-xs font-medium ${rUserLiked ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
+                                                                                            {rUserLiked && rUserReactionEmoji ? (
+                                                                                                <span className="text-sm leading-none">{rUserReactionEmoji}</span>
+                                                                                            ) : (
+                                                                                                <ThumbsUpIcon className={`h-2.5 w-2.5 ${rUserLiked ? "fill-current" : ""}`} />
+                                                                                            )}
+                                                                                            {rUserLiked && rUserReactionType ? rUserReactionType : "Like"}{rLikes.length > 0 && <span className="ml-0.5">· {rLikes.length}</span>}
+                                                                                        </button>
+                                                                                    </div>
                                                                                     <span className="text-gray-300 dark:text-gray-600">|</span>
                                                                                     <button onClick={() => {
                                                                                         const replyUserName = reply.user.name || "Anonymous";
