@@ -40,24 +40,31 @@ export default async function Home() {
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
 
     if (session) {
-        const [user, unreadCount, postsResult, activity] = await Promise.all([
-            db.user.findUnique({
-                where: { id: session.user.id },
-                select: { name: true, email: true, image: true, role: true, gender: true },
-            }),
-            getUnreadNotificationCount(),
-            getPosts(1, 20),
-            getUserActivity(session.user.id, 8),
-        ]);
-        if (user) {
-            navUser = { name: user.name, email: user.email, image: user.image, role: user.role };
-            userGender = user.gender;
-            isAdmin = user.role === "admin" || user.role === "superadmin";
+        try {
+            const [user, unreadCount, postsResult, activity] = await Promise.all([
+                db.user.findUnique({
+                    where: { id: session.user.id },
+                    select: { name: true, email: true, image: true, role: true, gender: true },
+                }),
+                getUnreadNotificationCount(),
+                getPosts(1, 20),
+                getUserActivity(session.user.id, 8),
+            ]);
+            if (user) {
+                navUser = { name: user.name, email: user.email, image: user.image, role: user.role };
+                userGender = user.gender;
+                isAdmin = user.role === "admin" || user.role === "superadmin";
+            }
+            notificationCount = unreadCount;
+            authPosts = postsResult.posts;
+            userActivity = activity;
+        } catch (error) {
+            console.error("Error fetching authenticated homepage data:", error);
         }
-        notificationCount = unreadCount;
-        authPosts = postsResult.posts;
-        userActivity = activity;
-    } else {
+    }
+
+    // Fetch public posts as fallback if not authenticated or user data is missing
+    if (!navUser) {
         publicPosts = await getPublicPosts(20);
     }
 

@@ -66,6 +66,7 @@ import {
     PostEngagementSummary,
     PostActionBar,
     PostCommentsSection,
+    CommentReactionSummary,
     getInitials,
     formatRelativeDate,
     formatFullDate,
@@ -1277,7 +1278,7 @@ export default function FeedClient({
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
+                                                        <div className="relative bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                                     {comment.user.name || "Anonymous"}
@@ -1331,6 +1332,15 @@ export default function FeedClient({
                                                                 </div>
                                                             ) : (
                                                                 <CommentTextWithSeeMore content={comment.content} threshold={COMMENT_COLLAPSE_THRESHOLD} />
+                                                            )}
+                                                            {/* Comment Reaction Indicator - LinkedIn style badge */}
+                                                            {commentLikes.length > 0 && (
+                                                                <span className="absolute -bottom-2.5 right-2 flex items-center gap-0.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-full px-1.5 py-0.5 shadow-sm">
+                                                                    <CommentReactionSummary
+                                                                        reactionTypes={commentLikes.map((l) => l.reactionType)}
+                                                                        count={commentLikes.length}
+                                                                    />
+                                                                </span>
                                                             )}
                                                         </div>
                                                         {/* Comment Actions - LinkedIn style with Reaction Popup */}
@@ -1430,7 +1440,7 @@ export default function FeedClient({
                                                                                 <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback>
                                                                             </Avatar>
                                                                             <div className="flex-1 min-w-0">
-                                                                                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5 border border-gray-100 dark:border-gray-800">
+                                                                                <div className="relative bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5 border border-gray-100 dark:border-gray-800">
                                                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{reply.user.name || "Anonymous"}</p>
                                                                                         {reply.user.profession && (
@@ -1447,6 +1457,15 @@ export default function FeedClient({
                                                                                         </div>
                                                                                     ) : (
                                                                                         <CommentTextWithSeeMore content={reply.content} threshold={COMMENT_COLLAPSE_THRESHOLD} isReply />
+                                                                                    )}
+                                                                                    {/* Reply Reaction Indicator - LinkedIn style badge */}
+                                                                                    {rLikes.length > 0 && (
+                                                                                        <span className="absolute -bottom-2 right-2 flex items-center gap-0.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-full px-1 py-0.5 shadow-sm">
+                                                                                            <CommentReactionSummary
+                                                                                                reactionTypes={rLikes.map((l) => l.reactionType)}
+                                                                                                count={rLikes.length}
+                                                                                            />
+                                                                                        </span>
                                                                                     )}
                                                                                 </div>
                                                                                 <div className="flex items-center gap-2 mt-0.5 px-1">
