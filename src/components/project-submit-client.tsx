@@ -48,7 +48,7 @@ export default function ProjectSubmitClient() {
     const requirements = React.useMemo(() => [
         {
             id: "title",
-            label: "Project title",
+            label: "Protocol title",
             met: formData.title.trim().length >= 5,
             hint: "At least 5 characters",
         },
@@ -68,7 +68,7 @@ export default function ProjectSubmitClient() {
             id: "category",
             label: "Category selected",
             met: !!formData.category,
-            hint: "Select a project category",
+            hint: "Select a protocol category",
         },
         {
             id: "document",
@@ -112,9 +112,9 @@ export default function ProjectSubmitClient() {
         try {
             const project = await submitProject({ ...formData, document: documentUrl || undefined });
             setSubmittedTrackingCode(project.trackingCode);
-            toast.success("Project submitted successfully!");
+            toast.success("Protocol submitted successfully!");
         } catch {
-            toast.error("Failed to submit project");
+            toast.error("Failed to submit protocol");
         } finally {
             setIsSubmitting(false);
         }
@@ -137,15 +137,15 @@ export default function ProjectSubmitClient() {
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                            Project Submitted Successfully!
+                            Protocol Submitted Successfully!
                         </h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Your project has been submitted for ethical review. Use the tracking code below to check your project status.
+                            Your protocol has been submitted for ethical review. Use the tracking code below to check your protocol status.
                         </p>
                     </div>
                     <div className="w-full max-w-sm p-4 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 uppercase tracking-wide">
-                            Your Project Tracking Code
+                            Your Protocol Tracking Code
                         </p>
                         <div className="flex items-center gap-2">
                             <span className="flex-1 text-xl font-bold font-mono text-blue-900 dark:text-blue-100 tracking-widest">
@@ -161,11 +161,11 @@ export default function ProjectSubmitClient() {
                         </div>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">
-                        Save this code. You can use it on the homepage to track your project status at any time — even without logging in.
+                        Save this code. You can use it on the homepage to track your protocol status at any time — even without logging in.
                     </p>
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={() => router.push("/projects")}>
-                            View My Projects
+                            View My Protocols
                         </Button>
                         <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => router.push("/")}>
                             Go to Homepage
@@ -180,9 +180,9 @@ export default function ProjectSubmitClient() {
     return (
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
             <CardHeader>
-                <CardTitle>Submit New Project</CardTitle>
+                <CardTitle>Submit New Protocol</CardTitle>
                 <CardDescription>
-                    Fill in all required fields to submit your project for ethical review
+                    Fill in all required fields to submit your protocol for ethical review
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -237,12 +237,12 @@ export default function ProjectSubmitClient() {
                     {/* Title */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium">
-                            Project Title <span className="text-red-500">*</span>
+                            Protocol Title <span className="text-red-500">*</span>
                         </label>
                         <Input
                             value={formData.title}
                             onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                            placeholder="Enter project title"
+                            placeholder="Enter protocol title"
                             required
                         />
                     </div>
@@ -258,7 +258,7 @@ export default function ProjectSubmitClient() {
                         <Textarea
                             value={formData.description}
                             onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-                            placeholder="Describe your project in detail"
+                            placeholder="Describe your protocol in detail"
                             className="min-h-[120px]"
                             required
                         />
@@ -275,7 +275,7 @@ export default function ProjectSubmitClient() {
                         <Textarea
                             value={formData.objectives}
                             onChange={(e) => setFormData((p) => ({ ...p, objectives: e.target.value }))}
-                            placeholder="What are the specific objectives of this research project?"
+                            placeholder="What are the specific objectives of this research protocol?"
                             className="min-h-[80px]"
                             required
                         />
@@ -310,7 +310,7 @@ export default function ProjectSubmitClient() {
                             <Input
                                 value={formData.location}
                                 onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
-                                placeholder="Project location"
+                                placeholder="Protocol location"
                             />
                         </div>
                         <div className="space-y-2">
@@ -444,7 +444,7 @@ export default function ProjectSubmitClient() {
                         ) : !canSubmit ? (
                             `Complete requirements to submit (${metCount}/${totalCount})`
                         ) : (
-                            "Submit Project"
+                            "Submit Protocol"
                         )}
                     </Button>
                 </form>

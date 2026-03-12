@@ -67,7 +67,7 @@ export default async function AdminOverviewPage() {
             border: "border-violet-200 dark:border-violet-800",
         },
         {
-            title: "Total Projects",
+            title: "Total Protocols",
             value: stats.totalProjects,
             icon: FolderIcon,
             color: "text-orange-600 dark:text-orange-400",
@@ -75,7 +75,7 @@ export default async function AdminOverviewPage() {
             border: "border-orange-200 dark:border-orange-800",
         },
         {
-            title: "Approved Projects",
+            title: "Approved Protocols",
             value: stats.approvedProjects,
             icon: ShieldCheckIcon,
             color: "text-emerald-600 dark:text-emerald-400",
@@ -83,7 +83,7 @@ export default async function AdminOverviewPage() {
             border: "border-emerald-200 dark:border-emerald-800",
         },
         {
-            title: "Pending Projects",
+            title: "Pending Protocols",
             value: stats.pendingProjects,
             icon: FolderIcon,
             color: "text-amber-600 dark:text-amber-400",

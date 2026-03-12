@@ -15,7 +15,7 @@ export default async function FeedsPage() {
             where: { id: session.user.id },
             select: { role: true, name: true, image: true, email: true, gender: true },
         }),
-        getPosts(1, 20),
+        getPosts(1, 20, session.user.id),
         getTrendingTags(5),
         getUserActivity(session.user.id, 8),
     ]);

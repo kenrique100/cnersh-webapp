@@ -87,7 +87,7 @@ export default async function ProfilePage() {
                             </div>
                             <div className="text-center">
                                 <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{totalProjects}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Projects</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Protocols</p>
                             </div>
                         </div>
                     </CardContent>
@@ -106,7 +106,7 @@ export default async function ProfilePage() {
                                 No activity yet
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Your posts and projects will appear here
+                                Your posts and protocols will appear here
                             </p>
                         </CardContent>
                     </Card>
@@ -157,7 +157,7 @@ export default async function ProfilePage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Project</span>
+                                                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Protocol</span>
                                                         <span className="text-xs text-gray-400">•</span>
                                                         <span className="text-xs text-gray-500 dark:text-gray-400">{timeAgo(project.createdAt)}</span>
                                                     </div>

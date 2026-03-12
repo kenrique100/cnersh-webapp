@@ -67,25 +67,25 @@ export default function ProjectDetailActions({
         setIsSubmitting(true);
         try {
             await updateProjectStatus(projectId, status, feedback || undefined);
-            toast.success(`Project ${status.toLowerCase().replace("_", " ")}`);
+            toast.success(`Protocol ${status.toLowerCase().replace("_", " ")}`);
             setFeedback("");
             router.refresh();
         } catch {
-            toast.error("Failed to update project status");
+            toast.error("Failed to update protocol status");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm("Are you sure you want to delete this project?")) return;
+        if (!confirm("Are you sure you want to delete this protocol?")) return;
         setIsDeleting(true);
         try {
             await deleteProject(projectId);
-            toast.success("Project deleted");
+            toast.success("Protocol deleted");
             router.push("/projects");
         } catch {
-            toast.error("Failed to delete project");
+            toast.error("Failed to delete protocol");
         } finally {
             setIsDeleting(false);
         }
@@ -95,11 +95,11 @@ export default function ProjectDetailActions({
         setIsSubmitting(true);
         try {
             await updateProject(projectId, { title: editTitle, description: editDescription });
-            toast.success("Project updated");
+            toast.success("Protocol updated");
             setShowEditForm(false);
             router.refresh();
         } catch {
-            toast.error("Failed to update project");
+            toast.error("Failed to update protocol");
         } finally {
             setIsSubmitting(false);
         }
@@ -118,7 +118,7 @@ export default function ProjectDetailActions({
                 videos: forwardVideos.length > 0 ? forwardVideos : undefined,
                 tags: forwardTags.length > 0 ? forwardTags : undefined,
             });
-            toast.success("Project posted to feeds!");
+            toast.success("Protocol posted to feeds!");
             setShowForwardForm(false);
             router.push("/feeds");
         } catch {
@@ -182,7 +182,7 @@ export default function ProjectDetailActions({
                     <CardContent className="pt-0 space-y-3">
                         {showEditForm ? (
                             <div className="space-y-3">
-                                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Project title" />
+                                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Protocol title" />
                                 <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description" className="min-h-[80px]" />
                                 <div className="flex gap-2">
                                     <Button onClick={handleEdit} disabled={isSubmitting} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -193,7 +193,7 @@ export default function ProjectDetailActions({
                             </div>
                         ) : showForwardForm ? (
                             <div className="space-y-3">
-                                <p className="text-xs text-gray-500">Compose your feed post. Project objectives are pre-filled below.</p>
+                                <p className="text-xs text-gray-500">Compose your feed post. Protocol objectives are pre-filled below.</p>
                                 <Textarea
                                     value={forwardContent}
                                     onChange={(e) => setForwardContent(e.target.value)}

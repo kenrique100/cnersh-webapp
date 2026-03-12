@@ -62,13 +62,16 @@ export async function createPost(data: { content: string; image?: string; video?
     return post;
 }
 
-export async function getPosts(page: number = 1, limit: number = 10) {
+export async function getPosts(page: number = 1, limit: number = 10, userId?: string) {
     const skip = (page - 1) * limit;
 
     try {
+        const whereClause = userId
+            ? { deleted: false, userId }
+            : { deleted: false };
         const [posts, total] = await Promise.all([
             db.post.findMany({
-                where: { deleted: false },
+                where: whereClause,
                 include: {
                     user: { select: { id: true, name: true, image: true, profession: true, title: true } },
                     _count: { select: { comments: true, likes: true } },
@@ -93,7 +96,7 @@ export async function getPosts(page: number = 1, limit: number = 10) {
                 skip,
                 take: limit,
             }),
-            db.post.count({ where: { deleted: false } }),
+            db.post.count({ where: whereClause }),
         ]);
 
         // Build recentActivity for each post

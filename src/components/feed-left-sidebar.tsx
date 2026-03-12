@@ -21,7 +21,7 @@ interface FeedLeftSidebarProps {
 const navItems = [
   { href: "/update-profile", label: "My Profile", icon: User },
   { href: "/feeds", label: "Feeds", icon: Rss },
-  { href: "/projects", label: "My Projects", icon: FolderOpen },
+  { href: "/projects", label: "My Protocols", icon: FolderOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -104,7 +104,7 @@ export default function FeedLeftSidebar({
                 <FolderIcon className="w-4 h-4 text-purple-700 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Project Submissions</p>
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Protocol Submissions</p>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400">Submit for ethical review</p>
               </div>
             </div>

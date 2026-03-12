@@ -91,7 +91,7 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
             {projects.length === 0 ? (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <p className="text-gray-500">No projects to review</p>
+                        <p className="text-gray-500">No protocols to review</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -135,7 +135,7 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
                                     {project.location && ` • ${project.location}`}
                                 </div>
 
-                                {/* Assign reviewer - only for superadmin and submitted projects */}
+                                {/* Assign reviewer - only for superadmin and submitted protocols */}
                                 {isSuperAdmin && (project.status === "SUBMITTED" || project.status === "PENDING_REVIEW") && (
                                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                                         <div className="flex items-center gap-2">
