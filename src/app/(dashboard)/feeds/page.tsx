@@ -10,15 +10,28 @@ export const dynamic = "force-dynamic";
 export default async function FeedsPage() {
     const session = await authIsRequired();
 
-    const [user, { posts }, trendingTags, userActivity] = await Promise.all([
-        db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true, name: true, image: true, email: true, gender: true },
-        }),
-        getPosts(1, 20, session.user.id),
-        getTrendingTags(5),
-        getUserActivity(session.user.id, 8),
-    ]);
+    let user: { role: string | null; name: string | null; image: string | null; email: string; gender: string | null } | null = null;
+    let posts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
+    let trendingTags: Awaited<ReturnType<typeof getTrendingTags>> = [];
+    let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
+
+    try {
+        const [userData, postsResult, tags, activity] = await Promise.all([
+            db.user.findUnique({
+                where: { id: session.user.id },
+                select: { role: true, name: true, image: true, email: true, gender: true },
+            }),
+            getPosts(1, 20),
+            getTrendingTags(5),
+            getUserActivity(session.user.id, 8),
+        ]);
+        user = userData;
+        posts = postsResult.posts;
+        trendingTags = tags;
+        userActivity = activity;
+    } catch (error) {
+        console.error("Error fetching feeds page data:", error);
+    }
 
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 

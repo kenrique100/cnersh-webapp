@@ -9,17 +9,28 @@ export const dynamic = "force-dynamic";
 export default async function ProjectReviewPage() {
     const session = await authIsRequired();
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
+    let userRole: string | null = null;
+    try {
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        userRole = user?.role ?? null;
+    } catch (error) {
+        console.error("Error fetching user for protocol review:", error);
+    }
 
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
+    if (userRole !== "admin" && userRole !== "superadmin") {
         redirect("/dashboard");
     }
 
-    const projects = await getAllProjects();
-    const isSuperAdmin = user?.role === "superadmin";
+    let projects: Awaited<ReturnType<typeof getAllProjects>> = [];
+    try {
+        projects = await getAllProjects();
+    } catch (error) {
+        console.error("Error fetching protocols for review:", error);
+    }
+    const isSuperAdmin = userRole === "superadmin";
 
     // Super admin can see the list of admins to assign reviewers
     let adminUsers: Awaited<ReturnType<typeof getAdminUsers>> = [];

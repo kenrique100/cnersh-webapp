@@ -10,12 +10,18 @@ export const dynamic = "force-dynamic";
 export default async function FeedModerationPage() {
     const session = await authIsRequired();
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
+    let userRole: string | null = null;
+    try {
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        userRole = user?.role ?? null;
+    } catch (error) {
+        console.error("Error fetching user for feed moderation:", error);
+    }
 
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
+    if (userRole !== "admin" && userRole !== "superadmin") {
         redirect("/dashboard");
     }
 
