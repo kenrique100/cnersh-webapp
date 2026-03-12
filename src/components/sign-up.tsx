@@ -1113,7 +1113,7 @@ export function SignUpForm() {
                                                     </div>
                                                 </ScrollArea>
                                                 {/* Bottom Left Button Footer */}
-                                                <div className="flex justify-start items-center px-6 py-4 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 shrink-0">
+                                                <div className="flex justify-between items-center px-6 py-4 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 shrink-0">
                                                     <Button
                                                         onClick={() => {
                                                             setTermsDialogOpen(false);
@@ -1123,6 +1123,14 @@ export function SignUpForm() {
                                                     >
                                                         I Understand and Agree
                                                     </Button>
+                                                    <a
+                                                        href="/pages/privacy-terms"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                                                    >
+                                                        View full Privacy &amp; Terms
+                                                    </a>
                                                 </div>
                                             </DialogContent>
                                         </Dialog>

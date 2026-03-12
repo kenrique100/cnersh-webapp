@@ -4,6 +4,7 @@ import { TrendingUp, Newspaper, Hash, SearchIcon, PenLineIcon, MessageCircleIcon
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import ProjectTracker from "@/components/project-tracker";
+import SidebarFooter from "@/components/sidebar-footer";
 
 interface TrendingTag {
   tag: string;
@@ -177,6 +178,9 @@ export default function FeedRightSidebar({ trendingTags = [], userActivity = [],
           </p>
         </Card>
       )}
+
+      {/* Sidebar Footer */}
+      <SidebarFooter />
     </div>
   );
 }
