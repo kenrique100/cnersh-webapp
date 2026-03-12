@@ -520,7 +520,7 @@ export default function ProtocolFormWizard() {
                 timeline,
                 budget: form.fundingAmount || undefined,
                 document: form.piCv.url || undefined,
-                formData: form as unknown as Record<string, unknown>,
+                formData: JSON.parse(JSON.stringify(form)) as Record<string, unknown>,
             });
             setSubmittedTrackingCode(project.trackingCode);
             clearDraft();
@@ -785,7 +785,7 @@ export default function ProtocolFormWizard() {
                             <Textarea value={form.studySummaryEnglish} onChange={(e) => updateField("studySummaryEnglish", e.target.value)} placeholder="Provide a concise summary of the study in English..." className="min-h-[150px]" />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Study Summary in French <span className="text-gray-400 text-xs">(Résumé de l&apos;étude)</span></label>
+                            <label className="text-sm font-medium">Study Summary in French <span className="text-gray-400 text-xs">(Résumé de l&#39;étude)</span></label>
                             <Textarea value={form.studySummaryFrench} onChange={(e) => updateField("studySummaryFrench", e.target.value)} placeholder="Fournissez un résumé concis de l'étude en français..." className="min-h-[150px]" />
                         </div>
                     </div>
