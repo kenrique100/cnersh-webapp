@@ -19,15 +19,26 @@ export default async function FeedModerationPage() {
         redirect("/dashboard");
     }
 
-    const posts = await db.post.findMany({
-        where: { deleted: false },
-        include: {
-            user: { select: { id: true, name: true, image: true } },
-            _count: { select: { comments: true, likes: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-    });
+    let posts: {
+        id: string;
+        content: string;
+        createdAt: Date;
+        user: { id: string; name: string | null; image: string | null };
+        _count: { comments: number; likes: number };
+    }[] = [];
+    try {
+        posts = await db.post.findMany({
+            where: { deleted: false },
+            include: {
+                user: { select: { id: true, name: true, image: true } },
+                _count: { select: { comments: true, likes: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+        });
+    } catch (error) {
+        console.error("Error fetching posts for moderation:", error);
+    }
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">

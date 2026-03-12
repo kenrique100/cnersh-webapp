@@ -177,14 +177,7 @@ export default async function Home() {
                 </div>
             </div>
 
-            {/* Footer */}
-            <footer className="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
-                <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-                    <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    &copy; {new Date().getFullYear()} CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
-                    </p>
-                </div>
-            </footer>
+
         </div>
     );
 }

@@ -105,7 +105,7 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
                                 <div className="flex items-start justify-between">
                                     <div
                                         className="cursor-pointer flex-1"
-                                        onClick={() => router.push(`/projects/${project.id}`)}
+                                        onClick={() => router.push(`/protocols/${project.id}`)}
                                     >
                                         <CardTitle className="text-base">{project.title}</CardTitle>
                                         <p className="text-xs text-gray-500 mt-1">
@@ -126,7 +126,7 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
                             <CardContent className="pt-0">
                                 <p
                                     className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 cursor-pointer"
-                                    onClick={() => router.push(`/projects/${project.id}`)}
+                                    onClick={() => router.push(`/protocols/${project.id}`)}
                                 >
                                     {project.description}
                                 </p>
