@@ -15,6 +15,7 @@ import {
     ArrowLeftIcon,
     DownloadIcon,
     HashIcon,
+    EyeIcon,
 } from "lucide-react";
 import Link from "next/link";
 import ProjectDetailActions from "./project-detail-actions";
@@ -281,6 +282,295 @@ export default async function ProjectDetailPage({
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* ── Comprehensive Protocol Data (from formData JSON) ── */}
+                    {project.formData && (() => {
+                        const fd = project.formData as Record<string, unknown>;
+                        const piCv = fd.piCv as { url?: string; name?: string } | undefined;
+                        const coInvestigators = fd.coInvestigators as Array<{ name: string; institution: string; email: string; role: string; cvUrl?: string; cvName?: string }> | undefined;
+                        const fundingDocument = fd.fundingDocument as { url?: string; name?: string } | undefined;
+                        const infoSheetEnglish = fd.infoSheetEnglish as { url?: string; name?: string } | undefined;
+                        const infoSheetFrench = fd.infoSheetFrench as { url?: string; name?: string } | undefined;
+                        const consentFormEnglish = fd.consentFormEnglish as { url?: string; name?: string } | undefined;
+                        const consentFormFrench = fd.consentFormFrench as { url?: string; name?: string } | undefined;
+                        const dataCollectionTools = fd.dataCollectionTools as { url?: string; name?: string } | undefined;
+                        const budgetDocument = fd.budgetDocument as { url?: string; name?: string } | undefined;
+                        const authorizationLetter = fd.authorizationLetter as { url?: string; name?: string } | undefined;
+                        const paymentReceipt = fd.paymentReceipt as { url?: string; name?: string } | undefined;
+                        const investigatorsBrochure = fd.investigatorsBrochure as { url?: string; name?: string } | undefined;
+                        const participantInsurance = fd.participantInsurance as { url?: string; name?: string } | undefined;
+                        const protocolErrorInsurance = fd.protocolErrorInsurance as { url?: string; name?: string } | undefined;
+                        const endOfTrialAgreement = fd.endOfTrialAgreement as { url?: string; name?: string } | undefined;
+                        const foreignEthicsApproval = fd.foreignEthicsApproval as { url?: string; name?: string } | undefined;
+                        const materialTransferAgreement = fd.materialTransferAgreement as { url?: string; name?: string } | undefined;
+                        const dataSharingAgreement = fd.dataSharingAgreement as { url?: string; name?: string } | undefined;
+                        const specificObjectives = fd.specificObjectives as string[] | undefined;
+
+                        const s = (key: string): string => {
+                            const v = fd[key];
+                            return typeof v === "string" ? v : "";
+                        };
+
+                        const FileLink = ({ file, label }: { file: { url?: string; name?: string } | undefined; label: string }) => {
+                            if (!file?.url) return null;
+                            return (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <FileTextIcon className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                    <span className="text-gray-600 dark:text-gray-400 shrink-0">{label}:</span>
+                                    <a href={file.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline truncate flex items-center gap-1">
+                                        {file.name || "View"} <EyeIcon className="h-3 w-3" />
+                                    </a>
+                                </div>
+                            );
+                        };
+
+                        return (
+                            <>
+                                {/* Principal Investigator */}
+                                {(s("piFullName") || s("piInstitution")) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                                <UserIcon className="h-4 w-4" />
+                                                Principal Investigator
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                                {s("piFullName") && <div><span className="text-gray-500 dark:text-gray-400">Name:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("piFullName")}</span></div>}
+                                                {s("piInstitution") && <div><span className="text-gray-500 dark:text-gray-400">Institution:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("piInstitution")}</span></div>}
+                                                {s("piEmail") && <div><span className="text-gray-500 dark:text-gray-400">Email:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("piEmail")}</span></div>}
+                                                {s("piTelephone") && <div><span className="text-gray-500 dark:text-gray-400">Tel:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("piTelephone")}</span></div>}
+                                                {s("piQualification") && <div><span className="text-gray-500 dark:text-gray-400">Qualification:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("piQualification")}</span></div>}
+                                                {s("piExperience") && <div><span className="text-gray-500 dark:text-gray-400">Experience:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("piExperience")} years</span></div>}
+                                            </div>
+                                            <FileLink file={piCv} label="CV" />
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Co-Investigators */}
+                                {coInvestigators && coInvestigators.length > 0 && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Co-Investigators</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-3">
+                                            {coInvestigators.map((ci, i) => (
+                                                <div key={i} className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 text-sm">
+                                                    <div className="font-medium text-gray-800 dark:text-gray-200">{ci.name}</div>
+                                                    <div className="text-gray-500 dark:text-gray-400">{ci.institution} · {ci.role} · {ci.email}</div>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Sponsor / Funding */}
+                                {s("sponsorName") && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Sponsor / Funding</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                                <div><span className="text-gray-500 dark:text-gray-400">Sponsor:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("sponsorName")}</span></div>
+                                                {s("sponsorCountry") && <div><span className="text-gray-500 dark:text-gray-400">Country:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("sponsorCountry")}</span></div>}
+                                                {s("fundingSourceType") && <div><span className="text-gray-500 dark:text-gray-400">Type:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("fundingSourceType")}</span></div>}
+                                                {s("fundingAmount") && <div><span className="text-gray-500 dark:text-gray-400">Amount:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("fundingAmount")}</span></div>}
+                                            </div>
+                                            <FileLink file={fundingDocument} label="Funding Document" />
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Study Summary */}
+                                {(s("studySummaryEnglish") || s("studySummaryFrench")) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Study Summary</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-4">
+                                            {s("studySummaryEnglish") && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">English</p>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("studySummaryEnglish")}</p>
+                                                </div>
+                                            )}
+                                            {s("studySummaryFrench") && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">French</p>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("studySummaryFrench")}</p>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Research Background */}
+                                {s("researchBackground") && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Research Background & Introduction</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{s("researchBackground")}</p>
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Research Question & Hypothesis */}
+                                {(s("mainResearchQuestion") || s("researchHypothesis")) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Research Question & Hypothesis</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-3">
+                                            {s("mainResearchQuestion") && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Main Research Question</p>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("mainResearchQuestion")}</p>
+                                                </div>
+                                            )}
+                                            {s("researchHypothesis") && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hypothesis</p>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("researchHypothesis")}</p>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Research Objectives */}
+                                {(s("generalObjective") || (specificObjectives && specificObjectives.some(o => o))) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Research Objectives</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-3">
+                                            {s("generalObjective") && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">General Objective</p>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300">{s("generalObjective")}</p>
+                                                </div>
+                                            )}
+                                            {specificObjectives && specificObjectives.filter(o => o).length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Specific Objectives</p>
+                                                    <ol className="list-decimal list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                                                        {specificObjectives.filter(o => o).map((o, i) => <li key={i}>{o}</li>)}
+                                                    </ol>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Literature Review */}
+                                {s("literatureReview") && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Literature Review</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{s("literatureReview")}</p>
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Methodology */}
+                                {(s("studyLocation") || s("targetPopulation") || s("sampleSize")) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Methodology</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                                {s("methodStudyType") && <div><span className="text-gray-500 dark:text-gray-400">Study Type:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("methodStudyType")}</span></div>}
+                                                {s("studyLocation") && <div><span className="text-gray-500 dark:text-gray-400">Location:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("studyLocation")}</span></div>}
+                                                {s("studyStartDate") && <div><span className="text-gray-500 dark:text-gray-400">Start Date:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("studyStartDate")}</span></div>}
+                                                {s("studyEndDate") && <div><span className="text-gray-500 dark:text-gray-400">End Date:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("studyEndDate")}</span></div>}
+                                                {s("targetPopulation") && <div><span className="text-gray-500 dark:text-gray-400">Target Population:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("targetPopulation")}</span></div>}
+                                                {s("sampleSize") && <div><span className="text-gray-500 dark:text-gray-400">Sample Size:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("sampleSize")}</span></div>}
+                                                {s("samplingMethod") && <div><span className="text-gray-500 dark:text-gray-400">Sampling Method:</span> <span className="font-medium text-gray-800 dark:text-gray-200">{s("samplingMethod")}</span></div>}
+                                            </div>
+                                            {s("inclusionCriteria") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Inclusion Criteria</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("inclusionCriteria")}</p></div>
+                                            )}
+                                            {s("exclusionCriteria") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Exclusion Criteria</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("exclusionCriteria")}</p></div>
+                                            )}
+                                            {s("dataCollectionMethods") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data Collection Methods</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("dataCollectionMethods")}</p></div>
+                                            )}
+                                            {s("dataAnalysisPlan") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data Analysis Plan</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("dataAnalysisPlan")}</p></div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Ethical Considerations */}
+                                {(s("participantProtection") || s("potentialRisks") || s("expectedBenefits")) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Ethical Considerations</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-3">
+                                            {s("participantProtection") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Participant Protection</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("participantProtection")}</p></div>
+                                            )}
+                                            {s("confidentialityMeasures") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Confidentiality Measures</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("confidentialityMeasures")}</p></div>
+                                            )}
+                                            {s("potentialRisks") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Potential Risks</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("potentialRisks")}</p></div>
+                                            )}
+                                            {s("expectedBenefits") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Expected Benefits</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("expectedBenefits")}</p></div>
+                                            )}
+                                            {s("compensation") && (
+                                                <div><p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Compensation</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s("compensation")}</p></div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Uploaded Documents */}
+                                {(infoSheetEnglish?.url || infoSheetFrench?.url || consentFormEnglish?.url || consentFormFrench?.url ||
+                                  dataCollectionTools?.url || budgetDocument?.url || authorizationLetter?.url || paymentReceipt?.url ||
+                                  investigatorsBrochure?.url || participantInsurance?.url || protocolErrorInsurance?.url ||
+                                  endOfTrialAgreement?.url || foreignEthicsApproval?.url || materialTransferAgreement?.url || dataSharingAgreement?.url) && (
+                                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                                <FileTextIcon className="h-4 w-4" />
+                                                Uploaded Documents
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-0 space-y-2">
+                                            <FileLink file={infoSheetEnglish} label="Info Sheet (English)" />
+                                            <FileLink file={infoSheetFrench} label="Info Sheet (French)" />
+                                            <FileLink file={consentFormEnglish} label="Consent Form (English)" />
+                                            <FileLink file={consentFormFrench} label="Consent Form (French)" />
+                                            <FileLink file={dataCollectionTools} label="Data Collection Tools" />
+                                            <FileLink file={budgetDocument} label="Budget Document" />
+                                            <FileLink file={authorizationLetter} label="Authorization Letter" />
+                                            <FileLink file={paymentReceipt} label="Payment Receipt" />
+                                            <FileLink file={investigatorsBrochure} label="Investigator's Brochure" />
+                                            <FileLink file={participantInsurance} label="Participant Insurance" />
+                                            <FileLink file={protocolErrorInsurance} label="Protocol Error Insurance" />
+                                            <FileLink file={endOfTrialAgreement} label="End-of-Trial Agreement" />
+                                            <FileLink file={foreignEthicsApproval} label="Foreign Ethics Approval" />
+                                            <FileLink file={materialTransferAgreement} label="Material Transfer Agreement" />
+                                            <FileLink file={dataSharingAgreement} label="Data Sharing Agreement" />
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </>
+                        );
+                    })()}
 
                     {/* Feedback */}
                     {project.feedback && (
