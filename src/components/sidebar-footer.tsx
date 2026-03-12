@@ -22,8 +22,16 @@ function SidebarFooterLink({
     );
   }
 
+  if (!href) {
+    return (
+      <span className={className} role="link" aria-disabled="true">
+        {children}
+      </span>
+    );
+  }
+
   return (
-    <Link href={href || "#"} className={className}>
+    <Link href={href} className={className}>
       {children}
     </Link>
   );

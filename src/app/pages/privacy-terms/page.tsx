@@ -225,11 +225,11 @@ export default async function PrivacyTermsPage() {
                 {/* Contact Footer */}
                 <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
                     <p>
-                        For questions about our privacy policy or terms, please contact us through the{" "}
-                        <Link href="/" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
-                            Help Center
-                        </Link>
-                        .
+                        For questions about our privacy policy or terms, please use the{" "}
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">
+                            Help Center chat
+                        </span>
+                        {" "}button at the bottom-right of the page to contact support.
                     </p>
                     <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                         CNERSH © {new Date().getFullYear()}
