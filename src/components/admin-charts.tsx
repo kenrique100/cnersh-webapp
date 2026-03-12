@@ -88,11 +88,11 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
                 </CardContent>
             </Card>
 
-            {/* Project Status Pie */}
+            {/* Protocol Status Pie */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                        Project Status
+                        Protocol Status
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -119,7 +119,7 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
                         </ResponsiveContainer>
                     ) : (
                         <div className="h-[220px] flex items-center justify-center text-sm text-gray-400">
-                            No project data
+                            No protocol data
                         </div>
                     )}
                 </CardContent>

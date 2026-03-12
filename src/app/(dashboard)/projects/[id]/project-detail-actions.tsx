@@ -193,7 +193,7 @@ export default function ProjectDetailActions({
                             </div>
                         ) : showForwardForm ? (
                             <div className="space-y-3">
-                                <p className="text-xs text-gray-500">Compose your feed post. Project objectives are pre-filled below.</p>
+                                <p className="text-xs text-gray-500">Compose your feed post. Protocol objectives are pre-filled below.</p>
                                 <Textarea
                                     value={forwardContent}
                                     onChange={(e) => setForwardContent(e.target.value)}
