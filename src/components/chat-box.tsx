@@ -13,6 +13,13 @@ export default function ChatBox() {
     const [isSending, setIsSending] = React.useState(false);
     const [sent, setSent] = React.useState(false);
 
+    // Listen for custom event to open the chatbox from other components
+    React.useEffect(() => {
+        const handleOpenChatBox = () => setIsOpen(true);
+        window.addEventListener("open-chatbox", handleOpenChatBox);
+        return () => window.removeEventListener("open-chatbox", handleOpenChatBox);
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!message.trim() || isSending) return;
