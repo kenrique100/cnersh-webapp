@@ -22,6 +22,10 @@ export async function createPost(data: { content: string; image?: string; video?
             linkUrl: data.linkUrl || null,
             userId: session.user.id,
         },
+        include: {
+            user: { select: { id: true, name: true, image: true, profession: true, title: true } },
+            _count: { select: { comments: true, likes: true } },
+        },
     });
 
     // Notify mentioned users in the post content
@@ -82,6 +86,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
                             user: { select: { id: true, name: true, image: true } },
                         },
                         orderBy: { createdAt: "desc" },
+                        take: 20,
                     },
                     comments: {
                         where: { deleted: false },
@@ -141,6 +146,7 @@ export async function getPublicPosts(limit: number = 10) {
                 _count: { select: { comments: true, likes: true } },
                 likes: {
                     select: { reactionType: true },
+                    take: 20,
                 },
             },
             orderBy: { createdAt: "desc" },

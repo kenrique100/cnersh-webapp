@@ -10,24 +10,41 @@ export const dynamic = "force-dynamic";
 export default async function FeedModerationPage() {
     const session = await authIsRequired();
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
+    let userRole: string | null = null;
+    try {
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        userRole = user?.role ?? null;
+    } catch (error) {
+        console.error("Error fetching user for feed moderation:", error);
+    }
 
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
+    if (userRole !== "admin" && userRole !== "superadmin") {
         redirect("/dashboard");
     }
 
-    const posts = await db.post.findMany({
-        where: { deleted: false },
-        include: {
-            user: { select: { id: true, name: true, image: true } },
-            _count: { select: { comments: true, likes: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-    });
+    let posts: {
+        id: string;
+        content: string;
+        createdAt: Date;
+        user: { id: string; name: string | null; image: string | null };
+        _count: { comments: number; likes: number };
+    }[] = [];
+    try {
+        posts = await db.post.findMany({
+            where: { deleted: false },
+            include: {
+                user: { select: { id: true, name: true, image: true } },
+                _count: { select: { comments: true, likes: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+        });
+    } catch (error) {
+        console.error("Error fetching posts for moderation:", error);
+    }
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">

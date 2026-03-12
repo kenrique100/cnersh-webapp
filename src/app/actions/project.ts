@@ -81,7 +81,7 @@ export async function submitProject(data: {
             await notifyAdmins({
                 type: "PROJECT_STATUS",
                 message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
-                link: `/admin/project-review`,
+                link: `/admin/protocol-review`,
                 excludeUserId: session.user.id,
             });
         } catch (error) {
@@ -204,7 +204,7 @@ export async function updateProjectStatus(
         data: {
             type: "PROJECT_STATUS",
             message: statusMessage,
-            link: `/projects/${projectId}`,
+            link: `/protocols/${projectId}`,
             userId: project.userId,
         },
     });
@@ -221,7 +221,7 @@ export async function updateProjectStatus(
                 userName: projectOwner.name || "User",
                 notificationMessage: statusMessage,
                 notificationType: "PROJECT_STATUS",
-                actionUrl: `/projects/${projectId}`,
+                actionUrl: `/protocols/${projectId}`,
             }).catch((err) => console.error("Error sending project status email:", err));
         }
     } catch (error) {
@@ -426,7 +426,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
         data: {
             type: "REVIEW_ASSIGNED",
             message: `You have been assigned to review the protocol: "${project.title}"`,
-            link: `/projects/${projectId}`,
+            link: `/protocols/${projectId}`,
             userId: adminId,
         },
     });
@@ -439,7 +439,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
                 userName: admin.name || "Admin",
                 notificationMessage: `You have been assigned to review the protocol: "${project.title}" submitted by ${project.user.name || "a user"}.`,
                 notificationType: "REVIEW_ASSIGNED",
-                actionUrl: `/projects/${projectId}`,
+                actionUrl: `/protocols/${projectId}`,
             }).catch((err) => console.error("Error sending review assignment email:", err));
         }
     } catch (error) {

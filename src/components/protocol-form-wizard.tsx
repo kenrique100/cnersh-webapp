@@ -572,7 +572,7 @@ export default function ProtocolFormWizard() {
                         Save this code. You can use it on the homepage to track your protocol status at any time — even without logging in.
                     </p>
                     <div className="flex gap-3">
-                        <Button variant="outline" onClick={() => router.push("/projects")}>View My Protocols</Button>
+                        <Button variant="outline" onClick={() => router.push("/protocols")}>View My Protocols</Button>
                         <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => router.push("/")}>Go to Homepage</Button>
                     </div>
                 </CardContent>

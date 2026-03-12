@@ -62,7 +62,7 @@ export default async function DashboardPage() {
                         </Card>
                     </Link>
 
-                    <Link href="/projects">
+                    <Link href="/protocols">
                         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow cursor-pointer h-full">
                             <CardContent className="flex flex-col items-center justify-center py-6 text-center">
                                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 mb-3">

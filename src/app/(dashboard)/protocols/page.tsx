@@ -69,7 +69,7 @@ export default async function ProjectsPage() {
                             </p>
                         </div>
                     </div>
-                    <Link href="/projects/submit" className="self-start sm:self-auto">
+                    <Link href="/protocols/submit" className="self-start sm:self-auto">
                         <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm">
                             Submit New Protocol
                         </Button>
@@ -111,7 +111,7 @@ export default async function ProjectsPage() {
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                     Submit your first protocol for ethical review
                                 </p>
-                                <Link href="/projects/submit">
+                                <Link href="/protocols/submit">
                                     <Button className="bg-violet-600 hover:bg-violet-700 text-white">
                                         Submit Protocol
                                     </Button>
@@ -142,7 +142,7 @@ export default async function ProjectsPage() {
                                         {/* Projects Grid */}
                                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                             {statusProjects.map((project) => (
-                                                <Link key={project.id} href={`/projects/${project.id}`}>
+                                                <Link key={project.id} href={`/protocols/${project.id}`}>
                                                 <Card
                                                     className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden cursor-pointer"
                                                 >

@@ -76,7 +76,7 @@ export default async function ProjectDetailPage({
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Back Button */}
-                <Link href="/projects" className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-6 transition-colors">
+                <Link href="/protocols" className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-6 transition-colors">
                     <ArrowLeftIcon className="h-4 w-4" />
                     Back to Protocols
                 </Link>

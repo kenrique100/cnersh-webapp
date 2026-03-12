@@ -83,7 +83,7 @@ export default function ProjectDetailActions({
         try {
             await deleteProject(projectId);
             toast.success("Protocol deleted");
-            router.push("/projects");
+            router.push("/protocols");
         } catch {
             toast.error("Failed to delete protocol");
         } finally {

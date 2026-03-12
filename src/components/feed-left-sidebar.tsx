@@ -21,7 +21,7 @@ interface FeedLeftSidebarProps {
 const navItems = [
   { href: "/update-profile", label: "My Profile", icon: User },
   { href: "/feeds", label: "Feeds", icon: Rss },
-  { href: "/projects", label: "My Protocols", icon: FolderOpen },
+  { href: "/protocols", label: "My Protocols", icon: FolderOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
