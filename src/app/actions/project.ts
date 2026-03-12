@@ -2,7 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { ProjectStatus } from "@/generated/prisma";
+import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { randomBytes } from "crypto";
@@ -33,6 +33,7 @@ export async function submitProject(data: {
     timeline?: string;
     budget?: string;
     document?: string;
+    formData?: Record<string, unknown>;
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -61,6 +62,7 @@ export async function submitProject(data: {
             timeline: data.timeline || null,
             budget: data.budget || null,
             document: data.document || null,
+            formData: data.formData ? (data.formData as Prisma.InputJsonValue) : undefined,
             status: projectStatus,
             userId: session.user.id,
             statusHistory: {
@@ -277,6 +279,7 @@ export async function updateProject(projectId: string, data: {
     location?: string;
     timeline?: string;
     budget?: string;
+    formData?: Record<string, unknown>;
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -309,6 +312,7 @@ export async function updateProject(projectId: string, data: {
             ...(data.location !== undefined && { location: data.location }),
             ...(data.timeline !== undefined && { timeline: data.timeline }),
             ...(data.budget !== undefined && { budget: data.budget }),
+            ...(data.formData !== undefined && { formData: data.formData as Prisma.InputJsonValue }),
         },
     });
 }

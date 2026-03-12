@@ -189,6 +189,7 @@ model Project {
   timeline     String?
   budget       String?
   document     String?
+  formData     Json?
   status       ProjectStatus       @default(DRAFT)
   feedback     String?
   userId       String
