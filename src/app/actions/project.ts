@@ -46,7 +46,7 @@ export async function submitProject(data: {
 
     // Admin-submitted projects are auto-approved, no review needed
     const projectStatus = isAdmin ? ProjectStatus.APPROVED : ProjectStatus.SUBMITTED;
-    const statusComment = isAdmin ? "Project submitted and auto-approved by admin" : "Project submitted";
+    const statusComment = isAdmin ? "Protocol submitted and auto-approved by admin" : "Protocol submitted";
 
     const trackingCode = await generateTrackingCode();
 
@@ -78,7 +78,7 @@ export async function submitProject(data: {
         try {
             await notifyAdmins({
                 type: "PROJECT_STATUS",
-                message: `${session.user.name || "A user"} submitted a new project: "${project.title}"`,
+                message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
                 link: `/admin/project-review`,
                 excludeUserId: session.user.id,
             });
@@ -197,7 +197,7 @@ export async function updateProjectStatus(
     });
 
     // Create notification for project owner
-    const statusMessage = `Your project "${project.title}" has been ${status.toLowerCase().replace("_", " ")}`;
+    const statusMessage = `Your protocol "${project.title}" has been ${status.toLowerCase().replace("_", " ")}`;
     await db.notification.create({
         data: {
             type: "PROJECT_STATUS",
@@ -230,7 +230,7 @@ export async function updateProjectStatus(
     await db.auditLog.create({
         data: {
             action: `PROJECT_${status}`,
-            details: `Project "${project.title}" status changed to ${status}${feedback ? `. Feedback: ${feedback}` : ""}`,
+            details: `Protocol "${project.title}" status changed to ${status}${feedback ? `. Feedback: ${feedback}` : ""}`,
             targetId: projectId,
             userId: session.user.id,
         },
@@ -248,9 +248,9 @@ export async function deleteProject(projectId: string) {
         select: { userId: true },
     });
 
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error("Protocol not found");
 
-    // Only owner can delete their own projects
+    // Only owner can delete their own protocols
     if (project.userId !== session.user.id) {
         const user = await db.user.findUnique({
             where: { id: session.user.id },
@@ -286,9 +286,9 @@ export async function updateProject(projectId: string, data: {
         select: { userId: true },
     });
 
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error("Protocol not found");
 
-    // Only owner can edit their own projects
+    // Only owner can edit their own protocols
     if (project.userId !== session.user.id) {
         const user = await db.user.findUnique({
             where: { id: session.user.id },
@@ -327,9 +327,9 @@ export async function forwardProjectToFeed(projectId: string, data: {
         select: { userId: true, title: true, objectives: true },
     });
 
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error("Protocol not found");
 
-    // Only owner or admin can forward project to feed
+    // Only owner or admin can forward protocol to feed
     if (project.userId !== session.user.id) {
         const user = await db.user.findUnique({
             where: { id: session.user.id },
@@ -408,7 +408,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
                     status: "PENDING_REVIEW",
                     changedBy: session.user.id,
                     // Keep reviewer identity anonymous in public-facing history
-                    comment: "Project assigned for review",
+                    comment: "Protocol assigned for review",
                 },
             },
         },
@@ -421,7 +421,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     await db.notification.create({
         data: {
             type: "REVIEW_ASSIGNED",
-            message: `You have been assigned to review the project: "${project.title}"`,
+            message: `You have been assigned to review the protocol: "${project.title}"`,
             link: `/projects/${projectId}`,
             userId: adminId,
         },
@@ -433,7 +433,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
             sendNotificationEmail({
                 to: admin.email,
                 userName: admin.name || "Admin",
-                notificationMessage: `You have been assigned to review the project: "${project.title}" submitted by ${project.user.name || "a user"}.`,
+                notificationMessage: `You have been assigned to review the protocol: "${project.title}" submitted by ${project.user.name || "a user"}.`,
                 notificationType: "REVIEW_ASSIGNED",
                 actionUrl: `/projects/${projectId}`,
             }).catch((err) => console.error("Error sending review assignment email:", err));
@@ -446,7 +446,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     await db.auditLog.create({
         data: {
             action: "ASSIGN_REVIEWER",
-            details: `Assigned ${admin.name || admin.email} to review project "${project.title}"`,
+            details: `Assigned ${admin.name || admin.email} to review protocol "${project.title}"`,
             targetId: projectId,
             userId: session.user.id,
         },

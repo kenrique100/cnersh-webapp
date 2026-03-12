@@ -44,7 +44,7 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
 
     const contentBarData = [
         { name: "Posts", count: stats.totalPosts },
-        { name: "Projects", count: stats.totalProjects },
+        { name: "Protocols", count: stats.totalProjects },
         { name: "Discussions", count: stats.totalTopics },
         { name: "Reports", count: stats.pendingReports },
     ];

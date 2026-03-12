@@ -62,16 +62,16 @@ export default async function ProjectsPage() {
                         </div>
                         <div>
                             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                My Projects
+                                My Protocols
                             </h1>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Track your submitted projects and their status
+                                Track your submitted protocols and their status
                             </p>
                         </div>
                     </div>
                     <Link href="/projects/submit" className="self-start sm:self-auto">
                         <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm">
-                            Submit New Project
+                            Submit New Protocol
                         </Button>
                     </Link>
                 </div>
@@ -106,14 +106,14 @@ export default async function ProjectsPage() {
                                     <FolderIcon className="h-8 w-8 text-gray-400" />
                                 </div>
                                 <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                    No projects yet
+                                    No protocols yet
                                 </p>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                                    Submit your first project for ethical review
+                                    Submit your first protocol for ethical review
                                 </p>
                                 <Link href="/projects/submit">
                                     <Button className="bg-violet-600 hover:bg-violet-700 text-white">
-                                        Submit Project
+                                        Submit Protocol
                                     </Button>
                                 </Link>
                             </div>

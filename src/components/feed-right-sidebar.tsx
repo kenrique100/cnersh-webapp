@@ -52,15 +52,15 @@ const activityColors = {
 export default function FeedRightSidebar({ trendingTags = [], userActivity = [], isLoggedIn = false }: FeedRightSidebarProps) {
   return (
     <div className="flex flex-col gap-4">
-      {/* Project Tracker Card */}
+      {/* Protocol Tracker Card */}
       <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <SearchIcon className="w-4 h-4 text-blue-600" />
-            Track Your Project
+            Track Your Protocol
           </CardTitle>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Enter your project tracking code to check the current status.
+            Enter your protocol tracking code to check the current status.
           </p>
         </CardHeader>
         <CardContent className="pt-0">

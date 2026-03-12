@@ -36,10 +36,10 @@ export default async function ProjectReviewPage() {
             <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        Project Review
+                        Protocol Review
                     </h1>
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Review and manage project submissions
+                        Review and manage protocol submissions
                     </p>
                 </div>
                 <ProjectReviewClient

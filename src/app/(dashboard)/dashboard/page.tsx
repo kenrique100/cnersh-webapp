@@ -68,7 +68,7 @@ export default async function DashboardPage() {
                                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 mb-3">
                                     <FolderIcon className="w-6 h-6 text-green-700 dark:text-green-400" />
                                 </div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Projects</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Protocols</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Track submissions</p>
                             </CardContent>
                         </Card>

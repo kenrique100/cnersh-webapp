@@ -77,7 +77,7 @@ export default async function ProjectDetailPage({
                 {/* Back Button */}
                 <Link href="/projects" className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-6 transition-colors">
                     <ArrowLeftIcon className="h-4 w-4" />
-                    Back to Projects
+                    Back to Protocols
                 </Link>
 
                 {/* Tracking Code Banner */}
@@ -255,7 +255,7 @@ export default async function ProjectDetailPage({
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                     <FileTextIcon className="h-4 w-4" />
-                                    Project Document
+                                    Protocol Document
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">

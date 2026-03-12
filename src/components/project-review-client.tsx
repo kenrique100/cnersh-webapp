@@ -91,7 +91,7 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
             {projects.length === 0 ? (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <p className="text-gray-500">No projects to review</p>
+                        <p className="text-gray-500">No protocols to review</p>
                     </CardContent>
                 </Card>
             ) : (

@@ -91,10 +91,10 @@ export default function ProjectTracker() {
             if (project) {
                 setResult(project as TrackedProject);
             } else {
-                setError("No project found with that tracking code. Please double-check and try again.");
+                setError("No protocol found with that tracking code. Please double-check and try again.");
             }
         } catch {
-            setError("An error occurred while looking up the project. Please try again.");
+            setError("An error occurred while looking up the protocol. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -160,7 +160,7 @@ export default function ProjectTracker() {
                         <div className="flex items-start gap-2">
                             <FolderIcon className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Project Title</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Protocol Title</p>
                                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{result.title}</p>
                             </div>
                         </div>
