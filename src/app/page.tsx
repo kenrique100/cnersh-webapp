@@ -31,10 +31,17 @@ export default async function Home() {
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
 
     // Fetch dynamic pages for navbar and trending tags
-    const [pages, trendingTags] = await Promise.all([
-        getPages(),
-        getTrendingTags(5),
-    ]);
+    let pages: Awaited<ReturnType<typeof getPages>> = [];
+    let trendingTags: Awaited<ReturnType<typeof getTrendingTags>> = [];
+
+    try {
+        [pages, trendingTags] = await Promise.all([
+            getPages(),
+            getTrendingTags(5),
+        ]);
+    } catch (error) {
+        console.error("Error fetching pages or trending tags:", error);
+    }
 
     // User activity for sidebar
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];

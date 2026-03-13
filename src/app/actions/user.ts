@@ -10,17 +10,22 @@ export async function updateProfile() {
         return null;
     }
 
-    return db.user.findUnique({
-        where: {id: session.user.id},
-        select: {
-            email: true,
-            name: true,
-            image: true,
-            role: true,
-            profession: true,
-            title: true,
-        },
-    });
+    try {
+        return await db.user.findUnique({
+            where: {id: session.user.id},
+            select: {
+                email: true,
+                name: true,
+                image: true,
+                role: true,
+                profession: true,
+                title: true,
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        return null;
+    }
 }
 
 export async function getUserActivity() {
