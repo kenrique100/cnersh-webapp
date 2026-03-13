@@ -47,7 +47,7 @@ export async function createPost(data: { content: string; image?: string; video?
         throw new Error("Failed to save post. Please try again.");
     }
 
-    // Notify mentioned users in the post content (non-blocking)
+    // Notify mentioned users in the post content
     try {
         const mentions = [...data.content.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
