@@ -20,32 +20,37 @@ async function requireAdmin() {
 }
 
 export async function getPages() {
-    const pages = await db.page.findMany({
-        where: { parentId: null },
-        include: {
-            items: {
-                orderBy: { createdAt: "asc" },
-            },
-            children: {
-                include: {
-                    items: {
-                        orderBy: { createdAt: "asc" },
-                    },
-                    children: {
-                        include: {
-                            items: {
-                                orderBy: { createdAt: "asc" },
-                            },
-                        },
-                        orderBy: { createdAt: "asc" },
-                    },
+    try {
+        const pages = await db.page.findMany({
+            where: { parentId: null },
+            include: {
+                items: {
+                    orderBy: { createdAt: "asc" },
                 },
-                orderBy: { createdAt: "asc" },
+                children: {
+                    include: {
+                        items: {
+                            orderBy: { createdAt: "asc" },
+                        },
+                        children: {
+                            include: {
+                                items: {
+                                    orderBy: { createdAt: "asc" },
+                                },
+                            },
+                            orderBy: { createdAt: "asc" },
+                        },
+                    },
+                    orderBy: { createdAt: "asc" },
+                },
             },
-        },
-        orderBy: { createdAt: "asc" },
-    });
-    return pages;
+            orderBy: { createdAt: "asc" },
+        });
+        return pages;
+    } catch (error) {
+        console.error("Error fetching pages:", error);
+        return [];
+    }
 }
 
 export async function createPage(data: {

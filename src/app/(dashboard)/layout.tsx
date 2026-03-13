@@ -13,11 +13,20 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }>) {
     await authIsRequired();
-    const [user, unreadCount, pages] = await Promise.all([
-        updateProfile(),
-        getUnreadNotificationCount(),
-        getPages(),
-    ]);
+
+    let user: Awaited<ReturnType<typeof updateProfile>> = null;
+    let unreadCount = 0;
+    let pages: Awaited<ReturnType<typeof getPages>> = [];
+
+    try {
+        [user, unreadCount, pages] = await Promise.all([
+            updateProfile(),
+            getUnreadNotificationCount(),
+            getPages(),
+        ]);
+    } catch (error) {
+        console.error("Error fetching dashboard layout data:", error);
+    }
 
     return (
         <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
