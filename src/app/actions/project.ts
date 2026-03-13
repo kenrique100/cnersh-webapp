@@ -68,8 +68,8 @@ export async function submitProject(data: {
         if (data.formData) {
             try {
                 sanitizedFormData = JSON.parse(JSON.stringify(data.formData)) as Prisma.InputJsonValue;
-            } catch {
-                console.error("Failed to sanitize formData, storing without formData");
+            } catch (sanitizeError) {
+                console.error("Failed to sanitize formData, storing without formData:", sanitizeError);
                 sanitizedFormData = undefined;
             }
         }
