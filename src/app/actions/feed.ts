@@ -11,22 +11,41 @@ export async function createPost(data: { content: string; image?: string; video?
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const post = await db.post.create({
-        data: {
-            content: data.content,
-            image: data.image || null,
-            video: data.video || null,
-            images: data.images || [],
-            videos: data.videos || [],
-            tags: data.tags || [],
-            linkUrl: data.linkUrl || null,
-            userId: session.user.id,
-        },
-        include: {
-            user: { select: { id: true, name: true, image: true, profession: true, title: true } },
-            _count: { select: { comments: true, likes: true } },
-        },
-    });
+    let post;
+    try {
+        post = await db.post.create({
+            data: {
+                content: data.content,
+                image: data.image || null,
+                video: data.video || null,
+                images: data.images || [],
+                videos: data.videos || [],
+                tags: data.tags || [],
+                linkUrl: data.linkUrl || null,
+                userId: session.user.id,
+            },
+            select: {
+                id: true,
+                content: true,
+                image: true,
+                video: true,
+                images: true,
+                videos: true,
+                tags: true,
+                linkUrl: true,
+                commentsEnabled: true,
+                userId: true,
+                deleted: true,
+                createdAt: true,
+                updatedAt: true,
+                user: { select: { id: true, name: true, image: true, profession: true, title: true } },
+                _count: { select: { comments: true, likes: true } },
+            },
+        });
+    } catch (error) {
+        console.error("Error creating post in database:", error);
+        throw new Error("Failed to save post. Please try again.");
+    }
 
     // Notify mentioned users in the post content
     try {
@@ -63,7 +82,12 @@ export async function createPost(data: { content: string; image?: string; video?
         console.error("Error creating post mention notifications:", error);
     }
 
-    return post;
+    // Return a plain serializable object
+    return {
+        ...post,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+    };
 }
 
 export async function getPosts(page: number = 1, limit: number = 10, userId?: string) {
