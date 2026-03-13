@@ -145,7 +145,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
 
             return {
                 ...post,
-                likes: post.likes.map((l) => ({ userId: l.userId, reactionType: l.reactionType })),
+                likes: post.likes.map((l) => ({ userId: l.userId, reactionType: l.reactionType, userName: l.user.name })),
                 recentActivity: {
                     users: Array.from(activityUsers.values()).slice(0, 5),
                     likeCount: post._count.likes,
@@ -659,5 +659,5 @@ export async function getPostLikers(postId: string) {
         orderBy: { createdAt: "desc" },
     });
 
-    return likes.map((l) => l.user);
+    return likes.map((l) => ({ ...l.user, reactionType: l.reactionType }));
 }

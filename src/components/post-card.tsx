@@ -385,21 +385,29 @@ export function getReactionBg(label: string): string {
 
 // ─── Post Engagement Summary ────────────────────────────────────────────────
 
+interface ReactionUser {
+    userId: string;
+    reactionType: string;
+    userName?: string | null;
+}
+
 interface PostEngagementSummaryProps {
     likeCount: number;
     commentCount: number;
     shareCount?: number;
     reactionTypes?: string[];
+    reactionUsers?: ReactionUser[];
     onLikeCountClick?: () => void;
     onCommentCountClick?: () => void;
 }
 
-/** Shows total reactions with type icons, comment count, and repost/share count */
+/** Shows total reactions with type icons, first reactor name, comment count, and repost/share count */
 export function PostEngagementSummary({
     likeCount,
     commentCount,
     shareCount = 0,
     reactionTypes,
+    reactionUsers,
     onLikeCountClick,
     onCommentCountClick,
 }: PostEngagementSummaryProps) {
@@ -418,18 +426,34 @@ export function PostEngagementSummary({
         }
     }
 
+    // Build the "User and X others" label
+    const firstReactor = reactionUsers?.find((u) => u.userName)?.userName;
+    const othersCount = likeCount - 1;
+    let reactionLabel: React.ReactNode = <span>{likeCount}</span>;
+    if (firstReactor && likeCount > 0) {
+        if (likeCount === 1) {
+            reactionLabel = <span className="truncate max-w-[160px]">{firstReactor}</span>;
+        } else {
+            reactionLabel = (
+                <span className="truncate max-w-[200px]">
+                    {firstReactor} and {othersCount} other{othersCount !== 1 ? "s" : ""}
+                </span>
+            );
+        }
+    }
+
     return (
         <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
                 {likeCount > 0 && (
                     <button
                         onClick={onLikeCountClick}
-                        className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                        className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors min-w-0"
                         type="button"
                         aria-label={`${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`}
                     >
                         {topReactions.length > 0 ? (
-                            <span className="flex items-center -space-x-1">
+                            <span className="flex items-center -space-x-1 shrink-0">
                                 {topReactions.map((label, idx) => (
                                     <span
                                         key={label}
@@ -442,19 +466,17 @@ export function PostEngagementSummary({
                                 ))}
                             </span>
                         ) : (
-                            <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
+                            <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full shrink-0">
                                 <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
                                 </svg>
                             </span>
                         )}
-                        <span>
-                            {likeCount}
-                        </span>
+                        {reactionLabel}
                     </button>
                 )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
                 {commentCount > 0 && (
                     <button
                         onClick={onCommentCountClick}
@@ -469,7 +491,7 @@ export function PostEngagementSummary({
                         <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" x2="12" y1="2" y2="15" />
                         </svg>
-                        {shareCount} share{shareCount !== 1 ? "s" : ""}
+                        {shareCount} repost{shareCount !== 1 ? "s" : ""}
                     </span>
                 )}
             </div>

@@ -73,6 +73,7 @@ import {
     renderPostContent,
     REACTIONS,
     getReactionEmoji,
+    getReactionBg,
 } from "@/components/post-card";
 
 interface PostUser {
@@ -112,7 +113,7 @@ interface PostData {
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
-    likes: { userId: string; reactionType: string }[];
+    likes: { userId: string; reactionType: string; userName?: string | null }[];
     recentActivity?: {
         users: { id: string; name: string | null; image: string | null }[];
         likeCount: number;
@@ -291,7 +292,7 @@ export default function FeedClient({
 
     // Likers dialog state
     const [likersPostId, setLikersPostId] = React.useState<string | null>(null);
-    const [likersList, setLikersList] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
+    const [likersList, setLikersList] = React.useState<{ id: string; name: string | null; image: string | null; reactionType: string }[]>([]);
     const [loadingLikers, setLoadingLikers] = React.useState(false);
 
     // Image modal state
@@ -455,7 +456,7 @@ export default function FeedClient({
                         const existingIdx = p.likes.findIndex((l) => l.userId === currentUserId);
                         const newLikes = existingIdx >= 0
                             ? p.likes.map((l) => l.userId === currentUserId ? { ...l, reactionType: result.reactionType! } : l)
-                            : [...p.likes, { userId: currentUserId, reactionType: result.reactionType! }];
+                            : [...p.likes, { userId: currentUserId, reactionType: result.reactionType!, userName: currentUserName }];
                         return {
                             ...p,
                             _count: {
@@ -1169,6 +1170,7 @@ export default function FeedClient({
                                 commentCount={post._count.comments}
                                 shareCount={shareCounts[post.id] || 0}
                                 reactionTypes={post.likes.map((l) => l.reactionType)}
+                                reactionUsers={post.likes.map((l) => ({ userId: l.userId, reactionType: l.reactionType, userName: l.userName }))}
                                 onLikeCountClick={() => handleShowLikers(post.id)}
                                 onCommentCountClick={() => toggleComments(post.id)}
                             />
@@ -1238,8 +1240,19 @@ export default function FeedClient({
                                     className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
                                     onClick={() => handleShare(post)}
                                 >
-                                    <ShareIcon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Share</span>
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+                                    <span className="hidden sm:inline">Repost</span>
+                                </button>
+                                <button
+                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                    onClick={() => {
+                                        const postUrl = typeof window !== "undefined" ? `${window.location.origin}/feeds#post-${post.id}` : "";
+                                        navigator.clipboard.writeText(postUrl);
+                                        toast.success("Link copied — share it anywhere!");
+                                    }}
+                                >
+                                    <SendIcon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Send</span>
                                 </button>
                             </PostActionBar>
 
@@ -1712,13 +1725,13 @@ export default function FeedClient({
                 </DialogContent>
             </Dialog>
 
-            {/* Share Dialog */}
+            {/* Repost Dialog */}
             <Dialog open={sharePostId !== null} onOpenChange={(open) => {
                 if (!open) setSharePostId(null);
             }}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Share Post</DialogTitle>
+                        <DialogTitle>Repost</DialogTitle>
                         <DialogDescription>Choose a platform to share this post.</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3 py-4">
@@ -1809,9 +1822,9 @@ export default function FeedClient({
             }}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>People who liked this</DialogTitle>
+                        <DialogTitle>Reactions</DialogTitle>
                         <DialogDescription>
-                            {likersList.length} {likersList.length === 1 ? "person" : "people"} liked this post
+                            {likersList.length} {likersList.length === 1 ? "person" : "people"} reacted to this post
                         </DialogDescription>
                     </DialogHeader>
                     <div className="max-h-80 overflow-y-auto space-y-1 py-2">
@@ -1820,24 +1833,24 @@ export default function FeedClient({
                                 <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
                             </div>
                         ) : likersList.length === 0 ? (
-                            <p className="text-center text-sm text-gray-500 py-4">No likes yet</p>
+                            <p className="text-center text-sm text-gray-500 py-4">No reactions yet</p>
                         ) : (
                             likersList.map((user) => (
                                 <div key={user.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={user.image || undefined} />
-                                        <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                            {getInitials(user.name)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name || "Anonymous"}</p>
-                                        <p className="text-xs text-gray-500">Member</p>
-                                    </div>
-                                    <div className="ml-auto">
-                                        <span className="flex items-center justify-center w-6 h-6 bg-blue-600 rounded-full">
-                                            <ThumbsUpIcon className="h-3 w-3 text-white" />
+                                    <div className="relative">
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarImage src={user.image || undefined} />
+                                            <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                                {getInitials(user.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className={`absolute -bottom-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full ${getReactionBg(user.reactionType)} text-[8px] border border-white dark:border-gray-950`} title={user.reactionType}>
+                                            {getReactionEmoji(user.reactionType)}
                                         </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.name || "Anonymous"}</p>
+                                        <p className="text-xs text-gray-500 capitalize">{user.reactionType}</p>
                                     </div>
                                 </div>
                             ))

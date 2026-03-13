@@ -29,6 +29,14 @@ const adminNavItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
+const communityFooterLinks = [
+  { label: "About", href: "/about" },
+  { label: "Accessibility", href: "/accessibility" },
+  { label: "Help Center", href: "/help" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+];
+
 export default function FeedLeftSidebar({
   userName,
   userImage,
@@ -171,6 +179,24 @@ export default function FeedLeftSidebar({
           </Link>
         ))}
       </nav>
+
+      {/* Community Footer Links */}
+      {isAdmin && (
+        <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-3">
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {communityFooterLinks.map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-[11px] text-zinc-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:underline transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+          <p className="text-[10px] text-zinc-300 dark:text-zinc-600 mt-2">CNERSH © {new Date().getFullYear()}</p>
+        </div>
+      )}
     </Card>
   );
 }
