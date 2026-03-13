@@ -525,8 +525,9 @@ export default function ProtocolFormWizard() {
             setSubmittedTrackingCode(project.trackingCode);
             clearDraft();
             toast.success("Protocol submitted successfully!");
-        } catch {
-            toast.error("Failed to submit protocol. Please try again.");
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to submit protocol. Please try again.";
+            toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
