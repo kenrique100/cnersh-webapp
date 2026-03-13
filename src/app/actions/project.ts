@@ -38,58 +38,101 @@ export async function submitProject(data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    // Check if user is admin
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-
-    // Admin-submitted projects are auto-approved, no review needed
-    const projectStatus = isAdmin ? ProjectStatus.APPROVED : ProjectStatus.SUBMITTED;
-    const statusComment = isAdmin ? "Protocol submitted and auto-approved by admin" : "Protocol submitted";
-
-    const trackingCode = await generateTrackingCode();
-
-    const project = await db.project.create({
-        data: {
-            trackingCode,
-            title: data.title,
-            description: data.description,
-            objectives: data.objectives || null,
-            category: data.category,
-            location: data.location || null,
-            timeline: data.timeline || null,
-            budget: data.budget || null,
-            document: data.document || null,
-            formData: data.formData ? (data.formData as Prisma.InputJsonValue) : undefined,
-            status: projectStatus,
-            userId: session.user.id,
-            statusHistory: {
-                create: {
-                    status: projectStatus,
-                    changedBy: session.user.id,
-                    comment: statusComment,
-                },
-            },
-        },
-    });
-
-    // Notify admins about new project submission (only for non-admin users)
-    if (!isAdmin) {
-        try {
-            await notifyAdmins({
-                type: "PROJECT_STATUS",
-                message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
-                link: `/admin/protocol-review`,
-                excludeUserId: session.user.id,
-            });
-        } catch (error) {
-            console.error("Error notifying admins about project submission:", error);
-        }
+    // Validate required fields before database call
+    if (!data.title || data.title.trim().length === 0) {
+        throw new Error("Protocol title is required");
+    }
+    if (!data.description || data.description.trim().length === 0) {
+        throw new Error("Protocol description is required");
+    }
+    if (!data.category || data.category.trim().length === 0) {
+        throw new Error("Protocol category is required");
     }
 
-    return project;
+    try {
+        // Check if user is admin
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+        // Admin-submitted projects are auto-approved, no review needed
+        const projectStatus = isAdmin ? ProjectStatus.APPROVED : ProjectStatus.SUBMITTED;
+        const statusComment = isAdmin ? "Protocol submitted and auto-approved by admin" : "Protocol submitted";
+
+        const trackingCode = await generateTrackingCode();
+
+        // Sanitize formData to ensure it's a valid JSON value for Prisma
+        let sanitizedFormData: Prisma.InputJsonValue | undefined;
+        if (data.formData) {
+            try {
+                sanitizedFormData = JSON.parse(JSON.stringify(data.formData)) as Prisma.InputJsonValue;
+            } catch {
+                console.error("Failed to sanitize formData, storing without formData");
+                sanitizedFormData = undefined;
+            }
+        }
+
+        const project = await db.project.create({
+            data: {
+                trackingCode,
+                title: data.title.trim(),
+                description: data.description.trim(),
+                objectives: data.objectives?.trim() || null,
+                category: data.category.trim(),
+                location: data.location?.trim() || null,
+                timeline: data.timeline?.trim() || null,
+                budget: data.budget?.trim() || null,
+                document: data.document?.trim() || null,
+                formData: sanitizedFormData,
+                status: projectStatus,
+                userId: session.user.id,
+                statusHistory: {
+                    create: {
+                        status: projectStatus,
+                        changedBy: session.user.id,
+                        comment: statusComment,
+                    },
+                },
+            },
+            select: {
+                id: true,
+                trackingCode: true,
+                title: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        // Notify admins about new project submission (only for non-admin users)
+        if (!isAdmin) {
+            try {
+                await notifyAdmins({
+                    type: "PROJECT_STATUS",
+                    message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
+                    link: `/admin/protocol-review`,
+                    excludeUserId: session.user.id,
+                });
+            } catch (error) {
+                console.error("Error notifying admins about project submission:", error);
+            }
+        }
+
+        // Return a plain serializable object
+        return {
+            id: project.id,
+            trackingCode: project.trackingCode,
+            title: project.title,
+            status: project.status,
+            createdAt: project.createdAt.toISOString(),
+            updatedAt: project.updatedAt.toISOString(),
+        };
+    } catch (error) {
+        console.error("Error submitting protocol:", error);
+        throw new Error("Failed to submit protocol. Please try again later.");
+    }
 }
 
 export async function getProjectById(projectId: string) {
