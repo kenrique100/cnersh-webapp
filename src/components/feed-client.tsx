@@ -436,8 +436,9 @@ export default function FeedClient({
             setShowVideoUpload(false);
             toast.success("Post published successfully");
             router.refresh();
-        } catch {
-            toast.error("Failed to create post");
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to create post";
+            toast.error(message === "Unauthorized" ? "Please sign in to create a post" : message);
         } finally {
             setIsSubmitting(false);
         }

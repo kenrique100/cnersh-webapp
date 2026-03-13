@@ -12,6 +12,10 @@ export const auth = betterAuth({
         provider: "postgresql",
     }),
 
+    secret: process.env.BETTER_AUTH_SECRET,
+
+    baseURL: process.env.BETTER_AUTH_URL,
+
     trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
         ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map(origin => origin.trim())
         : [],
