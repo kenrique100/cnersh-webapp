@@ -1246,7 +1246,8 @@ export default function FeedClient({
                                 <button
                                     className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
                                     onClick={() => {
-                                        navigator.clipboard.writeText(typeof window !== "undefined" ? window.location.origin + "/feeds" : "");
+                                        const postUrl = typeof window !== "undefined" ? `${window.location.origin}/feeds#post-${post.id}` : "";
+                                        navigator.clipboard.writeText(postUrl);
                                         toast.success("Link copied — share it anywhere!");
                                     }}
                                 >

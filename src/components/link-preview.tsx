@@ -37,8 +37,8 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
                     const data = await res.json();
                     if (!cancelled) setPreview(data);
                 }
-            } catch {
-                // Silently fail - fallback UI will show
+            } catch (err) {
+                console.error("Link preview fetch error:", err);
             }
         }
         fetchPreview();

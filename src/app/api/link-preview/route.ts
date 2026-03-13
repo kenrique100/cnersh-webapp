@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
                 html += decoder.decode(value, { stream: true });
                 bytesRead += value.length;
             }
-            reader.cancel().catch(() => {});
+            reader.cancel().catch(() => { /* stream cleanup */ });
         }
 
         const title = extractMeta(html, "og:title") || extractMeta(html, "twitter:title") || extractTitle(html) || parsedUrl.hostname;
