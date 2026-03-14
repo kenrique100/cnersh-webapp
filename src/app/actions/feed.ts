@@ -7,7 +7,7 @@ import { sendNotificationEmail } from "@/lib/send-notification-email";
 
 const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
 
-export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string }) {
+export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string; linkType?: string }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -22,6 +22,7 @@ export async function createPost(data: { content: string; image?: string; video?
                 videos: data.videos || [],
                 tags: data.tags || [],
                 linkUrl: data.linkUrl || null,
+                linkType: data.linkType || null,
                 userId: session.user.id,
             },
             select: {
@@ -33,6 +34,7 @@ export async function createPost(data: { content: string; image?: string; video?
                 videos: true,
                 tags: true,
                 linkUrl: true,
+                linkType: true,
                 commentsEnabled: true,
                 userId: true,
                 deleted: true,
@@ -439,7 +441,7 @@ export async function deletePost(postId: string) {
     return { success: true };
 }
 
-export async function updatePost(postId: string, data: { content: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string | null }) {
+export async function updatePost(postId: string, data: { content: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string | null; linkType?: string | null }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -455,6 +457,7 @@ export async function updatePost(postId: string, data: { content: string; images
             ...(data.videos !== undefined && { videos: data.videos }),
             ...(data.tags !== undefined && { tags: data.tags }),
             ...(data.linkUrl !== undefined && { linkUrl: data.linkUrl }),
+            ...(data.linkType !== undefined && { linkType: data.linkType }),
         },
     });
 }

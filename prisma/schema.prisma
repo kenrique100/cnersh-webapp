@@ -110,6 +110,7 @@ model Post {
   videos          String[]    @default([])
   tags            String[]    @default([])
   linkUrl         String?
+  linkType        String?
   commentsEnabled Boolean     @default(true)
   userId          String
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
