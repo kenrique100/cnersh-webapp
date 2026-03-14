@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import LinkPreview from "@/components/link-preview";
+import CtaLinkButton from "@/components/cta-link-button";
 import {
     Dialog,
     DialogContent,
@@ -16,7 +16,6 @@ import {
     ThumbsUpIcon,
     ShareIcon,
     LockIcon,
-    ExternalLinkIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
 } from "lucide-react";
@@ -48,6 +47,7 @@ interface PublicPostData {
     videos: string[];
     tags: string[];
     linkUrl: string | null;
+    linkType: string | null;
     createdAt: Date;
     user: PostUser;
     _count: { comments: number; likes: number };
@@ -111,10 +111,10 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             />
                         )}
 
-                        {/* Link Attachment */}
+                        {/* CTA Link Button */}
                         {post.linkUrl && (
-                            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                                <LinkPreview url={post.linkUrl} />
+                            <div className="px-4 py-2">
+                                <CtaLinkButton url={post.linkUrl} linkType={post.linkType} />
                             </div>
                         )}
 
@@ -259,18 +259,10 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         </div>
                                     )}
 
-                                    {/* Link Attachment */}
+                                    {/* CTA Link Button */}
                                     {imageModalPost.linkUrl && (
                                         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                                            <a
-                                                href={imageModalPost.linkUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline text-sm break-all"
-                                            >
-                                                <ExternalLinkIcon className="h-4 w-4 shrink-0" />
-                                                {imageModalPost.linkUrl}
-                                            </a>
+                                            <CtaLinkButton url={imageModalPost.linkUrl} linkType={imageModalPost.linkType} />
                                         </div>
                                     )}
 
