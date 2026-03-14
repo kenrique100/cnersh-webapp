@@ -284,6 +284,14 @@ export default function FeedClient({
     const [visibleCommentCount, setVisibleCommentCount] = React.useState<Record<string, number>>({});
     const [editingPostId, setEditingPostId] = React.useState<string | null>(null);
     const [editingPostContent, setEditingPostContent] = React.useState("");
+    const [editingPostImages, setEditingPostImages] = React.useState<string[]>([]);
+    const [editingPostVideos, setEditingPostVideos] = React.useState<string[]>([]);
+    const [editingPostTags, setEditingPostTags] = React.useState<string[]>([]);
+    const [editingPostTagInput, setEditingPostTagInput] = React.useState("");
+    const [editingPostLinkUrl, setEditingPostLinkUrl] = React.useState("");
+    const [editingShowImageUpload, setEditingShowImageUpload] = React.useState(false);
+    const [editingShowVideoUpload, setEditingShowVideoUpload] = React.useState(false);
+    const [editingShowLinkInput, setEditingShowLinkInput] = React.useState(false);
 
     // @mention autocomplete state
     const [mentionResults, setMentionResults] = React.useState<{ id: string; name: string | null; image: string | null }[]>([]);
@@ -529,14 +537,32 @@ export default function FeedClient({
     const handleEditPost = async (postId: string) => {
         if (!editingPostContent.trim()) return;
         try {
-            await updatePost(postId, editingPostContent);
+            await updatePost(postId, {
+                content: editingPostContent,
+                images: editingPostImages,
+                videos: editingPostVideos,
+                tags: editingPostTags,
+                linkUrl: editingPostLinkUrl.trim() || null,
+            });
             setPosts((prev) =>
                 prev.map((p) =>
-                    p.id === postId ? { ...p, content: editingPostContent } : p
+                    p.id === postId ? {
+                        ...p,
+                        content: editingPostContent,
+                        images: editingPostImages,
+                        videos: editingPostVideos,
+                        tags: editingPostTags,
+                        linkUrl: editingPostLinkUrl.trim() || null,
+                    } : p
                 )
             );
             setEditingPostId(null);
             setEditingPostContent("");
+            setEditingPostImages([]);
+            setEditingPostVideos([]);
+            setEditingPostTags([]);
+            setEditingPostTagInput("");
+            setEditingPostLinkUrl("");
             toast.success("Post updated");
         } catch {
             toast.error("Failed to update post");
@@ -1088,6 +1114,13 @@ export default function FeedClient({
                                                 onClick={() => {
                                                     setEditingPostId(post.id);
                                                     setEditingPostContent(post.content);
+                                                    setEditingPostImages(post.images || []);
+                                                    setEditingPostVideos(post.videos || []);
+                                                    setEditingPostTags(post.tags || []);
+                                                    setEditingPostLinkUrl(post.linkUrl || "");
+                                                    setEditingShowImageUpload(false);
+                                                    setEditingShowVideoUpload(false);
+                                                    setEditingShowLinkInput(false);
                                                 }}
                                                 title="Edit post"
                                             >
@@ -1110,21 +1143,185 @@ export default function FeedClient({
                             />
 
                             {/* Post Text Content */}
-                            {post.content && (
+                            {(post.content || editingPostId === post.id) && (
                                 <PostTextContent
                                     content={post.content}
                                     customRender={editingPostId === post.id ? (
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             <Textarea
                                                 value={editingPostContent}
                                                 onChange={(e) => setEditingPostContent(e.target.value)}
                                                 className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl text-base"
                                             />
+                                            {/* Editing: Existing images */}
+                                            {editingPostImages.length > 0 && (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {editingPostImages.map((img, idx) => (
+                                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                                            <Image src={img} alt="" width={200} height={120} className="w-full h-[120px] object-cover" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingPostImages((prev) => prev.filter((_, i) => i !== idx))}
+                                                                className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white"
+                                                                title="Remove image"
+                                                            >
+                                                                <XIcon className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {/* Editing: Existing videos */}
+                                            {editingPostVideos.length > 0 && (
+                                                <div className="space-y-2">
+                                                    {editingPostVideos.map((vid, idx) => (
+                                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                                            <video src={vid} controls className="w-full max-h-[150px] object-contain bg-black" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx))}
+                                                                className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white"
+                                                                title="Remove video"
+                                                            >
+                                                                <XIcon className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {/* Editing: Image upload */}
+                                            {editingShowImageUpload && (
+                                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900">
+                                                    <ImageUpload
+                                                        variant="feed"
+                                                        onChange={(url) => {
+                                                            if (url) {
+                                                                setEditingPostImages((prev) => [...prev, url]);
+                                                                setEditingShowImageUpload(false);
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {/* Editing: Video upload */}
+                                            {editingShowVideoUpload && (
+                                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900">
+                                                    <VideoUploadInput
+                                                        onUpload={(url) => {
+                                                            setEditingPostVideos((prev) => [...prev, url]);
+                                                            setEditingShowVideoUpload(false);
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {/* Editing: Link URL */}
+                                            {editingShowLinkInput && (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="url"
+                                                        placeholder="Enter URL..."
+                                                        value={editingPostLinkUrl}
+                                                        onChange={(e) => setEditingPostLinkUrl(e.target.value)}
+                                                        className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+                                                    />
+                                                    <button type="button" onClick={() => setEditingShowLinkInput(false)} className="text-gray-400 hover:text-gray-600">
+                                                        <XIcon className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {editingPostLinkUrl && !editingShowLinkInput && (
+                                                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                                                    <LinkIcon className="h-3 w-3" />
+                                                    <span className="truncate">{editingPostLinkUrl}</span>
+                                                    <button type="button" onClick={() => setEditingPostLinkUrl("")} className="text-gray-400 hover:text-red-500 ml-auto">
+                                                        <XIcon className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {/* Editing: Tags */}
+                                            {editingPostTags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {editingPostTags.map((tag) => (
+                                                        <Badge key={tag} variant="secondary" className="text-xs gap-1">
+                                                            #{tag}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingPostTags((prev) => prev.filter((t) => t !== tag))}
+                                                                className="hover:text-red-500"
+                                                            >
+                                                                <XIcon className="h-2.5 w-2.5" />
+                                                            </button>
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {/* Editing: Tag input */}
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Add tag..."
+                                                    value={editingPostTagInput}
+                                                    onChange={(e) => setEditingPostTagInput(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter" && editingPostTagInput.trim()) {
+                                                            e.preventDefault();
+                                                            const tag = editingPostTagInput.trim().replace(/^#/, "");
+                                                            if (tag && !editingPostTags.includes(tag)) {
+                                                                setEditingPostTags((prev) => [...prev, tag]);
+                                                            }
+                                                            setEditingPostTagInput("");
+                                                        }
+                                                    }}
+                                                    className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1 text-xs"
+                                                />
+                                            </div>
+                                            {/* Editing: Media action bar */}
+                                            <div className="flex items-center gap-1 border-t border-gray-100 dark:border-gray-800 pt-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => { setEditingShowImageUpload(!editingShowImageUpload); setEditingShowVideoUpload(false); }}
+                                                    className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600"
+                                                >
+                                                    <ImageIcon className="h-3.5 w-3.5 mr-1" /> Image
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => { setEditingShowVideoUpload(!editingShowVideoUpload); setEditingShowImageUpload(false); }}
+                                                    className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600"
+                                                >
+                                                    <VideoIcon className="h-3.5 w-3.5 mr-1" /> Video
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setEditingShowLinkInput(!editingShowLinkInput)}
+                                                    className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600"
+                                                >
+                                                    <LinkIcon className="h-3.5 w-3.5 mr-1" /> Link
+                                                </Button>
+                                            </div>
+                                            {/* Editing: Save/Cancel */}
                                             <div className="flex items-center gap-2 justify-end">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => { setEditingPostId(null); setEditingPostContent(""); }}
+                                                    onClick={() => {
+                                                        setEditingPostId(null);
+                                                        setEditingPostContent("");
+                                                        setEditingPostImages([]);
+                                                        setEditingPostVideos([]);
+                                                        setEditingPostTags([]);
+                                                        setEditingPostTagInput("");
+                                                        setEditingPostLinkUrl("");
+                                                        setEditingShowImageUpload(false);
+                                                        setEditingShowVideoUpload(false);
+                                                        setEditingShowLinkInput(false);
+                                                    }}
                                                     className="rounded-lg"
                                                 >
                                                     Cancel
@@ -1143,11 +1340,11 @@ export default function FeedClient({
                                 />
                             )}
 
-                            {/* Post Tags */}
-                            <PostTags tags={post.tags} />
+                            {/* Post Tags - hide when editing */}
+                            {editingPostId !== post.id && <PostTags tags={post.tags} />}
 
-                            {/* Post Media Content */}
-                            {(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0)) && (
+                            {/* Post Media Content - hide when editing */}
+                            {editingPostId !== post.id && (post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0)) && (
                                 <PostMediaContent
                                     image={post.image}
                                     images={post.images}
@@ -1157,8 +1354,8 @@ export default function FeedClient({
                                 />
                             )}
 
-                            {/* Link Attachment */}
-                            {post.linkUrl && (
+                            {/* Link Attachment - hide when editing */}
+                            {editingPostId !== post.id && post.linkUrl && (
                                 <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
                                     <LinkPreview url={post.linkUrl} />
                                 </div>

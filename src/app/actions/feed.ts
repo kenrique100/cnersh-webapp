@@ -439,7 +439,7 @@ export async function deletePost(postId: string) {
     return { success: true };
 }
 
-export async function updatePost(postId: string, content: string) {
+export async function updatePost(postId: string, data: { content: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string | null }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -449,7 +449,13 @@ export async function updatePost(postId: string, content: string) {
 
     return db.post.update({
         where: { id: postId },
-        data: { content },
+        data: {
+            content: data.content,
+            ...(data.images !== undefined && { images: data.images }),
+            ...(data.videos !== undefined && { videos: data.videos }),
+            ...(data.tags !== undefined && { tags: data.tags }),
+            ...(data.linkUrl !== undefined && { linkUrl: data.linkUrl }),
+        },
     });
 }
 
