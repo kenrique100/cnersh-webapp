@@ -74,6 +74,7 @@ import {
     REACTIONS,
     getReactionEmoji,
     getReactionBg,
+    postHasMedia,
 } from "@/components/post-card";
 
 interface PostUser {
@@ -1395,7 +1396,7 @@ export default function FeedClient({
                                     <LinkPreviewCard
                                         url={post.linkUrl}
                                         linkType={post.linkType}
-                                        hasMedia={!!(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0))}
+                                        hasMedia={postHasMedia(post)}
                                     />
                                 </div>
                             )}
@@ -2195,7 +2196,7 @@ export default function FeedClient({
                                             <LinkPreviewCard
                                                 url={imageModalPost.linkUrl}
                                                 linkType={imageModalPost.linkType}
-                                                hasMedia={!!(imageModalPost.image || (imageModalPost.images && imageModalPost.images.length > 0) || imageModalPost.video || (imageModalPost.videos && imageModalPost.videos.length > 0))}
+                                                hasMedia={postHasMedia(imageModalPost)}
                                             />
                                         </div>
                                     )}

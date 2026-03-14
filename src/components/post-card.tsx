@@ -51,6 +51,11 @@ export function formatFullDate(date: Date): string {
     });
 }
 
+/** Check if a post has user-uploaded media (photos or videos) */
+export function postHasMedia(post: { image?: string | null; images?: string[]; video?: string | null; videos?: string[] }): boolean {
+    return !!(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0));
+}
+
 /** Render post content with clickable links, @mentions, and #hashtags */
 export function renderPostContent(content: string): React.ReactNode {
     const combinedRegex = /(https?:\/\/[^\s]+)|(@\w[\w]*)|(\#\w+)/g;

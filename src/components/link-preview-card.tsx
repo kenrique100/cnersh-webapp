@@ -130,7 +130,7 @@ export default function LinkPreviewCard({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                     src={image}
-                    alt=""
+                    alt={title}
                     className="w-full h-[200px] sm:h-[250px] object-cover bg-gray-100 dark:bg-gray-800"
                     onError={() => setImageError(true)}
                 />
