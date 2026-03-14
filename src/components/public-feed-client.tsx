@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import CtaLinkButton from "@/components/cta-link-button";
+import LinkPreviewCard from "@/components/link-preview-card";
 import {
     Dialog,
     DialogContent,
@@ -111,10 +111,14 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             />
                         )}
 
-                        {/* CTA Link Button */}
+                        {/* Link Preview Card */}
                         {post.linkUrl && (
                             <div className="px-4 py-2">
-                                <CtaLinkButton url={post.linkUrl} linkType={post.linkType} />
+                                <LinkPreviewCard
+                                    url={post.linkUrl}
+                                    linkType={post.linkType}
+                                    hasMedia={!!(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0))}
+                                />
                             </div>
                         )}
 
@@ -259,10 +263,14 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         </div>
                                     )}
 
-                                    {/* CTA Link Button */}
+                                    {/* Link Preview Card */}
                                     {imageModalPost.linkUrl && (
                                         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                                            <CtaLinkButton url={imageModalPost.linkUrl} linkType={imageModalPost.linkType} />
+                                            <LinkPreviewCard
+                                                url={imageModalPost.linkUrl}
+                                                linkType={imageModalPost.linkType}
+                                                hasMedia={!!(imageModalPost.image || (imageModalPost.images && imageModalPost.images.length > 0) || imageModalPost.video || (imageModalPost.videos && imageModalPost.videos.length > 0))}
+                                            />
                                         </div>
                                     )}
 

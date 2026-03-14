@@ -54,7 +54,8 @@ import { toast } from "sonner";
 import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers, updatePost, togglePostComments } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
-import CtaLinkButton, { CTA_LINK_TYPES, DEFAULT_LINK_TYPE } from "@/components/cta-link-button";
+import { CTA_LINK_TYPES, DEFAULT_LINK_TYPE } from "@/components/cta-link-button";
+import LinkPreviewCard from "@/components/link-preview-card";
 import {
     PostCard,
     PostContextBar,
@@ -1388,10 +1389,14 @@ export default function FeedClient({
                                 />
                             )}
 
-                            {/* CTA Link Button - hide when editing */}
+                            {/* Link Preview Card - hide when editing */}
                             {editingPostId !== post.id && post.linkUrl && (
                                 <div className="px-4 py-2">
-                                    <CtaLinkButton url={post.linkUrl} linkType={post.linkType} />
+                                    <LinkPreviewCard
+                                        url={post.linkUrl}
+                                        linkType={post.linkType}
+                                        hasMedia={!!(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0))}
+                                    />
                                 </div>
                             )}
 
@@ -2184,10 +2189,14 @@ export default function FeedClient({
                                         </div>
                                     )}
 
-                                    {/* CTA Link Button */}
+                                    {/* Link Preview Card */}
                                     {imageModalPost.linkUrl && (
                                         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                                            <CtaLinkButton url={imageModalPost.linkUrl} linkType={imageModalPost.linkType} />
+                                            <LinkPreviewCard
+                                                url={imageModalPost.linkUrl}
+                                                linkType={imageModalPost.linkType}
+                                                hasMedia={!!(imageModalPost.image || (imageModalPost.images && imageModalPost.images.length > 0) || imageModalPost.video || (imageModalPost.videos && imageModalPost.videos.length > 0))}
+                                            />
                                         </div>
                                     )}
 
