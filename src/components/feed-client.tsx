@@ -54,7 +54,7 @@ import { toast } from "sonner";
 import { createPost, toggleLike, addComment, deletePost, getPostComments, toggleCommentLike, editComment, deleteComment, searchUsers, getAllUsers, getPostLikers, updatePost, togglePostComments } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
-import CtaLinkButton, { CTA_LINK_TYPES } from "@/components/cta-link-button";
+import CtaLinkButton, { CTA_LINK_TYPES, DEFAULT_LINK_TYPE } from "@/components/cta-link-button";
 import {
     PostCard,
     PostContextBar,
@@ -280,7 +280,7 @@ export default function FeedClient({
     const [commentReportDetails, setCommentReportDetails] = React.useState("");
     const [showCommentEmoji, setShowCommentEmoji] = React.useState<string | null>(null);
     const [newPostLinkUrl, setNewPostLinkUrl] = React.useState<string>("");
-    const [newPostLinkType, setNewPostLinkType] = React.useState<string>("visit_website");
+    const [newPostLinkType, setNewPostLinkType] = React.useState<string>(DEFAULT_LINK_TYPE);
     const [showLinkInput, setShowLinkInput] = React.useState(false);
     const [visibleCommentCount, setVisibleCommentCount] = React.useState<Record<string, number>>({});
     const [editingPostId, setEditingPostId] = React.useState<string | null>(null);
@@ -290,7 +290,7 @@ export default function FeedClient({
     const [editingPostTags, setEditingPostTags] = React.useState<string[]>([]);
     const [editingPostTagInput, setEditingPostTagInput] = React.useState("");
     const [editingPostLinkUrl, setEditingPostLinkUrl] = React.useState("");
-    const [editingPostLinkType, setEditingPostLinkType] = React.useState<string>("visit_website");
+    const [editingPostLinkType, setEditingPostLinkType] = React.useState<string>(DEFAULT_LINK_TYPE);
     const [editingShowImageUpload, setEditingShowImageUpload] = React.useState(false);
     const [editingShowVideoUpload, setEditingShowVideoUpload] = React.useState(false);
     const [editingShowLinkInput, setEditingShowLinkInput] = React.useState(false);
@@ -443,7 +443,7 @@ export default function FeedClient({
             setNewPostTags([]);
             setTagInput("");
             setNewPostLinkUrl("");
-            setNewPostLinkType("visit_website");
+            setNewPostLinkType(DEFAULT_LINK_TYPE);
             setShowLinkInput(false);
             setShowImageUpload(false);
             setShowVideoUpload(false);
@@ -569,7 +569,7 @@ export default function FeedClient({
             setEditingPostTags([]);
             setEditingPostTagInput("");
             setEditingPostLinkUrl("");
-            setEditingPostLinkType("visit_website");
+            setEditingPostLinkType(DEFAULT_LINK_TYPE);
             toast.success("Post updated");
         } catch {
             toast.error("Failed to update post");
@@ -960,7 +960,7 @@ export default function FeedClient({
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => { setShowLinkInput(false); setNewPostLinkUrl(""); setNewPostLinkType("visit_website"); }}
+                                            onClick={() => { setShowLinkInput(false); setNewPostLinkUrl(""); setNewPostLinkType(DEFAULT_LINK_TYPE); }}
                                             className="p-1 text-gray-400 hover:text-red-500"
                                         >
                                             <XIcon className="h-4 w-4" />
@@ -1137,7 +1137,7 @@ export default function FeedClient({
                                                     setEditingPostVideos(post.videos || []);
                                                     setEditingPostTags(post.tags || []);
                                                     setEditingPostLinkUrl(post.linkUrl || "");
-                                                    setEditingPostLinkType(post.linkType || "visit_website");
+                                                    setEditingPostLinkType(post.linkType || DEFAULT_LINK_TYPE);
                                                     setEditingShowImageUpload(false);
                                                     setEditingShowVideoUpload(false);
                                                     setEditingShowLinkInput(false);
@@ -1267,7 +1267,7 @@ export default function FeedClient({
                                                 <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                                                     <LinkIcon className="h-3 w-3" />
                                                     <span className="truncate">{editingPostLinkUrl}</span>
-                                                    <button type="button" onClick={() => { setEditingPostLinkUrl(""); setEditingPostLinkType("visit_website"); }} className="text-gray-400 hover:text-red-500 ml-auto">
+                                                    <button type="button" onClick={() => { setEditingPostLinkUrl(""); setEditingPostLinkType(DEFAULT_LINK_TYPE); }} className="text-gray-400 hover:text-red-500 ml-auto">
                                                         <XIcon className="h-3 w-3" />
                                                     </button>
                                                 </div>

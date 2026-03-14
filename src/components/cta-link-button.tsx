@@ -12,10 +12,22 @@ export const CTA_LINK_TYPES = [
 
 export type CtaLinkType = (typeof CTA_LINK_TYPES)[number]["value"];
 
+export const DEFAULT_LINK_TYPE: CtaLinkType = "visit_website";
+
 /** Get the display label for a given link type, with fallback */
 export function getCtaLabel(linkType: string | null | undefined): string {
     const found = CTA_LINK_TYPES.find((t) => t.value === linkType);
     return found ? found.label : "Visit Website";
+}
+
+/** Only allow safe URL protocols */
+function isSafeUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+        return false;
+    }
 }
 
 interface CtaLinkButtonProps {
@@ -27,6 +39,8 @@ interface CtaLinkButtonProps {
 /** Compact CTA button that replaces the rich link preview card */
 export default function CtaLinkButton({ url, linkType, className = "" }: CtaLinkButtonProps) {
     const label = getCtaLabel(linkType);
+
+    if (!isSafeUrl(url)) return null;
 
     return (
         <a
