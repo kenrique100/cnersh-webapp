@@ -8,6 +8,9 @@ export const CTA_LINK_TYPES = [
     { value: "apply_now", label: "Apply Now" },
     { value: "visit_website", label: "Visit Website" },
     { value: "click_here", label: "Click Here" },
+    { value: "learn_more", label: "Learn More" },
+    { value: "download", label: "Download" },
+    { value: "register", label: "Register" },
 ] as const;
 
 export type CtaLinkType = (typeof CTA_LINK_TYPES)[number]["value"];
