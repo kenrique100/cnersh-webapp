@@ -84,29 +84,29 @@ export default async function DashboardPage() {
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
                 {/* Profile Header */}
-                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-6 overflow-hidden">
-                    <div className="h-28 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700" />
-                    <CardContent className="relative pt-0 pb-5">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-10">
-                            <Avatar className="h-20 w-20 border-4 border-white dark:border-gray-950 shadow-lg">
+                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-4 sm:mb-6 overflow-hidden">
+                    <div className="h-20 sm:h-28 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700" />
+                    <CardContent className="relative pt-0 pb-4 sm:pb-5 px-3 sm:px-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 -mt-8 sm:-mt-10">
+                            <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-4 border-white dark:border-gray-950 shadow-lg">
                                 <AvatarImage src={user?.image || undefined} alt={user?.name || ""} />
-                                <AvatarFallback className="bg-blue-700 text-white text-xl font-bold">
+                                <AvatarFallback className="bg-blue-700 text-white text-lg sm:text-xl font-bold">
                                     {userInitials}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 pt-1">
-                                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                            <div className="flex-1 min-w-0 pt-1">
+                                <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
                                     {user?.name || "Welcome"}
                                 </h1>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                                     {user?.email}
                                 </p>
                             </div>
                             <Link
                                 href="/update-profile"
-                                className="text-sm text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                                className="text-sm text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium shrink-0"
                             >
                                 Edit Profile
                             </Link>
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
                 </Card>
 
                 {/* Summary Stat Cards */}
-                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+                <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-4 sm:mb-6">
                     {statCards.map((stat) => {
                         const Icon = stat.icon;
                         return (
@@ -123,15 +123,15 @@ export default async function DashboardPage() {
                                 key={stat.title}
                                 className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow rounded-xl"
                             >
-                                <CardContent className="flex items-center gap-4 py-5">
-                                    <div className={`flex items-center justify-center w-11 h-11 rounded-xl ${stat.bg}`}>
-                                        <Icon className={`w-5 h-5 ${stat.color}`} />
+                                <CardContent className="flex items-center gap-2.5 sm:gap-4 p-3 sm:py-5">
+                                    <div className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl shrink-0 ${stat.bg}`}>
+                                        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
                                     </div>
-                                    <div>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    <div className="min-w-0">
+                                        <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                                             {stat.value}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{stat.title}</p>
+                                        <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">{stat.title}</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -140,7 +140,7 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Recent Activity & Community Updates */}
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
                     {/* Recent Activity */}
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
                         <CardHeader className="pb-3">
@@ -164,7 +164,7 @@ export default async function DashboardPage() {
                                         <Link
                                             key={post.id}
                                             href="/feeds"
-                                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                                            className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                                         >
                                             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 shrink-0 mt-0.5">
                                                 <FileTextIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
                                                 <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
                                                     {post.content.slice(0, 80)}{post.content.length > 80 ? "..." : ""}
                                                 </p>
-                                                <div className="flex items-center gap-3 mt-1">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
                                                     <span className="text-xs text-gray-400">{timeAgo(post.createdAt)}</span>
                                                     <span className="text-xs text-gray-400">{post._count.likes} likes</span>
                                                     <span className="text-xs text-gray-400">{post._count.comments} comments</span>
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
                                             <Link
                                                 key={project.id}
                                                 href={`/protocols/${project.id}`}
-                                                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                                                className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                                             >
                                                 <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 dark:bg-green-950 shrink-0 mt-0.5">
                                                     <FolderIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
                                                     <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
                                                         {project.title}
                                                     </p>
-                                                    <div className="flex items-center gap-2 mt-1">
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1">
                                                         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusColor(project.status)}`}>
                                                             {project.status.replace("_", " ")}
                                                         </span>
@@ -242,7 +242,7 @@ export default async function DashboardPage() {
                                         <Link
                                             key={topic.id}
                                             href="/community"
-                                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                                            className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                                         >
                                             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 shrink-0 mt-0.5">
                                                 <MessageSquareIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
                                                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                                     {topic.title}
                                                 </p>
-                                                <div className="flex items-center gap-3 mt-1">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
                                                     <span className="text-xs text-gray-400">by {topic.user.name || "Unknown"}</span>
                                                     <span className="text-xs text-gray-400">{topic._count.replies} replies</span>
                                                     <span className="text-xs text-gray-400">{timeAgo(topic.createdAt)}</span>
@@ -273,52 +273,52 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="mt-6">
+                <div className="mt-4 sm:mt-6">
                     <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                         Quick Actions
                     </h2>
-                    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
                         <Link href="/feeds">
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 mb-2">
                                         <PenSquareIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Feeds</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Share &amp; interact</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Feeds</p>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Share &amp; interact</p>
                                 </CardContent>
                             </Card>
                         </Link>
                         <Link href="/protocols/submit">
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950 mb-2">
                                         <FolderIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Submit Protocol</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">New submission</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Submit Protocol</p>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">New submission</p>
                                 </CardContent>
                             </Card>
                         </Link>
                         <Link href="/protocols">
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 mb-2">
                                         <ClockIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Protocols</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Track submissions</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">My Protocols</p>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Track submissions</p>
                                 </CardContent>
                             </Card>
                         </Link>
                         <Link href="/notifications">
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950 mb-2">
                                         <BellIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Stay updated</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</p>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">Stay updated</p>
                                 </CardContent>
                             </Card>
                         </Link>

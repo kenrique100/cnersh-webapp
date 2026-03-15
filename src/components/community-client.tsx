@@ -56,6 +56,11 @@ import {
     CalendarIcon,
     BookUserIcon,
     Music2Icon,
+    UploadIcon,
+    MessageCircleOffIcon,
+    MessageCircleIcon,
+    FileTextIcon,
+    DownloadIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -67,6 +72,7 @@ import {
     editReply,
     editTopic,
     toggleTopicLike,
+    toggleTopicChat,
     voteOnPoll,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
@@ -93,9 +99,14 @@ interface TopicData {
     content: string;
     category: string;
     image?: string | null;
+    images?: string[];
     video?: string | null;
+    videos?: string[];
+    documents?: string[];
     linkUrl?: string | null;
+    chatEnabled?: boolean;
     createdAt: Date;
+    userId?: string;
     user: TopicUser;
     _count: { replies: number; likes?: number };
     likes?: { userId: string; isDislike: boolean }[];
@@ -132,9 +143,14 @@ interface TopicDetail {
     content: string;
     category: string;
     image?: string | null;
+    images?: string[];
     video?: string | null;
+    videos?: string[];
+    documents?: string[];
     linkUrl?: string | null;
+    chatEnabled?: boolean;
     createdAt: Date;
+    userId?: string;
     user: TopicUser;
     replies: ReplyData[];
     likes?: { userId: string; isDislike: boolean }[];
@@ -177,6 +193,7 @@ interface CommunityClientProps {
     users: CommunityUser[];
     isAdmin?: boolean;
     currentUserId?: string;
+    currentUserRole?: string;
 }
 
 export default function CommunityClient({
@@ -184,10 +201,12 @@ export default function CommunityClient({
     users,
     isAdmin = false,
     currentUserId,
+    currentUserRole,
 }: CommunityClientProps) {
     const router = useRouter();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const isSuperAdmin = currentUserRole === "superadmin";
 
     const [topics, setTopics] = React.useState(initialTopics);
     const [selectedTopic, setSelectedTopic] =
@@ -234,9 +253,16 @@ export default function CommunityClient({
         content: "",
         category: "",
         image: "",
+        images: [] as string[],
         video: "",
+        videos: [] as string[],
+        documents: [] as string[],
         linkUrl: "",
     });
+    const [topicUploading, setTopicUploading] = React.useState(false);
+    const topicImageRef = useRef<HTMLInputElement>(null);
+    const topicVideoRef = useRef<HTMLInputElement>(null);
+    const topicDocRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
@@ -261,17 +287,68 @@ export default function CommunityClient({
         }
         try {
             await createTopic({
-                ...newTopic,
+                title: newTopic.title,
+                content: newTopic.content,
+                category: newTopic.category,
                 image: newTopic.image || undefined,
+                images: newTopic.images.length > 0 ? newTopic.images : undefined,
                 video: newTopic.video || undefined,
+                videos: newTopic.videos.length > 0 ? newTopic.videos : undefined,
+                documents: newTopic.documents.length > 0 ? newTopic.documents : undefined,
                 linkUrl: newTopic.linkUrl || undefined,
             });
             setShowCreate(false);
-            setNewTopic({ title: "", content: "", category: "", image: "", video: "", linkUrl: "" });
+            setNewTopic({ title: "", content: "", category: "", image: "", images: [], video: "", videos: [], documents: [], linkUrl: "" });
             toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
             router.refresh();
         } catch {
             toast.error("Failed to create channel");
+        }
+    };
+
+    const handleTopicFileUpload = async (file: File, type: "image" | "video" | "document") => {
+        setTopicUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            if (!res.ok) {
+                let errorMessage = "Upload failed";
+                if (res.status === 413) {
+                    errorMessage = "File is too large";
+                } else {
+                    try {
+                        const d = await res.json();
+                        errorMessage = d.error || errorMessage;
+                    } catch {
+                        // use default error message
+                    }
+                }
+                throw new Error(errorMessage);
+            }
+            const data = await res.json();
+            if (data.url) {
+                switch (type) {
+                    case "image": setNewTopic((p) => ({ ...p, images: [...p.images, data.url] })); break;
+                    case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, data.url] })); break;
+                    case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, data.url] })); break;
+                }
+            }
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : `Failed to upload ${type}`);
+        } finally {
+            setTopicUploading(false);
+        }
+    };
+
+    const handleToggleChat = async (topicId: string) => {
+        try {
+            const result = await toggleTopicChat(topicId);
+            setSelectedTopic((prev) => prev ? { ...prev, chatEnabled: result.chatEnabled } : prev);
+            setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, chatEnabled: result.chatEnabled } : t));
+            toast.success(result.chatEnabled ? "Chat enabled" : "Chat disabled — members can only view messages");
+        } catch {
+            toast.error("Failed to toggle chat");
         }
     };
 
@@ -1029,6 +1106,24 @@ export default function CommunityClient({
                 >
                     {selectedTopic.category}
                 </Badge>
+                {/* Chat toggle for channel creator or superadmin */}
+                {(selectedTopic.userId === currentUserId || isSuperAdmin) && (
+                    <button
+                        onClick={() => handleToggleChat(selectedTopic.id)}
+                        className={`p-1.5 rounded-lg transition-colors shrink-0 ${
+                            selectedTopic.chatEnabled !== false
+                                ? "text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                                : "text-red-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950"
+                        }`}
+                        title={selectedTopic.chatEnabled !== false ? "Disable chat" : "Enable chat"}
+                    >
+                        {selectedTopic.chatEnabled !== false ? (
+                            <MessageCircleOffIcon className="h-4 w-4" />
+                        ) : (
+                            <MessageCircleIcon className="h-4 w-4" />
+                        )}
+                    </button>
+                )}
             </div>
 
             {/* Messages */}
@@ -1072,12 +1167,52 @@ export default function CommunityClient({
                             <Image src={selectedTopic.image} alt="Attachment" width={600} height={400} className="w-full max-h-[400px] object-contain bg-gray-50 dark:bg-gray-900" unoptimized />
                         </div>
                     )}
+                    {/* Multiple Images */}
+                    {selectedTopic.images && selectedTopic.images.length > 0 && (
+                        <div className="mt-3 grid grid-cols-2 gap-2 max-w-lg">
+                            {selectedTopic.images.map((img, i) => (
+                                <div key={i} className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                    <Image src={img} alt={`Image ${i + 1}`} width={300} height={200} className="w-full max-h-[200px] object-cover bg-gray-50 dark:bg-gray-900" unoptimized />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     {selectedTopic.video && (
                         <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-lg">
                             <video src={selectedTopic.video} controls className="w-full max-h-[400px] object-contain bg-black" />
                         </div>
                     )}
-                    {/* Link Attachment */}
+                    {/* Multiple Videos */}
+                    {selectedTopic.videos && selectedTopic.videos.length > 0 && (
+                        <div className="mt-3 space-y-2 max-w-lg">
+                            {selectedTopic.videos.map((vid, i) => (
+                                <div key={i} className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                    <video src={vid} controls className="w-full max-h-[300px] object-contain bg-black" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {/* Documents */}
+                    {selectedTopic.documents && selectedTopic.documents.length > 0 && (
+                        <div className="mt-3 space-y-2 max-w-lg">
+                            {selectedTopic.documents.map((doc, i) => (
+                                <a
+                                    key={i}
+                                    href={doc}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    <FileTextIcon className="h-5 w-5 text-blue-500 shrink-0" />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                                        Document {i + 1}
+                                    </span>
+                                    <DownloadIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                    {/* Link Attachment with Preview */}
                     {selectedTopic.linkUrl && (
                         <LinkPreview url={selectedTopic.linkUrl} />
                     )}
@@ -1429,6 +1564,16 @@ export default function CommunityClient({
             </div>
 
             {/* Message Input */}
+            {selectedTopic.chatEnabled === false ? (
+                <div className="px-4 pb-4 pt-3 shrink-0">
+                    <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+                        <MessageCircleOffIcon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                            Chat is disabled — only viewing is allowed
+                        </span>
+                    </div>
+                </div>
+            ) : (
             <div className="px-4 pb-4 pt-1 shrink-0">
                 {/* Reply indicator */}
                 {replyingTo && (
@@ -1841,6 +1986,7 @@ export default function CommunityClient({
                     </button>
                 </div>
             </div>
+            )}
         </div>
     ) : (
         /* No channel selected */
@@ -1982,45 +2128,153 @@ export default function CommunityClient({
                                 className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 min-h-[80px]"
                             />
                         </div>
-                        {/* Optional Image/Video/Link - Only for Announcements */}
+                        {/* Optional Media/Link - Only for Announcements */}
                         {newTopic.category === "Announcements" && (
                             <>
+                                {/* Image Upload */}
                                 <div>
                                     <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                        Image URL (optional)
+                                        Images (optional)
                                     </label>
-                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                        <ImageIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                        <Input
-                                            placeholder="https://example.com/image.jpg"
-                                            value={newTopic.image}
-                                            onChange={(e) => setNewTopic((p) => ({ ...p, image: e.target.value }))}
-                                            className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
-                                        />
-                                    </div>
+                                    <input
+                                        ref={topicImageRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const files = e.target.files;
+                                            if (files) {
+                                                for (const file of Array.from(files)) {
+                                                    await handleTopicFileUpload(file, "image");
+                                                }
+                                            }
+                                            e.target.value = "";
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => topicImageRef.current?.click()}
+                                        disabled={topicUploading}
+                                        className="flex items-center gap-2 w-full bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                    >
+                                        <UploadIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <span>{topicUploading ? "Uploading..." : "Upload images"}</span>
+                                    </button>
+                                    {newTopic.images.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {newTopic.images.map((url, i) => (
+                                                <div key={i} className="relative group">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={url} alt={`Uploaded image ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
+                                                    <button
+                                                        onClick={() => setNewTopic((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
+                                                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <XIcon className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                                {/* Video Upload */}
                                 <div>
                                     <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                        Video URL (optional)
+                                        Videos (optional)
                                     </label>
-                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-                                        <VideoIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                        <Input
-                                            placeholder="https://example.com/video.mp4"
-                                            value={newTopic.video}
-                                            onChange={(e) => setNewTopic((p) => ({ ...p, video: e.target.value }))}
-                                            className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"
-                                        />
-                                    </div>
+                                    <input
+                                        ref={topicVideoRef}
+                                        type="file"
+                                        accept="video/*"
+                                        multiple
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const files = e.target.files;
+                                            if (files) {
+                                                for (const file of Array.from(files)) {
+                                                    await handleTopicFileUpload(file, "video");
+                                                }
+                                            }
+                                            e.target.value = "";
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => topicVideoRef.current?.click()}
+                                        disabled={topicUploading}
+                                        className="flex items-center gap-2 w-full bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                    >
+                                        <UploadIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <span>{topicUploading ? "Uploading..." : "Upload videos"}</span>
+                                    </button>
+                                    {newTopic.videos.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {newTopic.videos.map((url, i) => (
+                                                <div key={i} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1 text-xs text-gray-700 dark:text-gray-300">
+                                                    <VideoIcon className="h-3.5 w-3.5 text-gray-400" />
+                                                    <span className="truncate max-w-[120px]">Video {i + 1}</span>
+                                                    <button onClick={() => setNewTopic((p) => ({ ...p, videos: p.videos.filter((_, idx) => idx !== i) }))} className="text-red-500 hover:text-red-600">
+                                                        <XIcon className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                                {/* Document Upload */}
                                 <div>
                                     <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
-                                        Link Attachment (optional)
+                                        Documents (optional)
+                                    </label>
+                                    <input
+                                        ref={topicDocRef}
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+                                        multiple
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const files = e.target.files;
+                                            if (files) {
+                                                for (const file of Array.from(files)) {
+                                                    await handleTopicFileUpload(file, "document");
+                                                }
+                                            }
+                                            e.target.value = "";
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => topicDocRef.current?.click()}
+                                        disabled={topicUploading}
+                                        className="flex items-center gap-2 w-full bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                    >
+                                        <UploadIcon className="h-4 w-4 text-gray-400 shrink-0" />
+                                        <span>{topicUploading ? "Uploading..." : "Upload documents"}</span>
+                                    </button>
+                                    {newTopic.documents.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {newTopic.documents.map((url, i) => (
+                                                <div key={i} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1 text-xs text-gray-700 dark:text-gray-300">
+                                                    <FileTextIcon className="h-3.5 w-3.5 text-gray-400" />
+                                                    <span className="truncate max-w-[120px]">Document {i + 1}</span>
+                                                    <button onClick={() => setNewTopic((p) => ({ ...p, documents: p.documents.filter((_, idx) => idx !== i) }))} className="text-red-500 hover:text-red-600">
+                                                        <XIcon className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Link URL */}
+                                <div>
+                                    <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
+                                        Link to Website (optional)
                                     </label>
                                     <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
                                         <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
                                         <Input
-                                            placeholder="https://example.com/document.pdf"
+                                            placeholder="https://example.com"
                                             value={newTopic.linkUrl}
                                             onChange={(e) => setNewTopic((p) => ({ ...p, linkUrl: e.target.value }))}
                                             className="bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 h-auto p-0 focus-visible:ring-0"

@@ -41,6 +41,7 @@ export default async function CommunityPage() {
                 users={JSON.parse(JSON.stringify(users))}
                 isAdmin={true}
                 currentUserId={session.user.id}
+                currentUserRole={currentUser?.role || "admin"}
             />
         </div>
     );

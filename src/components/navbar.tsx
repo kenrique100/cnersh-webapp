@@ -79,7 +79,7 @@ interface NavItem {
 
 const userMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-    { href: "/protocols", label: "Protocols/Projects", icon: FolderIcon },
+    { href: "/protocols", label: "Protocols", icon: FolderIcon },
     { href: "/community", label: "Community", icon: MessageSquareIcon },
     { href: "/notifications", label: "Notifications", icon: BellIcon },
     { href: "/feeds", label: "Feeds", icon: PenSquareIcon },
@@ -90,7 +90,7 @@ const userMobileNavItems: NavItem[] = [
 
 const adminMobileNavItems: NavItem[] = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
-    { href: "/protocols", label: "Protocols/Projects", icon: FolderIcon },
+    { href: "/protocols", label: "Protocols", icon: FolderIcon },
     { href: "/community", label: "Community", icon: MessageSquareIcon },
     { href: "/notifications", label: "Notifications", icon: BellIcon },
     { href: "/user-management", label: "User Management", icon: UsersIcon },

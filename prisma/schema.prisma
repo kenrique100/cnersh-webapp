@@ -241,8 +241,12 @@ model CommunityTopic {
   content     String
   category    String
   image       String?
+  images      String[]         @default([])
   video       String?
+  videos      String[]         @default([])
+  documents   String[]         @default([])
   linkUrl     String?
+  chatEnabled Boolean          @default(true)
   userId      String
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   replies     CommunityReply[]
