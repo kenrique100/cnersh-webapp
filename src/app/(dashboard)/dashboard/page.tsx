@@ -1,37 +1,103 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
-import { Card, CardContent } from "@/components/ui/card";
+import { getUserDashboardData } from "@/app/actions/dashboard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PenSquareIcon, FolderIcon, BellIcon } from "lucide-react";
+import {
+    PenSquareIcon,
+    FolderIcon,
+    BellIcon,
+    CheckCircle2Icon,
+    ClockIcon,
+    MessageSquareIcon,
+    FileTextIcon,
+    ArrowRightIcon,
+    ActivityIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
+function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+}
+
+function statusColor(status: string) {
+    switch (status) {
+        case "APPROVED": return "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950";
+        case "REJECTED": return "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950";
+        case "SUBMITTED":
+        case "PENDING_REVIEW": return "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950";
+        default: return "text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900";
+    }
+}
+
 export default async function DashboardPage() {
     await authIsRequired();
     const user = await updateProfile();
+    const data = await getUserDashboardData();
 
     const userInitials = user?.name
         ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
         : user?.email?.slice(0, 2).toUpperCase() || "U";
 
+    const stats = data?.stats;
+
+    const statCards = [
+        {
+            title: "My Posts",
+            value: stats?.totalPosts ?? 0,
+            icon: PenSquareIcon,
+            color: "text-blue-600 dark:text-blue-400",
+            bg: "bg-blue-50 dark:bg-blue-950",
+        },
+        {
+            title: "Pending Protocols",
+            value: stats?.pendingProjects ?? 0,
+            icon: ClockIcon,
+            color: "text-amber-600 dark:text-amber-400",
+            bg: "bg-amber-50 dark:bg-amber-950",
+        },
+        {
+            title: "Approved Protocols",
+            value: stats?.approvedProjects ?? 0,
+            icon: CheckCircle2Icon,
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-50 dark:bg-emerald-950",
+        },
+        {
+            title: "Notifications",
+            value: stats?.unreadNotifications ?? 0,
+            icon: BellIcon,
+            color: "text-violet-600 dark:text-violet-400",
+            bg: "bg-violet-50 dark:bg-violet-950",
+        },
+    ];
+
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
-            <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-                {/* Profile Header - LinkedIn style */}
-                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-8 overflow-hidden">
-                    {/* Cover Banner */}
-                    <div className="h-32 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800" />
-                    <CardContent className="relative pt-0 pb-6">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-12">
-                            <Avatar className="h-24 w-24 border-4 border-white dark:border-gray-950 shadow-lg">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+                {/* Profile Header */}
+                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-6 overflow-hidden">
+                    <div className="h-28 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700" />
+                    <CardContent className="relative pt-0 pb-5">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-10">
+                            <Avatar className="h-20 w-20 border-4 border-white dark:border-gray-950 shadow-lg">
                                 <AvatarImage src={user?.image || undefined} alt={user?.name || ""} />
-                                <AvatarFallback className="bg-blue-700 text-white text-2xl font-bold">
+                                <AvatarFallback className="bg-blue-700 text-white text-xl font-bold">
                                     {userInitials}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 pt-2">
-                                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            <div className="flex-1 pt-1">
+                                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                                     {user?.name || "Welcome"}
                                 </h1>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -40,7 +106,7 @@ export default async function DashboardPage() {
                             </div>
                             <Link
                                 href="/update-profile"
-                                className="text-sm text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 font-medium"
+                                className="text-sm text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                             >
                                 Edit Profile
                             </Link>
@@ -48,43 +114,215 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Quick Access Grid */}
-                <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-8">
-                    <Link href="/feeds">
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow cursor-pointer h-full">
-                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 mb-3">
-                                    <PenSquareIcon className="w-6 h-6 text-blue-700 dark:text-blue-400" />
-                                </div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Feeds</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Share &amp; interact</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                {/* Summary Stat Cards */}
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+                    {statCards.map((stat) => {
+                        const Icon = stat.icon;
+                        return (
+                            <Card
+                                key={stat.title}
+                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow rounded-xl"
+                            >
+                                <CardContent className="flex items-center gap-4 py-5">
+                                    <div className={`flex items-center justify-center w-11 h-11 rounded-xl ${stat.bg}`}>
+                                        <Icon className={`w-5 h-5 ${stat.color}`} />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                            {stat.value}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{stat.title}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
 
-                    <Link href="/protocols">
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow cursor-pointer h-full">
-                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 mb-3">
-                                    <FolderIcon className="w-6 h-6 text-green-700 dark:text-green-400" />
+                {/* Recent Activity & Community Updates */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Recent Activity */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <ActivityIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                        Recent Activity
+                                    </CardTitle>
                                 </div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Protocols</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Track submissions</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                                <Link href="/feeds" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                                    View all <ArrowRightIcon className="h-3 w-3" />
+                                </Link>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {/* Recent Posts */}
+                                {data?.recentPosts && data.recentPosts.length > 0 ? (
+                                    data.recentPosts.map((post) => (
+                                        <Link
+                                            key={post.id}
+                                            href="/feeds"
+                                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                                        >
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 shrink-0 mt-0.5">
+                                                <FileTextIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                                                    {post.content.slice(0, 80)}{post.content.length > 80 ? "..." : ""}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-xs text-gray-400">{timeAgo(post.createdAt)}</span>
+                                                    <span className="text-xs text-gray-400">{post._count.likes} likes</span>
+                                                    <span className="text-xs text-gray-400">{post._count.comments} comments</span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-6 text-sm text-gray-400">
+                                        No recent posts yet.{" "}
+                                        <Link href="/feeds" className="text-blue-600 hover:underline">Create one</Link>
+                                    </div>
+                                )}
 
-                    <Link href="/notifications">
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow hover:shadow-lg transition-shadow cursor-pointer h-full">
-                            <CardContent className="flex flex-col items-center justify-center py-6 text-center">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900 mb-3">
-                                    <BellIcon className="w-6 h-6 text-orange-700 dark:text-orange-400" />
+                                {/* Recent Protocol Submissions */}
+                                {data?.recentProjects && data.recentProjects.length > 0 && (
+                                    <>
+                                        <div className="border-t border-gray-100 dark:border-gray-800 my-2" />
+                                        {data.recentProjects.map((project) => (
+                                            <Link
+                                                key={project.id}
+                                                href={`/protocols/${project.id}`}
+                                                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                                            >
+                                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 dark:bg-green-950 shrink-0 mt-0.5">
+                                                    <FolderIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                                                        {project.title}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusColor(project.status)}`}>
+                                                            {project.status.replace("_", " ")}
+                                                        </span>
+                                                        <span className="text-xs text-gray-400">{timeAgo(project.createdAt)}</span>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Community Updates */}
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <MessageSquareIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                        Community Updates
+                                    </CardTitle>
                                 </div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Stay updated</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                                <Link href="/community" className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                                    View all <ArrowRightIcon className="h-3 w-3" />
+                                </Link>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {data?.recentCommunityTopics && data.recentCommunityTopics.length > 0 ? (
+                                    data.recentCommunityTopics.map((topic) => (
+                                        <Link
+                                            key={topic.id}
+                                            href="/community"
+                                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                                        >
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 shrink-0 mt-0.5">
+                                                <MessageSquareIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                    {topic.title}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-xs text-gray-400">by {topic.user.name || "Unknown"}</span>
+                                                    <span className="text-xs text-gray-400">{topic._count.replies} replies</span>
+                                                    <span className="text-xs text-gray-400">{timeAgo(topic.createdAt)}</span>
+                                                </div>
+                                                <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
+                                                    {topic.category}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-6 text-sm text-gray-400">
+                                        No community discussions yet.
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="mt-6">
+                    <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                        Quick Actions
+                    </h2>
+                    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                        <Link href="/feeds">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
+                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 mb-2">
+                                        <PenSquareIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Feeds</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Share &amp; interact</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                        <Link href="/protocols/submit">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
+                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950 mb-2">
+                                        <FolderIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Submit Protocol</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">New submission</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                        <Link href="/protocols">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
+                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 mb-2">
+                                        <ClockIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Protocols</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Track submissions</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                        <Link href="/notifications">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
+                                <CardContent className="flex flex-col items-center justify-center py-5 text-center">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950 mb-2">
+                                        <BellIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Stay updated</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
