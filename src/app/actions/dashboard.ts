@@ -119,6 +119,7 @@ export async function getAdminDashboardData() {
             totalPosts,
             totalProjects,
             approvedProjects,
+            rejectedProjects,
             pendingProjects,
             totalTopics,
             pendingReports,
@@ -131,6 +132,7 @@ export async function getAdminDashboardData() {
             db.post.count({ where: { deleted: false } }),
             db.project.count({ where: { deleted: false } }),
             db.project.count({ where: { status: "APPROVED", deleted: false } }),
+            db.project.count({ where: { status: "REJECTED", deleted: false } }),
             db.project.count({
                 where: {
                     status: { in: ["SUBMITTED", "PENDING_REVIEW"] },
@@ -185,6 +187,7 @@ export async function getAdminDashboardData() {
                 totalPosts,
                 totalProjects,
                 approvedProjects,
+                rejectedProjects,
                 pendingProjects,
                 totalTopics,
                 pendingReports,
