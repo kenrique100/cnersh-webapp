@@ -10,7 +10,10 @@ export async function createTopic(data: {
     content: string;
     category: string;
     image?: string;
+    images?: string[];
     video?: string;
+    videos?: string[];
+    documents?: string[];
     linkUrl?: string;
 }) {
     const session = await authSession();
@@ -30,7 +33,10 @@ export async function createTopic(data: {
             content: data.content,
             category: data.category,
             image: data.image || null,
+            images: data.images || [],
             video: data.video || null,
+            videos: data.videos || [],
+            documents: data.documents || [],
             linkUrl: data.linkUrl || null,
             userId: session.user.id,
         },
@@ -408,7 +414,10 @@ export async function editTopic(topicId: string, data: {
     title?: string;
     content?: string;
     image?: string | null;
+    images?: string[];
     video?: string | null;
+    videos?: string[];
+    documents?: string[];
     linkUrl?: string | null;
 }) {
     const session = await authSession();
@@ -439,10 +448,46 @@ export async function editTopic(topicId: string, data: {
             ...(data.title !== undefined ? { title: data.title } : {}),
             ...(data.content !== undefined ? { content: data.content } : {}),
             ...(data.image !== undefined ? { image: data.image } : {}),
+            ...(data.images !== undefined ? { images: data.images } : {}),
             ...(data.video !== undefined ? { video: data.video } : {}),
+            ...(data.videos !== undefined ? { videos: data.videos } : {}),
+            ...(data.documents !== undefined ? { documents: data.documents } : {}),
             ...(data.linkUrl !== undefined ? { linkUrl: data.linkUrl } : {}),
         },
     });
+}
+
+export async function toggleTopicChat(topicId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const currentUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+        throw new Error("Only admins and superadmins can access the community");
+    }
+
+    const topic = await db.communityTopic.findUnique({
+        where: { id: topicId },
+        select: { userId: true, chatEnabled: true },
+    });
+
+    if (!topic) throw new Error("Topic not found");
+
+    // Only the topic creator or superadmin can toggle chat
+    if (topic.userId !== session.user.id && currentUser.role !== "superadmin") {
+        throw new Error("Only the channel creator or super admin can toggle chat");
+    }
+
+    const updated = await db.communityTopic.update({
+        where: { id: topicId },
+        data: { chatEnabled: !topic.chatEnabled },
+        select: { chatEnabled: true },
+    });
+
+    return updated;
 }
 
 export async function toggleTopicLike(topicId: string, isDislike: boolean = false) {
