@@ -49,8 +49,7 @@ const userSections: NavSection[] = [
         title: "Main",
         items: [
             { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-            { href: "/protocols", label: "Protocols/Projects", icon: FolderIcon },
-            { href: "/community", label: "Community", icon: MessageSquareIcon },
+            { href: "/protocols", label: "Protocols", icon: FolderIcon },
             { href: "/notifications", label: "Notifications", icon: BellIcon },
         ],
     },
@@ -75,7 +74,7 @@ const adminSections: NavSection[] = [
         title: "Main",
         items: [
             { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
-            { href: "/protocols", label: "Protocols/Projects", icon: FolderIcon },
+            { href: "/protocols", label: "Protocols", icon: FolderIcon },
             { href: "/community", label: "Community", icon: MessageSquareIcon },
             { href: "/notifications", label: "Notifications", icon: BellIcon },
         ],
@@ -107,7 +106,7 @@ const superAdminSections: NavSection[] = [
         title: "Main",
         items: [
             { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
-            { href: "/protocols", label: "Protocols/Projects", icon: FolderIcon },
+            { href: "/protocols", label: "Protocols", icon: FolderIcon },
             { href: "/community", label: "Community", icon: MessageSquareIcon },
             { href: "/notifications", label: "Notifications", icon: BellIcon },
         ],
@@ -159,7 +158,7 @@ export default function DashboardSidebar({ role, collapsed, onToggle }: SidebarP
     return (
         <aside
             className={cn(
-                "fixed left-0 top-16 h-[calc(100vh-4rem)] bg-gray-900 dark:bg-gray-950 z-40 transition-all duration-300 flex flex-col",
+                "fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-40 transition-all duration-300 flex flex-col",
                 collapsed ? "w-16" : "w-64"
             )}
         >
@@ -167,7 +166,7 @@ export default function DashboardSidebar({ role, collapsed, onToggle }: SidebarP
             <div className="flex justify-end p-2">
                 <button
                     onClick={onToggle}
-                    className="flex items-center justify-center h-8 w-8 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                    className="flex items-center justify-center h-8 w-8 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                     {collapsed ? (
                         <ChevronRightIcon className="h-4 w-4" />
@@ -182,12 +181,12 @@ export default function DashboardSidebar({ role, collapsed, onToggle }: SidebarP
                 {sections.map((section, sectionIdx) => (
                     <div key={section.title} className={cn(sectionIdx > 0 && "mt-4")}>
                         {!collapsed && (
-                            <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                            <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                 {section.title}
                             </p>
                         )}
                         {collapsed && sectionIdx > 0 && (
-                            <div className="mx-3 mb-2 border-t border-gray-700" />
+                            <div className="mx-3 mb-2 border-t border-gray-200 dark:border-gray-700" />
                         )}
                         <ul className="space-y-0.5">
                             {section.items.map((item) => {
@@ -203,7 +202,7 @@ export default function DashboardSidebar({ role, collapsed, onToggle }: SidebarP
                                                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                                                 isActive
                                                     ? "bg-blue-600 text-white"
-                                                    : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white",
                                                 collapsed && "justify-center px-2"
                                             )}
                                             title={collapsed ? item.label : undefined}
@@ -220,11 +219,11 @@ export default function DashboardSidebar({ role, collapsed, onToggle }: SidebarP
             </nav>
 
             {/* Logout */}
-            <div className="border-t border-gray-700 p-2">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-2">
                 <button
                     onClick={handleSignOut}
                     className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-colors w-full",
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-300 transition-colors w-full",
                         collapsed && "justify-center px-2"
                     )}
                     title={collapsed ? "Logout" : undefined}

@@ -3,7 +3,8 @@ import { authIsRequired } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import UserManagementForm, { Role } from "./user-client";
+import UserManagementClient, { Role } from "./user-client";
+import { getUserManagementData } from "@/app/actions/admin";
 
 export const dynamic = 'force-dynamic';
 
@@ -73,9 +74,21 @@ export default async function UserManagementPage() {
             return f.role === "user";
         });
 
+    // Fetch user management dashboard data
+    let managementData = null;
+    try {
+        managementData = await getUserManagementData();
+    } catch (error) {
+        console.error("Error fetching user management data:", error);
+    }
+
     return (
-        <div className="w-full p-2 sm:p-6 shadow-lg mx-auto max-w-7xl min-h-dvh rounded-2xl h-full flex gap-6 justify-center items-start">
-            <UserManagementForm users={formattedUsers} currentRole={currentUser?.role ?? "admin"} />
+        <div className="w-full p-2 sm:p-4 lg:p-6 mx-auto max-w-7xl min-h-dvh">
+            <UserManagementClient
+                users={formattedUsers}
+                currentRole={currentUser?.role ?? "admin"}
+                managementData={managementData}
+            />
         </div>
     );
 }
