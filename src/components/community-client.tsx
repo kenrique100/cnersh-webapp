@@ -314,7 +314,16 @@ export default function CommunityClient({
             const res = await fetch("/api/upload", { method: "POST", body: formData });
             if (!res.ok) {
                 let errorMessage = "Upload failed";
-                try { const d = await res.json(); errorMessage = d.error || errorMessage; } catch { if (res.status === 413) errorMessage = "File is too large"; }
+                if (res.status === 413) {
+                    errorMessage = "File is too large";
+                } else {
+                    try {
+                        const d = await res.json();
+                        errorMessage = d.error || errorMessage;
+                    } catch {
+                        // use default error message
+                    }
+                }
                 throw new Error(errorMessage);
             }
             const data = await res.json();
@@ -2157,7 +2166,7 @@ export default function CommunityClient({
                                             {newTopic.images.map((url, i) => (
                                                 <div key={i} className="relative group">
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={url} alt="" className="h-16 w-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
+                                                    <img src={url} alt={`Uploaded image ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
                                                     <button
                                                         onClick={() => setNewTopic((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
                                                         className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"

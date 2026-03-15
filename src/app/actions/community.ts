@@ -466,7 +466,7 @@ export async function toggleTopicChat(topicId: string) {
         select: { role: true },
     });
     if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can access the community");
+        throw new Error("Only admins and superadmins can toggle channel chat");
     }
 
     const topic = await db.communityTopic.findUnique({
