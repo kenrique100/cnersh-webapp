@@ -4,6 +4,68 @@ import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 
+/** Stats and recent activity for the User Management page */
+export async function getUserManagementData() {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "admin" && user?.role !== "superadmin") {
+        throw new Error("Forbidden");
+    }
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+        totalUsers,
+        activeUsers,
+        bannedUsers,
+        newRegistrations,
+        recentAuditLogs,
+    ] = await Promise.all([
+        db.user.count(),
+        db.user.count({ where: { banned: { not: true } } }),
+        db.user.count({ where: { banned: true } }),
+        db.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        db.auditLog.findMany({
+            include: {
+                user: { select: { name: true, email: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+        }),
+    ]);
+
+    // Count new registrations in the last 7 days for trend comparison
+    const weeklyNewUsers = await db.user.count({
+        where: { createdAt: { gte: sevenDaysAgo } },
+    });
+
+    return {
+        stats: {
+            totalUsers,
+            activeUsers,
+            bannedUsers,
+            newRegistrations,
+            weeklyNewUsers,
+        },
+        recentActivity: recentAuditLogs.map((log) => ({
+            id: log.id,
+            action: log.action,
+            details: log.details,
+            targetId: log.targetId,
+            adminName: log.user.name || log.user.email,
+            createdAt: log.createdAt.toISOString(),
+        })),
+    };
+}
+
 export async function getAdminStats() {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
