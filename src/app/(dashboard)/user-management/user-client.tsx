@@ -509,7 +509,7 @@ export default function UserManagementClient({ users, currentRole, managementDat
                                 </h3>
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-600 dark:text-gray-400">Online Users</span>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">Active Users</span>
                                         <span className="text-xs font-semibold text-gray-900 dark:text-white">
                                             {stats?.activeUsers ?? 0}
                                         </span>
