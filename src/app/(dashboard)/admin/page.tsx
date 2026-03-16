@@ -164,18 +164,18 @@ export default async function AdminOverviewPage() {
                 </div>
 
                 {/* Summary Stat Cards */}
-                <div className={`grid gap-3 sm:gap-4 grid-cols-2 ${isSuperAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"} mb-4 sm:mb-6`}>
+                <div className={`grid gap-3 sm:gap-4 grid-cols-2 ${isSuperAdmin ? "md:grid-cols-3 lg:grid-cols-4" : "md:grid-cols-3"} mb-4 sm:mb-6`}>
                     {allStatCards.map((stat) => {
                         const Icon = stat.icon;
                         return (
                             <Link key={stat.title} href={stat.href}>
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow rounded-xl cursor-pointer">
-                                    <CardContent className="flex items-center gap-2.5 sm:gap-4 p-3 sm:py-5">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow rounded-xl cursor-pointer py-0 gap-0 overflow-hidden">
+                                    <CardContent className="flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4">
                                         <div className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl shrink-0 ${stat.bg}`}>
                                             <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
                                                 {stat.value}
                                             </p>
                                             <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">{stat.title}</p>
@@ -190,8 +190,8 @@ export default async function AdminOverviewPage() {
                 {/* Recent Activity & Community Updates */}
                 <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 mb-4 sm:mb-6">
                     {/* Recent Activity / Audit Logs */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
-                        <CardHeader className="pb-3">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl py-0 gap-0 overflow-hidden">
+                        <CardHeader className="pb-3 pt-4 sm:pt-5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <ScrollTextIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -204,7 +204,7 @@ export default async function AdminOverviewPage() {
                                 </Link>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pb-4 sm:pb-5">
                             <div className="space-y-2">
                                 {data.recentAuditLogs.length > 0 ? (
                                     data.recentAuditLogs.map((log) => (
@@ -270,8 +270,8 @@ export default async function AdminOverviewPage() {
                     </Card>
 
                     {/* Community Updates */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
-                        <CardHeader className="pb-3">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl py-0 gap-0 overflow-hidden">
+                        <CardHeader className="pb-3 pt-4 sm:pt-5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <MessageSquareIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
@@ -284,7 +284,7 @@ export default async function AdminOverviewPage() {
                                 </Link>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pb-4 sm:pb-5">
                             <div className="space-y-2">
                                 {data.recentCommunityTopics.length > 0 ? (
                                     data.recentCommunityTopics.map((topic) => (
@@ -326,10 +326,10 @@ export default async function AdminOverviewPage() {
                     <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                         Quick Actions
                     </h2>
-                    <div className={`grid gap-2 sm:gap-3 grid-cols-2 ${isSuperAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
+                    <div className={`grid gap-2 sm:gap-3 grid-cols-2 ${isSuperAdmin ? "md:grid-cols-3 lg:grid-cols-5" : "md:grid-cols-4"}`}>
                         <Link href="/admin/protocol-review">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 mb-2">
                                         <ShieldCheckIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                     </div>
@@ -338,8 +338,8 @@ export default async function AdminOverviewPage() {
                             </Card>
                         </Link>
                         <Link href="/user-management">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 mb-2">
                                         <UsersIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                     </div>
@@ -348,8 +348,8 @@ export default async function AdminOverviewPage() {
                             </Card>
                         </Link>
                         <Link href="/admin/feed-moderation">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950 mb-2">
                                         <FileTextIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                                     </div>
@@ -358,8 +358,8 @@ export default async function AdminOverviewPage() {
                             </Card>
                         </Link>
                         <Link href="/admin/reports">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 mb-2">
                                         <FlagIcon className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                                     </div>
@@ -369,8 +369,8 @@ export default async function AdminOverviewPage() {
                         </Link>
                         {isSuperAdmin && (
                             <Link href="/admin/audit-logs">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                    <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                    <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 mb-2">
                                             <ScrollTextIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                                         </div>

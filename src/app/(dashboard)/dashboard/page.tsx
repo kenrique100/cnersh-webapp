@@ -86,7 +86,7 @@ export default async function DashboardPage() {
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
                 {/* Profile Header */}
-                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-4 sm:mb-6 overflow-hidden">
+                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-4 sm:mb-6 overflow-hidden py-0 gap-0">
                     <div className="h-20 sm:h-28 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700" />
                     <CardContent className="relative pt-0 pb-4 sm:pb-5 px-3 sm:px-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 -mt-8 sm:-mt-10">
@@ -121,14 +121,14 @@ export default async function DashboardPage() {
                         return (
                             <Card
                                 key={stat.title}
-                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow rounded-xl"
+                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow rounded-xl py-0 gap-0 overflow-hidden"
                             >
-                                <CardContent className="flex items-center gap-2.5 sm:gap-4 p-3 sm:py-5">
+                                <CardContent className="flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4">
                                     <div className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl shrink-0 ${stat.bg}`}>
                                         <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
                                             {stat.value}
                                         </p>
                                         <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">{stat.title}</p>
@@ -142,8 +142,8 @@ export default async function DashboardPage() {
                 {/* Recent Activity & Community Updates */}
                 <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
                     {/* Recent Activity */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
-                        <CardHeader className="pb-3">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl py-0 gap-0 overflow-hidden">
+                        <CardHeader className="pb-3 pt-4 sm:pt-5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <ActivityIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -156,7 +156,7 @@ export default async function DashboardPage() {
                                 </Link>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pb-4 sm:pb-5">
                             <div className="space-y-3">
                                 {/* Recent Posts */}
                                 {data?.recentPosts && data.recentPosts.length > 0 ? (
@@ -221,8 +221,8 @@ export default async function DashboardPage() {
                     </Card>
 
                     {/* Community Updates */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
-                        <CardHeader className="pb-3">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl py-0 gap-0 overflow-hidden">
+                        <CardHeader className="pb-3 pt-4 sm:pt-5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <MessageSquareIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
                                 </Link>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pb-4 sm:pb-5">
                             <div className="space-y-3">
                                 {data?.recentCommunityTopics && data.recentCommunityTopics.length > 0 ? (
                                     data.recentCommunityTopics.map((topic) => (
@@ -279,8 +279,8 @@ export default async function DashboardPage() {
                     </h2>
                     <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
                         <Link href="/feeds">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 mb-2">
                                         <PenSquareIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                     </div>
@@ -290,8 +290,8 @@ export default async function DashboardPage() {
                             </Card>
                         </Link>
                         <Link href="/protocols/submit">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950 mb-2">
                                         <FolderIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
                                     </div>
@@ -301,8 +301,8 @@ export default async function DashboardPage() {
                             </Card>
                         </Link>
                         <Link href="/protocols">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 mb-2">
                                         <ClockIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                     </div>
@@ -312,8 +312,8 @@ export default async function DashboardPage() {
                             </Card>
                         </Link>
                         <Link href="/notifications">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl">
-                                <CardContent className="flex flex-col items-center justify-center py-4 sm:py-5 text-center px-2">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full rounded-xl py-0 gap-0 overflow-hidden">
+                                <CardContent className="flex flex-col items-center justify-center py-3 sm:py-5 text-center px-2">
                                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950 mb-2">
                                         <BellIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                                     </div>

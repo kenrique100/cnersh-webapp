@@ -50,17 +50,17 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
     ];
 
     return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {/* User Distribution Pie */}
-            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                <CardHeader className="pb-2">
+            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl py-0 gap-0 overflow-hidden">
+                <CardHeader className="pb-2 pt-4 sm:pt-5">
                     <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         User Distribution
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pb-4 sm:pb-5">
                     {userPieData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={200}>
                             <PieChart>
                                 <Pie
                                     data={userPieData}
@@ -81,7 +81,7 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[220px] flex items-center justify-center text-sm text-gray-400">
+                        <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">
                             No user data
                         </div>
                     )}
@@ -89,15 +89,15 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
             </Card>
 
             {/* Protocol Status Pie */}
-            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                <CardHeader className="pb-2">
+            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl py-0 gap-0 overflow-hidden">
+                <CardHeader className="pb-2 pt-4 sm:pt-5">
                     <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         Protocol Status
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pb-4 sm:pb-5">
                     {projectPieData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={200}>
                             <PieChart>
                                 <Pie
                                     data={projectPieData}
@@ -118,7 +118,7 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[220px] flex items-center justify-center text-sm text-gray-400">
+                        <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">
                             No protocol data
                         </div>
                     )}
@@ -126,18 +126,18 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
             </Card>
 
             {/* Content Overview Bar Chart */}
-            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl md:col-span-2 lg:col-span-1">
-                <CardHeader className="pb-2">
+            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl md:col-span-2 lg:col-span-1 py-0 gap-0 overflow-hidden">
+                <CardHeader className="pb-2 pt-4 sm:pt-5">
                     <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         Content Overview
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={220}>
+                <CardContent className="pb-4 sm:pb-5">
+                    <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={contentBarData}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                             <Tooltip />
                             <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
                         </BarChart>
