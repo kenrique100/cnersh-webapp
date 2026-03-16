@@ -808,7 +808,7 @@ export default function FeedClient({
         <div className="w-full space-y-4">
             {/* Create Post Card - LinkedIn Style */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                     <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border border-gray-200 dark:border-gray-700">
                             <AvatarImage src={currentUserImage || undefined} alt={currentUserName || ""} />
@@ -825,7 +825,7 @@ export default function FeedClient({
                                         setNewPostContent(e.target.value);
                                         handleMentionSearch(e.target.value, "new-post");
                                     }}
-                                    className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-base"
+                                    className="min-h-[60px] sm:min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm sm:text-base"
                                 />
                                 {/* @Mention Dropdown for Post */}
                                 {showMentionDropdown === "new-post" && mentionResults.length > 0 && (
@@ -851,13 +851,13 @@ export default function FeedClient({
                             {(newPostImages.length > 0 || newPostImage) && (
                                 <div className="flex flex-wrap gap-2">
                                     {newPostImage && (
-                                        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]">
+                                        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-4px)]">
                                             <Image
                                                 src={newPostImage}
                                                 alt="Upload preview"
                                                 width={300}
                                                 height={200}
-                                                className="w-full h-[150px] object-cover"
+                                                className="w-full h-[120px] sm:h-[150px] object-cover"
                                                 unoptimized
                                             />
                                             <button
@@ -871,13 +871,13 @@ export default function FeedClient({
                                         </div>
                                     )}
                                     {newPostImages.map((img, idx) => (
-                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]">
+                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-4px)]">
                                             <Image
                                                 src={img}
                                                 alt={`Upload preview ${idx + 1}`}
                                                 width={300}
                                                 height={200}
-                                                className="w-full h-[150px] object-cover"
+                                                className="w-full h-[120px] sm:h-[150px] object-cover"
                                                 unoptimized
                                             />
                                             <button
@@ -897,7 +897,7 @@ export default function FeedClient({
                                 <div className="space-y-2">
                                     {newPostVideo && (
                                         <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                            <video src={newPostVideo} controls className="w-full max-h-[200px] object-contain bg-black" />
+                                            <video src={newPostVideo} controls className="w-full max-h-[150px] sm:max-h-[200px] object-contain bg-black" />
                                             <button
                                                 type="button"
                                                 onClick={() => setNewPostVideo(null)}
@@ -910,7 +910,7 @@ export default function FeedClient({
                                     )}
                                     {newPostVideos.map((vid, idx) => (
                                         <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                            <video src={vid} controls className="w-full max-h-[200px] object-contain bg-black" />
+                                            <video src={vid} controls className="w-full max-h-[150px] sm:max-h-[200px] object-contain bg-black" />
                                             <button
                                                 type="button"
                                                 onClick={() => setNewPostVideos((prev) => prev.filter((_, i) => i !== idx))}
@@ -950,7 +950,7 @@ export default function FeedClient({
                             )}
                             {/* Link URL Input */}
                             {showLinkInput && (
-                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900 space-y-2">
+                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2 sm:p-3 bg-gray-50 dark:bg-gray-900 space-y-2">
                                     <div className="flex items-center gap-2">
                                         <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
                                         <input
@@ -958,7 +958,7 @@ export default function FeedClient({
                                             placeholder="Paste a link URL (e.g. https://example.com)"
                                             value={newPostLinkUrl}
                                             onChange={(e) => setNewPostLinkUrl(e.target.value)}
-                                            className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                         />
                                         <button
                                             type="button"
@@ -968,12 +968,12 @@ export default function FeedClient({
                                             <XIcon className="h-4 w-4" />
                                         </button>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Button label:</span>
                                         <select
                                             value={newPostLinkType}
                                             onChange={(e) => setNewPostLinkType(e.target.value)}
-                                            className="text-sm px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            className="text-xs sm:text-sm px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                         >
                                             {CTA_LINK_TYPES.map((t) => (
                                                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -1062,10 +1062,10 @@ export default function FeedClient({
             {/* Posts Feed */}
             {posts.length === 0 ? (
                 <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                    <CardContent className="py-16 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                <PenIcon className="h-7 w-7 text-gray-400" />
+                    <CardContent className="py-10 sm:py-16 text-center">
+                        <div className="flex flex-col items-center gap-2 sm:gap-3">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                <PenIcon className="h-5 w-5 sm:h-7 sm:w-7 text-gray-400" />
                             </div>
                             <div>
                                 <p className="text-gray-800 dark:text-gray-200 font-semibold">No posts yet</p>
@@ -1198,7 +1198,7 @@ export default function FeedClient({
                                                 <div className="space-y-2">
                                                     {editingPostVideos.map((vid, idx) => (
                                                         <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                            <video src={vid} controls className="w-full max-h-[150px] object-contain bg-black" />
+                                                            <video src={vid} controls className="w-full max-h-[120px] sm:max-h-[150px] object-contain bg-black" />
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx))}
@@ -1392,7 +1392,7 @@ export default function FeedClient({
 
                             {/* Link Preview Card - hide when editing */}
                             {editingPostId !== post.id && post.linkUrl && (
-                                <div className="px-4 py-2">
+                                <div className="px-3 sm:px-4 py-2">
                                     <LinkPreviewCard
                                         url={post.linkUrl}
                                         linkType={post.linkType}
@@ -1423,7 +1423,7 @@ export default function FeedClient({
                                     {/* Reaction popup - LinkedIn pill style */}
                                     {reactionHoverPostId === post.id && (
                                         <div
-                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-3 py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-2 sm:px-3 py-1.5 sm:py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
                                             style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
                                             onMouseEnter={() => handleReactionEnter(post.id)}
                                             onMouseLeave={handleReactionLeave}
@@ -1432,10 +1432,10 @@ export default function FeedClient({
                                                 <button
                                                     key={reaction.label}
                                                     onClick={() => handleReaction(post.id, reaction.label)}
-                                                    className="group relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-2 cursor-pointer"
+                                                    className="group relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-2 cursor-pointer"
                                                     title={reaction.label}
                                                 >
-                                                    <span className="text-2xl drop-shadow-sm">{reaction.emoji}</span>
+                                                    <span className="text-xl sm:text-2xl drop-shadow-sm">{reaction.emoji}</span>
                                                     <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
                                                         {reaction.label}
                                                     </span>
@@ -1445,7 +1445,7 @@ export default function FeedClient({
                                     )}
                                     <button
                                         onClick={() => handleLike(post.id, userReaction || "Like")}
-                                        className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center ${
+                                        className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center ${
                                             isLiked
                                                 ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
                                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -1462,7 +1462,7 @@ export default function FeedClient({
                                 <button
                                     onClick={() => post.commentsEnabled !== false && toggleComments(post.id)}
                                     className={cn(
-                                        "flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full justify-center",
+                                        "flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center",
                                         post.commentsEnabled === false
                                             ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -1474,14 +1474,14 @@ export default function FeedClient({
                                     <span className="hidden sm:inline">Comment</span>
                                 </button>
                                 <button
-                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                    className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
                                     onClick={() => handleShare(post)}
                                 >
                                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
                                     <span className="hidden sm:inline">Repost</span>
                                 </button>
                                 <button
-                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
+                                    className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center"
                                     onClick={() => {
                                         const postUrl = typeof window !== "undefined" ? `${window.location.origin}/feeds#post-${post.id}` : "";
                                         navigator.clipboard.writeText(postUrl);
@@ -1548,7 +1548,7 @@ export default function FeedClient({
                                                                 </p>
                                                             </div>
                                                             {editingCommentId === comment.id ? (
-                                                                <div className="mt-1 flex items-center gap-2">
+                                                                <div className="mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
                                                                     <input
                                                                         type="text"
                                                                         value={editingCommentContent}
@@ -1595,7 +1595,7 @@ export default function FeedClient({
                                                             )}
                                                         </div>
                                                         {/* Comment Actions - LinkedIn style with Reaction Popup */}
-                                                        <div className="flex items-center gap-3 mt-1 px-1">
+                                                        <div className="flex items-center gap-2 sm:gap-3 mt-1 px-1 flex-wrap">
                                                             <div
                                                                 className="relative"
                                                                 onMouseEnter={() => handleCommentReactionEnter(comment.id)}
@@ -2100,7 +2100,7 @@ export default function FeedClient({
             <Dialog open={imageModalOpen} onOpenChange={(open) => {
                 if (!open) { setImageModalOpen(false); setImageModalPost(null); }
             }}>
-                <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 overflow-hidden">
+                <DialogContent className="max-w-[98vw] sm:max-w-2xl lg:max-w-4xl max-h-[95vh] sm:max-h-[90vh] p-0 overflow-hidden">
                     {imageModalPost && (() => {
                         const allImages = [
                             ...(imageModalPost.image ? [imageModalPost.image] : []),
@@ -2110,16 +2110,16 @@ export default function FeedClient({
                         const hasMultiple = allImages.length > 1;
 
                         return (
-                            <div className="flex flex-col md:flex-row h-full max-h-[85vh]">
+                            <div className="flex flex-col md:flex-row h-full max-h-[93vh] sm:max-h-[85vh]">
                                 {/* Image Section */}
-                                <div className="relative flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+                                <div className="relative flex-1 bg-black flex items-center justify-center min-h-[200px] sm:min-h-[300px] md:min-h-[400px]">
                                     {currentImage && (
                                         <Image
                                             src={currentImage}
                                             alt="Post attachment"
                                             width={800}
                                             height={600}
-                                            className="max-w-full max-h-[60vh] md:max-h-[80vh] object-contain"
+                                            className="max-w-full max-h-[50vh] sm:max-h-[60vh] md:max-h-[80vh] object-contain"
                                             unoptimized
                                         />
                                     )}
@@ -2146,7 +2146,7 @@ export default function FeedClient({
                                 </div>
 
                                 {/* Post Info Sidebar */}
-                                <div className="w-full md:w-[320px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-y-auto max-h-[40vh] md:max-h-none">
+                                <div className="w-full md:w-[280px] lg:w-[320px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-y-auto max-h-[35vh] sm:max-h-[40vh] md:max-h-none">
                                     {/* Author Header */}
                                     <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                                         <div className="flex items-center gap-3">

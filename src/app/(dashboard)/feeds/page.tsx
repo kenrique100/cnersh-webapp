@@ -37,8 +37,8 @@ export default async function FeedsPage() {
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3F2EF] dark:bg-gray-900">
-            <div className="mx-auto max-w-[1200px] px-2 sm:px-4 py-4 sm:py-6">
-                <div className="flex gap-6 justify-center">
+            <div className="mx-auto max-w-[1200px] px-1 sm:px-4 py-3 sm:py-6">
+                <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">
                     {/* Left Sidebar - Profile Summary (hidden on mobile/tablet) */}
                     <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedLeftSidebar
@@ -52,7 +52,7 @@ export default async function FeedsPage() {
                     </aside>
 
                     {/* Main Feed Column */}
-                    <main className="w-full max-w-[600px] min-w-0">
+                    <main className="w-full max-w-none sm:max-w-[600px] min-w-0">
                         <FeedClient
                             initialPosts={JSON.parse(JSON.stringify(posts))}
                             currentUserId={session.user.id}
