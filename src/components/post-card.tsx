@@ -154,7 +154,7 @@ export function PostContextBar({ users, likeCount, commentCount }: PostContextBa
     }
 
     return (
-        <div className="flex items-center gap-2 px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
             <div className="flex -space-x-2">
                 {users.slice(0, 3).map((user) => (
                     <Avatar key={user.id} className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0">
@@ -186,8 +186,8 @@ export function PostHeader({ userName, userImage, userProfession, createdAt, act
     const initials = getInitials(userName);
 
     return (
-        <div className="p-4 pb-0">
-            <div className="flex items-start justify-between">
+        <div className="px-3 sm:p-4 pt-3 sm:pb-0">
+            <div className="flex items-start justify-between gap-1">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
                         <AvatarImage src={userImage || undefined} alt={userName || ""} />
@@ -232,13 +232,13 @@ export function PostTextContent({ content, customRender }: PostTextContentProps)
     const isLong = content.length > SEE_MORE_THRESHOLD;
 
     if (customRender) {
-        return <div className="px-4 py-3">{customRender}</div>;
+        return <div className="px-3 sm:px-4 py-3">{customRender}</div>;
     }
 
     const displayText = !expanded && isLong ? content.slice(0, SEE_MORE_THRESHOLD) : content;
 
     return (
-        <div className="px-4 py-3">
+        <div className="px-3 sm:px-4 py-3">
             <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                 {renderPostContent(displayText)}
                 {!expanded && isLong && (
@@ -275,7 +275,7 @@ export function PostTags({ tags }: PostTagsProps) {
     if (!tags || tags.length === 0) return null;
 
     return (
-        <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+        <div className="px-3 sm:px-4 pb-2 flex flex-wrap gap-1.5">
             {tags.map((tag, idx) => (
                 <span
                     key={idx}
@@ -330,7 +330,7 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
                             />
                         </button>
                     ) : (
-                        <div className="grid gap-1 grid-cols-2">
+                        <div className="grid gap-1 grid-cols-1 sm:grid-cols-2">
                             {allImages.map((img, idx) => (
                                 <button
                                     key={idx}
@@ -448,7 +448,7 @@ export function PostEngagementSummary({
     }
 
     return (
-        <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+        <div className="px-2 sm:px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1.5 min-w-0">
                 {likeCount > 0 && (
                     <button
@@ -563,8 +563,8 @@ interface PostActionBarProps {
 /** Row of action buttons (Like, Comment, Share, etc.) */
 export function PostActionBar({ children }: PostActionBarProps) {
     return (
-        <div className="border-t border-gray-100 dark:border-gray-800 px-2 py-1">
-            <div className="flex items-center justify-around">{children}</div>
+        <div className="border-t border-gray-100 dark:border-gray-800 px-1 sm:px-2 py-1">
+            <div className="flex items-center justify-between sm:justify-around">{children}</div>
         </div>
     );
 }
@@ -578,7 +578,7 @@ interface PostCommentsSectionProps {
 /** Wrapper for the comments section below a post */
 export function PostCommentsSection({ children }: PostCommentsSectionProps) {
     return (
-        <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-3">
+        <div className="border-t border-gray-100 dark:border-gray-800 px-2 sm:px-4 py-3 space-y-3">
             {children}
         </div>
     );

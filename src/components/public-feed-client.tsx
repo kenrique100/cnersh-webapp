@@ -114,7 +114,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
                         {/* Link Preview Card */}
                         {post.linkUrl && (
-                            <div className="px-4 py-2">
+                            <div className="px-3 sm:px-4 py-2">
                                 <LinkPreviewCard
                                     url={post.linkUrl}
                                     linkType={post.linkType}
@@ -132,15 +132,15 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
                         {/* Action Buttons - redirect to sign-in for guests */}
                         <PostActionBar>
-                            <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                            <Link href="/sign-in" className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                 <ThumbsUpIcon className="h-4 w-4" />
                                 <span className="hidden sm:inline">Like</span>
                             </Link>
-                            <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                            <Link href="/sign-in" className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                 <MessageCircleIcon className="h-4 w-4" />
                                 <span className="hidden sm:inline">Comment</span>
                             </Link>
-                            <Link href="/sign-in" className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
+                            <Link href="/sign-in" className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                 <ShareIcon className="h-4 w-4" />
                                 <span className="hidden sm:inline">Share</span>
                             </Link>
