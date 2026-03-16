@@ -186,7 +186,7 @@ export function PostHeader({ userName, userImage, userProfession, createdAt, act
     const initials = getInitials(userName);
 
     return (
-        <div className="px-3 sm:p-4 pt-3 sm:pb-0">
+        <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-0">
             <div className="flex items-start justify-between gap-1">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
