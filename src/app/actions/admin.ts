@@ -402,60 +402,55 @@ export async function deleteReportedContent(
         select: { role: true },
     });
 
+    // Perform permission check before attempting delete
+    if (contentType === "TOPIC") {
+        const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true, userId: true } });
+        if (topic && !topic.deleted && actingUser?.role !== "superadmin") {
+            const topicAuthor = await db.user.findUnique({ where: { id: topic.userId }, select: { role: true } });
+            if (topicAuthor?.role === "superadmin") {
+                throw new Error("Forbidden: Only super-admins can delete super-admin content");
+            }
+        }
+    }
+
     try {
         switch (contentType) {
             case "POST": {
                 const post = await db.post.findUnique({ where: { id: contentId }, select: { deleted: true } });
-                if (!post || post.deleted) break; // Already deleted — treat as success
-                await db.post.update({
-                    where: { id: contentId },
-                    data: { deleted: true },
-                });
+                if (!post || post.deleted) break;
+                await db.post.update({ where: { id: contentId }, data: { deleted: true } });
                 break;
             }
             case "COMMENT": {
                 const comment = await db.comment.findUnique({ where: { id: contentId }, select: { deleted: true } });
                 if (!comment || comment.deleted) break;
-                await db.comment.update({
-                    where: { id: contentId },
-                    data: { deleted: true },
-                });
+                await db.comment.update({ where: { id: contentId }, data: { deleted: true } });
                 break;
             }
             case "TOPIC": {
-                const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true, userId: true } });
+                const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true } });
                 if (!topic || topic.deleted) break;
-                // Regular admins cannot delete super-admin content
-                if (actingUser?.role !== "superadmin") {
-                    const topicAuthor = await db.user.findUnique({ where: { id: topic.userId }, select: { role: true } });
-                    if (topicAuthor?.role === "superadmin") {
-                        throw new Error("Forbidden: Only super-admins can delete super-admin content");
-                    }
-                }
-                await db.communityTopic.update({
-                    where: { id: contentId },
-                    data: { deleted: true },
-                });
+                await db.communityTopic.update({ where: { id: contentId }, data: { deleted: true } });
                 break;
             }
             case "REPLY": {
                 const reply = await db.communityReply.findUnique({ where: { id: contentId }, select: { deleted: true } });
                 if (!reply || reply.deleted) break;
-                await db.communityReply.update({
-                    where: { id: contentId },
-                    data: { deleted: true },
-                });
+                await db.communityReply.update({ where: { id: contentId }, data: { deleted: true } });
                 break;
             }
             default:
                 throw new Error(`Unknown content type: ${contentType}`);
         }
     } catch (error) {
-        // Re-throw permission errors; swallow not-found errors
-        if (error instanceof Error && error.message.includes("Forbidden")) {
+        // Rethrow only known business logic errors; swallow unexpected not-found errors
+        if (error instanceof Error && (
+            error.message.startsWith("Forbidden") ||
+            error.message.startsWith("Unknown content type")
+        )) {
             throw error;
         }
-        // Content may have been deleted by its owner — still mark report as reviewed
+        // Content may have been deleted by its owner — still log and succeed
         console.warn(`Content ${contentType}:${contentId} not found or already deleted, marking report reviewed`);
     }
 
