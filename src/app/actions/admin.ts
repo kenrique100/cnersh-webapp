@@ -465,3 +465,47 @@ export async function deleteReportedContent(
 
     return { success: true };
 }
+
+/**
+ * Called after authClient.admin.updateUser changes a user's role.
+ * Invalidates all active sessions for the affected user (so they re-login
+ * and inherit the new role's privileges immediately), sends them a
+ * notification, and writes an audit log entry.
+ */
+export async function applyRoleChange(
+    userId: string,
+    oldRole: string,
+    newRole: string,
+) {
+    const session = await requireAdmin();
+
+    const targetUser = await db.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true },
+    });
+
+    if (!targetUser) throw new Error("User not found");
+
+    // Invalidate all active sessions — user must re-sign-in to get the new role
+    await db.session.deleteMany({ where: { userId } });
+
+    // Notify the affected user
+    await db.notification.create({
+        data: {
+            type: "SYSTEM",
+            message: `Your account role has been updated from "${oldRole}" to "${newRole}". Please sign in again to access your new privileges.`,
+            userId,
+        },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "CHANGE_ROLE",
+            details: `User role changed from "${oldRole}" to "${newRole}"`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}

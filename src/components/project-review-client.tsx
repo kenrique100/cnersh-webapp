@@ -57,9 +57,17 @@ interface ProjectReviewClientProps {
 const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-100 text-gray-800",
     SUBMITTED: "bg-blue-100 text-blue-800",
+    RETURNED_INCOMPLETE: "bg-orange-100 text-orange-800",
     PENDING_REVIEW: "bg-yellow-100 text-yellow-800",
+    UNDER_REVIEW: "bg-purple-100 text-purple-800",
+    REVIEW_COMPLETE: "bg-indigo-100 text-indigo-800",
+    SESSION_SCHEDULED: "bg-cyan-100 text-cyan-800",
     APPROVED: "bg-green-100 text-green-800",
+    APPROVED_WITH_CONDITIONS: "bg-teal-100 text-teal-800",
     REJECTED: "bg-red-100 text-red-800",
+    UNDER_APPEAL: "bg-rose-100 text-rose-800",
+    APPEAL_RESOLVED: "bg-slate-100 text-slate-800",
+    ARCHIVED: "bg-gray-100 text-gray-500",
 };
 
 export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers = [] }: ProjectReviewClientProps) {

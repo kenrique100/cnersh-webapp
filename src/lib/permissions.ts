@@ -12,7 +12,7 @@ export const userRole = ac.newRole({
 });
 
 export const adminRole = ac.newRole({
-    user: ["list", "set-password", "update"],
+    user: ["list", "set-password", "update", "set-role", "create", "ban"],
 });
 
 export const superadminRole = ac.newRole({
