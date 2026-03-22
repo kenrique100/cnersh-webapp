@@ -61,7 +61,7 @@ const formSchema = z.object({
     name: z.string().min(3, "Name is required"),
     email: z.string().email("Email is required"),
     role: z.enum(ROLE_OPTIONS, "Role is required"),
-    password: z.string().min(6, "Password is required").optional(),
+    password: z.string().min(10, "Password must be at least 10 characters").optional(),
 });
 
 interface ManagementData {
@@ -307,6 +307,7 @@ export default function UserManagementClient({ users, currentRole, managementDat
                                                 autoComplete="off"
                                                 aria-invalid={fieldState.invalid}
                                                 type="password"
+                                                placeholder="Min. 10 characters"
                                                 className="h-9 sm:h-10 text-sm"
                                             />
                                             {fieldState.invalid && (

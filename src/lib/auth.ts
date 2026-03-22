@@ -28,6 +28,7 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: true,
+        minPasswordLength: 10,
 
         sendResetPassword: async ({ user, url }) => {
             if (!user?.email) {
