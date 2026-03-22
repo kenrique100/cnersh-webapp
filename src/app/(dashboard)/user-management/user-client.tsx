@@ -25,6 +25,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { UserProps, useUsers } from "@/hooks/use-user";
 import { authClient } from "@/lib/auth-client";
+import { applyRoleChange } from "@/app/actions/admin";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -53,7 +54,8 @@ const ROLE_OPTIONS = ["user", "admin", "superadmin"] as const;
 export type Role = (typeof ROLE_OPTIONS)[number];
 
 function getAllowedRoles(currentRole: string): readonly Role[] {
-    if (currentRole === "superadmin") return ROLE_OPTIONS;
+    // Both admin and superadmin can assign any role
+    if (currentRole === "superadmin" || currentRole === "admin") return ROLE_OPTIONS;
     return ["user"] as const;
 }
 
@@ -158,6 +160,8 @@ export default function UserManagementClient({ users, currentRole, managementDat
 
                 toast.success("New user created successfully");
             } else {
+                const roleChanged = values.role !== user.role;
+
                 await authClient.admin.updateUser({
                     userId: user.id,
                     data: {
@@ -167,7 +171,15 @@ export default function UserManagementClient({ users, currentRole, managementDat
                     },
                 });
 
-                toast.success("User updated successfully");
+                if (roleChanged) {
+                    // Invalidate the user's sessions so they re-login with the new role's privileges
+                    await applyRoleChange(user.id, user.role, values.role as Role);
+                    toast.success(
+                        `Role changed to "${values.role}". User must sign in again to activate their new privileges.`
+                    );
+                } else {
+                    toast.success("User updated successfully");
+                }
             }
 
             setIsOpen(false);

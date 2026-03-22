@@ -55,24 +55,31 @@ npm run db:push
 > **Important**: `prisma generate` only creates the TypeScript client. You must run `db:push` (or `db:migrate`) to actually create/update the database tables. Without this step, you will see errors like:
 > `The column (not available) does not exist in the current database.`
 
-### 4. Create Admin User
+### 4. Create Admin & Super Admin Users
 
-Run the seed script to create your admin account:
+Run the seed script to create both privileged accounts:
 
 ```bash
 npm run db:seed
 ```
 
-**Default admin credentials:**
-- Email: `admin@cnec.cm`
-- Password: `Admin@CNEC2026`
+**Default credentials:**
+
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | `superadmin@cnersh.cm` | `SuperAdmin@cnersh2026!` |
+| Admin | `admin@cnersh.cm` | `Admin@cnersh2026!` |
 
 To use custom credentials, set these in your `.env` before seeding:
 
 ```env
-ADMIN_EMAIL="your-email@example.com"
-ADMIN_PASSWORD="YourSecurePassword123"
-ADMIN_NAME="Your Name"
+SUPER_ADMIN_EMAIL="superadmin@yourdomain.cm"
+SUPER_ADMIN_PASSWORD="YourSuperAdminPassword123!"
+SUPER_ADMIN_NAME="Super Admin Name"
+
+ADMIN_EMAIL="admin@yourdomain.cm"
+ADMIN_PASSWORD="YourAdminPassword123!"
+ADMIN_NAME="Admin Name"
 ```
 
 Or run setup + seed together:
@@ -81,7 +88,7 @@ Or run setup + seed together:
 npm run db:setup
 ```
 
-> **Tip**: You can also promote any existing user to admin via Prisma Studio (`npm run db:studio`) by changing the `role` field to `admin`.
+> **Tip**: You can also promote any existing user to admin via Prisma Studio (`npm run db:studio`) by changing the `role` field to `admin` or `superadmin`.
 
 ### 5. Start the Development Server
 
