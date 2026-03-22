@@ -18,9 +18,14 @@ export async function getUserManagementData() {
         throw new Error("Forbidden");
     }
 
+    const isSuperAdmin = user.role === "superadmin";
+
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Role-tiered filtering: regular admins only see regular users; super-admins see all
+    const userFilter = isSuperAdmin ? {} : { role: "user" };
 
     const [
         totalUsers,
@@ -28,11 +33,12 @@ export async function getUserManagementData() {
         bannedUsers,
         newRegistrations,
         recentAuditLogs,
+        userList,
     ] = await Promise.all([
-        db.user.count(),
-        db.user.count({ where: { banned: { not: true } } }),
-        db.user.count({ where: { banned: true } }),
-        db.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        db.user.count({ where: userFilter }),
+        db.user.count({ where: { ...userFilter, banned: { not: true } } }),
+        db.user.count({ where: { ...userFilter, banned: true } }),
+        db.user.count({ where: { ...userFilter, createdAt: { gte: thirtyDaysAgo } } }),
         db.auditLog.findMany({
             include: {
                 user: { select: { name: true, email: true } },
@@ -40,11 +46,26 @@ export async function getUserManagementData() {
             orderBy: { createdAt: "desc" },
             take: 10,
         }),
+        db.user.findMany({
+            where: userFilter,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                image: true,
+                banned: true,
+                banReason: true,
+                createdAt: true,
+                emailVerified: true,
+                pendingActivation: true,
+            },
+            orderBy: { createdAt: "desc" },
+        }),
     ]);
 
-    // Count new registrations in the last 7 days for trend comparison
     const weeklyNewUsers = await db.user.count({
-        where: { createdAt: { gte: sevenDaysAgo } },
+        where: { ...userFilter, createdAt: { gte: sevenDaysAgo } },
     });
 
     return {
@@ -63,6 +84,7 @@ export async function getUserManagementData() {
             adminName: log.user.name || log.user.email,
             createdAt: log.createdAt.toISOString(),
         })),
+        users: userList,
     };
 }
 
@@ -274,9 +296,31 @@ export async function sendWarning(userId: string, message: string) {
 export async function banUserById(userId: string, reason: string) {
     const session = await requireAdmin();
 
+    const actingUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    const targetUser = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+    });
+
+    if (!targetUser) throw new Error("User not found");
+
+    // Regular admins can only ban regular users; super-admins can ban anyone
+    if (actingUser?.role !== "superadmin" && targetUser.role !== "user") {
+        throw new Error("Forbidden: Only super-admins can ban admin-level users");
+    }
+
     await db.user.update({
         where: { id: userId },
         data: { banned: true, banReason: reason },
+    });
+
+    // Invalidate all active Better Auth sessions for the banned user
+    await db.session.deleteMany({
+        where: { userId },
     });
 
     await db.auditLog.create({
@@ -291,39 +335,123 @@ export async function banUserById(userId: string, reason: string) {
     return { success: true };
 }
 
+export async function unbanUserById(userId: string) {
+    const session = await requireAdmin();
+
+    const targetUser = await db.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true },
+    });
+
+    if (!targetUser) throw new Error("User not found");
+
+    await db.user.update({
+        where: { id: userId },
+        data: { banned: false, banReason: null, banExpires: null },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "UNBAN_USER",
+            details: `User unbanned`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
+export async function activateUser(userId: string) {
+    const session = await requireAdmin();
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "superadmin") {
+        throw new Error("Forbidden: Only super-admins can activate pending users");
+    }
+
+    await db.user.update({
+        where: { id: userId },
+        data: { pendingActivation: false, activationExpiresAt: null },
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "ACTIVATE_USER",
+            details: `User account activated`,
+            targetId: userId,
+            userId: session.user.id,
+        },
+    });
+
+    return { success: true };
+}
+
 export async function deleteReportedContent(
     contentType: string,
     contentId: string,
 ) {
     const session = await requireAdmin();
 
-    switch (contentType) {
-        case "POST":
-            await db.post.update({
-                where: { id: contentId },
-                data: { deleted: true },
-            });
-            break;
-        case "COMMENT":
-            await db.comment.update({
-                where: { id: contentId },
-                data: { deleted: true },
-            });
-            break;
-        case "TOPIC":
-            await db.communityTopic.update({
-                where: { id: contentId },
-                data: { deleted: true },
-            });
-            break;
-        case "REPLY":
-            await db.communityReply.update({
-                where: { id: contentId },
-                data: { deleted: true },
-            });
-            break;
-        default:
-            throw new Error(`Unknown content type: ${contentType}`);
+    const actingUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    // Perform permission check before attempting delete
+    if (contentType === "TOPIC") {
+        const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true, userId: true } });
+        if (topic && !topic.deleted && actingUser?.role !== "superadmin") {
+            const topicAuthor = await db.user.findUnique({ where: { id: topic.userId }, select: { role: true } });
+            if (topicAuthor?.role === "superadmin") {
+                throw new Error("Forbidden: Only super-admins can delete super-admin content");
+            }
+        }
+    }
+
+    try {
+        switch (contentType) {
+            case "POST": {
+                const post = await db.post.findUnique({ where: { id: contentId }, select: { deleted: true } });
+                if (!post || post.deleted) break;
+                await db.post.update({ where: { id: contentId }, data: { deleted: true } });
+                break;
+            }
+            case "COMMENT": {
+                const comment = await db.comment.findUnique({ where: { id: contentId }, select: { deleted: true } });
+                if (!comment || comment.deleted) break;
+                await db.comment.update({ where: { id: contentId }, data: { deleted: true } });
+                break;
+            }
+            case "TOPIC": {
+                const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true } });
+                if (!topic || topic.deleted) break;
+                await db.communityTopic.update({ where: { id: contentId }, data: { deleted: true } });
+                break;
+            }
+            case "REPLY": {
+                const reply = await db.communityReply.findUnique({ where: { id: contentId }, select: { deleted: true } });
+                if (!reply || reply.deleted) break;
+                await db.communityReply.update({ where: { id: contentId }, data: { deleted: true } });
+                break;
+            }
+            default:
+                throw new Error(`Unknown content type: ${contentType}`);
+        }
+    } catch (error) {
+        // Rethrow only known business logic errors; swallow unexpected not-found errors
+        if (error instanceof Error && (
+            error.message.startsWith("Forbidden") ||
+            error.message.startsWith("Unknown content type")
+        )) {
+            throw error;
+        }
+        // Content may have been deleted by its owner — still log and succeed
+        console.warn(`Content ${contentType}:${contentId} not found or already deleted, marking report reviewed`);
     }
 
     await db.auditLog.create({
