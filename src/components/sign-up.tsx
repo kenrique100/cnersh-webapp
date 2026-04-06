@@ -59,7 +59,7 @@ const emailSchema = z
 const passwordSchema = z
     .string()
     .min(1, "Password is required")
-    .min(8, "Password must be at least 8 characters")
+    .min(10, "Password must be at least 10 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number")
@@ -129,7 +129,7 @@ export function SignUpForm() {
 
     const calculatePasswordStrength = (password: string) => {
         let strength = 0;
-        if (password.length >= 8) strength += 20;
+        if (password.length >= 10) strength += 20;
         if (password.length >= 12) strength += 10;
         if (/[A-Z]/.test(password)) strength += 20;
         if (/[a-z]/.test(password)) strength += 20;
@@ -151,7 +151,7 @@ export function SignUpForm() {
     };
 
     const passwordRequirements: PasswordRequirement[] = [
-        { label: "At least 8 characters", met: password.length >= 8 },
+        { label: "At least 10 characters", met: password.length >= 10 },
         { label: "Uppercase letter (A-Z)", met: /[A-Z]/.test(password) },
         { label: "Lowercase letter (a-z)", met: /[a-z]/.test(password) },
         { label: "Number (0-9)", met: /[0-9]/.test(password) },

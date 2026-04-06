@@ -14,7 +14,7 @@ import { Spinner } from "./ui/spinner";
 
 const formSchema = z
     .object({
-        newPassword: z.string().min(6, "Invalid password"),
+        newPassword: z.string().min(10, "Password must be at least 10 characters"),
         confirmNewPassword: z.string(),
     })
     .refine((data) => data.newPassword === data.confirmNewPassword, {

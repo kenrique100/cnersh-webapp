@@ -146,6 +146,16 @@ export async function getProjectById(projectId: string) {
             statusHistory: {
                 orderBy: { createdAt: "desc" },
             },
+            reviewAssignments: {
+                include: {
+                    reviewer: { select: { id: true, name: true, email: true, image: true } },
+                    coiDeclaration: { select: { hasCOI: true, declaredAt: true } },
+                    evaluationReport: { select: { id: true, status: true, recommendation: true, submittedAt: true } },
+                },
+            },
+            appeal: { select: { id: true, status: true, filedAt: true, deadlineAt: true, decision: true } },
+            aarApplication: { select: { id: true, status: true, aarRefNumber: true } },
+            saeReports: { select: { id: true, eventType: true, eventDate: true, reportedAt: true, isLate: true } },
         },
     });
 
@@ -159,8 +169,25 @@ export async function getProjectById(projectId: string) {
 
     const isOwner = project.userId === session.user.id;
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+    // Also allow assigned reviewers to view (only after COI cleared)
+    const isAssignedReviewer = project.reviewAssignments.some(
+        (a) => a.reviewerId === session.user.id && a.status === "ACTIVE"
+    );
 
-    if (!isOwner && !isAdmin) throw new Error("Forbidden");
+    if (!isOwner && !isAdmin && !isAssignedReviewer) throw new Error("Forbidden");
+
+    // If user is the PI, hide reviewer names until status is confirmed
+    // Never expose reviewer evaluation scores/comments to PI
+    if (isOwner && !isAdmin) {
+        return {
+            ...project,
+            reviewAssignments: project.reviewAssignments.map((a) => ({
+                ...a,
+                reviewer: null, // Hide reviewer identity from PI
+                evaluationReport: null, // Never show evaluation details to PI
+            })),
+        };
+    }
 
     return project;
 }
@@ -418,7 +445,7 @@ export async function getAdminUsers() {
             role: { in: ["admin", "superadmin"] },
             banned: { not: true },
         },
-        select: { id: true, name: true, email: true, image: true, role: true },
+        select: { id: true, name: true, email: true, image: true, role: true, expertiseTags: true },
         orderBy: { name: "asc" },
     });
 }
@@ -445,7 +472,33 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
         throw new Error("Selected user is not an admin");
     }
 
-    const project = await db.project.update({
+    const project = await db.project.findUnique({
+        where: { id: projectId },
+        include: {
+            user: { select: { id: true, name: true, email: true } },
+            reviewAssignments: { select: { reviewerId: true } },
+        },
+    });
+
+    if (!project) throw new Error("Protocol not found");
+
+    // Check if this reviewer is already assigned
+    const alreadyAssigned = project.reviewAssignments.some((a) => a.reviewerId === adminId);
+    if (alreadyAssigned) {
+        throw new Error("This reviewer is already assigned to this protocol");
+    }
+
+    // Create the ReviewAssignment record
+    await db.reviewAssignment.create({
+        data: {
+            projectId,
+            reviewerId: adminId,
+            status: "PENDING_COI",
+        },
+    });
+
+    // Update the project legacy assignedToId (for backward compat) and status
+    const updatedProject = await db.project.update({
         where: { id: projectId },
         data: {
             assignedToId: adminId,
@@ -454,7 +507,6 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
                 create: {
                     status: "PENDING_REVIEW",
                     changedBy: session.user.id,
-                    // Keep reviewer identity anonymous in public-facing history
                     comment: "Protocol assigned for review",
                 },
             },
@@ -468,7 +520,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     await db.notification.create({
         data: {
             type: "REVIEW_ASSIGNED",
-            message: `You have been assigned to review the protocol: "${project.title}"`,
+            message: `You have been assigned to review the protocol: "${updatedProject.title}"`,
             link: `/protocols/${projectId}`,
             userId: adminId,
         },
@@ -480,7 +532,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
             sendNotificationEmail({
                 to: admin.email,
                 userName: admin.name || "Admin",
-                notificationMessage: `You have been assigned to review the protocol: "${project.title}" submitted by ${project.user.name || "a user"}.`,
+                notificationMessage: `You have been assigned to review the protocol: "${updatedProject.title}" submitted by ${updatedProject.user.name || "a user"}.`,
                 notificationType: "REVIEW_ASSIGNED",
                 actionUrl: `/protocols/${projectId}`,
             }).catch((err) => console.error("Error sending review assignment email:", err));
@@ -493,13 +545,40 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     await db.auditLog.create({
         data: {
             action: "ASSIGN_REVIEWER",
-            details: `Assigned ${admin.name || admin.email} to review protocol "${project.title}"`,
+            details: `Assigned ${admin.name || admin.email} to review protocol "${updatedProject.title}"`,
             targetId: projectId,
             userId: session.user.id,
         },
     });
 
-    return project;
+    return updatedProject;
+}
+
+/**
+ * Get all review assignments for a protocol (admin/superadmin only)
+ */
+export async function getProjectReviewAssignments(projectId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+
+    if (user?.role !== "admin" && user?.role !== "superadmin") {
+        throw new Error("Forbidden");
+    }
+
+    return db.reviewAssignment.findMany({
+        where: { projectId },
+        include: {
+            reviewer: { select: { id: true, name: true, email: true, image: true, expertiseTags: true } },
+            coiDeclaration: true,
+            evaluationReport: { select: { id: true, status: true, recommendation: true, overallScore: true, submittedAt: true } },
+        },
+        orderBy: { createdAt: "asc" },
+    });
 }
 
 /**

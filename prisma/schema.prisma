@@ -27,6 +27,11 @@ model User {
   banReason           String?
   banExpires          DateTime?
 
+  // Extended profile fields
+  expertiseTags        String[]    @default([])
+  pendingActivation    Boolean     @default(false)
+  activationExpiresAt  DateTime?
+
   posts              Post[]
   comments           Comment[]
   likes              Like[]
@@ -39,6 +44,12 @@ model User {
   auditLogs          AuditLog[]
   commentLikes       CommentLike[]
   communityTopicLikes CommunityTopicLike[]
+  reviewAssignments  ReviewAssignment[]
+  coiDeclarations    COIDeclaration[]
+  evaluationReports  EvaluationReport[]
+  saeReports         SAEReport[]
+  aarApplications    AARApplication[]
+  appeals            Appeal[]
 
   @@map("user")
 }
@@ -180,27 +191,32 @@ model Like {
 // ─── Project Submission System ─────────────────────────────
 
 model Project {
-  id           String              @id @default(uuid())
-  trackingCode String              @unique
-  title        String
-  description  String
-  objectives   String?
-  category     String
-  location     String?
-  timeline     String?
-  budget       String?
-  document     String?
-  formData     Json?
-  status       ProjectStatus       @default(DRAFT)
-  feedback     String?
-  userId       String
-  user         User                @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
-  assignedToId String?
-  assignedTo   User?               @relation("ProjectReviewer", fields: [assignedToId], references: [id], onDelete: SetNull)
-  statusHistory ProjectStatusHistory[]
-  deleted      Boolean             @default(false)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id              String              @id @default(uuid())
+  trackingCode    String              @unique
+  referenceNumber String?
+  title           String
+  description     String
+  objectives      String?
+  category        String
+  location        String?
+  timeline        String?
+  budget          String?
+  document        String?
+  formData        Json?
+  status          ProjectStatus       @default(DRAFT)
+  feedback        String?
+  userId          String
+  user            User                @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
+  assignedToId    String?
+  assignedTo      User?               @relation("ProjectReviewer", fields: [assignedToId], references: [id], onDelete: SetNull)
+  statusHistory   ProjectStatusHistory[]
+  reviewAssignments ReviewAssignment[]
+  appeal          Appeal?
+  aarApplication  AARApplication?
+  saeReports      SAEReport[]
+  deleted         Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@index([userId])
   @@index([assignedToId])
@@ -226,9 +242,17 @@ model ProjectStatusHistory {
 enum ProjectStatus {
   DRAFT
   SUBMITTED
+  RETURNED_INCOMPLETE
   PENDING_REVIEW
+  UNDER_REVIEW
+  REVIEW_COMPLETE
+  SESSION_SCHEDULED
   APPROVED
+  APPROVED_WITH_CONDITIONS
   REJECTED
+  UNDER_APPEAL
+  APPEAL_RESOLVED
+  ARCHIVED
 
   @@map("project_status")
 }
@@ -422,4 +446,236 @@ model PageItem {
 
   @@index([pageId])
   @@map("page_item")
+}
+
+// ─── Review Assignment System ───────────────────────────────
+
+model ReviewAssignment {
+  id               String                  @id @default(uuid())
+  projectId        String
+  project          Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewerId       String
+  reviewer         User                    @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  status           ReviewAssignmentStatus  @default(PENDING_COI)
+  dueDate          DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  coiDeclaration   COIDeclaration?
+  evaluationReport EvaluationReport?
+
+  @@unique([projectId, reviewerId])
+  @@index([projectId])
+  @@index([reviewerId])
+  @@map("review_assignment")
+}
+
+enum ReviewAssignmentStatus {
+  PENDING_COI
+  ACTIVE
+  EXCLUDED
+  COMPLETED
+
+  @@map("review_assignment_status")
+}
+
+// ─── COI Declaration System ─────────────────────────────────
+
+model COIDeclaration {
+  id           String           @id @default(uuid())
+  assignmentId String           @unique
+  assignment   ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hasCOI       Boolean
+  details      String?
+  declaredAt   DateTime         @default(now())
+
+  @@index([userId])
+  @@map("coi_declaration")
+}
+
+// ─── Evaluation Report System ───────────────────────────────
+
+model EvaluationReport {
+  id               String                    @id @default(uuid())
+  assignmentId     String                    @unique
+  assignment       ReviewAssignment          @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewerId       String
+  reviewer         User                      @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  socialValue                          Int?
+  scientificValidity                   Int?
+  riskBenefitAnalysis                  Int?
+  participantSelection                 Int?
+  informedConsentProcess               Int?
+  confidentialityDataProtection        Int?
+  collaborativePartnership             Int?
+
+  socialValueComment                   String?
+  scientificValidityComment            String?
+  riskBenefitAnalysisComment           String?
+  participantSelectionComment          String?
+  informedConsentProcessComment        String?
+  confidentialityDataProtectionComment String?
+  collaborativePartnershipComment      String?
+
+  overallScore       Float?
+  recommendation     EvaluationRecommendation?
+  generalComments    String?
+  additionalCriteria Json?
+
+  status             EvaluationStatus  @default(DRAFT)
+  submittedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([reviewerId])
+  @@map("evaluation_report")
+}
+
+enum EvaluationRecommendation {
+  FAVORABLE
+  FAVORABLE_WITH_CONDITIONS
+  UNFAVORABLE
+
+  @@map("evaluation_recommendation")
+}
+
+enum EvaluationStatus {
+  DRAFT
+  SUBMITTED
+
+  @@map("evaluation_status")
+}
+
+// ─── Committee Session System ───────────────────────────────
+
+model CommitteeSession {
+  id          String        @id @default(uuid())
+  sessionType SessionType   @default(ORDINARY)
+  sessionDate DateTime
+  venue       String?
+  agenda      String[]      @default([])
+  status      SessionStatus @default(SCHEDULED)
+  quorumMet   Boolean?
+  minutes     String?
+  notes       String?
+  createdBy   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([sessionDate])
+  @@index([status])
+  @@map("committee_session")
+}
+
+enum SessionType {
+  ORDINARY
+  EXTRAORDINARY
+
+  @@map("session_type")
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+
+  @@map("session_status")
+}
+
+// ─── Appeal System ──────────────────────────────────────────
+
+model Appeal {
+  id           String       @id @default(uuid())
+  projectId    String       @unique
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  appellantId  String
+  appellant    User         @relation(fields: [appellantId], references: [id], onDelete: Cascade)
+  grounds      String
+  evidence     String?
+  status       AppealStatus @default(PENDING)
+  decision     String?
+  decisionDate DateTime?
+  filedAt      DateTime     @default(now())
+  deadlineAt   DateTime
+  updatedAt    DateTime     @updatedAt
+
+  @@index([appellantId])
+  @@map("appeal")
+}
+
+enum AppealStatus {
+  PENDING
+  UPHELD
+  REJECTED
+  EXPIRED
+
+  @@map("appeal_status")
+}
+
+// ─── AAR Application System ─────────────────────────────────
+
+model AARApplication {
+  id              String    @id @default(uuid())
+  projectId       String    @unique
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  applicantId     String
+  applicant       User      @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  status          AARStatus @default(DRAFT)
+  submittedAt     DateTime?
+  drosReceivedAt  DateTime?
+  drosDueDate     DateTime?
+  aarRefNumber    String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([applicantId])
+  @@map("aar_application")
+}
+
+enum AARStatus {
+  DRAFT
+  SUBMITTED
+  RECEIVED_BY_DROS
+  CLARIFICATION_REQUESTED
+  AUTHORIZED
+  INADMISSIBLE
+
+  @@map("aar_status")
+}
+
+// ─── SAE Report System ──────────────────────────────────────
+
+model SAEReport {
+  id               String       @id @default(uuid())
+  projectId        String
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporterId       String
+  reporter         User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  eventType        SAEEventType
+  eventDate        DateTime
+  description      String
+  immediateActions String?
+  isLate           Boolean      @default(false)
+  reportedAt       DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([projectId])
+  @@index([reporterId])
+  @@map("sae_report")
+}
+
+enum SAEEventType {
+  ADVERSE_EVENT
+  SERIOUS_ADVERSE_EVENT
+  UNEXPECTED_ADVERSE_EVENT
+  LIFE_THREATENING
+  FATAL
+
+  @@map("sae_event_type")
 }

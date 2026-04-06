@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { CheckIcon, XIcon, ClockIcon, TrashIcon, PencilIcon, SendIcon, ImageIcon, VideoIcon, Loader2 } from "lucide-react";
+import { CheckIcon, XIcon, ClockIcon, TrashIcon, PencilIcon, SendIcon, ImageIcon, VideoIcon, Loader2, RotateCcwIcon, CalendarIcon, CheckCircle2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectStatus, deleteProject, updateProject, forwardProjectToFeed } from "@/app/actions/project";
 import { useRouter } from "next/navigation";
@@ -55,13 +55,17 @@ export default function ProjectDetailActions({
     // Only show admin review for projects NOT owned by the viewing admin
     const showAdminReview = isAdmin && !isOwner;
 
-    const handleStatusUpdate = async (status: "APPROVED" | "REJECTED" | "PENDING_REVIEW") => {
+    const handleStatusUpdate = async (status: "APPROVED" | "REJECTED" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW") => {
         if (status === "REJECTED" && !feedback.trim()) {
             toast.error("Please provide a rejection reason before rejecting");
             return;
         }
-        if (status === "PENDING_REVIEW" && !feedback.trim()) {
-            toast.error("Please specify what additional documentation is required");
+        if (status === "RETURNED_INCOMPLETE" && !feedback.trim()) {
+            toast.error("Please specify what is missing or incomplete before returning");
+            return;
+        }
+        if (status === "APPROVED_WITH_CONDITIONS" && !feedback.trim()) {
+            toast.error("Please specify the conditions for approval");
             return;
         }
         setIsSubmitting(true);
@@ -323,15 +327,39 @@ export default function ProjectDetailActions({
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         <Textarea
-                            placeholder="Required for rejection or documentation request — add a reason or specify what documentation is needed"
+                            placeholder="Required for rejection, return, or conditional approval — add a reason, specify missing items, or list the conditions"
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             className="min-h-[80px]"
                         />
                         <p className="text-xs text-gray-400 dark:text-gray-500">
-                            Feedback is required when rejecting or requesting additional documentation.
+                            Feedback is required when rejecting, returning incomplete, or approving with conditions.
                         </p>
                         <div className="flex flex-wrap gap-2">
+                            {/* SUBMITTED: can return incomplete or move to pending review */}
+                            {currentStatus === "SUBMITTED" && (
+                                <Button
+                                    onClick={() => handleStatusUpdate("RETURNED_INCOMPLETE")}
+                                    disabled={isSubmitting}
+                                    variant="outline"
+                                    className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+                                >
+                                    <RotateCcwIcon className="h-4 w-4 mr-1" />
+                                    Return — Incomplete
+                                </Button>
+                            )}
+                            {/* SESSION_SCHEDULED: can schedule for statuses ready for committee */}
+                            {["REVIEW_COMPLETE", "PENDING_REVIEW", "UNDER_REVIEW"].includes(currentStatus) && (
+                                <Button
+                                    onClick={() => handleStatusUpdate("SESSION_SCHEDULED")}
+                                    disabled={isSubmitting}
+                                    variant="outline"
+                                    className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-400 dark:hover:bg-cyan-950"
+                                >
+                                    <CalendarIcon className="h-4 w-4 mr-1" />
+                                    Schedule Session
+                                </Button>
+                            )}
                             <Button
                                 onClick={() => handleStatusUpdate("APPROVED")}
                                 disabled={isSubmitting}
@@ -340,6 +368,17 @@ export default function ProjectDetailActions({
                                 <CheckIcon className="h-4 w-4 mr-1" />
                                 Approve
                             </Button>
+                            {/* APPROVED_WITH_CONDITIONS: available for review-stage protocols */}
+                            {["REVIEW_COMPLETE", "SESSION_SCHEDULED"].includes(currentStatus) && (
+                                <Button
+                                    onClick={() => handleStatusUpdate("APPROVED_WITH_CONDITIONS")}
+                                    disabled={isSubmitting}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white"
+                                >
+                                    <CheckCircle2Icon className="h-4 w-4 mr-1" />
+                                    Approve with Conditions
+                                </Button>
+                            )}
                             <Button
                                 onClick={() => handleStatusUpdate("REJECTED")}
                                 disabled={isSubmitting}
@@ -348,14 +387,17 @@ export default function ProjectDetailActions({
                                 <XIcon className="h-4 w-4 mr-1" />
                                 Reject
                             </Button>
-                            <Button
-                                onClick={() => handleStatusUpdate("PENDING_REVIEW")}
-                                disabled={isSubmitting}
-                                variant="outline"
-                            >
-                                <ClockIcon className="h-4 w-4 mr-1" />
-                                Request Additional Documentation
-                            </Button>
+                            {/* Legacy: pending review assignment (only when submitted) */}
+                            {currentStatus === "SUBMITTED" && (
+                                <Button
+                                    onClick={() => handleStatusUpdate("PENDING_REVIEW")}
+                                    disabled={isSubmitting}
+                                    variant="outline"
+                                >
+                                    <ClockIcon className="h-4 w-4 mr-1" />
+                                    Mark Pending Review
+                                </Button>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

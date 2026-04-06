@@ -21,8 +21,8 @@ import { Progress } from "@/components/ui/progress";
 
 const formSchema = z
     .object({
-        newPassword: z.string().min(8, "Password must be at least 8 characters"),
-        currentPassword: z.string().min(6, "Enter your current password"),
+        newPassword: z.string().min(10, "Password must be at least 10 characters"),
+        currentPassword: z.string().min(1, "Enter your current password"),
         confirmNewPassword: z.string(),
     })
     .refine((data) => data.newPassword === data.confirmNewPassword, {
@@ -36,7 +36,7 @@ const calculatePasswordStrength = (password: string): { score: number; label: st
     if (!password) return { score: 0, label: "Too weak", color: "bg-gray-300" };
     
     // Length check
-    if (password.length >= 8) score += 25;
+    if (password.length >= 10) score += 25;
     if (password.length >= 12) score += 15;
     
     // Complexity checks
@@ -187,7 +187,7 @@ export function ChangePasswordForm() {
                                         </span>
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        Use 8+ characters with uppercase, lowercase, numbers, and symbols
+                                        Use 10+ characters with uppercase, lowercase, numbers, and symbols
                                     </p>
                                 </div>
                             )}

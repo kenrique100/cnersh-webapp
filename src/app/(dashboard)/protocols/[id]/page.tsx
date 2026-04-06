@@ -3,6 +3,7 @@ import { getProjectById } from "@/app/actions/project";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     FolderIcon,
     CalendarIcon,
@@ -16,9 +17,16 @@ import {
     DownloadIcon,
     HashIcon,
     EyeIcon,
+    AlertTriangleIcon,
+    ScaleIcon,
+    ClipboardListIcon,
 } from "lucide-react";
 import Link from "next/link";
 import ProjectDetailActions from "./project-detail-actions";
+
+function daysSinceDate(date: Date | string): number {
+    return (new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -33,20 +41,60 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
         dot: "bg-blue-500",
     },
+    RETURNED_INCOMPLETE: {
+        label: "Returned — Incomplete",
+        color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+        dot: "bg-orange-500",
+    },
     PENDING_REVIEW: {
         label: "Pending Review",
         color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
         dot: "bg-amber-500",
+    },
+    UNDER_REVIEW: {
+        label: "Under Review",
+        color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+        dot: "bg-purple-500",
+    },
+    REVIEW_COMPLETE: {
+        label: "Review Complete",
+        color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+        dot: "bg-indigo-500",
+    },
+    SESSION_SCHEDULED: {
+        label: "Session Scheduled",
+        color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+        dot: "bg-cyan-500",
     },
     APPROVED: {
         label: "Approved",
         color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
         dot: "bg-emerald-500",
     },
+    APPROVED_WITH_CONDITIONS: {
+        label: "Approved with Conditions",
+        color: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+        dot: "bg-teal-500",
+    },
     REJECTED: {
         label: "Rejected",
         color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
         dot: "bg-red-500",
+    },
+    UNDER_APPEAL: {
+        label: "Under Appeal",
+        color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+        dot: "bg-rose-500",
+    },
+    APPEAL_RESOLVED: {
+        label: "Appeal Resolved",
+        color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+        dot: "bg-slate-500",
+    },
+    ARCHIVED: {
+        label: "Archived",
+        color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
+        dot: "bg-gray-300",
     },
 };
 
@@ -70,6 +118,19 @@ export default async function ProjectDetailPage({
     if (!project) notFound();
 
     const isOwner = project.userId === session.user.id;
+
+    // Determine which PI-specific actions are available based on status
+    const canFileSAE = isOwner && ["APPROVED", "APPROVED_WITH_CONDITIONS", "UNDER_APPEAL", "APPEAL_RESOLVED"].includes(project.status);
+    const canStartAAR = isOwner && ["APPROVED", "APPROVED_WITH_CONDITIONS"].includes(project.status) && !project.aarApplication;
+    const canFileAppeal = isOwner && project.status === "REJECTED" && !project.appeal;
+
+    // Check 30-day appeal window
+    let appealWindowOpen = false;
+    if (canFileAppeal) {
+        const rejectionEntry = project.statusHistory?.find((h) => h.status === "REJECTED");
+        const rejectionDate = rejectionEntry?.createdAt ?? project.updatedAt;
+        appealWindowOpen = daysSinceDate(rejectionDate) <= 30;
+    }
     const config = statusConfig[project.status] || statusConfig.DRAFT;
 
     return (
@@ -128,6 +189,45 @@ export default async function ProjectDetailPage({
                             projectObjectives={project.objectives}
                             projectDescription={project.description}
                         />
+                    </div>
+                )}
+
+                {/* PI Action Panel: SAE, Appeal, AAR */}
+                {isOwner && (canFileSAE || (canFileAppeal && appealWindowOpen) || canStartAAR) && (
+                    <div className="mb-6">
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                    Available Actions
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0 flex flex-wrap gap-3">
+                                {canFileSAE && (
+                                    <Link href={`/protocols/${project.id}/sae`}>
+                                        <Button variant="destructive" size="sm">
+                                            <AlertTriangleIcon className="h-4 w-4 mr-1.5" />
+                                            Report SAE
+                                        </Button>
+                                    </Link>
+                                )}
+                                {canFileAppeal && appealWindowOpen && (
+                                    <Link href={`/protocols/${project.id}/appeal`}>
+                                        <Button variant="outline" size="sm" className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950">
+                                            <ScaleIcon className="h-4 w-4 mr-1.5" />
+                                            File Appeal
+                                        </Button>
+                                    </Link>
+                                )}
+                                {canStartAAR && (
+                                    <Link href={`/protocols/${project.id}/aar`}>
+                                        <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950">
+                                            <ClipboardListIcon className="h-4 w-4 mr-1.5" />
+                                            Start AAR Application
+                                        </Button>
+                                    </Link>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 
