@@ -78,7 +78,7 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
     // Structured console logging for development and monitoring
     const logEntry = {
         timestamp,
-        type: 'SECURITY_EVENT',
+        logType: 'SECURITY_EVENT',
         ...event,
     };
 
