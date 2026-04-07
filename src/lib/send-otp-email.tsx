@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import OTPEmail from "@/emails/otp-email";
+import { OTPEmail } from "@/emails/otp-email";
 
 const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
 

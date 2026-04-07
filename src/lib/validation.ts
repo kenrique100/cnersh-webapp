@@ -18,23 +18,30 @@ export const passwordSchema = z
     .string()
     .min(10, 'Password must be at least 10 characters')
     .max(128, 'Password must not exceed 128 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+    .refine((val) => /[A-Z]/.test(val), { message: 'Password must contain at least one uppercase letter' })
+    .refine((val) => /[a-z]/.test(val), { message: 'Password must contain at least one lowercase letter' })
+    .refine((val) => /[0-9]/.test(val), { message: 'Password must contain at least one number' })
+    .refine((val) => /[^A-Za-z0-9]/.test(val), { message: 'Password must contain at least one special character' });
 
 // Name validation
 export const nameSchema = z
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must not exceed 100 characters')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters')
+    .refine((val) => /^[a-zA-Z\s'-]+$/.test(val), { message: 'Name contains invalid characters' })
     .trim();
 
 // URL validation
 export const urlSchema = z
     .string()
-    .url('Invalid URL')
+    .refine((val) => {
+        try {
+            new URL(val);
+            return true;
+        } catch {
+            return false;
+        }
+    }, { message: 'Invalid URL' })
     .max(2048, 'URL must not exceed 2048 characters')
     .refine(
         (url) => {
@@ -51,7 +58,7 @@ export const urlSchema = z
 // UUID validation
 export const uuidSchema = z
     .string()
-    .uuid('Invalid UUID format');
+    .refine((val) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val), { message: 'Invalid UUID format' });
 
 // Text content validation (for posts, comments, etc.)
 export const textContentSchema = z
@@ -70,7 +77,7 @@ export const shortTextSchema = z
 // Phone number validation
 export const phoneSchema = z
     .string()
-    .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format')
+    .refine((val) => /^\+?[1-9]\d{1,14}$/.test(val), { message: 'Invalid phone number format' })
     .min(10, 'Phone number must be at least 10 characters')
     .max(15, 'Phone number must not exceed 15 characters');
 
@@ -138,7 +145,7 @@ export function validateInput<T>(
         return { success: true, data: result.data };
     }
 
-    const errors = result.error.errors.map((err) => err.message);
+    const errors = result.error.issues.map((err) => err.message);
     return { success: false, errors };
 }
 

@@ -63,10 +63,10 @@ export interface SecurityEvent {
     severity: SecuritySeverity;
     userId?: string;
     targetId?: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
     ipAddress?: string;
     userAgent?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 /**
@@ -78,7 +78,7 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
     // Structured console logging for development and monitoring
     const logEntry = {
         timestamp,
-        type: 'SECURITY_EVENT',
+        logType: 'SECURITY_EVENT',
         ...event,
     };
 
@@ -127,7 +127,7 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
 export async function logAuthEvent(
     type: SecurityEventType,
     userId?: string,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
     ipAddress?: string,
     userAgent?: string
 ): Promise<void> {
@@ -151,7 +151,7 @@ export async function logAuthEvent(
 export async function logSuspiciousActivity(
     type: SecurityEventType,
     userId?: string,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
     ipAddress?: string,
     userAgent?: string
 ): Promise<void> {
@@ -172,7 +172,7 @@ export async function logDataAccess(
     userId: string,
     targetId: string,
     action: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
 ): Promise<void> {
     await logSecurityEvent({
         type: SecurityEventType.SENSITIVE_DATA_ACCESS,
