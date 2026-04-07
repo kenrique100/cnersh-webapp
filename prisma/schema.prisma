@@ -51,6 +51,9 @@ model User {
   aarApplications    AARApplication[]
   appeals            Appeal[]
 
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
   @@map("user")
 }
 
@@ -133,6 +136,8 @@ model Post {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([deleted, createdAt])
   @@map("post")
 }
 
@@ -223,6 +228,9 @@ model Project {
   @@index([status])
   @@index([trackingCode])
   @@index([createdAt])
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([category, status])
   @@map("project")
 }
 
