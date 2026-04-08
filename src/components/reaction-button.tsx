@@ -24,7 +24,7 @@ export function ReactionButton({ reaction, onClick, isActive = false, className 
     };
 
     const validLabel = reaction.label as ReactionType;
-    const hasIcon = REACTION_ICONS[validLabel];
+    const hasIcon = validLabel in REACTION_ICONS;
 
     return (
         <button

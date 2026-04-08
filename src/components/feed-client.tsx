@@ -18,7 +18,6 @@ import {
     ImageIcon,
     VideoIcon,
     ThumbsUpIcon,
-    ThumbsDownIcon,
     ShareIcon,
     FlagIcon,
     XIcon,
@@ -135,6 +134,32 @@ const EMOJI_LIST = [
     "😀", "😂", "😍", "🤔", "👍", "👎", "🎉", "🔥",
     "❤️", "💯", "🙏", "👏", "🤝", "💪", "✅", "⭐",
     "🚀", "💡", "📌", "🎯", "👀", "✨", "⚡", "🌟",
+
+    // Faces & emotions
+    "😁", "😅", "🤣", "😊", "😎", "😢", "😭", "😡",
+    "😱", "🥶", "🥵", "😴", "🤯", "🥳", "😇", "🤗",
+
+    // Gestures & people
+    "👋", "👌", "✌️", "🤟", "🙌", "🤲", "🫶", "🙏",
+    "💃", "🕺", "👨‍💻", "👩‍💻", "🧠", "🫡",
+
+    // Love & reactions
+    "💖", "💘", "💔", "❣️", "💕", "💞", "💓",
+
+    // Objects & symbols
+    "📢", "📣", "📷", "🎥", "🎵", "🎶", "🛠️", "⚙️",
+    "🔒", "🔑", "💻", "📱", "🖥️", "🧾", "📊", "📈",
+
+    // Nature & misc
+    "🌍", "🌈", "☀️", "🌙", "⭐", "🌊", "🌴", "🍀",
+    "🌸", "🌺", "🌻",
+
+    // Food & fun
+    "🍕", "🍔", "🍟", "🍿", "🍩", "🍎", "🍉", "🍻",
+    "☕", "🍷",
+
+    // Extra symbols
+    "❗", "❓", "⭕", "❌", "✔️", "➕", "➖", "➰"
 ];
 
 const MENTION_SEARCH_DEBOUNCE_MS = 200;
@@ -1435,7 +1460,7 @@ export default function FeedClient({
                                                     className="group relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-2 cursor-pointer"
                                                     title={reaction.label}
                                                 >
-                                                    <span className="text-xl sm:text-2xl drop-shadow-sm">{reaction.emoji}</span>
+                                                    <span className="text-xl sm:text-2xl drop-shadow-sm">{getReactionEmoji(reaction.label)}</span>
                                                     <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
                                                         {reaction.label}
                                                     </span>
@@ -1615,7 +1640,7 @@ export default function FeedClient({
                                                                                 className="group relative flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-1 cursor-pointer"
                                                                                 title={reaction.label}
                                                                             >
-                                                                                <span className="text-lg drop-shadow-sm">{reaction.emoji}</span>
+                                                                                <span className="text-lg drop-shadow-sm">{getReactionEmoji(reaction.label)}</span>
                                                                                 <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[10px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
                                                                                     {reaction.label}
                                                                                 </span>
@@ -1739,7 +1764,7 @@ export default function FeedClient({
                                                                                                         className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-1 cursor-pointer"
                                                                                                         title={reaction.label}
                                                                                                     >
-                                                                                                        <span className="text-base drop-shadow-sm">{reaction.emoji}</span>
+                                                                                                        <span className="text-base drop-shadow-sm">{getReactionEmoji(reaction.label)}</span>
                                                                                                         <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[10px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
                                                                                                             {reaction.label}
                                                                                                         </span>

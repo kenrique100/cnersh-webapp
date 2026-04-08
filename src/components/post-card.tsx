@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, {JSX} from "react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
