@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ReactionIcon, REACTION_ICONS, type ReactionType } from "@/components/reaction-icons";
 
 // ─── Utility ────────────────────────────────────────────────────────────────
 
@@ -372,20 +373,32 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
 // ─── Reaction definitions ───────────────────────────────────────────────────
 
 export const REACTIONS = [
-    { emoji: "👍", label: "Like", bg: "bg-blue-500" },
-    { emoji: "👏", label: "Celebrate", bg: "bg-green-500" },
-    { emoji: "🤝", label: "Support", bg: "bg-purple-500" },
-    { emoji: "❤️", label: "Love", bg: "bg-red-500" },
-    { emoji: "💡", label: "Insightful", bg: "bg-yellow-500" },
-    { emoji: "😄", label: "Funny", bg: "bg-teal-500" },
+    { label: "Like" as const, color: "#0A66C2" },
+    { label: "Celebrate" as const, color: "#57C27D" },
+    { label: "Support" as const, color: "#9B6DD6" },
+    { label: "Love" as const, color: "#F5666C" },
+    { label: "Insightful" as const, color: "#F5A623" },
+    { label: "Funny" as const, color: "#7FD1F6" },
 ] as const;
 
-export function getReactionEmoji(label: string): string {
-    return REACTIONS.find((r) => r.label === label)?.emoji || "👍";
+export function getReactionIcon(label: string): typeof ReactionIcon | null {
+    const validLabel = label as ReactionType;
+    return REACTION_ICONS[validLabel] ? () => <ReactionIcon type={validLabel} size={14} /> : null;
 }
 
-export function getReactionBg(label: string): string {
-    return REACTIONS.find((r) => r.label === label)?.bg || "bg-blue-500";
+export function getReactionColor(label: string): string {
+    return REACTIONS.find((r) => r.label === label)?.color || "#0A66C2";
+}
+
+// Backward compatibility helpers for existing code
+export function getReactionEmoji(label: string): JSX.Element {
+    const validLabel = label as ReactionType;
+    return <ReactionIcon type={validLabel} size={14} />;
+}
+
+export function getReactionBg(_label: string): string {
+    // Return empty string as we're using SVG icons now, not background colors
+    return "";
 }
 
 // ─── Post Engagement Summary ────────────────────────────────────────────────
@@ -462,11 +475,11 @@ export function PostEngagementSummary({
                                 {topReactions.map((label, idx) => (
                                     <span
                                         key={label}
-                                        className={`flex items-center justify-center w-[18px] h-[18px] rounded-full ${getReactionBg(label)} text-white text-[10px] leading-none border border-white dark:border-gray-950`}
-                                        style={{ zIndex: 3 - idx }}
+                                        className="flex items-center justify-center shrink-0"
+                                        style={{ zIndex: 3 - idx, marginLeft: idx > 0 ? '-4px' : '0' }}
                                         title={label}
                                     >
-                                        {getReactionEmoji(label)}
+                                        <ReactionIcon type={label as ReactionType} size={18} />
                                     </span>
                                 ))}
                             </span>
@@ -534,11 +547,11 @@ export function CommentReactionSummary({ reactionTypes, count }: CommentReaction
                     {topReactions.map((label, idx) => (
                         <span
                             key={label}
-                            className={`flex items-center justify-center w-[14px] h-[14px] rounded-full ${getReactionBg(label)} text-white text-[8px] leading-none border border-white dark:border-gray-950`}
-                            style={{ zIndex: 3 - idx }}
+                            className="flex items-center justify-center shrink-0"
+                            style={{ zIndex: 3 - idx, marginLeft: idx > 0 ? '-3px' : '0' }}
                             title={label}
                         >
-                            {getReactionEmoji(label)}
+                            <ReactionIcon type={label as ReactionType} size={14} />
                         </span>
                     ))}
                 </span>
