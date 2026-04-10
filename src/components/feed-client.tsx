@@ -75,6 +75,7 @@ import {
     getReactionBg,
     postHasMedia,
 } from "@/components/post-card";
+import { ReactionsPicker } from "@/components/reactions-picker";
 
 interface PostUser {
     id: string;
@@ -337,8 +338,7 @@ export default function FeedClient({
     const [imageModalPost, setImageModalPost] = React.useState<PostData | null>(null);
     const [imageModalIndex, setImageModalIndex] = React.useState(0);
 
-    // Reaction popup state
-    const [reactionHoverPostId, setReactionHoverPostId] = React.useState<string | null>(null);
+    // Reaction popup state (handled by ReactionsPicker component)
     const reactionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     // Clean up reaction timeout on unmount
@@ -797,22 +797,6 @@ export default function FeedClient({
         };
     }, []);
 
-    const handleReactionEnter = (postId: string) => {
-        if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current);
-        setReactionHoverPostId(postId);
-    };
-
-    const handleReactionLeave = () => {
-        reactionTimeoutRef.current = setTimeout(() => {
-            setReactionHoverPostId(null);
-        }, 300);
-    };
-
-    const handleReaction = (postId: string, reaction: string) => {
-        setReactionHoverPostId(null);
-        handleLike(postId, reaction);
-    };
-
     const handleCommentReactionEnter = (commentId: string) => {
         if (commentReactionTimeoutRef.current) clearTimeout(commentReactionTimeoutRef.current);
         setCommentReactionHoverId(commentId);
@@ -1101,9 +1085,7 @@ export default function FeedClient({
                 </Card>
             ) : (
                 posts.map((post) => {
-                    const isLiked = post.likes.some((l) => l.userId === currentUserId);
                     const userReaction = post.likes.find((l) => l.userId === currentUserId)?.reactionType;
-                    const userReactionEmoji = userReaction ? getReactionEmoji(userReaction) : null;
 
                     return (
                         <div key={post.id} className="space-y-0">
@@ -1440,50 +1422,12 @@ export default function FeedClient({
                             {/* Action Buttons - LinkedIn Style with Reaction Popup */}
                             <PostActionBar>
                                 {/* Like button with reaction popup */}
-                                <div
-                                    className="relative w-full"
-                                    onMouseEnter={() => handleReactionEnter(post.id)}
-                                    onMouseLeave={handleReactionLeave}
-                                >
-                                    {/* Reaction popup - LinkedIn pill style */}
-                                    {reactionHoverPostId === post.id && (
-                                        <div
-                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-2 sm:px-3 py-1.5 sm:py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
-                                            style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
-                                            onMouseEnter={() => handleReactionEnter(post.id)}
-                                            onMouseLeave={handleReactionLeave}
-                                        >
-                                            {REACTIONS.map((reaction) => (
-                                                <button
-                                                    key={reaction.label}
-                                                    onClick={() => handleReaction(post.id, reaction.label)}
-                                                    className="group relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-200 hover:scale-[1.35] hover:-translate-y-2 cursor-pointer"
-                                                    title={reaction.label}
-                                                >
-                                                    <span className="text-xl sm:text-2xl drop-shadow-sm">{getReactionEmoji(reaction.label)}</span>
-                                                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium">
-                                                        {reaction.label}
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={() => handleLike(post.id, userReaction || "Like")}
-                                        className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center ${
-                                            isLiked
-                                                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
-                                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                        }`}
-                                    >
-                                        {isLiked && userReactionEmoji ? (
-                                            <span className="text-base leading-none">{userReactionEmoji}</span>
-                                        ) : (
-                                            <ThumbsUpIcon className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                                        )}
-                                        <span className="hidden sm:inline">{isLiked && userReaction ? userReaction : "Like"}</span>
-                                    </button>
-                                </div>
+                                <ReactionsPicker
+                                    postId={post.id}
+                                    initialReaction={userReaction || null}
+                                    initialCount={post._count.likes}
+                                    onReact={(pid, reaction) => handleLike(pid, reaction)}
+                                />
                                 <button
                                     onClick={() => post.commentsEnabled !== false && toggleComments(post.id)}
                                     className={cn(
