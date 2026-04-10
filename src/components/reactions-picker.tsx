@@ -85,12 +85,16 @@ export function ReactionsPicker({
             if (!selectedReaction) setCount((c) => c + 1);
             setSelectedReaction(label);
         }
+        // Always pass the reaction label; the parent calls toggleLike which removes the
+        // reaction when the user already has that same type (server-side toggle logic).
         onReact?.(postId, label);
     };
 
     const handleMainButtonClick = () => {
         if (showPicker) return;
-        const reactionToToggle: ReactionLabel = (selectedReaction as ReactionLabel) || "Like";
+        // Pass the current reaction (or "Like") to the parent; toggleLike will remove it
+        // if the user already has that reaction, or add "Like" if they have none.
+        const reactionType: ReactionLabel = (selectedReaction as ReactionLabel) || "Like";
         if (selectedReaction) {
             setSelectedReaction(null);
             setCount((c) => Math.max(0, c - 1));
@@ -98,7 +102,7 @@ export function ReactionsPicker({
             setSelectedReaction("Like");
             setCount((c) => c + 1);
         }
-        onReact?.(postId, reactionToToggle);
+        onReact?.(postId, reactionType);
     };
 
     const activeReaction = REACTIONS.find((r) => r.label === selectedReaction);
