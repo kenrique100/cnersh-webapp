@@ -88,15 +88,28 @@ async function uploadHandler(req: NextRequest) {
     }
 }
 
-// Export with rate limiting
-export const POST = withRateLimit(
-    uploadHandler,
-    RATE_LIMITS.fileUpload,
-    {
-        keyPrefix: "upload",
-        getUserId: async (req) => {
-            const session = await authSession();
-            return session?.user?.id;
-        },
+// Export with rate limiting, falling back to direct handler if rate limiter throws
+export async function POST(req: NextRequest) {
+    try {
+        const rateLimitedHandler = withRateLimit(
+            uploadHandler,
+            RATE_LIMITS.fileUpload,
+            {
+                keyPrefix: "upload",
+                getUserId: async () => {
+                    const session = await authSession();
+                    return session?.user?.id;
+                },
+            }
+        );
+        return await rateLimitedHandler(req);
+    } catch (err) {
+        console.error("Rate limiter error, falling back to direct handler:", err);
+        try {
+            return await uploadHandler(req);
+        } catch (handlerErr) {
+            console.error("Upload handler error:", handlerErr);
+            return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        }
     }
-);
+}
