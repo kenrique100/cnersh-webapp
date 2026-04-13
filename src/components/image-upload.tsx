@@ -142,8 +142,16 @@ export default function ImageUpload({
             });
 
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Upload failed");
+                let errorMessage = "Upload failed";
+                try {
+                    const data = await res.json();
+                    errorMessage = data.error || errorMessage;
+                } catch {
+                    if (res.status === 413) {
+                        errorMessage = "Image file is too large for the server. Please try a smaller file.";
+                    }
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await res.json();
