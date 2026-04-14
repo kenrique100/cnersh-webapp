@@ -109,10 +109,15 @@ declare global {
     interface Window {
         google?: {
             translate: {
-                TranslateElement: new (
-                    options: { pageLanguage: string; includedLanguages?: string; layout: unknown; autoDisplay: boolean },
-                    elementId: string
-                ) => unknown;
+                TranslateElement: {
+                    new (
+                        options: { pageLanguage: string; includedLanguages?: string; layout: number; autoDisplay: boolean },
+                        elementId: string
+                    ): unknown;
+                    InlineLayout: {
+                        SIMPLE: number;
+                    };
+                };
             };
         };
         googleTranslateElementInit?: () => void;
@@ -177,7 +182,7 @@ function TranslationDropdown() {
                 {
                     pageLanguage: "en",
                     includedLanguages: "en,fr",
-                    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE || 0,
                     autoDisplay: false,
                 },
                 "google_translate_element_navbar"
@@ -656,20 +661,20 @@ function SOPsDesktopSubmenuNav() {
                 <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[180px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
                     <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">English</p>
                     <a href="/SOP1- Current Edit-06-25-24.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 1
                     </a>
                     <a href="/SOP2 - Current edit-06-26-24.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 2
                     </a>
                     <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">French</p>
                     <a href="/SOP1- Current Edit-06-25-24 French.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 1
                     </a>
                     <a href="/SOP2 - Current edit-06-26-24.French.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />SOP 2
                     </a>
                 </div>
@@ -876,44 +881,44 @@ function ResourcesDesktopDropdown() {
             {isOpen && (
                 <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[240px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
                     <a href="https://elearning.trree.org" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <GlobeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />WHO links for training
                     </a>
                     <a href="/WEB-CIOMS-EthicalGuidelines.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />CIOMS
                     </a>
                     <a href="/wma-declaration-of-helsinki.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Helsinki Declaration
                     </a>
                     <a href="/The Tuskegee Syphilis Study.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Tuskegee Syphilis Trials
                     </a>
                     <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Law &amp; Research in Cameroon</p>
                     <a href="/LAW ON RESEARCH ON HUMAN SUBJECTS.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Law on Human Subjects
                     </a>
                     <a href="/LOI RECHERCHE MEDICALE-OCR.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Medical Research
                     </a>
                     <a href="/Finance Law 2024.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Finance Law 2024
                     </a>
                     <a href="/loi_n_2024_017_du_23_12_2024-web.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Data Protection Law
                     </a>
                     <a href="/Organisation_et_fonctionnement__évaluation_recherche_12.11.2023-good version.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Ministerial Decision
                     </a>
                     <Link href="/pages/article" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Article
                     </Link>
                 </div>
@@ -938,19 +943,19 @@ function ResourcesMobileDropdown({ onNavigate }: { onNavigate: () => void }) {
             {isOpen && (
                 <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
                     <a href="https://elearning.trree.org" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                       className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <GlobeIcon className="h-4 w-4 shrink-0" />WHO links for training
                     </a>
                     <a href="/WEB-CIOMS-EthicalGuidelines.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                       className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <DownloadIcon className="h-4 w-4 shrink-0" />CIOMS
                     </a>
                     <a href="/wma-declaration-of-helsinki.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                       className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <DownloadIcon className="h-4 w-4 shrink-0" />Helsinki Declaration
                     </a>
                     <a href="/The Tuskegee Syphilis Study.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                       className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <DownloadIcon className="h-4 w-4 shrink-0" />Tuskegee Syphilis Trials
                     </a>
                     <button
@@ -963,29 +968,29 @@ function ResourcesMobileDropdown({ onNavigate }: { onNavigate: () => void }) {
                     {lawOpen && (
                         <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
                             <a href="/LAW ON RESEARCH ON HUMAN SUBJECTS.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Law on Human Subjects
                             </a>
                             <a href="/LOI RECHERCHE MEDICALE-OCR.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Medical Research
                             </a>
                             <a href="/Finance Law 2024.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Finance Law 2024
                             </a>
                             <a href="/loi_n_2024_017_du_23_12_2024-web.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Data Protection Law
                             </a>
                         </div>
                     )}
                     <a href="/Organisation_et_fonctionnement__évaluation_recherche_12.11.2023-good version.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                       className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <DownloadIcon className="h-4 w-4 shrink-0" />Ministerial Decision
                     </a>
                     <Link href="/pages/article" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                          className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <FileTextIcon className="h-4 w-4 shrink-0" />Article
                     </Link>
                 </div>
@@ -1025,25 +1030,25 @@ function EthicalClearanceDesktopDropdown() {
             {isOpen && (
                 <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[240px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
                     <a href="/PROCEDURE D'EVALUATION DES PROTOCOLES DE RECHERCHE.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Documents &amp; Calendar
                     </a>
                     <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Application Guidelines</p>
                     <a href="/Composition dossier pour soumission protocole.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Dossier Composition
                     </a>
                     <a href="/Form for Ethical Clearance CNERSH (2025).pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Clearance Form
                     </a>
                     <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Forms &amp; Questionnaires</p>
                     <a href="/Contenu d'un protocole de recherche.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Protocol Content
                     </a>
                     <a href="/Fiche d'Evaluation CNERSH.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Evaluation Form
                     </a>
                 </div>
@@ -1069,7 +1074,7 @@ function EthicalClearanceMobileDropdown({ onNavigate }: { onNavigate: () => void
             {isOpen && (
                 <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
                     <a href="/PROCEDURE D'EVALUATION DES PROTOCOLES DE RECHERCHE.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                       className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                         <DownloadIcon className="h-4 w-4 shrink-0" />Documents &amp; Calendar
                     </a>
                     <button
@@ -1082,11 +1087,11 @@ function EthicalClearanceMobileDropdown({ onNavigate }: { onNavigate: () => void
                     {guidelinesOpen && (
                         <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
                             <a href="/Composition dossier pour soumission protocole.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Dossier Composition
                             </a>
                             <a href="/Form for Ethical Clearance CNERSH (2025).pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Clearance Form
                             </a>
                         </div>
@@ -1101,11 +1106,11 @@ function EthicalClearanceMobileDropdown({ onNavigate }: { onNavigate: () => void
                     {formsOpen && (
                         <div className="ml-4 pl-3 border-l border-gray-200 dark:border-gray-700 space-y-0.5 pb-1">
                             <a href="/Contenu d'un protocole de recherche.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Protocol Content
                             </a>
                             <a href="/Fiche d'Evaluation CNERSH.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
-                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Evaluation Form
                             </a>
                         </div>
