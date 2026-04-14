@@ -4,10 +4,10 @@ import { Pool } from "pg";
 
 const globalForPrisma = global as unknown as {
     prisma?: PrismaClient;
-    pool?: Pool; // ✅ Add pool to global
+    pool?: Pool; // Add pool to global
 };
 
-// ✅ Create pool singleton with better configuration
+// Create pool singleton with better configuration
 const createPool = () => {
     if (globalForPrisma.pool) {
         console.log("♻️  Reusing existing database pool");
@@ -20,23 +20,23 @@ const createPool = () => {
         connectionString: process.env.DATABASE_URL!,
         max: 20, // Increased to handle concurrent requests in cloud environments
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 20000, // ✅ Increased from 5000 to 20000
+        connectionTimeoutMillis: 20000, // Increased from 5000 to 20000
         allowExitOnIdle: false,
-        keepAlive: true, // ✅ Added
-        keepAliveInitialDelayMillis: 10000, // ✅ Added
+        keepAlive: true, // Added
+        keepAliveInitialDelayMillis: 10000, // Added
     });
 
-    // ✅ Better error handler - log but don't crash immediately
+    //  Better error handler - log but don't crash immediately
     pool.on("error", (err) => {
-        console.error("❌ Unexpected error on idle database client:", err);
+        console.error(" Unexpected error on idle database client:", err);
         // Don't exit immediately - let Prisma handle reconnection
     });
 
     pool.on("connect", () => {
-        console.log("✅ Database client connected to pool");
+        console.log(" Database client connected to pool");
     });
 
-    // ✅ Store in global for development hot-reload
+    //  Store in global for development hot-reload
     if (process.env.NODE_ENV !== "production") {
         globalForPrisma.pool = pool;
     }
@@ -59,7 +59,7 @@ if (process.env.NODE_ENV !== "production") {
     globalForPrisma.prisma = db;
 }
 
-// ✅ Graceful shutdown handlers
+//  Graceful shutdown handlers
 let isCleaningUp = false;
 
 const cleanup = async () => {
@@ -68,13 +68,13 @@ const cleanup = async () => {
     }
     isCleaningUp = true;
     
-    console.log("🔄 Shutting down database connections...");
+    console.log(" Shutting down database connections...");
     try {
         await db.$disconnect();
         await pool.end();
-        console.log("✅ Database connections closed");
+        console.log(" Database connections closed");
     } catch (error) {
-        console.error("❌ Error during cleanup:", error);
+        console.error(" Error during cleanup:", error);
     }
 };
 

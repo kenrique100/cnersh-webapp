@@ -34,7 +34,7 @@ export const sendVerificationEmail = async ({
 
         // Validate environment configuration
         if (!process.env.RESEND_API_KEY) {
-            console.error("❌ RESEND_API_KEY is not configured. Please add it to your .env file.");
+            console.error(" RESEND_API_KEY is not configured. Please add it to your .env file.");
             throw new Error("Email service not configured. Please contact support.");
         }
 
@@ -50,14 +50,14 @@ export const sendVerificationEmail = async ({
         });
 
         if (response.error) {
-            console.error("❌ Resend API error:", response.error);
+            console.error(" Resend API error:", response.error);
             throw new Error(`Failed to send email: ${response.error.message}`);
         }
 
-        console.log(`✅ Verification email sent successfully to ${to}. Email ID: ${response.data?.id}`);
+        console.log(` Verification email sent successfully to ${to}. Email ID: ${response.data?.id}`);
         return response;
     } catch (error) {
-        console.error("❌ Error in sendVerificationEmail:", error);
+        console.error(" Error in sendVerificationEmail:", error);
 
         // Log detailed error for debugging
         if (error instanceof Error) {
