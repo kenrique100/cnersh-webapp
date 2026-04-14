@@ -888,7 +888,7 @@ export default function FeedClient({
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => { deleteBlobUrl(newPostImage!); setNewPostImage(null); }}
+                                                onClick={() => { if (newPostImage) deleteBlobUrl(newPostImage); setNewPostImage(null); }}
                                                 className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
                                                 title="Remove image"
                                             >

@@ -1620,7 +1620,7 @@ export default function CommunityClient({
                                 {pendingImage && (
                                     <div className="relative">
                                         <Image src={pendingImage} alt="Preview" width={80} height={60} unoptimized className="h-[60px] w-auto rounded" />
-                                        <button onClick={() => { if (pendingImage) deleteBlobUrl(pendingImage); setPendingImage(null); }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
+                                        <button onClick={() => { deleteBlobUrl(pendingImage); setPendingImage(null); }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
                                     </div>
                                 )}
                                 {pendingImages.map((img, idx) => (
