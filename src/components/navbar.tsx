@@ -178,11 +178,12 @@ function TranslationDropdown() {
         container.innerHTML = "";
 
         try {
+            // Use 0 as the layout value (SIMPLE layout)
             new window.google.translate.TranslateElement(
                 {
                     pageLanguage: "en",
                     includedLanguages: "en,fr",
-                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE || 0,
+                    layout: 0, // 0 = SIMPLE layout
                     autoDisplay: false,
                 },
                 "google_translate_element_navbar"
