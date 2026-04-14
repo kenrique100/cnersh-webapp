@@ -12,6 +12,23 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ImageUpload from "@/components/image-upload";
 
+const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
+
+async function deleteBlobUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
+        await fetch("/api/delete-blob", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
+    } catch {
+        // Best-effort deletion; do not surface errors to the user
+    }
+}
+
+
 interface ProjectDetailActionsProps {
     projectId: string;
     currentStatus: string;
@@ -139,8 +156,8 @@ export default function ProjectDetailActions({
             toast.error("Please select a video file");
             return;
         }
-        if (file.size > 50 * 1024 * 1024) {
-            toast.error("Video must be less than 50MB");
+        if (file.size > 200 * 1024 * 1024) {
+            toast.error("Video must be less than 200MB");
             return;
         }
         setIsUploadingVideo(true);
@@ -210,7 +227,7 @@ export default function ProjectDetailActions({
                                         {forwardImages.map((img, idx) => (
                                             <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]">
                                                 <Image src={img} alt={`Preview ${idx + 1}`} width={200} height={150} className="w-full h-[100px] object-cover" unoptimized />
-                                                <button type="button" onClick={() => setForwardImages((prev) => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer">
+                                                <button type="button" onClick={() => { deleteBlobUrl(img); setForwardImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer">
                                                     <XIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -223,7 +240,7 @@ export default function ProjectDetailActions({
                                         {forwardVideos.map((vid, idx) => (
                                             <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                                                 <video src={vid} controls className="w-full max-h-[150px] object-contain bg-black" />
-                                                <button type="button" onClick={() => setForwardVideos((prev) => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer">
+                                                <button type="button" onClick={() => { deleteBlobUrl(vid); setForwardVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer">
                                                     <XIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -248,7 +265,7 @@ export default function ProjectDetailActions({
                                         <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
                                         <button type="button" onClick={() => videoInputRef.current?.click()} disabled={isUploadingVideo} className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-4 flex flex-col items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
                                             {isUploadingVideo ? <Loader2 className="h-6 w-6 text-blue-600 animate-spin" /> : <VideoIcon className="h-6 w-6 text-gray-400" />}
-                                            <span className="text-xs text-gray-500">{isUploadingVideo ? "Uploading..." : "Upload video (up to 32MB)"}</span>
+                                            <span className="text-xs text-gray-500">{isUploadingVideo ? "Uploading..." : "Upload video (up to 200MB)"}</span>
                                         </button>
                                     </div>
                                 )}

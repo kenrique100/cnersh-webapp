@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import { authSession } from "@/lib/auth-utils";
 import { validateFile, performBasicMalwareCheck } from "@/lib/file-validation";
 import { sanitizeFilename } from "@/lib/sanitize";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-// Increase body size limit for file uploads
 export const maxDuration = 60;
 
 async function uploadHandler(req: NextRequest) {
@@ -33,10 +33,10 @@ async function uploadHandler(req: NextRequest) {
 
         if (file.type.startsWith("video/")) {
             allowedTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-            maxSize = 50 * 1024 * 1024; // 50MB
+            maxSize = 200 * 1024 * 1024; // 200MB
         } else if (file.type.startsWith("image/")) {
             allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            maxSize = 8 * 1024 * 1024; // 8MB
+            maxSize = 5 * 1024 * 1024; // 5MB
         } else {
             // Documents
             allowedTypes = [
@@ -46,7 +46,7 @@ async function uploadHandler(req: NextRequest) {
                 'application/vnd.ms-excel',
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ];
-            maxSize = 20 * 1024 * 1024; // 20MB
+            maxSize = 50 * 1024 * 1024; // 50MB
         }
 
         // Comprehensive file validation
@@ -67,14 +67,14 @@ async function uploadHandler(req: NextRequest) {
             );
         }
 
-        // Convert to base64 for database storage
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const base64 = buffer.toString("base64");
-        const dataUrl = `data:${validation.detectedType || file.type};base64,${base64}`;
+        // Upload to Vercel Blob storage
+        const blob = await put(sanitizedFilename, file, {
+            access: "public",
+            contentType: validation.detectedType || file.type,
+        });
 
         return NextResponse.json({
-            url: dataUrl,
+            url: blob.url,
             name: sanitizedFilename,
             type: validation.detectedType,
             size: file.size,
