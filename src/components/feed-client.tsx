@@ -3,6 +3,23 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+
+const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
+
+async function deleteBlobUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
+        await fetch("/api/delete-blob", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
+    } catch {
+        // Best-effort deletion; do not surface errors to the user
+    }
+}
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -199,8 +216,8 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
             return;
         }
 
-        if (file.size > 50 * 1024 * 1024) {
-            toast.error("Video must be less than 50MB");
+        if (file.size > 200 * 1024 * 1024) {
+            toast.error("Video must be less than 200MB");
             return;
         }
 
@@ -267,7 +284,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
                     <>
                         <VideoIcon className="h-8 w-8 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a video</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 50MB</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 200MB</span>
                     </>
                 )}
             </button>
@@ -871,7 +888,7 @@ export default function FeedClient({
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => setNewPostImage(null)}
+                                                onClick={() => { deleteBlobUrl(newPostImage!); setNewPostImage(null); }}
                                                 className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
                                                 title="Remove image"
                                             >
@@ -891,7 +908,7 @@ export default function FeedClient({
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => setNewPostImages((prev) => prev.filter((_, i) => i !== idx))}
+                                                onClick={() => { deleteBlobUrl(img); setNewPostImages((prev) => prev.filter((_, i) => i !== idx)); }}
                                                 className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
                                                 title="Remove image"
                                             >
@@ -922,7 +939,7 @@ export default function FeedClient({
                                             <video src={vid} controls className="w-full max-h-[150px] sm:max-h-[200px] object-contain bg-black" />
                                             <button
                                                 type="button"
-                                                onClick={() => setNewPostVideos((prev) => prev.filter((_, i) => i !== idx))}
+                                                onClick={() => { deleteBlobUrl(vid); setNewPostVideos((prev) => prev.filter((_, i) => i !== idx)); }}
                                                 className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer"
                                                 title="Remove video"
                                             >
@@ -1190,7 +1207,7 @@ export default function FeedClient({
                                                             <Image src={img} alt="" width={200} height={120} className="w-full h-[120px] object-cover" />
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setEditingPostImages((prev) => prev.filter((_, i) => i !== idx))}
+                                                                onClick={() => { deleteBlobUrl(img); setEditingPostImages((prev) => prev.filter((_, i) => i !== idx)); }}
                                                                 className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white"
                                                                 title="Remove image"
                                                             >
@@ -1208,7 +1225,7 @@ export default function FeedClient({
                                                             <video src={vid} controls className="w-full max-h-[120px] sm:max-h-[150px] object-contain bg-black" />
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx))}
+                                                                onClick={() => { deleteBlobUrl(vid); setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx)); }}
                                                                 className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white"
                                                                 title="Remove video"
                                                             >

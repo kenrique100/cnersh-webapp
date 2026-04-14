@@ -18,6 +18,22 @@ import {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
+const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
+
+async function deleteBlobUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
+        await fetch("/api/delete-blob", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
+    } catch {
+        // Best-effort deletion; do not surface errors to the user
+    }
+}
+
 const STUDY_TYPES = [
     "Clinical Trial",
     "Observational Study",
@@ -455,6 +471,8 @@ export default function ProtocolFormWizard() {
     };
 
     const removeFileField = (key: keyof FormState) => {
+        const currentUrl = (form[key] as FileUpload | undefined)?.url;
+        if (currentUrl) deleteBlobUrl(currentUrl);
         setForm((prev) => ({ ...prev, [key]: { url: null, name: null } }));
     };
 

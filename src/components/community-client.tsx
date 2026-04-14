@@ -3,6 +3,23 @@
 import React, { useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+
+const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
+
+async function deleteBlobUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
+        await fetch("/api/delete-blob", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
+    } catch {
+        // Best-effort deletion; do not surface errors to the user
+    }
+}
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1603,13 +1620,13 @@ export default function CommunityClient({
                                 {pendingImage && (
                                     <div className="relative">
                                         <Image src={pendingImage} alt="Preview" width={80} height={60} unoptimized className="h-[60px] w-auto rounded" />
-                                        <button onClick={() => setPendingImage(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
+                                        <button onClick={() => { if (pendingImage) deleteBlobUrl(pendingImage); setPendingImage(null); }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
                                     </div>
                                 )}
                                 {pendingImages.map((img, idx) => (
                                     <div key={idx} className="relative">
                                         <Image src={img} alt={`Preview ${idx + 1}`} width={80} height={60} unoptimized className="h-[60px] w-auto rounded" />
-                                        <button onClick={() => setPendingImages((prev) => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
+                                        <button onClick={() => { deleteBlobUrl(img); setPendingImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="h-2.5 w-2.5" /></button>
                                     </div>
                                 ))}
                             </div>
@@ -1621,7 +1638,7 @@ export default function CommunityClient({
                                     <div key={idx} className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded px-2 py-1 text-xs">
                                         <VideoIcon className="h-3 w-3 text-green-500" />
                                         <span className="truncate max-w-[100px]">Video {idx + 1}</span>
-                                        <button onClick={() => setPendingVideos((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                        <button onClick={() => { deleteBlobUrl(vid); setPendingVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
                                     </div>
                                 ))}
                             </div>
@@ -1633,7 +1650,7 @@ export default function CommunityClient({
                                     <div key={idx} className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded px-2 py-1 text-xs">
                                         <Music2Icon className="h-3 w-3 text-purple-500" />
                                         <span>Audio {idx + 1}</span>
-                                        <button onClick={() => setPendingAudios((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                        <button onClick={() => { deleteBlobUrl(aud); setPendingAudios((prev) => prev.filter((_, i) => i !== idx)); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
                                     </div>
                                 ))}
                             </div>
@@ -1645,7 +1662,7 @@ export default function CommunityClient({
                                     <div key={idx} className="flex items-center gap-1 bg-gray-200 dark:bg-gray-800 rounded px-2 py-1 text-xs">
                                         <FileIcon className="h-3 w-3 text-blue-500" />
                                         <span>Document {idx + 1}</span>
-                                        <button onClick={() => setPendingDocuments((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                        <button onClick={() => { deleteBlobUrl(doc); setPendingDocuments((prev) => prev.filter((_, i) => i !== idx)); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
                                     </div>
                                 ))}
                             </div>
@@ -1655,7 +1672,7 @@ export default function CommunityClient({
                             <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950 rounded px-2 py-1">
                                 <MicIcon className="h-3 w-3 text-green-500" />
                                 <audio src={pendingVoiceNote} controls className="h-7 flex-1" />
-                                <button onClick={() => setPendingVoiceNote(null)} className="text-red-400"><XIcon className="h-3 w-3" /></button>
+                                <button onClick={() => { if (pendingVoiceNote) deleteBlobUrl(pendingVoiceNote); setPendingVoiceNote(null); }} className="text-red-400"><XIcon className="h-3 w-3" /></button>
                             </div>
                         )}
                         {/* Link preview */}
@@ -2168,7 +2185,7 @@ export default function CommunityClient({
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                                     <img src={url} alt={`Uploaded image ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
                                                     <button
-                                                        onClick={() => setNewTopic((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
+                                                        onClick={() => { deleteBlobUrl(url); setNewTopic((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) })); }}
                                                         className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         <XIcon className="h-3 w-3" />
@@ -2214,7 +2231,7 @@ export default function CommunityClient({
                                                 <div key={i} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1 text-xs text-gray-700 dark:text-gray-300">
                                                     <VideoIcon className="h-3.5 w-3.5 text-gray-400" />
                                                     <span className="truncate max-w-[120px]">Video {i + 1}</span>
-                                                    <button onClick={() => setNewTopic((p) => ({ ...p, videos: p.videos.filter((_, idx) => idx !== i) }))} className="text-red-500 hover:text-red-600">
+                                                    <button onClick={() => { deleteBlobUrl(url); setNewTopic((p) => ({ ...p, videos: p.videos.filter((_, idx) => idx !== i) })); }} className="text-red-500 hover:text-red-600">
                                                         <XIcon className="h-3 w-3" />
                                                     </button>
                                                 </div>
@@ -2258,7 +2275,7 @@ export default function CommunityClient({
                                                 <div key={i} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1 text-xs text-gray-700 dark:text-gray-300">
                                                     <FileTextIcon className="h-3.5 w-3.5 text-gray-400" />
                                                     <span className="truncate max-w-[120px]">Document {i + 1}</span>
-                                                    <button onClick={() => setNewTopic((p) => ({ ...p, documents: p.documents.filter((_, idx) => idx !== i) }))} className="text-red-500 hover:text-red-600">
+                                                    <button onClick={() => { deleteBlobUrl(url); setNewTopic((p) => ({ ...p, documents: p.documents.filter((_, idx) => idx !== i) })); }} className="text-red-500 hover:text-red-600">
                                                         <XIcon className="h-3 w-3" />
                                                     </button>
                                                 </div>

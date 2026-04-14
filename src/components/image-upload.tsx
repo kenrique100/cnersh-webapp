@@ -54,6 +54,22 @@ async function getCroppedImageBlob(
     });
 }
 
+const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
+
+async function deleteBlobUrl(url: string) {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
+        await fetch("/api/delete-blob", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
+    } catch {
+        // Best-effort deletion; do not surface errors to the user
+    }
+}
+
 export default function ImageUpload({
     defaultUrl,
     onChange,
@@ -92,8 +108,8 @@ export default function ImageUpload({
             return;
         }
 
-        if (file.size > 4 * 1024 * 1024) {
-            toast.error("Image must be less than 4MB");
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Image must be less than 5MB");
             return;
         }
 
@@ -242,6 +258,7 @@ export default function ImageUpload({
                 <button
                     type="button"
                     onClick={() => {
+                        if (value) deleteBlobUrl(value);
                         handleChangeImage(null);
                     }}
                     className={
@@ -287,7 +304,7 @@ export default function ImageUpload({
                             {isProfile ? "Upload profile picture" : "Drop or click to upload an image"}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {isProfile ? "Image will be cropped to a circle" : "Images up to 4MB"}
+                            {isProfile ? "Image will be cropped to a circle" : "Images up to 5MB"}
                         </span>
                     </>
                 )}
