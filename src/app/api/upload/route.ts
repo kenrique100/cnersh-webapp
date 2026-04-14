@@ -67,6 +67,15 @@ async function uploadHandler(req: NextRequest) {
             );
         }
 
+        // Ensure Vercel Blob storage is configured
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+            console.error("BLOB_READ_WRITE_TOKEN is not configured");
+            return NextResponse.json(
+                { error: "File storage is not configured" },
+                { status: 503 }
+            );
+        }
+
         // Upload to Vercel Blob storage
         const blob = await put(sanitizedFilename, file, {
             access: "public",
