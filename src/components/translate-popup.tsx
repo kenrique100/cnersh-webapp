@@ -18,11 +18,47 @@ declare global {
     }
 }
 
+type Lang = "en" | "fr";
+
+/** Read the active language from the googtrans cookie set by Google Translate. */
+function getActiveLang(): Lang {
+    if (typeof document === "undefined") return "en";
+    const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]+)/);
+    if (match) {
+        const value = decodeURIComponent(match[1]);
+        // Cookie format is /sourceLang/targetLang, e.g. /en/fr — must have at least 3 parts
+        const parts = value.split("/");
+        if (parts.length >= 3) {
+            const target = parts[parts.length - 1];
+            if (target && target !== "en") return "fr";
+        }
+    }
+    return "en";
+}
+
+/** Erase the googtrans cookie so Google Translate reverts to original content. */
+function clearGoogTransCookie() {
+    const paths = ["/"];
+    const domains = ["", window.location.hostname, `.${window.location.hostname}`];
+    for (const path of paths) {
+        for (const domain of domains) {
+            const domainAttr = domain ? `; domain=${domain}` : "";
+            document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}${domainAttr}`;
+        }
+    }
+}
+
 export default function TranslatePopup() {
     const [isOpen, setIsOpen] = useState(false);
+    const [currentLang, setCurrentLang] = useState<Lang>("en");
     const widgetInitialized = useRef(false);
     const scriptLoadedRef = useRef(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Detect language from cookie on mount (page may have been reloaded while in FR)
+    useEffect(() => {
+        setCurrentLang(getActiveLang());
+    }, []);
 
     const initWidget = useCallback(() => {
         const container = document.getElementById("google_translate_element");
@@ -54,17 +90,14 @@ export default function TranslatePopup() {
         initWidgetRef.current = initWidget;
     });
 
-    // Load script eagerly on mount
+    // Load Google Translate script eagerly on mount
     useEffect(() => {
-        // If the script tag already exists (e.g. after client-side navigation), try
-        // to initialise the widget straight away since the API may already be loaded.
         if (document.getElementById("google-translate-script") || scriptLoadedRef.current) {
             scriptLoadedRef.current = true;
             initWidgetRef.current();
             return;
         }
 
-        // Set the callback that Google's script calls when it has finished loading.
         window.googleTranslateElementInit = () => {
             scriptLoadedRef.current = true;
             initWidgetRef.current();
@@ -77,11 +110,11 @@ export default function TranslatePopup() {
         document.head.appendChild(script);
     }, []);
 
-    // Initialize widget eagerly on mount (poll until Google Translate script is ready)
+    // Poll until Google Translate script is ready, then initialize widget
     useEffect(() => {
         let cancelled = false;
         let attempts = 0;
-        const maxAttempts = 50; // 50 × 200ms = 10s max wait for async script load
+        const maxAttempts = 50; // 50 × 200ms = 10s max wait
 
         const tryInit = () => {
             if (cancelled || attempts >= maxAttempts) return;
@@ -99,10 +132,7 @@ export default function TranslatePopup() {
         if (!isOpen) return;
 
         const handleClickOutside = (e: MouseEvent) => {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(e.target as Node)
-            ) {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -111,35 +141,62 @@ export default function TranslatePopup() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
 
+    /**
+     * Switch to French by programmatically selecting "fr" in the hidden Google
+     * Translate combo box and dispatching a change event.  Google Translate
+     * intercepts that event and performs the EN→FR translation.
+     *
+     * Note: `.goog-te-combo` is an internal Google Translate selector.  A null
+     * check guards against future changes to Google Translate's implementation.
+     */
+    const switchToFrench = useCallback(() => {
+        // `.goog-te-combo` is Google Translate's internal select element.
+        // We defend against it being absent in case Google ever renames it.
+        const combo = document.querySelector(".goog-te-combo") as HTMLSelectElement | null;
+        if (combo) {
+            combo.value = "fr";
+            combo.dispatchEvent(new Event("change"));
+            setCurrentLang("fr");
+        }
+    }, []);
+
+    /**
+     * Switch back to English by clearing the googtrans cookie and reloading
+     * the page.  This is the only reliable way to fully restore Google
+     * Translate's modified DOM to the original English content.
+     */
+    const switchToEnglish = useCallback(() => {
+        clearGoogTransCookie();
+        window.location.reload();
+    }, []);
+
+    const handleSelectLang = (lang: Lang) => {
+        if (lang === currentLang) return;
+        if (lang === "en") {
+            switchToEnglish();
+        } else {
+            switchToFrench();
+        }
+    };
+
+    const langButtonClass = (lang: Lang) =>
+        `flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
+            currentLang === lang
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+        }`;
+
     return (
         <>
-            {/* Hide Google Translate's default top toolbar */}
+            {/* Hide Google Translate's default top toolbar and the hidden widget container */}
             <style jsx global>{`
                 .goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-frame {
                     display: none !important;
                 }
                 body { top: 0 !important; }
                 .skiptranslate { display: none !important; }
-                #google_translate_element .goog-te-gadget {
-                    font-size: 0 !important;
-                }
-                #google_translate_element .goog-te-gadget > span {
+                #google_translate_element {
                     display: none !important;
-                }
-                #google_translate_element .goog-te-gadget .goog-te-combo {
-                    padding: 6px 10px;
-                    border-radius: 6px;
-                    border: 1px solid #d1d5db;
-                    font-size: 14px;
-                    background: white;
-                    cursor: pointer;
-                    width: 100%;
-                    outline: none;
-                }
-                .dark #google_translate_element .goog-te-gadget .goog-te-combo {
-                    background: #1f2937;
-                    border-color: #374151;
-                    color: #e5e7eb;
                 }
             `}</style>
             <div className="fixed bottom-4 right-4 z-50" ref={dropdownRef}>
@@ -163,10 +220,27 @@ export default function TranslatePopup() {
                             <XIcon className="w-4 h-4" />
                         </button>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                         Select a language to translate this page
                     </p>
-                    <div id="google_translate_element" />
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleSelectLang("en")}
+                            className={langButtonClass("en")}
+                            aria-pressed={currentLang === "en"}
+                        >
+                            🇬🇧 English
+                        </button>
+                        <button
+                            onClick={() => handleSelectLang("fr")}
+                            className={langButtonClass("fr")}
+                            aria-pressed={currentLang === "fr"}
+                        >
+                            🇫🇷 French
+                        </button>
+                    </div>
+                    {/* Hidden mount point required by Google Translate script */}
+                    <div id="google_translate_element" aria-hidden="true" />
                 </div>
                 <Button
                     onClick={() => setIsOpen(!isOpen)}
