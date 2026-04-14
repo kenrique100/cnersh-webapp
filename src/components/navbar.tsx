@@ -155,14 +155,21 @@ function TranslationDropdown() {
     const [isOpen, setIsOpen] = React.useState(false);
     const [currentLang, setCurrentLang] = React.useState<"en" | "fr">("en");
     const widgetInitialized = React.useRef(false);
-    const scriptLoadedRef = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
+    // Detect current language from Google Translate cookie
+    const detectCurrentLanguage = React.useCallback(() => {
+        const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
+        setCurrentLang(match?.[1] === "fr" ? "fr" : "en");
+    }, []);
+
+    // Initialize the Google Translate widget
     const initWidget = React.useCallback(() => {
         const container = document.getElementById("google_translate_element_navbar");
         if (!window.google?.translate?.TranslateElement || !container) return false;
         if (widgetInitialized.current) return true;
 
+        // Clear container before initializing
         container.innerHTML = "";
 
         try {
@@ -170,63 +177,60 @@ function TranslationDropdown() {
                 {
                     pageLanguage: "en",
                     includedLanguages: "en,fr",
-                    layout: 0,
+                    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
                     autoDisplay: false,
                 },
                 "google_translate_element_navbar"
             );
             widgetInitialized.current = true;
+
+            // Small delay to ensure widget is fully rendered
+            setTimeout(() => {
+                detectCurrentLanguage();
+            }, 100);
+
             return true;
-        } catch {
+        } catch (error) {
+            console.error("Failed to initialize Google Translate:", error);
             return false;
         }
-    }, []);
+    }, [detectCurrentLanguage]);
 
-    // Keep a ref to initWidget so the global callback always calls the latest version
-    const initWidgetRef = React.useRef(initWidget);
+    // Load Google Translate script
     React.useEffect(() => {
-        initWidgetRef.current = initWidget;
-    });
+        // Set up the global callback
+        window.googleTranslateElementInit = () => {
+            initWidget();
+        };
 
-    React.useEffect(() => {
-        // Detect current language from Google Translate cookie
-        const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
-        setCurrentLang(match?.[1] === "fr" ? "fr" : "en");
-
-        if (document.getElementById("google-translate-script") || scriptLoadedRef.current) {
-            scriptLoadedRef.current = true;
-            initWidgetRef.current();
+        // Check if script is already loaded
+        if (document.getElementById("google-translate-script")) {
+            if (window.google?.translate?.TranslateElement) {
+                initWidget();
+            }
             return;
         }
 
-        window.googleTranslateElementInit = () => {
-            scriptLoadedRef.current = true;
-            initWidgetRef.current();
-        };
-
+        // Load the script
         const script = document.createElement("script");
         script.id = "google-translate-script";
         script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
         script.async = true;
         document.head.appendChild(script);
-    }, []);
 
-    React.useEffect(() => {
-        let cancelled = false;
+        // Poll as fallback
         let attempts = 0;
-        const maxAttempts = 50;
-
-        const tryInit = () => {
-            if (cancelled || attempts >= maxAttempts) return;
+        const interval = setInterval(() => {
             attempts++;
-            if (initWidget()) return;
-            setTimeout(tryInit, 200);
-        };
+            if (initWidget() || attempts > 50) {
+                clearInterval(interval);
+            }
+        }, 200);
 
-        tryInit();
-        return () => { cancelled = true; };
+        return () => clearInterval(interval);
     }, [initWidget]);
 
+    // Close dropdown when clicking outside
     React.useEffect(() => {
         if (!isOpen) return;
 
@@ -241,20 +245,30 @@ function TranslationDropdown() {
     }, [isOpen]);
 
     const selectLanguage = (lang: "en" | "fr") => {
-        setCurrentLang(lang);
+        if (lang === currentLang) {
+            setIsOpen(false);
+            return;
+        }
 
         // Try to use the Google Translate widget's select element
-        const combo = document.querySelector<HTMLSelectElement>(
-            "#google_translate_element_navbar .goog-te-combo"
-        );
+        const combo = document.querySelector<HTMLSelectElement>("#google_translate_element_navbar .goog-te-combo");
+
         if (combo) {
+            // Widget is ready - use it directly (no page reload)
             combo.value = lang;
-            combo.dispatchEvent(new Event("change"));
+            combo.dispatchEvent(new Event("change", { bubbles: true }));
+            setCurrentLang(lang);
         } else {
-            // Fallback: set the googtrans cookie and reload
-            const value = lang === "en" ? "" : `/en/${lang}`;
-            document.cookie = `googtrans=${value};path=/`;
-            document.cookie = `googtrans=${value};path=/;domain=${window.location.hostname}`;
+            // Fallback: set cookie and reload
+            if (lang === "en") {
+                // Clear cookies to revert to English
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+                document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
+            } else {
+                // Set cookie for French
+                document.cookie = "googtrans=/en/fr; path=/";
+                document.cookie = `googtrans=/en/fr; domain=${window.location.hostname}; path=/`;
+            }
             window.location.reload();
         }
 
@@ -264,19 +278,44 @@ function TranslationDropdown() {
     return (
         <>
             <style jsx global>{`
-                .goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-frame {
+                /* Hide Google Translate UI elements but keep functionality */
+                .goog-te-banner-frame,
+                #goog-gt-tt,
+                .goog-te-balloon-frame,
+                .goog-tooltip,
+                .goog-tooltip:hover {
                     display: none !important;
                 }
-                body { top: 0 !important; }
-                .skiptranslate { display: none !important; }
+                body {
+                    top: 0 !important;
+                }
+                .skiptranslate {
+                    display: none !important;
+                }
+                .goog-text-highlight {
+                    background-color: transparent !important;
+                    box-shadow: none !important;
+                }
+                /* Hide the widget container visually but keep it functional */
                 #google_translate_element_navbar {
-                    position: absolute !important;
+                    position: fixed !important;
+                    bottom: 0 !important;
+                    left: 0 !important;
                     width: 1px !important;
                     height: 1px !important;
                     overflow: hidden !important;
-                    clip: rect(0, 0, 0, 0) !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                    z-index: -1 !important;
+                }
+                /* Ensure the select element within is accessible */
+                #google_translate_element_navbar .goog-te-combo {
+                    position: absolute !important;
+                    bottom: 0 !important;
+                    left: 0 !important;
                 }
             `}</style>
+
             <div className="relative" ref={dropdownRef}>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
@@ -287,6 +326,7 @@ function TranslationDropdown() {
                 >
                     <GlobeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                 </button>
+
                 <div
                     className={cn(
                         "absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[200px] transition-all duration-200 z-50",
@@ -305,10 +345,10 @@ function TranslationDropdown() {
                             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full p-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             aria-label="Close translation dropdown"
                         >
-                            <span className="sr-only">Close</span>
                             ✕
                         </button>
                     </div>
+
                     <div className="space-y-1">
                         <button
                             onClick={() => selectLanguage("en")}
@@ -338,7 +378,8 @@ function TranslationDropdown() {
                         </button>
                     </div>
                 </div>
-                {/* Hidden but must remain in DOM for Google Translate API to initialize the combo selector */}
+
+                {/* Hidden widget container - must be in DOM for Google Translate */}
                 <div id="google_translate_element_navbar" />
             </div>
         </>
