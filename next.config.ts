@@ -60,12 +60,12 @@ const nextConfig: NextConfig = {
             "form-action 'self'",
 
             // frame-src: origins this page may embed in iframes
-            "frame-src https://translate.google.com https://translate.googleapis.com https://*.google.com",
+            "frame-src 'self' https://translate.google.com https://translate.googleapis.com https://*.google.com",
 
             // frame-ancestors: who may embed THIS page.
             // Google Translate wraps translated pages in its own iframe — must be allowed here.
             // Every other origin is blocked to prevent clickjacking.
-            "frame-ancestors 'none' https://translate.google.com https://translate.googleapis.com https://*.google.com",
+            "frame-ancestors https://translate.google.com https://translate.googleapis.com https://*.google.com",
 
             "upgrade-insecure-requests",
           ].join("; "),
