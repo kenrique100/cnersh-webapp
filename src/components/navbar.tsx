@@ -45,6 +45,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import NotificationDropdown from "@/components/notification-dropdown";
 import { useTheme } from "next-themes";
+import { getCookieDomain } from "@/lib/cookie-domain";
 
 interface NavbarPageItem {
     id: string;
@@ -81,21 +82,11 @@ const INITIAL_TRANSLATION_DELAY_MS = 100;
 const WIDGET_RETRY_DELAY_MS = 250;
 const SCRIPT_LOAD_TIMEOUT_MS = 10000;
 
-const isLikelyIpAddress = (hostname: string) =>
-    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(hostname);
-const getCookieDomain = () => {
-    const hostname = window.location.hostname;
-    if (!hostname || hostname === "localhost" || isLikelyIpAddress(hostname) || !hostname.includes(".")) {
-        return null;
-    }
-    return hostname;
-};
-
 const setLanguageCookie = (lang: "en" | "fr") => {
     const value = lang === "fr" ? "/en/fr" : "/en/en";
     const maxAge = 60 * 60 * 24 * 365;
     document.cookie = `googtrans=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
-    const domain = getCookieDomain();
+    const domain = getCookieDomain(window.location.hostname);
     if (domain) {
         document.cookie = `googtrans=${value}; domain=${domain}; path=/; max-age=${maxAge}; SameSite=Lax`;
     }
@@ -190,8 +181,9 @@ function TranslationDropdown() {
     const pathname = usePathname();
 
     const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
-        const match = document.cookie.match(/googtrans=\/(?:en|auto)\/([\w-]+)/);
-        return match?.[1] === "fr" ? "fr" : "en";
+        const match = document.cookie.match(/(?:^|;\s*)googtrans=\/[^/]+\/([^;]+)/);
+        const targetLang = match?.[1]?.toLowerCase() ?? "en";
+        return targetLang.startsWith("fr") ? "fr" : "en";
     }, []);
 
     const applyWidgetLanguage = React.useCallback((lang: "en" | "fr") => {
