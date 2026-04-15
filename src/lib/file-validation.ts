@@ -27,11 +27,11 @@ const ALLOWED_FILE_TYPES = {
     'video/ogg': { extensions: ['ogv', 'ogg'], maxSize: 50 * 1024 * 1024 }, // 50MB
 
     // Audio
-    'audio/mpeg': { extensions: ['mp3'], maxSize: 20 * 1024 * 1024 }, // 20MB
-    'audio/wav': { extensions: ['wav'], maxSize: 20 * 1024 * 1024 }, // 20MB
-    'audio/ogg': { extensions: ['ogg'], maxSize: 20 * 1024 * 1024 }, // 20MB
-    'audio/webm': { extensions: ['webm'], maxSize: 20 * 1024 * 1024 }, // 20MB
-    'audio/mp4': { extensions: ['m4a', 'mp4'], maxSize: 20 * 1024 * 1024 }, // 20MB
+    'audio/mpeg': { extensions: ['mp3'], maxSize: 8 * 1024 * 1024 }, // 8MB
+    'audio/wav': { extensions: ['wav'], maxSize: 8 * 1024 * 1024 }, // 8MB
+    'audio/ogg': { extensions: ['oga'], maxSize: 8 * 1024 * 1024 }, // 8MB
+    'audio/webm': { extensions: ['weba'], maxSize: 8 * 1024 * 1024 }, // 8MB
+    'audio/mp4': { extensions: ['m4a'], maxSize: 8 * 1024 * 1024 }, // 8MB
 
     // Documents
     'application/pdf': { extensions: ['pdf'], maxSize: 20 * 1024 * 1024 }, // 20MB
