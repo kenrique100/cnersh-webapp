@@ -162,6 +162,8 @@ function TranslationDropdown() {
     const widgetInitialized = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const pathname = usePathname();
+    const initialTranslationDelayMs = 50;
+    const widgetRetryDelayMs = 150;
 
     const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
         const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
@@ -255,19 +257,27 @@ function TranslationDropdown() {
         const lang = getLanguageFromCookie();
         setCurrentLang(lang);
 
-        if (lang !== "fr") {
-            return;
+        let initialTimer: number | undefined;
+        let retryTimer: number | undefined;
+
+        if (lang === "fr") {
+            initialTimer = window.setTimeout(() => {
+                if (!applyWidgetLanguage("fr")) {
+                    initWidget();
+                    retryTimer = window.setTimeout(() => applyWidgetLanguage("fr"), widgetRetryDelayMs);
+                }
+            }, initialTranslationDelayMs);
         }
 
-        const timer = window.setTimeout(() => {
-            if (!applyWidgetLanguage("fr")) {
-                initWidget();
-                window.setTimeout(() => applyWidgetLanguage("fr"), 150);
+        return () => {
+            if (typeof initialTimer === "number") {
+                window.clearTimeout(initialTimer);
             }
-        }, 50);
-
-        return () => window.clearTimeout(timer);
-    }, [pathname, getLanguageFromCookie, applyWidgetLanguage, initWidget]);
+            if (typeof retryTimer === "number") {
+                window.clearTimeout(retryTimer);
+            }
+        };
+    }, [pathname, getLanguageFromCookie, applyWidgetLanguage, initWidget, initialTranslationDelayMs, widgetRetryDelayMs]);
 
     // Close dropdown when clicking outside
     React.useEffect(() => {
