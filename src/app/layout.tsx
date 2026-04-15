@@ -33,29 +33,51 @@ export default function RootLayout({
           <Toaster position="top-right" richColors />
         </ThemeProvider>
 
-        {/* Hidden Google Translate widget container */}
-        <div id="google_translate_element" style={{ display: "none" }} aria-hidden="true" />
+        {/*
+          Google Translate widget container.
+          Must NOT be display:none — Google cannot inject the combo select
+          into a hidden element. Use position:absolute + visibility:hidden
+          + zero dimensions so it is invisible but still rendered in the DOM.
+        */}
+        <div
+          id="google_translate_element"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "-9999px",
+            width: "1px",
+            height: "1px",
+            overflow: "hidden",
+            visibility: "hidden",
+            pointerEvents: "none",
+          }}
+        />
 
-        {/* Initialize Google Translate for EN/FR only */}
+        {/* Step 1: define the callback BEFORE the script loads */}
         <Script
           id="google-translate-init"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              function googleTranslateElementInit() {
-                new google.translate.TranslateElement(
+              window.googleTranslateElementInit = function() {
+                new window.google.translate.TranslateElement(
                   {
                     pageLanguage: 'en',
                     includedLanguages: 'en,fr',
-                    autoDisplay: false
+                    autoDisplay: false,
+                    layout: 0
                   },
                   'google_translate_element'
                 );
-              }
+              };
             `,
           }}
         />
+
+        {/* Step 2: load the Google Translate widget script */}
         <Script
+          id="google-translate-script"
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
           strategy="afterInteractive"
         />

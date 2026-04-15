@@ -1,18 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { GlobeIcon } from "lucide-react";
 
-function triggerGoogleTranslate(lang: "en" | "fr") {
+/**
+ * Fires the Google Translate combo change with proper bubbling.
+ * Retries up to `maxRetries` times with 300ms gaps if the combo isn't ready yet.
+ */
+function triggerGoogleTranslate(lang: "en" | "fr", retries = 0, maxRetries = 15): void {
     const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
     if (combo) {
         combo.value = lang;
-        combo.dispatchEvent(new Event("change"));
+        // Must use bubbles:true — Google's listener won't fire otherwise
+        combo.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+    }
+    if (retries < maxRetries) {
+        setTimeout(() => triggerGoogleTranslate(lang, retries + 1, maxRetries), 300);
     }
 }
 
 interface NavbarLanguageSwitcherProps {
-    /** When true, renders a full-width block suitable for mobile menus */
     mobile?: boolean;
 }
 
@@ -20,38 +28,30 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
     const [currentLang, setCurrentLang] = useState<"en" | "fr">("en");
     const [ready, setReady] = useState(false);
 
+    // Poll until the Google Translate combo select is injected into the DOM
     useEffect(() => {
-        // Poll until the hidden Google Translate combo is available
         const interval = setInterval(() => {
-            const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
-            if (combo) {
+            if (document.querySelector(".goog-te-combo")) {
                 setReady(true);
                 clearInterval(interval);
             }
         }, 400);
 
-        // Persist last chosen language on page load
+        // Restore saved language preference
         const saved = localStorage.getItem("cnersh_lang") as "en" | "fr" | null;
-        if (saved && (saved === "en" || saved === "fr")) {
+        if (saved === "en" || saved === "fr") {
             setCurrentLang(saved);
-            // Wait for combo then apply
-            const applyInterval = setInterval(() => {
-                const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
-                if (combo) {
-                    triggerGoogleTranslate(saved);
-                    clearInterval(applyInterval);
-                }
-            }, 500);
+            triggerGoogleTranslate(saved); // will auto-retry if not ready yet
         }
 
         return () => clearInterval(interval);
     }, []);
 
-    const handleChange = (lang: "en" | "fr") => {
+    const handleChange = useCallback((lang: "en" | "fr") => {
         setCurrentLang(lang);
         localStorage.setItem("cnersh_lang", lang);
         triggerGoogleTranslate(lang);
-    };
+    }, []);
 
     if (mobile) {
         return (
@@ -90,7 +90,6 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
         );
     }
 
-    // Desktop: compact pill toggle
     return (
         <div
             className="flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1 py-1 shadow-sm"
