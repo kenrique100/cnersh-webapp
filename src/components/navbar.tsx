@@ -45,6 +45,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import NotificationDropdown from "@/components/notification-dropdown";
 import { useTheme } from "next-themes";
+import { getCookieDomain } from "@/lib/cookie-domain";
 
 interface NavbarPageItem {
     id: string;
@@ -77,18 +78,18 @@ interface NavItem {
     icon: React.ElementType;
 }
 
-const INITIAL_TRANSLATION_DELAY_MS = 50;
-const WIDGET_RETRY_DELAY_MS = 150;
+const INITIAL_TRANSLATION_DELAY_MS = 100;
+const WIDGET_RETRY_DELAY_MS = 250;
+const SCRIPT_LOAD_TIMEOUT_MS = 10000;
 
 const setLanguageCookie = (lang: "en" | "fr") => {
-    if (lang === "en") {
-        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
-        return;
+    const value = lang === "fr" ? "/en/fr" : "/en/en";
+    const maxAge = 60 * 60 * 24 * 365;
+    document.cookie = `googtrans=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    const domain = getCookieDomain(window.location.hostname);
+    if (domain) {
+        document.cookie = `googtrans=${value}; domain=${domain}; path=/; max-age=${maxAge}; SameSite=Lax`;
     }
-
-    document.cookie = "googtrans=/en/fr; path=/";
-    document.cookie = `googtrans=/en/fr; domain=${window.location.hostname}; path=/`;
 };
 
 const userMobileNavItems: NavItem[] = [
@@ -173,13 +174,16 @@ function NavbarThemeToggle() {
 function TranslationDropdown() {
     const [isOpen, setIsOpen] = React.useState(false);
     const [currentLang, setCurrentLang] = React.useState<"en" | "fr">("en");
+    const [scriptReady, setScriptReady] = React.useState(false);
     const widgetInitialized = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const loadTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const pathname = usePathname();
 
     const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
-        const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
-        return match?.[1] === "fr" ? "fr" : "en";
+        const match = document.cookie.match(/(?:^|;\s*)googtrans=\/(?:en|auto)\/([^;]+)/);
+        const targetLang = match?.[1]?.toLowerCase() ?? "en";
+        return targetLang.startsWith("fr") ? "fr" : "en";
     }, []);
 
     const applyWidgetLanguage = React.useCallback((lang: "en" | "fr") => {
@@ -201,7 +205,15 @@ function TranslationDropdown() {
     const initWidget = React.useCallback(() => {
         const container = document.getElementById("google_translate_element_navbar");
         if (!window.google?.translate?.TranslateElement || !container) return false;
-        if (widgetInitialized.current) return true;
+        const existingCombo = container.querySelector<HTMLSelectElement>(".goog-te-combo");
+        if (existingCombo) {
+            widgetInitialized.current = true;
+            setScriptReady(true);
+            return true;
+        }
+        if (widgetInitialized.current) {
+            return false;
+        }
 
         // Clear container before initializing
         container.innerHTML = "";
@@ -212,12 +224,13 @@ function TranslationDropdown() {
                 {
                     pageLanguage: "en",
                     includedLanguages: "en,fr",
-                    layout: 0, // 0 = SIMPLE layout
+                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
                     autoDisplay: false,
                 },
                 "google_translate_element_navbar"
             );
             widgetInitialized.current = true;
+            setScriptReady(true);
 
             // Small delay to ensure widget is fully rendered
             setTimeout(() => {
@@ -227,6 +240,7 @@ function TranslationDropdown() {
             return true;
         } catch (error) {
             console.error("Failed to initialize Google Translate:", error);
+            setScriptReady(false);
             return false;
         }
     }, [detectCurrentLanguage]);
@@ -241,6 +255,10 @@ function TranslationDropdown() {
     React.useEffect(() => {
         // Set up the global callback
         window.googleTranslateElementInit = () => {
+            if (loadTimeoutRef.current !== null) {
+                clearTimeout(loadTimeoutRef.current);
+                loadTimeoutRef.current = null;
+            }
             initWidget();
         };
 
@@ -248,6 +266,8 @@ function TranslationDropdown() {
         if (document.getElementById("google-translate-script")) {
             if (window.google?.translate?.TranslateElement) {
                 initWidget();
+            } else {
+                setScriptReady(false);
             }
             return;
         }
@@ -257,9 +277,18 @@ function TranslationDropdown() {
         script.id = "google-translate-script";
         script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
         script.async = true;
+        script.onerror = () => {
+            console.error("Google Translate script failed to load");
+            setScriptReady(false);
+        };
         document.head.appendChild(script);
 
-        // Poll as fallback
+        loadTimeoutRef.current = setTimeout(() => {
+            if (!window.google?.translate?.TranslateElement) {
+                setScriptReady(false);
+            }
+        }, SCRIPT_LOAD_TIMEOUT_MS);
+
         let attempts = 0;
         const interval = setInterval(() => {
             attempts++;
@@ -268,7 +297,14 @@ function TranslationDropdown() {
             }
         }, 200);
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            if (loadTimeoutRef.current !== null) {
+                clearTimeout(loadTimeoutRef.current);
+                loadTimeoutRef.current = null;
+            }
+            delete window.googleTranslateElementInit;
+        };
     }, [initWidget]);
 
     React.useEffect(() => {
@@ -320,7 +356,12 @@ function TranslationDropdown() {
         setLanguageCookie(lang);
         setCurrentLang(lang);
         setIsOpen(false);
-        window.location.reload();
+        if (!applyWidgetLanguage(lang)) {
+            initWidgetRef.current();
+            window.setTimeout(() => {
+                applyWidgetLanguage(lang);
+            }, WIDGET_RETRY_DELAY_MS);
+        }
     };
 
     return (
@@ -344,23 +385,23 @@ function TranslationDropdown() {
                     background-color: transparent !important;
                     box-shadow: none !important;
                 }
-                /* Hide the widget container visually but keep it functional */
+                /* Keep widget rendered while keeping it visually hidden */
                 #google_translate_element_navbar {
-                    position: fixed !important;
-                    bottom: 0 !important;
-                    left: 0 !important;
-                    width: 1px !important;
-                    height: 1px !important;
-                    overflow: hidden !important;
-                    opacity: 0 !important;
-                    pointer-events: none !important;
-                    z-index: -1 !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                    top: 0 !important;
+                    width: auto !important;
+                    height: auto !important;
+                    /* Keep non-zero opacity so Google widget remains render-active across browsers */
+                    opacity: 0.01 !important;
+                    pointer-events: auto !important;
+                    z-index: 1 !important;
                 }
                 /* Ensure the select element within is accessible */
                 #google_translate_element_navbar .goog-te-combo {
                     position: absolute !important;
-                    bottom: 0 !important;
                     left: 0 !important;
+                    top: 0 !important;
                 }
             `}</style>
 
@@ -413,11 +454,13 @@ function TranslationDropdown() {
                         </button>
                         <button
                             onClick={() => selectLanguage("fr")}
+                            disabled={!scriptReady}
                             className={cn(
                                 "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md transition-colors",
                                 currentLang === "fr"
                                     ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950 dark:text-blue-400"
-                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+                                !scriptReady && "opacity-50 cursor-not-allowed"
                             )}
                         >
                             <span className="text-base">🇫🇷</span>

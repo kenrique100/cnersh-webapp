@@ -216,8 +216,8 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
             return;
         }
 
-        if (file.size > 200 * 1024 * 1024) {
-            toast.error("Video must be less than 200MB");
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Video must be less than 5MB");
             return;
         }
 
@@ -284,7 +284,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
                     <>
                         <VideoIcon className="h-8 w-8 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a video</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 200MB</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 5MB</span>
                     </>
                 )}
             </button>

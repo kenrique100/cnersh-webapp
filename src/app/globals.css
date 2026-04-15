@@ -263,20 +263,19 @@ html.translated-rtl body {
 
 /* Additional fix for Google Translate widget container */
 #google_translate_element_navbar {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  z-index: -1 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  opacity: 0.01 !important;
+  pointer-events: auto !important;
+  z-index: 1 !important;
 }
 
 /* Ensure the select element within is accessible */
 #google_translate_element_navbar .goog-te-combo {
   position: absolute !important;
-  bottom: 0 !important;
+  top: 0 !important;
   left: 0 !important;
 }

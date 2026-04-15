@@ -3,6 +3,7 @@ import "./globals.css";
 import React from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import CookieConsentBanner from "@/components/cookie-consent-banner";
 
 export const metadata: Metadata = {
   title: "CNERSH - National Ethics Committee for Health Research on Humans",
@@ -27,6 +28,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <CookieConsentBanner />
           <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>

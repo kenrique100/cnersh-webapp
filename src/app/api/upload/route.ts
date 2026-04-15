@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { authSession } from "@/lib/auth-utils";
 import { validateFile, performBasicMalwareCheck } from "@/lib/file-validation";
 import { sanitizeFilename } from "@/lib/sanitize";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
+const MAX_UPLOAD_SIZE = Math.max(MAX_IMAGE_SIZE, MAX_VIDEO_SIZE, MAX_DOCUMENT_SIZE);
+// Base64 stores 4 bytes for every 3 bytes of binary data (~33% overhead).
+const BASE64_EXPANSION_RATIO = 4 / 3;
+const DATA_URL_METADATA_OVERHEAD = 128;
+const MAX_BASE64_DATA_URL_LENGTH =
+    Math.ceil(MAX_UPLOAD_SIZE * BASE64_EXPANSION_RATIO) + DATA_URL_METADATA_OVERHEAD;
 
 async function uploadHandler(req: NextRequest) {
     const session = await authSession();
@@ -33,10 +41,10 @@ async function uploadHandler(req: NextRequest) {
 
         if (file.type.startsWith("video/")) {
             allowedTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-            maxSize = 200 * 1024 * 1024; // 200MB
+            maxSize = MAX_VIDEO_SIZE;
         } else if (file.type.startsWith("image/")) {
             allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            maxSize = 5 * 1024 * 1024; // 5MB
+            maxSize = MAX_IMAGE_SIZE;
         } else {
             // Documents
             allowedTypes = [
@@ -46,7 +54,7 @@ async function uploadHandler(req: NextRequest) {
                 'application/vnd.ms-excel',
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ];
-            maxSize = 50 * 1024 * 1024; // 50MB
+            maxSize = MAX_DOCUMENT_SIZE;
         }
 
         // Comprehensive file validation
@@ -67,25 +75,30 @@ async function uploadHandler(req: NextRequest) {
             );
         }
 
-        // Ensure Vercel Blob storage is configured
-        if (!process.env.BLOB_READ_WRITE_TOKEN) {
-            console.error("BLOB_READ_WRITE_TOKEN is not configured");
+        const mimeType = validation.detectedType || file.type || "application/octet-stream";
+        const estimatedDataUrlLength =
+            Math.ceil(file.size * BASE64_EXPANSION_RATIO) + `data:${mimeType};base64,`.length;
+        if (estimatedDataUrlLength > MAX_BASE64_DATA_URL_LENGTH) {
             return NextResponse.json(
-                { error: "File storage is not configured" },
-                { status: 503 }
+                { error: "File is too large for database storage. Please choose a smaller file." },
+                { status: 400 }
             );
         }
 
-        // Upload to Vercel Blob storage
-        const blob = await put(sanitizedFilename, file, {
-            access: "public",
-            contentType: validation.detectedType || file.type,
-        });
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        if (dataUrl.length > MAX_BASE64_DATA_URL_LENGTH) {
+            return NextResponse.json(
+                { error: "File is too large for database storage. Please choose a smaller file." },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({
-            url: blob.url,
+            url: dataUrl,
             name: sanitizedFilename,
-            type: validation.detectedType,
+            type: mimeType,
             size: file.size,
         });
     } catch (error) {
