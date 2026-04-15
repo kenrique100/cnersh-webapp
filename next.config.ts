@@ -35,15 +35,15 @@ const nextConfig: NextConfig = {
           value: [
             "default-src 'self'",
 
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://www.gstatic.com",
 
-            "style-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline' https://translate.googleapis.com",
 
-            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://fonts.gstatic.com https://static.licdn.com",
+            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://fonts.gstatic.com https://static.licdn.com https://translate.googleapis.com https://translate.google.com https://www.gstatic.com",
 
             "font-src 'self' data: https://fonts.gstatic.com",
 
-            "connect-src 'self' https://api.resend.com",
+            "connect-src 'self' https://api.resend.com https://translate.googleapis.com https://translate.google.com",
 
             "media-src 'self' data: blob:",
 
@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
             "base-uri 'self'",
             "form-action 'self'",
 
-            "frame-src 'self'",
+            "frame-src 'self' https://translate.google.com https://translate.googleapis.com",
 
             "frame-ancestors 'none'",
 
