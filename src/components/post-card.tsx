@@ -370,15 +370,15 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
     );
 }
 
-// ─── Reaction definitions ───────────────────────────────────────────────────
+// ─── Reaction definitions — must stay in sync with reactions-picker.tsx ──────
 
 export const REACTIONS = [
-    { label: "Like" as const, color: "#0A66C2" },
-    { label: "Celebrate" as const, color: "#57C27D" },
-    { label: "Support" as const, color: "#9B6DD6" },
-    { label: "Love" as const, color: "#F5666C" },
-    { label: "Insightful" as const, color: "#F5A623" },
-    { label: "Funny" as const, color: "#7FD1F6" },
+    { label: "Like"  as const, color: "#0A66C2" },
+    { label: "Love"  as const, color: "#F5666C" },
+    { label: "Haha"  as const, color: "#F7C948" },
+    { label: "Wow"   as const, color: "#F5A623" },
+    { label: "Sad"   as const, color: "#9B6DD6" },
+    { label: "Angry" as const, color: "#E5534B" },
 ] as const;
 
 export function getReactionIcon(label: string): typeof ReactionIcon | null {
@@ -390,14 +390,13 @@ export function getReactionColor(label: string): string {
     return REACTIONS.find((r) => r.label === label)?.color || "#0A66C2";
 }
 
-// Backward compatibility helpers for existing code
+// Backward compatibility
 export function getReactionEmoji(label: string): JSX.Element {
     const validLabel = label as ReactionType;
     return <ReactionIcon type={validLabel} size={14} />;
 }
 
 export function getReactionBg(_label: string): string {
-    // Return empty string as we're using SVG icons now, not background colors
     return "";
 }
 
@@ -419,7 +418,7 @@ interface PostEngagementSummaryProps {
     onCommentCountClick?: () => void;
 }
 
-/** Shows total reactions with type icons, first reactor name, comment count, and repost/share count */
+/** Shows total reactions with emoji icons, first reactor name, comment count, and repost/share count */
 export function PostEngagementSummary({
     likeCount,
     commentCount,
@@ -471,24 +470,21 @@ export function PostEngagementSummary({
                         aria-label={`${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`}
                     >
                         {topReactions.length > 0 ? (
-                            <span className="flex items-center -space-x-1 shrink-0">
+                            // Overlapping emoji reaction circles — LinkedIn style
+                            <span className="flex items-center shrink-0" style={{ gap: 0 }}>
                                 {topReactions.map((label, idx) => (
-                                    <span
+                                    <ReactionIcon
                                         key={label}
-                                        className="flex items-center justify-center shrink-0"
-                                        style={{ zIndex: 3 - idx, marginLeft: idx > 0 ? '-4px' : '0' }}
-                                        title={label}
-                                    >
-                                        <ReactionIcon type={label as ReactionType} size={18} />
-                                    </span>
+                                        type={label as ReactionType}
+                                        size={20}
+                                        className=""
+                                        style={{ marginLeft: idx > 0 ? -4 : 0, zIndex: 3 - idx } as React.CSSProperties}
+                                    />
                                 ))}
                             </span>
                         ) : (
-                            <span className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full shrink-0">
-                                <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
-                                </svg>
-                            </span>
+                            // Fallback: plain Like icon
+                            <ReactionIcon type="Like" size={20} />
                         )}
                         {reactionLabel}
                     </button>
@@ -524,7 +520,7 @@ interface CommentReactionSummaryProps {
     count: number;
 }
 
-/** Small inline reaction summary for comments — overlapping icons + count */
+/** Small inline reaction summary for comments — overlapping emoji circles + count */
 export function CommentReactionSummary({ reactionTypes, count }: CommentReactionSummaryProps) {
     if (count === 0) return null;
 
@@ -541,28 +537,18 @@ export function CommentReactionSummary({ reactionTypes, count }: CommentReaction
     }
 
     return (
-        <span className="inline-flex items-center gap-1 ml-1">
-            {topReactions.length > 0 ? (
-                <span className="flex items-center -space-x-1">
-                    {topReactions.map((label, idx) => (
-                        <span
-                            key={label}
-                            className="flex items-center justify-center shrink-0"
-                            style={{ zIndex: 3 - idx, marginLeft: idx > 0 ? '-3px' : '0' }}
-                            title={label}
-                        >
-                            <ReactionIcon type={label as ReactionType} size={14} />
-                        </span>
-                    ))}
-                </span>
-            ) : (
-                <span className="flex items-center justify-center w-3.5 h-3.5 bg-blue-600 rounded-full">
-                    <svg className="h-2 w-2 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
-                    </svg>
-                </span>
-            )}
-            <span className="text-xs text-gray-500 dark:text-gray-400">{count}</span>
+        <span className="inline-flex items-center gap-0.5 ml-1">
+            <span className="flex items-center">
+                {(topReactions.length > 0 ? topReactions : ["Like"]).map((label, idx) => (
+                    <ReactionIcon
+                        key={label}
+                        type={label as ReactionType}
+                        size={16}
+                        style={{ marginLeft: idx > 0 ? -3 : 0, zIndex: 3 - idx } as React.CSSProperties}
+                    />
+                ))}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">{count}</span>
         </span>
     );
 }
