@@ -14,6 +14,8 @@ export interface FileValidationResult {
 /**
  * Allowed file types and their magic numbers
  */
+const MAX_AUDIO_SIZE = 8 * 1024 * 1024;
+
 const ALLOWED_FILE_TYPES = {
     // Images
     'image/jpeg': { extensions: ['jpg', 'jpeg'], maxSize: 8 * 1024 * 1024 }, // 8MB
@@ -27,11 +29,11 @@ const ALLOWED_FILE_TYPES = {
     'video/ogg': { extensions: ['ogv', 'ogg'], maxSize: 50 * 1024 * 1024 }, // 50MB
 
     // Audio
-    'audio/mpeg': { extensions: ['mp3'], maxSize: 8 * 1024 * 1024 }, // 8MB
-    'audio/wav': { extensions: ['wav'], maxSize: 8 * 1024 * 1024 }, // 8MB
-    'audio/ogg': { extensions: ['oga'], maxSize: 8 * 1024 * 1024 }, // 8MB
-    'audio/webm': { extensions: ['weba'], maxSize: 8 * 1024 * 1024 }, // 8MB
-    'audio/mp4': { extensions: ['m4a'], maxSize: 8 * 1024 * 1024 }, // 8MB
+    'audio/mpeg': { extensions: ['mp3'], maxSize: MAX_AUDIO_SIZE }, // 8MB
+    'audio/wav': { extensions: ['wav'], maxSize: MAX_AUDIO_SIZE }, // 8MB
+    'audio/ogg': { extensions: ['oga'], maxSize: MAX_AUDIO_SIZE }, // 8MB
+    'audio/webm': { extensions: ['weba'], maxSize: MAX_AUDIO_SIZE }, // 8MB
+    'audio/mp4': { extensions: ['m4a'], maxSize: MAX_AUDIO_SIZE }, // 8MB
 
     // Documents
     'application/pdf': { extensions: ['pdf'], maxSize: 20 * 1024 * 1024 }, // 20MB

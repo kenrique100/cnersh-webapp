@@ -5,6 +5,7 @@ import { sanitizeFilename } from "@/lib/sanitize";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
+// Route-level limits are intentionally strict because files are stored as base64 data URLs in the database.
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
