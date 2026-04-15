@@ -35,7 +35,7 @@ export default async function UserManagementPage() {
     const hasDeletePermission = await auth.api.userHasPermission({
         body: {
             userId: session?.user.id,
-            permission: {
+            permissions: {
                 user: ["delete"],
             },
         },
