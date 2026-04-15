@@ -177,11 +177,11 @@ function TranslationDropdown() {
     const [scriptReady, setScriptReady] = React.useState(false);
     const widgetInitialized = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
-    const loadTimeoutRef = React.useRef<number | null>(null);
+    const loadTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const pathname = usePathname();
 
     const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
-        const match = document.cookie.match(/(?:^|;\s*)googtrans=\/[^/]+\/([^;]+)/);
+        const match = document.cookie.match(/(?:^|;\s*)googtrans=\/(?:en|auto)\/([^;]+)/);
         const targetLang = match?.[1]?.toLowerCase() ?? "en";
         return targetLang.startsWith("fr") ? "fr" : "en";
     }, []);
@@ -224,7 +224,7 @@ function TranslationDropdown() {
                 {
                     pageLanguage: "en",
                     includedLanguages: "en,fr",
-                    layout: window.google.translate.TranslateElement.InlineLayout?.SIMPLE ?? 0,
+                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
                     autoDisplay: false,
                 },
                 "google_translate_element_navbar"
@@ -256,7 +256,7 @@ function TranslationDropdown() {
         // Set up the global callback
         window.googleTranslateElementInit = () => {
             if (loadTimeoutRef.current !== null) {
-                window.clearTimeout(loadTimeoutRef.current);
+                clearTimeout(loadTimeoutRef.current);
                 loadTimeoutRef.current = null;
             }
             initWidget();
@@ -283,7 +283,7 @@ function TranslationDropdown() {
         };
         document.head.appendChild(script);
 
-        loadTimeoutRef.current = window.setTimeout(() => {
+        loadTimeoutRef.current = setTimeout(() => {
             if (!window.google?.translate?.TranslateElement) {
                 setScriptReady(false);
             }
@@ -300,7 +300,7 @@ function TranslationDropdown() {
         return () => {
             clearInterval(interval);
             if (loadTimeoutRef.current !== null) {
-                window.clearTimeout(loadTimeoutRef.current);
+                clearTimeout(loadTimeoutRef.current);
                 loadTimeoutRef.current = null;
             }
             delete window.googleTranslateElementInit;

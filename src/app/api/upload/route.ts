@@ -8,10 +8,12 @@ export const maxDuration = 60;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
+const MAX_UPLOAD_SIZE = Math.max(MAX_IMAGE_SIZE, MAX_VIDEO_SIZE, MAX_DOCUMENT_SIZE);
+// Base64 stores 4 bytes for every 3 bytes of binary data (~33% overhead).
 const BASE64_EXPANSION_RATIO = 4 / 3;
 const DATA_URL_METADATA_OVERHEAD = 128;
 const MAX_BASE64_DATA_URL_LENGTH =
-    Math.ceil(MAX_DOCUMENT_SIZE * BASE64_EXPANSION_RATIO) + DATA_URL_METADATA_OVERHEAD;
+    Math.ceil(MAX_UPLOAD_SIZE * BASE64_EXPANSION_RATIO) + DATA_URL_METADATA_OVERHEAD;
 
 async function uploadHandler(req: NextRequest) {
     const session = await authSession();
@@ -86,6 +88,12 @@ async function uploadHandler(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const base64 = Buffer.from(arrayBuffer).toString("base64");
         const dataUrl = `data:${mimeType};base64,${base64}`;
+        if (dataUrl.length > MAX_BASE64_DATA_URL_LENGTH) {
+            return NextResponse.json(
+                { error: "File is too large for database storage. Please choose a smaller file." },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({
             url: dataUrl,
