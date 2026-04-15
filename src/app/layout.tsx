@@ -8,17 +8,14 @@ import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "CNERSH - National Ethics Committee for Health Research on Humans",
-  description: "Reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.",
-  icons: {
-    icon: "/favicon.ico",
-  },
+  description:
+    "Reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
       <body>
@@ -34,10 +31,9 @@ export default function RootLayout({
         </ThemeProvider>
 
         {/*
-          Google Translate widget container.
-          Must NOT be display:none — Google cannot inject the combo select
-          into a hidden element. Use position:absolute + visibility:hidden
-          + zero dimensions so it is invisible but still rendered in the DOM.
+          Google Translate widget mount point.
+          MUST NOT be display:none — Google cannot inject its combo <select>
+          into a display:none subtree. We move it off-screen instead.
         */}
         <div
           id="google_translate_element"
@@ -54,13 +50,22 @@ export default function RootLayout({
           }}
         />
 
-        {/* Step 1: define the callback BEFORE the script loads */}
+        {/*
+          Step 1 — define the callback BEFORE the external script loads.
+          strategy="afterInteractive" is used for both; Next.js App Router
+          guarantees inline scripts run before subsequent afterInteractive
+          scripts in document order.
+        */}
         <Script
           id="google-translate-init"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              window.googleTranslateElementInit = function() {
+              window.googleTranslateElementInit = function () {
+                if (
+                  typeof window.google === 'undefined' ||
+                  typeof window.google.translate === 'undefined'
+                ) return;
                 new window.google.translate.TranslateElement(
                   {
                     pageLanguage: 'en',
@@ -75,7 +80,7 @@ export default function RootLayout({
           }}
         />
 
-        {/* Step 2: load the Google Translate widget script */}
+        {/* Step 2 — load the widget; it calls googleTranslateElementInit when ready */}
         <Script
           id="google-translate-script"
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"

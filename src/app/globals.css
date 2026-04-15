@@ -88,7 +88,6 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    /* Modern font stack: Inter if available, then system fonts as fallback */
     font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -99,7 +98,12 @@
   }
 }
 
-/* Google Translate UI stability fixes for French and other languages */
+/* ============================================================
+   Google Translate — UI stability & layout protection fixes
+   (single canonical block, no duplicates)
+   ============================================================ */
+
+/* Hide the default Google Translate banner, tooltip and balloon */
 .goog-te-banner-frame,
 #goog-gt-tt,
 .goog-te-balloon-frame,
@@ -108,36 +112,31 @@
   display: none !important;
 }
 
+/* Remove text highlight styling injected by the widget */
 .goog-text-highlight {
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
+/* Push the .skiptranslate wrapper (contains the hidden select + iframe) off-screen */
 .skiptranslate {
-  display: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
-/* Prevent Google Translate injected iframe from affecting layout */
+/* Also handle the direct body child variant */
 body > .skiptranslate {
   display: none !important;
   height: 0 !important;
   overflow: hidden !important;
 }
 
-/* Prevent font changes from Google Translate breaking layout */
-.translated-ltr,
-.translated-rtl {
-  font-size: inherit !important;
-}
-
-/* Ensure translated text doesn't break flex layouts */
-font {
-  display: inline !important;
-  vertical-align: baseline !important;
-  line-height: inherit !important;
-}
-
-/* Prevent Google Translate from adding white space at top */
+/* Prevent Google Translate from shifting the page top */
 html.translated-ltr,
 html.translated-rtl {
   overflow-x: hidden;
@@ -149,84 +148,21 @@ html.translated-rtl body {
   min-height: 100vh;
 }
 
-/* Fix translated text within flex/grid containers */
-.translated-ltr font,
-.translated-rtl font {
-  display: inline !important;
-  word-break: normal !important;
-  overflow-wrap: anywhere !important;
-}
-
-/* Prevent layout shift on buttons and navigation */
-.translated-ltr button font,
-.translated-rtl button font,
-.translated-ltr a font,
-.translated-rtl a font {
-  white-space: nowrap !important;
-}
-
-/* Ensure cards and containers maintain dimensions */
-.translated-ltr [class*="card"],
-.translated-rtl [class*="card"],
-.translated-ltr [class*="Card"],
-.translated-rtl [class*="Card"] {
-  overflow: hidden;
-}
-
-/* Fix navbar items when translated */
-.translated-ltr nav font,
-.translated-rtl nav font {
-  display: inline !important;
-  font-size: inherit !important;
-}
-
-/* Google Translate - Additional fixes for better compatibility */
-.goog-te-banner-frame,
-#goog-gt-tt,
-.goog-te-balloon-frame,
-.goog-tooltip,
-.goog-tooltip:hover {
-  display: none !important;
-}
-
-.goog-text-highlight {
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
-.skiptranslate {
-  position: absolute !important;
-  left: -9999px !important;
-  height: 1px !important;
-  width: 1px !important;
-  overflow: hidden !important;
-}
-/* Prevent font changes from Google Translate breaking layout */
-.translated-ltr,
-.translated-rtl {
-  font-size: inherit !important;
-}
-
-/* Ensure translated text doesn't break flex layouts */
+/* Google Translate wraps every text node in a <font> tag.
+   Keep those inline so they never break flex / grid layouts. */
 font {
   display: inline !important;
   vertical-align: baseline !important;
   line-height: inherit !important;
 }
 
-/* Prevent Google Translate from adding white space at top */
-html.translated-ltr,
-html.translated-rtl {
-  overflow-x: hidden;
+/* Prevent font-size drift */
+.translated-ltr,
+.translated-rtl {
+  font-size: inherit !important;
 }
 
-html.translated-ltr body,
-html.translated-rtl body {
-  top: 0 !important;
-  min-height: 100vh;
-}
-
-/* Fix translated text within flex/grid containers */
+/* Fix translated text inside flex / grid containers */
 .translated-ltr font,
 .translated-rtl font {
   display: inline !important;
@@ -234,7 +170,7 @@ html.translated-rtl body {
   overflow-wrap: anywhere !important;
 }
 
-/* Prevent layout shift on buttons and navigation */
+/* Stop translated text from wrapping awkwardly inside buttons and links */
 .translated-ltr button font,
 .translated-rtl button font,
 .translated-ltr a font,
@@ -242,7 +178,7 @@ html.translated-rtl body {
   white-space: nowrap !important;
 }
 
-/* Ensure cards and containers maintain dimensions */
+/* Keep cards from overflowing when inner text is longer after translation */
 .translated-ltr [class*="card"],
 .translated-rtl [class*="card"],
 .translated-ltr [class*="Card"],
@@ -250,28 +186,9 @@ html.translated-rtl body {
   overflow: hidden;
 }
 
-/* Fix navbar items when translated */
+/* Fix navbar link text when translated */
 .translated-ltr nav font,
 .translated-rtl nav font {
   display: inline !important;
   font-size: inherit !important;
-}
-
-/* Additional fix for Google Translate widget container */
-#google_translate_element_navbar {
-  position: absolute !important;
-  left: -9999px !important;
-  top: 0 !important;
-  width: auto !important;
-  height: auto !important;
-  opacity: 0.01 !important;
-  pointer-events: auto !important;
-  z-index: 1 !important;
-}
-
-/* Ensure the select element within is accessible */
-#google_translate_element_navbar .goog-te-combo {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
 }
