@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -114,10 +115,12 @@ enum Gender {
   @@map("gender")
 }
 
-// ─── File Storage (replaces Vercel Blob) ───────────────────
+// ─── File Storage ───────────────────────────────────────────────
 // Files are stored as base64 strings in a TEXT column.
-// Keep individual files ≤ 10 MB to avoid bloating the DB.
 // Use the /api/files/[fileId] route to serve them back.
+// NOTE: @db.Text is required on the `data` field so Prisma maps it to
+// PostgreSQL TEXT (unbounded) instead of VARCHAR(191). Without it the
+// column is limited to 191 chars and every upload fails with a DB error.
 
 enum FileType {
   avatar
@@ -136,8 +139,8 @@ model File {
   mimeType  String
   /// File size in bytes (original, before base64 encoding)
   size      Int
-  /// Base64-encoded file content stored as TEXT
-  data      String
+  /// Base64-encoded file content stored as TEXT (unbounded)
+  data      String   @db.Text
   type      FileType
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -151,7 +154,7 @@ model File {
   @@map("file")
 }
 
-// ─── Feed System ───────────────────────────────────────────
+// ─── Feed System ───────────────────────────────────────────────────
 
 model Post {
   id              String      @id @default(uuid())
@@ -231,7 +234,7 @@ model Like {
   @@map("like")
 }
 
-// ─── Project Submission System ─────────────────────────────
+// ─── Project Submission System ───────────────────────────────────
 
 model Project {
   id              String              @id @default(uuid())
@@ -303,7 +306,7 @@ enum ProjectStatus {
   @@map("project_status")
 }
 
-// ─── Community Discussion System ───────────────────────────
+// ─── Community Discussion System ─────────────────────────────────
 
 model CommunityTopic {
   id          String           @id @default(uuid())
@@ -382,7 +385,7 @@ model CommunityReply {
   @@map("community_reply")
 }
 
-// ─── Reporting System ──────────────────────────────────────
+// ─── Reporting System ────────────────────────────────────────────────
 
 model Report {
   id          String       @id @default(uuid())
@@ -417,7 +420,7 @@ enum ReportStatus {
   @@map("report_status")
 }
 
-// ─── Notification System ───────────────────────────────────
+// ─── Notification System ───────────────────────────────────────────────
 
 model Notification {
   id        String           @id @default(uuid())
@@ -447,7 +450,7 @@ enum NotificationType {
   @@map("notification_type")
 }
 
-// ─── Audit Log System ──────────────────────────────────────
+// ─── Audit Log System ────────────────────────────────────────────────
 
 model AuditLog {
   id        String   @id @default(uuid())
@@ -464,7 +467,7 @@ model AuditLog {
   @@map("audit_log")
 }
 
-// ─── Pages System (Admin-managed) ──────────────────────────
+// ─── Pages System (Admin-managed) ──────────────────────────────────
 
 model Page {
   id        String     @id @default(uuid())
@@ -494,7 +497,7 @@ model PageItem {
   @@map("page_item")
 }
 
-// ─── Review Assignment System ───────────────────────────────
+// ─── Review Assignment System ────────────────────────────────────────
 
 model ReviewAssignment {
   id               String                  @id @default(uuid())
@@ -525,7 +528,7 @@ enum ReviewAssignmentStatus {
   @@map("review_assignment_status")
 }
 
-// ─── COI Declaration System ─────────────────────────────────
+// ─── COI Declaration System ─────────────────────────────────────────
 
 model COIDeclaration {
   id           String           @id @default(uuid())
@@ -541,7 +544,7 @@ model COIDeclaration {
   @@map("coi_declaration")
 }
 
-// ─── Evaluation Report System ───────────────────────────────
+// ─── Evaluation Report System ───────────────────────────────────────
 
 model EvaluationReport {
   id               String                    @id @default(uuid())
@@ -595,7 +598,7 @@ enum EvaluationStatus {
   @@map("evaluation_status")
 }
 
-// ─── Committee Session System ───────────────────────────────
+// ─── Committee Session System ────────────────────────────────────────
 
 model CommitteeSession {
   id          String        @id @default(uuid())
@@ -633,7 +636,7 @@ enum SessionStatus {
   @@map("session_status")
 }
 
-// ─── Appeal System ──────────────────────────────────────────
+// ─── Appeal System ──────────────────────────────────────────────────
 
 model Appeal {
   id           String       @id @default(uuid())
@@ -663,7 +666,7 @@ enum AppealStatus {
   @@map("appeal_status")
 }
 
-// ─── AAR Application System ─────────────────────────────────
+// ─── AAR Application System ─────────────────────────────────────────
 
 model AARApplication {
   id              String    @id @default(uuid())
@@ -695,7 +698,7 @@ enum AARStatus {
   @@map("aar_status")
 }
 
-// ─── SAE Report System ──────────────────────────────────────
+// ─── SAE Report System ────────────────────────────────────────────────
 
 model SAEReport {
   id               String       @id @default(uuid())
