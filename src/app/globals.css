@@ -195,16 +195,12 @@ html.translated-rtl body {
 }
 
 .skiptranslate {
-  display: none !important;
-}
-
-/* Prevent Google Translate injected iframe from affecting layout */
-body > .skiptranslate {
-  display: none !important;
-  height: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  height: 1px !important;
+  width: 1px !important;
   overflow: hidden !important;
 }
-
 /* Prevent font changes from Google Translate breaking layout */
 .translated-ltr,
 .translated-rtl {
