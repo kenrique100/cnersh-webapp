@@ -65,7 +65,7 @@ const nextConfig: NextConfig = {
             // frame-ancestors: who may embed THIS page.
             // Google Translate wraps translated pages in its own iframe — must be allowed here.
             // Every other origin is blocked to prevent clickjacking.
-            "frame-ancestors 'self' https://translate.google.com https://translate.googleapis.com https://*.google.com",
+            "frame-ancestors https://translate.google.com https://translate.googleapis.com https://*.google.com",
 
             "upgrade-insecure-requests",
           ].join("; "),
