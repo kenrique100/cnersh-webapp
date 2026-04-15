@@ -18,13 +18,14 @@ interface ReactionIconProps {
     /** Diameter of the circle in px. Default 24 */
     size?: number;
     className?: string;
+    style?: React.CSSProperties;
 }
 
 /**
  * Renders a LinkedIn-style reaction badge:
  *   a small coloured circle with the actual emoji centred inside.
  */
-export function ReactionIcon({ type, size = 24, className = "" }: ReactionIconProps) {
+export function ReactionIcon({ type, size = 24, className = "", style }: ReactionIconProps) {
     const meta = REACTION_META[type];
     const fontSize = Math.round(size * 0.6);
 
@@ -38,6 +39,7 @@ export function ReactionIcon({ type, size = 24, className = "" }: ReactionIconPr
                 fontSize: fontSize,
                 lineHeight: 1,
                 boxShadow: "0 0 0 1.5px #fff",   // white ring — looks great when overlapping
+                ...style,
             }}
             title={meta.label}
             aria-label={meta.label}
