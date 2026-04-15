@@ -161,12 +161,27 @@ function TranslationDropdown() {
     const [currentLang, setCurrentLang] = React.useState<"en" | "fr">("en");
     const widgetInitialized = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const pathname = usePathname();
+
+    const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
+        const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
+        return match?.[1] === "fr" ? "fr" : "en";
+    }, []);
+
+    const applyWidgetLanguage = React.useCallback((lang: "en" | "fr") => {
+        const combo = document.querySelector<HTMLSelectElement>("#google_translate_element_navbar .goog-te-combo");
+        if (!combo) return false;
+        if (combo.value !== lang) {
+            combo.value = lang;
+        }
+        combo.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+    }, []);
 
     // Detect current language from Google Translate cookie
     const detectCurrentLanguage = React.useCallback(() => {
-        const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
-        setCurrentLang(match?.[1] === "fr" ? "fr" : "en");
-    }, []);
+        setCurrentLang(getLanguageFromCookie());
+    }, [getLanguageFromCookie]);
 
     // Initialize the Google Translate widget
     const initWidget = React.useCallback(() => {
@@ -236,6 +251,24 @@ function TranslationDropdown() {
         return () => clearInterval(interval);
     }, [initWidget]);
 
+    React.useEffect(() => {
+        const lang = getLanguageFromCookie();
+        setCurrentLang(lang);
+
+        if (lang !== "fr") {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            if (!applyWidgetLanguage("fr")) {
+                initWidget();
+                window.setTimeout(() => applyWidgetLanguage("fr"), 150);
+            }
+        }, 50);
+
+        return () => window.clearTimeout(timer);
+    }, [pathname, getLanguageFromCookie, applyWidgetLanguage, initWidget]);
+
     // Close dropdown when clicking outside
     React.useEffect(() => {
         if (!isOpen) return;
@@ -250,35 +283,27 @@ function TranslationDropdown() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
 
+    const setLanguageCookie = (lang: "en" | "fr") => {
+        if (lang === "en") {
+            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+            document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
+            return;
+        }
+
+        document.cookie = "googtrans=/en/fr; path=/";
+        document.cookie = `googtrans=/en/fr; domain=${window.location.hostname}; path=/`;
+    };
+
     const selectLanguage = (lang: "en" | "fr") => {
         if (lang === currentLang) {
             setIsOpen(false);
             return;
         }
 
-        // Try to use the Google Translate widget's select element
-        const combo = document.querySelector<HTMLSelectElement>("#google_translate_element_navbar .goog-te-combo");
-
-        if (combo) {
-            // Widget is ready - use it directly (no page reload)
-            combo.value = lang;
-            combo.dispatchEvent(new Event("change", { bubbles: true }));
-            setCurrentLang(lang);
-        } else {
-            // Fallback: set cookie and reload
-            if (lang === "en") {
-                // Clear cookies to revert to English
-                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-                document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
-            } else {
-                // Set cookie for French
-                document.cookie = "googtrans=/en/fr; path=/";
-                document.cookie = `googtrans=/en/fr; domain=${window.location.hostname}; path=/`;
-            }
-            window.location.reload();
-        }
-
+        setLanguageCookie(lang);
+        setCurrentLang(lang);
         setIsOpen(false);
+        window.location.reload();
     };
 
     return (
