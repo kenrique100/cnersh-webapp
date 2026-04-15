@@ -25,46 +25,46 @@ const nextConfig: NextConfig = {
     {
       source: "/(.*)",
       headers: [
-        { key: "X-Content-Type-Options",  value: "nosniff" },
-        // X-Frame-Options is superseded by frame-ancestors CSP directive below.
-        // Keeping DENY as a fallback for older browsers that don’t honour CSP.
-        { key: "X-Frame-Options",          value: "DENY" },
-        { key: "Referrer-Policy",           value: "strict-origin-when-cross-origin" },
-        { key: "X-XSS-Protection",         value: "1; mode=block" },
-        { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-        { key: "Permissions-Policy",        value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+        { key: "X-Content-Type-Options",   value: "nosniff" },
+        // ❌ X-Frame-Options: DENY removed — it unconditionally blocks ALL framing,
+        //    including Google Translate's iframe wrapper. Frame security is now
+        //    handled exclusively by the CSP frame-ancestors directive below,
+        //    which is more granular and lets Google Translate work properly.
+        { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
+        { key: "X-XSS-Protection",          value: "1; mode=block" },
+        { key: "Strict-Transport-Security",  value: "max-age=63072000; includeSubDomains; preload" },
+        { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
         {
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
 
-            // Google Translate injects script tags at runtime — unsafe-eval + unsafe-inline required
+            // Google Translate injects scripts at runtime — unsafe-eval + unsafe-inline required
             "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.google.com",
 
             "style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://www.gstatic.com https://*.google.com",
 
-            // img-src: includes all Google Translate image CDNs
+            // img-src: all Google Translate image/icon CDNs
             "img-src 'self' data: blob: https://lh3.googleusercontent.com https://translate.google.com https://translate.googleapis.com https://www.gstatic.com https://fonts.gstatic.com https://static.licdn.com https://*.google.com",
 
             "font-src 'self' data: https://fonts.gstatic.com",
 
-            // connect-src: removed Vercel Blob; kept Google Translate APIs
+            // connect-src: Vercel Blob removed; Google Translate APIs kept
             "connect-src 'self' https://api.resend.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.google.com",
 
-            // media-src: blob: + data: for in-browser preview of uploaded files
+            // media-src: blob: + data: for in-browser file preview
             "media-src 'self' data: blob:",
 
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
 
-            // frame-src: which origins THIS page is allowed to embed in an iframe
+            // frame-src: origins this page may embed in iframes
             "frame-src https://translate.google.com https://translate.googleapis.com https://*.google.com",
 
-            // frame-ancestors: which origins are allowed to embed THIS page in an iframe.
-            // Google Translate wraps the translated page inside its own frame, so we must
-            // allow translate.google.com and translate.googleapis.com here.
-            // All other origins (including 'self') are blocked to prevent clickjacking.
+            // frame-ancestors: who may embed THIS page.
+            // Google Translate wraps translated pages in its own iframe — must be allowed here.
+            // Every other origin is blocked to prevent clickjacking.
             "frame-ancestors 'none' https://translate.google.com https://translate.googleapis.com https://*.google.com",
 
             "upgrade-insecure-requests",
@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
       headers: [{ key: "Cache-Control", value: "no-store" }],
     },
     {
-      // Allow browser to cache served files for 1 hour
+      // Cache served files for 1 hour; ETag handles revalidation
       source: "/api/files/:fileId",
       headers: [{ key: "Cache-Control", value: "public, max-age=3600, must-revalidate" }],
     },
