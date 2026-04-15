@@ -29,6 +29,7 @@ import { OurPagesDropdown } from "./NavbarOurPagesDropdown";
 import { ResourcesMobileDropdown } from "./NavbarResourcesDropdown";
 import { EthicalClearanceMobileDropdown } from "./NavbarEthicalClearanceDropdown";
 import { MobileDynamicPageDropdown } from "./NavbarDynamicPageDropdown";
+import NavbarLanguageSwitcher from "./NavbarLanguageSwitcher";
 
 const userMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
@@ -163,8 +164,11 @@ export default function NavbarMobileMenu({
                                 ))}
                             </div>
 
+                            {/* Language Switcher - Mobile */}
+                            <NavbarLanguageSwitcher mobile />
+
                             {/* Logout */}
-                            <div className="border-t border-gray-200 dark:border-gray-800 pt-2">
+                            <div className="border-t border-gray-200 dark:border-gray-800 pt-2 mt-1">
                                 <Button
                                     onClick={handleSignOut}
                                     variant="ghost"
@@ -201,6 +205,9 @@ export default function NavbarMobileMenu({
                                     <MobileDynamicPageDropdown key={page.id} page={page} onNavigate={() => onOpenChange(false)} />
                                 ))}
                             </div>
+
+                            {/* Language Switcher - Mobile (unauthenticated) */}
+                            <NavbarLanguageSwitcher mobile />
                         </>
                     )}
                 </div>

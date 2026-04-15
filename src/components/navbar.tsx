@@ -16,6 +16,7 @@ import { EthicalClearanceDesktopDropdown } from "./navbar/NavbarEthicalClearance
 import { DynamicPageDesktopDropdown } from "./navbar/NavbarDynamicPageDropdown";
 import NavbarUserMenu from "./navbar/NavbarUserMenu";
 import NavbarMobileMenu from "./navbar/NavbarMobileMenu";
+import NavbarLanguageSwitcher from "./navbar/NavbarLanguageSwitcher";
 
 
 export default function Navbar({ user, notificationCount = 0, pages = [] }: NavbarProps) {
@@ -72,6 +73,11 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                     <div className="flex items-center gap-2 sm:gap-4">
                         {/* Our Pages Desktop Dropdown - visible for all users */}
                         <OurPagesDesktopDropdown pathname={pathname} />
+
+                        {/* Desktop Language Switcher - always visible on sm+ */}
+                        <div className="hidden sm:flex">
+                            <NavbarLanguageSwitcher />
+                        </div>
 
                         {user ? (
                             <>
