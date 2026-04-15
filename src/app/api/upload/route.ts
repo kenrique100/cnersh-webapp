@@ -86,12 +86,6 @@ async function uploadHandler(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const base64 = Buffer.from(arrayBuffer).toString("base64");
         const dataUrl = `data:${mimeType};base64,${base64}`;
-        if (dataUrl.length > MAX_BASE64_DATA_URL_LENGTH) {
-            return NextResponse.json(
-                { error: "File is too large for database storage. Please choose a smaller file." },
-                { status: 400 }
-            );
-        }
 
         return NextResponse.json({
             url: dataUrl,

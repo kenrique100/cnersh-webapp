@@ -212,8 +212,7 @@ function TranslationDropdown() {
             return true;
         }
         if (widgetInitialized.current) {
-            setScriptReady(true);
-            return true;
+            return false;
         }
 
         // Clear container before initializing
@@ -225,7 +224,7 @@ function TranslationDropdown() {
                 {
                     pageLanguage: "en",
                     includedLanguages: "en,fr",
-                    layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+                    layout: window.google.translate.TranslateElement.InlineLayout?.SIMPLE ?? 0,
                     autoDisplay: false,
                 },
                 "google_translate_element_navbar"
@@ -393,6 +392,7 @@ function TranslationDropdown() {
                     top: 0 !important;
                     width: auto !important;
                     height: auto !important;
+                    /* Keep non-zero opacity so Google widget remains render-active across browsers */
                     opacity: 0.01 !important;
                     pointer-events: auto !important;
                     z-index: 1 !important;
