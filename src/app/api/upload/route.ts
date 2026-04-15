@@ -8,7 +8,8 @@ export const maxDuration = 60;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
-const MAX_UPLOAD_SIZE = Math.max(MAX_IMAGE_SIZE, MAX_VIDEO_SIZE, MAX_DOCUMENT_SIZE);
+const MAX_AUDIO_SIZE = 8 * 1024 * 1024;
+const MAX_UPLOAD_SIZE = Math.max(MAX_IMAGE_SIZE, MAX_VIDEO_SIZE, MAX_DOCUMENT_SIZE, MAX_AUDIO_SIZE);
 // Base64 stores 4 bytes for every 3 bytes of binary data (~33% overhead).
 const BASE64_EXPANSION_RATIO = 4 / 3;
 const DATA_URL_METADATA_OVERHEAD = 128;
@@ -45,6 +46,9 @@ async function uploadHandler(req: NextRequest) {
         } else if (file.type.startsWith("image/")) {
             allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             maxSize = MAX_IMAGE_SIZE;
+        } else if (file.type.startsWith("audio/")) {
+            allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4'];
+            maxSize = MAX_AUDIO_SIZE;
         } else {
             // Documents
             allowedTypes = [

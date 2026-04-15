@@ -348,20 +348,27 @@ function TranslationDropdown() {
     }, [isOpen]);
 
     const selectLanguage = (lang: "en" | "fr") => {
+        const applyLanguageWithFallback = () => {
+            if (!applyWidgetLanguage(lang)) {
+                initWidgetRef.current();
+                window.setTimeout(() => {
+                    if (!applyWidgetLanguage(lang)) {
+                        window.location.reload();
+                    }
+                }, WIDGET_RETRY_DELAY_MS);
+            }
+        };
+
         if (lang === currentLang) {
             setIsOpen(false);
+            applyLanguageWithFallback();
             return;
         }
 
         setLanguageCookie(lang);
         setCurrentLang(lang);
         setIsOpen(false);
-        if (!applyWidgetLanguage(lang)) {
-            initWidgetRef.current();
-            window.setTimeout(() => {
-                applyWidgetLanguage(lang);
-            }, WIDGET_RETRY_DELAY_MS);
-        }
+        applyLanguageWithFallback();
     };
 
     return (

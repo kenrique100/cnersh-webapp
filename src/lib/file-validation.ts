@@ -26,6 +26,13 @@ const ALLOWED_FILE_TYPES = {
     'video/webm': { extensions: ['webm'], maxSize: 50 * 1024 * 1024 }, // 50MB
     'video/ogg': { extensions: ['ogv', 'ogg'], maxSize: 50 * 1024 * 1024 }, // 50MB
 
+    // Audio
+    'audio/mpeg': { extensions: ['mp3'], maxSize: 20 * 1024 * 1024 }, // 20MB
+    'audio/wav': { extensions: ['wav'], maxSize: 20 * 1024 * 1024 }, // 20MB
+    'audio/ogg': { extensions: ['ogg'], maxSize: 20 * 1024 * 1024 }, // 20MB
+    'audio/webm': { extensions: ['webm'], maxSize: 20 * 1024 * 1024 }, // 20MB
+    'audio/mp4': { extensions: ['m4a', 'mp4'], maxSize: 20 * 1024 * 1024 }, // 20MB
+
     // Documents
     'application/pdf': { extensions: ['pdf'], maxSize: 20 * 1024 * 1024 }, // 20MB
     'application/msword': { extensions: ['doc'], maxSize: 20 * 1024 * 1024 }, // 20MB
@@ -174,7 +181,7 @@ async function performSecurityChecks(file: File): Promise<FileValidationResult> 
 /**
  * Get allowed file types for a category
  */
-export function getAllowedFileTypes(category: 'image' | 'video' | 'document'): string[] {
+export function getAllowedFileTypes(category: 'image' | 'video' | 'audio' | 'document'): string[] {
     const types = Object.keys(ALLOWED_FILE_TYPES);
 
     switch (category) {
@@ -182,6 +189,8 @@ export function getAllowedFileTypes(category: 'image' | 'video' | 'document'): s
             return types.filter((type) => type.startsWith('image/'));
         case 'video':
             return types.filter((type) => type.startsWith('video/'));
+        case 'audio':
+            return types.filter((type) => type.startsWith('audio/'));
         case 'document':
             return types.filter((type) => type.startsWith('application/'));
         default:
