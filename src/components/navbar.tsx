@@ -80,6 +80,17 @@ interface NavItem {
 const INITIAL_TRANSLATION_DELAY_MS = 50;
 const WIDGET_RETRY_DELAY_MS = 150;
 
+const setLanguageCookie = (lang: "en" | "fr") => {
+    if (lang === "en") {
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
+        return;
+    }
+
+    document.cookie = "googtrans=/en/fr; path=/";
+    document.cookie = `googtrans=/en/fr; domain=${window.location.hostname}; path=/`;
+};
+
 const userMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
     { href: "/protocols", label: "Protocols", icon: FolderIcon },
@@ -220,6 +231,12 @@ function TranslationDropdown() {
         }
     }, [detectCurrentLanguage]);
 
+    const initWidgetRef = React.useRef(initWidget);
+
+    React.useEffect(() => {
+        initWidgetRef.current = initWidget;
+    }, [initWidget]);
+
     // Load Google Translate script
     React.useEffect(() => {
         // Set up the global callback
@@ -258,27 +275,27 @@ function TranslationDropdown() {
         const lang = getLanguageFromCookie();
         setCurrentLang(lang);
 
-        let initialTimer: number | undefined;
-        let retryTimer: number | undefined;
+        let initialTimer: number | null = null;
+        let retryTimer: number | null = null;
 
         if (lang === "fr") {
             initialTimer = window.setTimeout(() => {
                 if (!applyWidgetLanguage("fr")) {
-                    initWidget();
+                    initWidgetRef.current();
                     retryTimer = window.setTimeout(() => applyWidgetLanguage("fr"), WIDGET_RETRY_DELAY_MS);
                 }
             }, INITIAL_TRANSLATION_DELAY_MS);
         }
 
         return () => {
-            if (typeof initialTimer === "number") {
+            if (initialTimer !== null) {
                 window.clearTimeout(initialTimer);
             }
-            if (typeof retryTimer === "number") {
+            if (retryTimer !== null) {
                 window.clearTimeout(retryTimer);
             }
         };
-    }, [pathname, getLanguageFromCookie, applyWidgetLanguage, initWidget]);
+    }, [pathname, getLanguageFromCookie, applyWidgetLanguage]);
 
     // Close dropdown when clicking outside
     React.useEffect(() => {
@@ -293,17 +310,6 @@ function TranslationDropdown() {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
-
-    const setLanguageCookie = (lang: "en" | "fr") => {
-        if (lang === "en") {
-            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-            document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/`;
-            return;
-        }
-
-        document.cookie = "googtrans=/en/fr; path=/";
-        document.cookie = `googtrans=/en/fr; domain=${window.location.hostname}; path=/`;
-    };
 
     const selectLanguage = (lang: "en" | "fr") => {
         if (lang === currentLang) {
