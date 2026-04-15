@@ -14,11 +14,15 @@ const LANG_STORAGE_KEY = "cnersh_lang";
 const setLanguageCookie = (lang: "en" | "fr") => {
     const value = lang === "fr" ? "/en/fr" : "/en/en";
     const maxAge = 60 * 60 * 24 * 365;
-    document.cookie = `googtrans=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+
+    // Clear any domain-scoped stale cookie first to avoid duplicate googtrans values.
     const domain = getCookieDomain(window.location.hostname);
     if (domain) {
-        document.cookie = `googtrans=${value}; domain=${domain}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; domain=${domain}; path=/`;
     }
+
+    // Use host-only cookie to prevent conflicting values across scopes.
+    document.cookie = `googtrans=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
 };
 
 const persistLanguage = (lang: "en" | "fr") => {
