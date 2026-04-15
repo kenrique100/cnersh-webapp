@@ -4,79 +4,72 @@ import { validateFile, performBasicMalwareCheck } from "@/lib/file-validation";
 import { sanitizeFilename } from "@/lib/sanitize";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
-import type { FileType } from "@/generated/prisma";
 
 export const maxDuration = 60;
 
-// Per-category size limits (bytes)
-const SIZE_LIMITS: Record<string, number> = {
-  "image/jpeg": 5 * 1024 * 1024,
-  "image/png":  5 * 1024 * 1024,
-  "image/gif":  5 * 1024 * 1024,
-  "image/webp": 5 * 1024 * 1024,
-  "video/mp4":  10 * 1024 * 1024,
-  "video/webm": 10 * 1024 * 1024,
-  "video/ogg":  10 * 1024 * 1024,
-  "audio/mpeg": 8 * 1024 * 1024,
-  "audio/wav":  8 * 1024 * 1024,
-  "audio/ogg":  8 * 1024 * 1024,
-  "audio/webm": 8 * 1024 * 1024,
-  "audio/mp4":  8 * 1024 * 1024,
-  "application/pdf": 10 * 1024 * 1024,
-  "application/msword": 10 * 1024 * 1024,
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": 10 * 1024 * 1024,
-  "application/vnd.ms-excel": 10 * 1024 * 1024,
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": 10 * 1024 * 1024,
-};
+// ─── Size limits (bytes) ────────────────────────────────────────────────────
+const MAX_IMAGE_SIZE    = 5  * 1024 * 1024; //  5 MB
+const MAX_VIDEO_SIZE    = 10 * 1024 * 1024; // 10 MB
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_AUDIO_SIZE    = 8  * 1024 * 1024; //  8 MB
+
+// ─── FileType values that match the Prisma enum ────────────────────────────
+// Keep in sync with prisma/schema.prisma FileType enum.
+type FileTypeValue = "avatar" | "protocol" | "document" | "image" | "video" | "audio";
 
 /**
- * Derive a FileType enum value from the MIME type.
- * Defaults to 'document' for unknown types that pass validation.
+ * Map a validated MIME type to the Prisma FileType enum value.
+ * Uses string literals directly so this works even if the generated
+ * Prisma enum import path differs between environments.
  */
-function resolveFileType(mimeType: string): FileType {
+function resolveFileType(mimeType: string): FileTypeValue {
   if (mimeType.startsWith("image/")) return "image";
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
   return "document";
 }
 
+// ─── Core handler ──────────────────────────────────────────────────────────
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
+  // 1. Auth check
   const session = await authSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // 2. Parse multipart form
   let formData: FormData;
   try {
     formData = await req.formData();
-  } catch {
+  } catch (err) {
+    console.error("[upload] formData parse error:", err);
     return NextResponse.json({ error: "Invalid multipart form data" }, { status: 400 });
   }
 
   const file = formData.get("file") as File | null;
-  if (!file) {
+  if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  // Sanitize filename to prevent directory traversal
+  // 3. Sanitize filename
   const sanitizedFilename = sanitizeFilename(file.name);
   if (!sanitizedFilename) {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  // Determine allowed types and size limit based on declared MIME category
+  // 4. Determine allowed MIME types and size cap by declared category
   let allowedTypes: string[];
   let maxSize: number;
 
   if (file.type.startsWith("video/")) {
     allowedTypes = ["video/mp4", "video/webm", "video/ogg"];
-    maxSize = SIZE_LIMITS["video/mp4"];
+    maxSize = MAX_VIDEO_SIZE;
   } else if (file.type.startsWith("image/")) {
     allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    maxSize = SIZE_LIMITS["image/jpeg"];
+    maxSize = MAX_IMAGE_SIZE;
   } else if (file.type.startsWith("audio/")) {
     allowedTypes = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"];
-    maxSize = SIZE_LIMITS["audio/mpeg"];
+    maxSize = MAX_AUDIO_SIZE;
   } else {
     allowedTypes = [
       "application/pdf",
@@ -85,11 +78,18 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
       "application/vnd.ms-excel",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
-    maxSize = SIZE_LIMITS["application/pdf"];
+    maxSize = MAX_DOCUMENT_SIZE;
   }
 
-  // Deep file validation (magic-number check + size)
-  const validation = await validateFile(file, { allowedTypes, maxSize });
+  // 5. Deep file validation (magic-number check + size)
+  let validation: Awaited<ReturnType<typeof validateFile>>;
+  try {
+    validation = await validateFile(file, { allowedTypes, maxSize });
+  } catch (err) {
+    console.error("[upload] validateFile threw:", err);
+    return NextResponse.json({ error: "File validation error" }, { status: 500 });
+  }
+
   if (!validation.valid) {
     return NextResponse.json(
       { error: validation.error ?? "File validation failed" },
@@ -97,47 +97,91 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Basic malware heuristic (blocks PHP, shell scripts, executables)
-  const malwareCheck = await performBasicMalwareCheck(file);
+  // 6. Basic malware heuristic
+  let malwareCheck: Awaited<ReturnType<typeof performBasicMalwareCheck>>;
+  try {
+    malwareCheck = await performBasicMalwareCheck(file);
+  } catch (err) {
+    console.error("[upload] malwareCheck threw:", err);
+    return NextResponse.json({ error: "Security check error" }, { status: 500 });
+  }
+
   if (!malwareCheck.valid) {
     return NextResponse.json({ error: "File failed security check" }, { status: 400 });
   }
 
+  // 7. Read file bytes and encode as base64
+  let base64: string;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    base64 = Buffer.from(arrayBuffer).toString("base64");
+  } catch (err) {
+    console.error("[upload] base64 conversion error:", err);
+    return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
+  }
+
   const mimeType = validation.detectedType ?? file.type ?? "application/octet-stream";
+  const fileType = resolveFileType(mimeType);
 
-  // Convert to base64 for DB storage
-  const arrayBuffer = await file.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString("base64");
-
+  // 8. Persist to database
   try {
     const stored = await db.file.create({
       data: {
-        filename: sanitizedFilename,
+        filename:  sanitizedFilename,
         mimeType,
-        size: file.size,
-        data: base64,
-        type: resolveFileType(mimeType),
-        userId: session.user.id,
+        size:      file.size,
+        data:      base64,
+        // Cast as any so the string literal satisfies Prisma's generated enum
+        // type regardless of whether the enum import resolves correctly.
+        type:      fileType as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        userId:    session.user.id,
       },
-      select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true },
+      select: {
+        id: true,
+        filename: true,
+        mimeType: true,
+        size: true,
+        type: true,
+        createdAt: true,
+      },
     });
 
     return NextResponse.json({
-      fileId: stored.id,
-      // Canonical URL for serving this file back to the browser
-      url: `/api/files/${stored.id}`,
-      name: stored.filename,
-      type: stored.mimeType,
-      size: stored.size,
-      category: stored.type,
+      fileId:    stored.id,
+      url:       `/api/files/${stored.id}`,
+      name:      stored.filename,
+      type:      stored.mimeType,
+      size:      stored.size,
+      category:  stored.type,
       createdAt: stored.createdAt,
     });
   } catch (err) {
-    console.error("[upload] DB write error:", err);
+    // Log the full error so it appears in Vercel function logs
+    console.error("[upload] DB write failed:", err);
+
+    // Surface a helpful message for common Prisma errors
+    const msg =
+      err instanceof Error ? err.message : String(err);
+
+    if (msg.includes("relation") || msg.includes("table") || msg.includes("does not exist")) {
+      return NextResponse.json(
+        { error: "Database table not found. Run `prisma migrate deploy` and redeploy." },
+        { status: 500 }
+      );
+    }
+
+    if (msg.includes("connect") || msg.includes("timeout") || msg.includes("ECONNREFUSED")) {
+      return NextResponse.json(
+        { error: "Database connection failed. Check DATABASE_URL environment variable." },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({ error: "Failed to save file" }, { status: 500 });
   }
 }
 
+// ─── Rate-limited wrapper ──────────────────────────────────────────────────
 const rateLimitedUploadHandler = withRateLimit(
   uploadHandler,
   RATE_LIMITS.fileUpload,
@@ -154,11 +198,11 @@ export async function POST(req: NextRequest) {
   try {
     return await rateLimitedUploadHandler(req);
   } catch (err) {
-    console.error("[upload] Rate limiter error, falling back:", err);
+    console.error("[upload] Unhandled rate-limiter error:", err);
     try {
       return await uploadHandler(req);
     } catch (handlerErr) {
-      console.error("[upload] Handler error:", handlerErr);
+      console.error("[upload] Fallback handler error:", handlerErr);
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
   }
