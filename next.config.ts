@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/**",
       },
-      // Files now served from /api/files/[fileId] — no external blob storage
     ],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
@@ -26,10 +25,7 @@ const nextConfig: NextConfig = {
       source: "/(.*)",
       headers: [
         { key: "X-Content-Type-Options",   value: "nosniff" },
-        // ❌ X-Frame-Options: DENY removed — it unconditionally blocks ALL framing,
-        //    including Google Translate's iframe wrapper. Frame security is now
-        //    handled exclusively by the CSP frame-ancestors directive below,
-        //    which is more granular and lets Google Translate work properly.
+        { key: "X-Frame-Options",           value: "DENY" },
         { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
         { key: "X-XSS-Protection",          value: "1; mode=block" },
         { key: "Strict-Transport-Security",  value: "max-age=63072000; includeSubDomains; preload" },
@@ -39,33 +35,25 @@ const nextConfig: NextConfig = {
           value: [
             "default-src 'self'",
 
-            // Google Translate injects scripts at runtime — unsafe-eval + unsafe-inline required
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.google.com",
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
 
-            "style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://www.gstatic.com https://*.google.com",
+            "style-src 'self' 'unsafe-inline'",
 
-            // img-src: all Google Translate image/icon CDNs
-            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://translate.google.com https://translate.googleapis.com https://www.gstatic.com https://fonts.gstatic.com https://static.licdn.com https://*.google.com",
+            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://fonts.gstatic.com https://static.licdn.com",
 
             "font-src 'self' data: https://fonts.gstatic.com",
 
-            // connect-src: Vercel Blob removed; Google Translate APIs kept
-            "connect-src 'self' https://api.resend.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.google.com",
+            "connect-src 'self' https://api.resend.com",
 
-            // media-src: blob: + data: for in-browser file preview
             "media-src 'self' data: blob:",
 
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
 
-            // frame-src: origins this page may embed in iframes
-            "frame-src 'self' https://translate.google.com https://translate.googleapis.com https://*.google.com",
+            "frame-src 'self'",
 
-            // frame-ancestors: who may embed THIS page.
-            // Google Translate wraps translated pages in its own iframe — must be allowed here.
-            // Every other origin is blocked to prevent clickjacking.
-            "frame-ancestors https://translate.google.com https://translate.googleapis.com https://*.google.com",
+            "frame-ancestors 'none'",
 
             "upgrade-insecure-requests",
           ].join("; "),
@@ -77,7 +65,6 @@ const nextConfig: NextConfig = {
       headers: [{ key: "Cache-Control", value: "no-store" }],
     },
     {
-      // Cache served files for 1 hour; ETag handles revalidation
       source: "/api/files/:fileId",
       headers: [{ key: "Cache-Control", value: "public, max-age=3600, must-revalidate" }],
     },
