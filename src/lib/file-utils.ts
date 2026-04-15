@@ -8,7 +8,7 @@
 import { db } from "@/lib/db";
 import type { FileType } from "@/generated/prisma";
 
-// ─── Types ─────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────
 
 export interface FileMetadata {
   id: string;
@@ -30,43 +30,34 @@ export interface FileUploadResult {
   createdAt: Date;
 }
 
-// ─── URL Helpers ────────────────────────────────────────────
+// ─── URL Helpers ───────────────────────────────────────────────────────────
 
-/**
- * Returns the canonical URL for a stored file.
- * Use this everywhere instead of hard-coding /api/files paths.
- */
+/** Returns the canonical URL for a stored file. */
 export function getFileUrl(fileId: string): string {
   return `/api/files/${fileId}`;
 }
 
-/**
- * Returns true if the string looks like a DB file ID (UUID)
- * rather than a legacy data: URL or an external URL.
- */
+/** Returns true if the string looks like a UUID (DB file ID). */
 export function isFileId(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 /**
  * Resolves a stored value (fileId, data: URL, or absolute URL) to a
- * displayable src string.  Pass through data: and http(s): URLs unchanged;
- * convert plain UUIDs to /api/files paths.
+ * displayable src string. Pass-through for data: and http(s): URLs;
+ * converts plain UUIDs to /api/files paths.
  */
 export function resolveFileSrc(value: string | null | undefined): string | null {
   if (!value) return null;
-  if (value.startsWith("data:") || value.startsWith("http")) return value;
+  if (value.startsWith("data:") || value.startsWith("http") || value.startsWith("/api/")) return value;
   if (isFileId(value)) return getFileUrl(value);
-  // Assume it is already a relative path
   return value;
 }
 
-// ─── Server-side DB Helpers ─────────────────────────────────
+// ─── Server-side DB Helpers ─────────────────────────────────────────────────────
 // Only call these from Server Components, API routes, or Server Actions.
 
-/**
- * Fetches lightweight metadata for a file (no binary data).
- */
+/** Fetches lightweight metadata for a file (no binary data). */
 export async function getFileMetadata(fileId: string): Promise<FileMetadata | null> {
   const file = await db.file.findUnique({
     where: { id: fileId },
@@ -76,17 +67,12 @@ export async function getFileMetadata(fileId: string): Promise<FileMetadata | nu
   return { ...file, url: getFileUrl(file.id) };
 }
 
-/**
- * Deletes a file record from the database.
- * Caller is responsible for verifying ownership before invoking.
- */
+/** Deletes a file record. Caller must verify ownership first. */
 export async function deleteFile(fileId: string): Promise<void> {
   await db.file.delete({ where: { id: fileId } });
 }
 
-/**
- * Returns paginated file metadata for a user.
- */
+/** Returns paginated file metadata for a user. */
 export async function listUserFiles(
   userId: string,
   options: { type?: FileType; page?: number; perPage?: number } = {}
@@ -111,12 +97,12 @@ export async function listUserFiles(
   };
 }
 
-// ─── Validation Constants ───────────────────────────────────
-// Keep in sync with the upload route.
+// ─── Validation Constants ──────────────────────────────────────────────────────
+// Keep in sync with the upload route and file-validation.ts.
 
-export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
-export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/ogg"] as const;
-export const ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"] as const;
+export const ALLOWED_IMAGE_TYPES    = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+export const ALLOWED_VIDEO_TYPES    = ["video/mp4", "video/webm", "video/ogg"] as const;
+export const ALLOWED_AUDIO_TYPES    = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"] as const;
 export const ALLOWED_DOCUMENT_TYPES = [
   "application/pdf",
   "application/msword",
@@ -125,26 +111,29 @@ export const ALLOWED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ] as const;
 
+// Must match the limits in src/app/api/upload/route.ts and file-validation.ts
 export const MAX_FILE_SIZES: Record<string, number> = {
-  avatar:   5  * 1024 * 1024,
-  image:    5  * 1024 * 1024,
-  video:    10 * 1024 * 1024,
-  audio:    8  * 1024 * 1024,
-  document: 10 * 1024 * 1024,
-  protocol: 10 * 1024 * 1024,
+  avatar:   10 * 1024 * 1024, // 10 MB
+  image:    10 * 1024 * 1024, // 10 MB
+  video:    50 * 1024 * 1024, // 50 MB
+  audio:     8 * 1024 * 1024, //  8 MB
+  document: 20 * 1024 * 1024, // 20 MB
+  protocol: 20 * 1024 * 1024, // 20 MB
 };
 
 /**
  * Quick client-side size check before hitting the upload endpoint.
+ * Call this in your file-picker onChange handler to show an error
+ * before wasting bandwidth on a doomed upload.
  */
 export function validateFileSizeClient(
   file: File,
   category: keyof typeof MAX_FILE_SIZES
 ): { valid: boolean; error?: string } {
-  const limit = MAX_FILE_SIZES[category] ?? 10 * 1024 * 1024;
+  const limit = MAX_FILE_SIZES[category] ?? 20 * 1024 * 1024;
   if (file.size > limit) {
     const limitMB = (limit / (1024 * 1024)).toFixed(0);
-    return { valid: false, error: `File exceeds the ${limitMB} MB limit for ${category} files.` };
+    return { valid: false, error: `File exceeds the ${limitMB} MB limit for ${category} files.` };
   }
   return { valid: true };
 }
