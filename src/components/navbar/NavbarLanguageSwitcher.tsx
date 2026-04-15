@@ -4,19 +4,43 @@ import React, { useEffect, useState, useCallback } from "react";
 import { GlobeIcon } from "lucide-react";
 
 /**
- * Fires the Google Translate combo change with proper bubbling.
- * Retries up to `maxRetries` times with 300ms gaps if the combo isn't ready yet.
+ * Sets the googtrans cookie (which Google Translate reads on page load)
+ * and reloads the page so every piece of content is fully translated.
+ *
+ * For English: expire the cookie so Google restores original text.
+ * For French: set cookie to /en/fr before reloading.
  */
-function triggerGoogleTranslate(lang: "en" | "fr", retries = 0, maxRetries = 15): void {
+function switchLanguage(lang: "en" | "fr"): void {
+    localStorage.setItem("cnersh_lang", lang);
+
+    const hostname = window.location.hostname;
+
+    if (lang === "en") {
+        // Expire the googtrans cookie on both root path and domain
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${hostname};`;
+    } else {
+        // Google Translate reads /en/{targetLang} from the googtrans cookie on load
+        document.cookie = `googtrans=/en/${lang}; path=/;`;
+        document.cookie = `googtrans=/en/${lang}; path=/; domain=${hostname};`;
+    }
+
+    window.location.reload();
+}
+
+/**
+ * After reload, drive the hidden combo select so the widget reflects
+ * the cookie. Retries up to maxRetries x 300ms until combo is ready.
+ */
+function applyCombo(lang: "en" | "fr", retries = 0, maxRetries = 20): void {
     const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
     if (combo) {
         combo.value = lang;
-        // Must use bubbles:true — Google's listener won't fire otherwise
         combo.dispatchEvent(new Event("change", { bubbles: true }));
         return;
     }
     if (retries < maxRetries) {
-        setTimeout(() => triggerGoogleTranslate(lang, retries + 1, maxRetries), 300);
+        setTimeout(() => applyCombo(lang, retries + 1, maxRetries), 300);
     }
 }
 
@@ -28,30 +52,31 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
     const [currentLang, setCurrentLang] = useState<"en" | "fr">("en");
     const [ready, setReady] = useState(false);
 
-    // Poll until the Google Translate combo select is injected into the DOM
     useEffect(() => {
+        // Read saved preference immediately to reflect correct active button
+        const saved = localStorage.getItem("cnersh_lang") as "en" | "fr" | null;
+        const lang: "en" | "fr" = saved === "fr" ? "fr" : "en";
+        setCurrentLang(lang);
+
+        // Poll until widget is injected, then drive combo if French
         const interval = setInterval(() => {
             if (document.querySelector(".goog-te-combo")) {
                 setReady(true);
                 clearInterval(interval);
+                if (lang === "fr") applyCombo(lang);
             }
         }, 400);
-
-        // Restore saved language preference
-        const saved = localStorage.getItem("cnersh_lang") as "en" | "fr" | null;
-        if (saved === "en" || saved === "fr") {
-            setCurrentLang(saved);
-            triggerGoogleTranslate(saved); // will auto-retry if not ready yet
-        }
 
         return () => clearInterval(interval);
     }, []);
 
-    const handleChange = useCallback((lang: "en" | "fr") => {
-        setCurrentLang(lang);
-        localStorage.setItem("cnersh_lang", lang);
-        triggerGoogleTranslate(lang);
-    }, []);
+    const handleChange = useCallback(
+        (lang: "en" | "fr") => {
+            if (lang === currentLang) return;
+            switchLanguage(lang);
+        },
+        [currentLang]
+    );
 
     if (mobile) {
         return (
@@ -65,7 +90,8 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
                         <button
                             onClick={() => handleChange("en")}
                             aria-label="Switch to English"
-                            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors border ${
+                            disabled={currentLang === "en"}
+                            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors border disabled:opacity-60 disabled:cursor-default ${
                                 currentLang === "en"
                                     ? "bg-blue-700 text-white border-blue-700"
                                     : "bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -76,7 +102,8 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
                         <button
                             onClick={() => handleChange("fr")}
                             aria-label="Switch to French"
-                            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors border ${
+                            disabled={currentLang === "fr"}
+                            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors border disabled:opacity-60 disabled:cursor-default ${
                                 currentLang === "fr"
                                     ? "bg-blue-700 text-white border-blue-700"
                                     : "bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -98,7 +125,8 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
             <button
                 onClick={() => handleChange("en")}
                 aria-label="Switch to English"
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all ${
+                disabled={currentLang === "en"}
+                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all disabled:cursor-default ${
                     currentLang === "en"
                         ? "bg-blue-700 text-white shadow"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -109,7 +137,8 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
             <button
                 onClick={() => handleChange("fr")}
                 aria-label="Switch to French"
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all ${
+                disabled={currentLang === "fr"}
+                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all disabled:cursor-default ${
                     currentLang === "fr"
                         ? "bg-blue-700 text-white shadow"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
