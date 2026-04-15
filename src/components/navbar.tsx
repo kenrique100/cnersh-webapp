@@ -77,6 +77,9 @@ interface NavItem {
     icon: React.ElementType;
 }
 
+const INITIAL_TRANSLATION_DELAY_MS = 50;
+const WIDGET_RETRY_DELAY_MS = 150;
+
 const userMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
     { href: "/protocols", label: "Protocols", icon: FolderIcon },
@@ -162,8 +165,6 @@ function TranslationDropdown() {
     const widgetInitialized = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const pathname = usePathname();
-    const initialTranslationDelayMs = 50;
-    const widgetRetryDelayMs = 150;
 
     const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
         const match = document.cookie.match(/googtrans=\/en\/([\w-]+)/);
@@ -264,9 +265,9 @@ function TranslationDropdown() {
             initialTimer = window.setTimeout(() => {
                 if (!applyWidgetLanguage("fr")) {
                     initWidget();
-                    retryTimer = window.setTimeout(() => applyWidgetLanguage("fr"), widgetRetryDelayMs);
+                    retryTimer = window.setTimeout(() => applyWidgetLanguage("fr"), WIDGET_RETRY_DELAY_MS);
                 }
-            }, initialTranslationDelayMs);
+            }, INITIAL_TRANSLATION_DELAY_MS);
         }
 
         return () => {
@@ -277,7 +278,7 @@ function TranslationDropdown() {
                 window.clearTimeout(retryTimer);
             }
         };
-    }, [pathname, getLanguageFromCookie, applyWidgetLanguage, initWidget, initialTranslationDelayMs, widgetRetryDelayMs]);
+    }, [pathname, getLanguageFromCookie, applyWidgetLanguage, initWidget]);
 
     // Close dropdown when clicking outside
     React.useEffect(() => {
