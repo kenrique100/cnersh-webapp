@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     PieChart,
@@ -31,6 +32,25 @@ interface AdminStats {
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export default function AdminCharts({ stats }: { stats: AdminStats }) {
+    // Recharts 2.x reads an internal ThemeContext that is undefined during SSR
+    // and on the very first React 19 render pass. Gate all chart rendering behind
+    // a mounted flag so Recharts only runs after the client is fully hydrated.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
+    if (!mounted) {
+        return (
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {[0, 1, 2].map((i) => (
+                    <div
+                        key={i}
+                        className="h-[280px] rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse"
+                    />
+                ))}
+            </div>
+        );
+    }
+
     const userPieData = [
         { name: "Active", value: stats.activeUsers },
         { name: "Banned", value: stats.bannedUsers },
