@@ -18,7 +18,6 @@ import NavbarUserMenu from "./navbar/NavbarUserMenu";
 import NavbarMobileMenu from "./navbar/NavbarMobileMenu";
 import NavbarLanguageSwitcher from "./navbar/NavbarLanguageSwitcher";
 
-
 export default function Navbar({ user, notificationCount = 0, pages = [] }: NavbarProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -39,7 +38,8 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
         <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white dark:bg-gray-950 dark:border-gray-800 shadow-sm">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex min-h-16 items-center justify-between px-4 sm:px-6 lg:px-8 py-2">
-                    {/* Left Side - Logo */}
+
+                    {/* ── Left: Logo ─────────────────────────────────── */}
                     <div className="flex items-center shrink-0">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
@@ -58,42 +58,44 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                         </Link>
                     </div>
 
-                    {/* Center - Desktop nav items — visible from lg+ */}
+                    {/* ── Center: Desktop nav dropdowns (lg+) ────────── */}
                     <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-2 flex-wrap">
                         <ResourcesDesktopDropdown />
                         <EthicalClearanceDesktopDropdown />
                         <SOPsDesktopSubmenuNav />
-                        {/* Admin-created dynamic pages */}
                         {pages.map((page) => (
                             <DynamicPageDesktopDropdown key={page.id} page={page} />
                         ))}
                     </div>
 
-                    {/* Right Side */}
-                    <div className="flex items-center gap-2 sm:gap-4">
-                        {/* Our Pages Desktop Dropdown - visible for all users */}
-                        <OurPagesDesktopDropdown pathname={pathname} />
+                    {/* ── Right: actions ─────────────────────────────── */}
+                    <div className="flex items-center gap-1.5 sm:gap-3">
 
-                        {/* Desktop Language Switcher - always visible on sm+ */}
-                        <div className="hidden sm:flex">
-                            <NavbarLanguageSwitcher />
+                        {/* Our Pages dropdown — desktop only */}
+                        <div className="hidden lg:flex">
+                            <OurPagesDesktopDropdown pathname={pathname} />
                         </div>
+
+                        {/*
+                         * Language switcher — always visible in the navbar bar.
+                         *
+                         * xs (< 640 px): compact EN/FR pill sits directly in the bar
+                         *                so users don't need to open the hamburger.
+                         * sm+ (≥ 640 px): same pill, slightly more spacing.
+                         * The mobile sheet (NavbarMobileMenu) ALSO shows the full-width
+                         * switcher inside the drawer for convenience.
+                         */}
+                        <NavbarLanguageSwitcher />
 
                         {user ? (
                             <>
-                                {/* Theme Toggle */}
                                 <NavbarThemeToggle />
-
                                 <NotificationDropdown count={notificationCount} />
-
-                                {/* Desktop: User Avatar Dropdown */}
                                 <NavbarUserMenu
                                     user={user}
                                     userInitials={userInitials}
                                     handleSignOut={handleSignOut}
                                 />
-
-                                {/* Mobile Menu Toggle - opens from RIGHT */}
                                 <NavbarMobileMenu
                                     user={user}
                                     userInitials={userInitials}
@@ -108,10 +110,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                             </>
                         ) : (
                             <>
-                                {/* Theme Toggle (for non-logged-in users) */}
                                 <NavbarThemeToggle />
-
-                                {/* Desktop: Sign In + Sign Up buttons */}
                                 <div className="hidden sm:flex items-center gap-3">
                                     <Link href="/sign-in">
                                         <Button variant="ghost" className="text-sm font-medium">
@@ -124,8 +123,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                         </Button>
                                     </Link>
                                 </div>
-
-                                {/* Mobile: Hamburger menu with Our Pages + Sign In/Up */}
                                 <NavbarMobileMenu
                                     user={user}
                                     userInitials={userInitials}
@@ -140,6 +137,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                             </>
                         )}
                     </div>
+
                 </div>
             </div>
         </nav>
