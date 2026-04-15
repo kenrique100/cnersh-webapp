@@ -9,7 +9,6 @@ import Image from "next/image";
 import NotificationDropdown from "@/components/notification-dropdown";
 import type { NavbarProps } from "./navbar/types";
 import NavbarThemeToggle from "./navbar/NavbarThemeToggle";
-import TranslationDropdown from "./navbar/NavbarTranslationDropdown";
 import SOPsDesktopSubmenuNav from "./navbar/NavbarSOPsDropdown";
 import OurPagesDesktopDropdown from "./navbar/NavbarOurPagesDropdown";
 import { ResourcesDesktopDropdown } from "./navbar/NavbarResourcesDropdown";
@@ -79,9 +78,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 {/* Theme Toggle */}
                                 <NavbarThemeToggle />
 
-                                {/* Translation Dropdown */}
-                                <TranslationDropdown />
-
                                 <NotificationDropdown count={notificationCount} />
 
                                 {/* Desktop: User Avatar Dropdown */}
@@ -108,9 +104,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                             <>
                                 {/* Theme Toggle (for non-logged-in users) */}
                                 <NavbarThemeToggle />
-
-                                {/* Translation Dropdown (for non-logged-in users) */}
-                                <TranslationDropdown />
 
                                 {/* Desktop: Sign In + Sign Up buttons */}
                                 <div className="hidden sm:flex items-center gap-3">
