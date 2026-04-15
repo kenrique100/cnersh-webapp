@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
 
+// All Google domains required by the Translate widget (including the newer
+// translate-pa.googleapis.com endpoint used for supported-language lookups)
+const GOOGLE_TRANSLATE_DOMAINS = [
+  "https://translate.google.com",
+  "https://translate.googleapis.com",
+  "https://translate-pa.googleapis.com",
+  "https://www.gstatic.com",
+].join(" ");
+
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
@@ -24,53 +33,43 @@ const nextConfig: NextConfig = {
     {
       source: "/(.*)",
       headers: [
-        { key: "X-Content-Type-Options",  value: "nosniff" },
-        { key: "X-Frame-Options",          value: "DENY" },
-        { key: "Referrer-Policy",           value: "strict-origin-when-cross-origin" },
-        { key: "X-XSS-Protection",         value: "1; mode=block" },
-        { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-        { key: "Permissions-Policy",        value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+        { key: "X-Content-Type-Options",   value: "nosniff" },
+        { key: "X-Frame-Options",           value: "DENY" },
+        { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
+        { key: "X-XSS-Protection",          value: "1; mode=block" },
+        { key: "Strict-Transport-Security",  value: "max-age=63072000; includeSubDomains; preload" },
+        { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
         {
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
 
-            // Google Translate needs translate.google.com, translate.googleapis.com, www.gstatic.com
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-            + " https://translate.google.com"
-            + " https://translate.googleapis.com"
-            + " https://www.gstatic.com",
+            // translate-pa.googleapis.com is a newer Google Translate endpoint
+            // that loads supported-language metadata as a JSONP <script> tag
+            // inside the widget iframe (about:srcdoc). All four domains are needed.
+            `script-src 'self' 'unsafe-eval' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            "style-src 'self' 'unsafe-inline'"
-            + " https://translate.googleapis.com"
-            + " https://www.gstatic.com",
+            `style-src 'self' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             "img-src 'self' data: blob:"
-            + " https://lh3.googleusercontent.com"
-            + " https://fonts.gstatic.com"
-            + " https://static.licdn.com"
-            + " https://translate.googleapis.com"
-            + " https://translate.google.com"
-            + " https://www.gstatic.com",
+              + " https://lh3.googleusercontent.com"
+              + " https://fonts.gstatic.com"
+              + " https://static.licdn.com"
+              + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            "font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com",
+            `font-src 'self' data: https://fonts.gstatic.com ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             "connect-src 'self'"
-            + " https://api.resend.com"
-            + " https://translate.googleapis.com"
-            + " https://translate.google.com"
-            + " https://www.gstatic.com",
+              + " https://api.resend.com"
+              + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             "media-src 'self' data: blob:",
 
-            // Google Translate runs a web worker from gstatic
-            "worker-src 'self' blob: https://www.gstatic.com",
+            // Web worker loaded by the translate widget
+            `worker-src 'self' blob: ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            // Google Translate widget iframe lives on translate.googleapis.com & gstatic
-            "frame-src 'self'"
-            + " https://translate.google.com"
-            + " https://translate.googleapis.com"
-            + " https://www.gstatic.com",
+            // The widget itself runs inside an iframe sourced from these domains
+            `frame-src 'self' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             "object-src 'none'",
             "base-uri 'self'",
