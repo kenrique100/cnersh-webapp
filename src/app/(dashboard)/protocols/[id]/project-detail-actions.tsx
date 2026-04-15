@@ -156,8 +156,8 @@ export default function ProjectDetailActions({
             toast.error("Please select a video file");
             return;
         }
-        if (file.size > 10 * 1024 * 1024) {
-            toast.error("Video must be less than 10MB");
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Video must be less than 5MB");
             return;
         }
         setIsUploadingVideo(true);
@@ -265,7 +265,7 @@ export default function ProjectDetailActions({
                                         <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
                                         <button type="button" onClick={() => videoInputRef.current?.click()} disabled={isUploadingVideo} className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-4 flex flex-col items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
                                             {isUploadingVideo ? <Loader2 className="h-6 w-6 text-blue-600 animate-spin" /> : <VideoIcon className="h-6 w-6 text-gray-400" />}
-                                            <span className="text-xs text-gray-500">{isUploadingVideo ? "Uploading..." : "Upload video (up to 10MB)"}</span>
+                                            <span className="text-xs text-gray-500">{isUploadingVideo ? "Uploading..." : "Upload video (up to 5MB)"}</span>
                                         </button>
                                     </div>
                                 )}

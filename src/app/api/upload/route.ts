@@ -6,8 +6,9 @@ import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const MAX_VIDEO_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
+const MAX_BASE64_DATA_URL_LENGTH = 11 * 1024 * 1024;
 
 async function uploadHandler(req: NextRequest) {
     const session = await authSession();
@@ -73,6 +74,12 @@ async function uploadHandler(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const base64 = Buffer.from(arrayBuffer).toString("base64");
         const dataUrl = `data:${mimeType};base64,${base64}`;
+        if (dataUrl.length > MAX_BASE64_DATA_URL_LENGTH) {
+            return NextResponse.json(
+                { error: "File is too large for database storage. Please choose a smaller file." },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({
             url: dataUrl,

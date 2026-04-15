@@ -7,8 +7,23 @@ const CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 type ConsentChoice = "accepted" | "rejected";
 
+const isLikelyIpAddress = (hostname: string) =>
+    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(hostname);
+
+const getCookieDomain = () => {
+    const hostname = window.location.hostname;
+    if (!hostname || hostname === "localhost" || isLikelyIpAddress(hostname) || !hostname.includes(".")) {
+        return null;
+    }
+    return hostname;
+};
+
 function clearTranslateCookie() {
     document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+    const domain = getCookieDomain();
+    if (domain) {
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${domain}; path=/`;
+    }
 }
 
 export default function CookieConsentBanner() {
