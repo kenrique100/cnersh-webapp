@@ -2,7 +2,7 @@
 
 ## Why Users Can't Receive Emails - Common Issues & Solutions
 
-### 1. Missing or Invalid RESEND_API_KEY ⚠️
+### 1. Missing or Invalid RESEND_API_KEY ⚠
 
 **Problem:** The most common issue - Resend API key is not configured.
 
@@ -21,7 +21,7 @@ RESEND_API_KEY=re_your_actual_api_key_here
 echo $RESEND_API_KEY
 ```
 
-### 2. Email Domain Not Verified in Resend 📧
+### 2. Email Domain Not Verified in Resend 
 
 **Problem:** Resend requires domain verification to send emails from your domain.
 
@@ -42,22 +42,22 @@ Use Resend's test domain while verifying your custom domain:
 EMAIL_FROM="CNERSH <onboarding@resend.dev>"
 ```
 
-### 3. Email Going to Spam Folder 📬
+### 3. Email Going to Spam Folder 
 
 **Problem:** Emails are being sent but landing in spam.
 
 **Solutions:**
-- ✅ Verify your domain with Resend (see above)
-- ✅ Add SPF, DKIM, and DMARC records
-- ✅ Use a verified "From" address
-- ✅ Avoid spam trigger words in subject lines
-- ✅ Maintain good sender reputation
+-  Verify your domain with Resend (see above)
+-  Add SPF, DKIM, and DMARC records
+-  Use a verified "From" address
+-  Avoid spam trigger words in subject lines
+-  Maintain good sender reputation
 
 **Check spam folder in:**
 - Gmail: Check "Spam" and "Promotions" tabs
 - Outlook: Check "Junk Email" folder
 
-### 4. Rate Limiting Issues 🚦
+### 4. Rate Limiting Issues 
 
 **Problem:** Sending too many emails too quickly.
 
@@ -70,7 +70,7 @@ EMAIL_FROM="CNERSH <onboarding@resend.dev>"
 - Implement email queuing for bulk operations
 - Monitor usage in Resend dashboard
 
-### 5. Invalid Email Address Format ✉️
+### 5. Invalid Email Address Format ✉
 
 **Problem:** Email address is malformed or invalid.
 
@@ -79,7 +79,7 @@ EMAIL_FROM="CNERSH <onboarding@resend.dev>"
 - Check console logs for validation errors
 - Ensure user emails are properly formatted
 
-### 6. Environment Variables Not Loaded 🔧
+### 6. Environment Variables Not Loaded 
 
 **Problem:** Environment variables aren't being read by the application.
 
@@ -103,7 +103,7 @@ npm run dev
 3. Add the required variables
 4. Restart your application
 
-### 7. Network/Firewall Issues 🔥
+### 7. Network/Firewall Issues 
 
 **Problem:** Firewall blocking outbound email requests.
 
@@ -119,9 +119,9 @@ npm run dev
 Look for these log messages when emails are sent:
 
 ```
-✅ Success: "✅ Verification email sent successfully to user@example.com. Email ID: abc123"
-❌ Error: "❌ RESEND_API_KEY is not configured"
-❌ Error: "❌ Resend API error: [error details]"
+ Success: " Verification email sent successfully to user@example.com. Email ID: abc123"
+ Error: " RESEND_API_KEY is not configured"
+ Error: " Resend API error: [error details]"
 ```
 
 ### Step 2: Test Resend API Directly
@@ -184,22 +184,22 @@ BETTER_AUTH_URL=https://your-domain.com
 
 ## Email Features Now Available
 
-### 1. Enhanced Error Logging ✅
+### 1. Enhanced Error Logging 
 - Detailed console logs for debugging
 - Email validation before sending
 - API response tracking
 
-### 2. Email Verification on Signup ✅
+### 2. Email Verification on Signup 
 - Automatic verification email sent
 - Custom branded template
 - Secure verification links
 
-### 3. Password Reset ✅
+### 3. Password Reset 
 - One-time reset links
 - 1-hour expiration for security
 - Clear instructions
 
-### 4. Notification Emails ✅
+### 4. Notification Emails 
 - Project status updates
 - System notifications
 - Admin alerts

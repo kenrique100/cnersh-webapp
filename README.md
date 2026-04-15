@@ -109,7 +109,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run db:generate` | Generate Prisma client (TypeScript types only) |
 | `npm run db:push` | Push schema to database (create/update tables) |
 | `npm run db:push:force` | Push schema with `--accept-data-loss` (drops removed columns) |
-| `npm run db:reset` | Reset database completely (`--force-reset`) — ⚠️ deletes all data |
+| `npm run db:reset` | Reset database completely (`--force-reset`) — ️ deletes all data |
 | `npm run db:migrate` | Run pending migrations (production) |
 | `npm run db:migrate:dev` | Create and run migrations (development) |
 | `npm run db:studio` | Open Prisma Studio (database GUI) |

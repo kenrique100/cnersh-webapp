@@ -2,7 +2,7 @@
 
 ## New Features Added
 
-### 1. Enhanced Email Debugging ✅
+### 1. Enhanced Email Debugging 
 
 **What was added:**
 - Comprehensive error logging for all email functions
@@ -20,11 +20,11 @@
 npm run dev
 
 # Look for these log messages:
-# ✅ Success indicators
-# ❌ Error indicators with details
+#  Success indicators
+#  Error indicators with details
 ```
 
-### 2. OTP (One-Time Password) Authentication 🔐
+### 2. OTP (One-Time Password) Authentication 
 
 **What was added:**
 - Email-based OTP sign-in support
@@ -38,13 +38,13 @@ npm run dev
 - `src/lib/send-otp-email.ts` - OTP generation, sending, and verification
 
 **Features:**
-- ✅ 6-digit secure OTP codes
-- ✅ 10-minute expiration (configurable)
-- ✅ Maximum 5 verification attempts
-- ✅ Automatic cleanup of expired OTPs
-- ✅ Professional email template
+-  6-digit secure OTP codes
+-  10-minute expiration (configurable)
+-  Maximum 5 verification attempts
+-  Automatic cleanup of expired OTPs
+-  Professional email template
 
-### 3. Email Troubleshooting Guide 📚
+### 3. Email Troubleshooting Guide 
 
 **What was added:**
 - Complete troubleshooting guide: `EMAIL_TROUBLESHOOTING.md`
@@ -372,12 +372,12 @@ npm run dev
 
 # Try to sign up or request password reset
 # Check console for:
-📧 Sending verification email to: user@example.com
-✅ Verification email sent successfully to user@example.com. Email ID: abc123
+ Sending verification email to: user@example.com
+ Verification email sent successfully to user@example.com. Email ID: abc123
 
 # Or errors:
-❌ RESEND_API_KEY is not configured
-❌ Resend API error: Domain not found
+ RESEND_API_KEY is not configured
+ Resend API error: Domain not found
 ```
 
 ### Common Issues:
@@ -404,12 +404,12 @@ Before deploying to production:
 ## Security Notes
 
 ### OTP Security Features:
-- ✅ 6-digit codes (1 million combinations)
-- ✅ 10-minute expiration
-- ✅ Maximum 5 attempts before invalidation
-- ✅ Secure random generation using crypto
-- ✅ Rate limiting on OTP requests (5 per 15 minutes)
-- ✅ Automatic cleanup of expired OTPs
+-  6-digit codes (1 million combinations)
+-  10-minute expiration
+-  Maximum 5 attempts before invalidation
+-  Secure random generation using crypto
+-  Rate limiting on OTP requests (5 per 15 minutes)
+-  Automatic cleanup of expired OTPs
 
 ### Production Recommendations:
 1. Use Redis or database for OTP storage (not in-memory)

@@ -71,7 +71,7 @@ npx prisma migrate resolve --applied 0_init
 npx prisma migrate status
 ```
 
-> **⚠️ IMPORTANT**: Step 3 is critical! Without it, `prisma migrate deploy` would try to
+> ** IMPORTANT**: Step 3 is critical! Without it, `prisma migrate deploy` would try to
 > create tables that already exist and fail. The `--applied` flag tells Prisma that this
 > migration has already been applied to the database.
 
@@ -117,7 +117,7 @@ DIRECT_URL="postgresql://user:password@host:5432/dbname?sslmode=require"
 | `npx prisma migrate deploy` | Apply pending migrations (production) |
 | `npx prisma migrate status` | Check migration status |
 | `npx prisma migrate resolve --applied <name>` | Mark migration as applied |
-| `npx prisma migrate reset` | Reset database & reapply all migrations (**⚠️ destroys data**) |
+| `npx prisma migrate reset` | Reset database & reapply all migrations (**️ destroys data**) |
 | `npx prisma db push` | Push schema without migration (development only) |
 | `npx prisma studio` | Open database browser GUI |
 | `npm run db:seed` | Seed database with admin user |
