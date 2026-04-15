@@ -79,8 +79,9 @@ interface NavItem {
 }
 
 const INITIAL_TRANSLATION_DELAY_MS = 100;
-const WIDGET_RETRY_DELAY_MS = 250;
+const WIDGET_RETRY_DELAY_MS = 150;
 const SCRIPT_LOAD_TIMEOUT_MS = 10000;
+const LANG_STORAGE_KEY = "cnersh_lang";
 
 const setLanguageCookie = (lang: "en" | "fr") => {
     const value = lang === "fr" ? "/en/fr" : "/en/en";
@@ -90,6 +91,21 @@ const setLanguageCookie = (lang: "en" | "fr") => {
     if (domain) {
         document.cookie = `googtrans=${value}; domain=${domain}; path=/; max-age=${maxAge}; SameSite=Lax`;
     }
+};
+
+const persistLanguage = (lang: "en" | "fr") => {
+    setLanguageCookie(lang);
+    try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch { /* ignore */ }
+};
+
+const readPersistedLanguage = (): "en" | "fr" => {
+    try {
+        const stored = localStorage.getItem(LANG_STORAGE_KEY);
+        if (stored === "fr" || stored === "en") return stored;
+    } catch { /* ignore */ }
+    const match = document.cookie.match(/(?:^|;\s*)googtrans=\/(?:en|auto)\/([^;]+)/);
+    const targetLang = match?.[1]?.toLowerCase() ?? "en";
+    return targetLang.startsWith("fr") ? "fr" : "en";
 };
 
 const userMobileNavItems: NavItem[] = [
@@ -178,13 +194,8 @@ function TranslationDropdown() {
     const widgetInitialized = React.useRef(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const loadTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const retryIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
     const pathname = usePathname();
-
-    const getLanguageFromCookie = React.useCallback((): "en" | "fr" => {
-        const match = document.cookie.match(/(?:^|;\s*)googtrans=\/(?:en|auto)\/([^;]+)/);
-        const targetLang = match?.[1]?.toLowerCase() ?? "en";
-        return targetLang.startsWith("fr") ? "fr" : "en";
-    }, []);
 
     const applyWidgetLanguage = React.useCallback((lang: "en" | "fr") => {
         const combo = document.querySelector<HTMLSelectElement>("#google_translate_element_navbar .goog-te-combo");
@@ -196,11 +207,6 @@ function TranslationDropdown() {
         return true;
     }, []);
 
-    // Detect current language from Google Translate cookie
-    const detectCurrentLanguage = React.useCallback(() => {
-        setCurrentLang(getLanguageFromCookie());
-    }, [getLanguageFromCookie]);
-
     // Initialize the Google Translate widget
     const initWidget = React.useCallback(() => {
         const container = document.getElementById("google_translate_element_navbar");
@@ -211,15 +217,12 @@ function TranslationDropdown() {
             setScriptReady(true);
             return true;
         }
-        if (widgetInitialized.current) {
-            return false;
-        }
 
-        // Clear container before initializing
+        // Clear container before initializing (handles re-init after navigation)
         container.innerHTML = "";
+        widgetInitialized.current = false;
 
         try {
-            // Use 0 as the layout value (SIMPLE layout)
             new window.google.translate.TranslateElement(
                 {
                     pageLanguage: "en",
@@ -231,29 +234,19 @@ function TranslationDropdown() {
             );
             widgetInitialized.current = true;
             setScriptReady(true);
-
-            // Small delay to ensure widget is fully rendered
-            setTimeout(() => {
-                detectCurrentLanguage();
-            }, 100);
-
             return true;
         } catch (error) {
             console.error("Failed to initialize Google Translate:", error);
             setScriptReady(false);
             return false;
         }
-    }, [detectCurrentLanguage]);
+    }, []);
 
     const initWidgetRef = React.useRef(initWidget);
+    React.useEffect(() => { initWidgetRef.current = initWidget; }, [initWidget]);
 
+    // Load Google Translate script (runs once on mount)
     React.useEffect(() => {
-        initWidgetRef.current = initWidget;
-    }, [initWidget]);
-
-    // Load Google Translate script
-    React.useEffect(() => {
-        // Set up the global callback
         window.googleTranslateElementInit = () => {
             if (loadTimeoutRef.current !== null) {
                 clearTimeout(loadTimeoutRef.current);
@@ -262,25 +255,18 @@ function TranslationDropdown() {
             initWidget();
         };
 
-        // Check if script is already loaded
         if (document.getElementById("google-translate-script")) {
             if (window.google?.translate?.TranslateElement) {
                 initWidget();
-            } else {
-                setScriptReady(false);
             }
             return;
         }
 
-        // Load the script
         const script = document.createElement("script");
         script.id = "google-translate-script";
         script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
         script.async = true;
-        script.onerror = () => {
-            console.error("Google Translate script failed to load");
-            setScriptReady(false);
-        };
+        script.onerror = () => { console.error("Google Translate script failed to load"); };
         document.head.appendChild(script);
 
         loadTimeoutRef.current = setTimeout(() => {
@@ -303,72 +289,77 @@ function TranslationDropdown() {
                 clearTimeout(loadTimeoutRef.current);
                 loadTimeoutRef.current = null;
             }
+            if (retryIntervalRef.current !== null) {
+                clearInterval(retryIntervalRef.current);
+                retryIntervalRef.current = null;
+            }
             delete window.googleTranslateElementInit;
         };
     }, [initWidget]);
 
+    // On mount and on pathname change: read persisted language and re-apply
     React.useEffect(() => {
-        const lang = getLanguageFromCookie();
+        const lang = readPersistedLanguage();
         setCurrentLang(lang);
 
-        let initialTimer: number | null = null;
-        let retryTimer: number | null = null;
+        let initialTimer: ReturnType<typeof setTimeout> | null = null;
 
         if (lang === "fr") {
-            initialTimer = window.setTimeout(() => {
+            initialTimer = setTimeout(() => {
+                // Re-initialize widget in case DOM was reset by Next.js navigation
                 if (!applyWidgetLanguage("fr")) {
                     initWidgetRef.current();
-                    retryTimer = window.setTimeout(() => applyWidgetLanguage("fr"), WIDGET_RETRY_DELAY_MS);
+                    setTimeout(() => applyWidgetLanguage("fr"), WIDGET_RETRY_DELAY_MS);
                 }
             }, INITIAL_TRANSLATION_DELAY_MS);
         }
 
         return () => {
-            if (initialTimer !== null) {
-                window.clearTimeout(initialTimer);
-            }
-            if (retryTimer !== null) {
-                window.clearTimeout(retryTimer);
-            }
+            if (initialTimer !== null) clearTimeout(initialTimer);
         };
-    }, [pathname, getLanguageFromCookie, applyWidgetLanguage]);
+    }, [pathname, applyWidgetLanguage]);
 
     // Close dropdown when clicking outside
     React.useEffect(() => {
         if (!isOpen) return;
-
         const handleClickOutside = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setIsOpen(false);
             }
         };
-
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
 
     const selectLanguage = (lang: "en" | "fr") => {
-        const applyLanguageWithFallback = () => {
-            if (!applyWidgetLanguage(lang)) {
-                initWidgetRef.current();
-                window.setTimeout(() => {
-                    if (!applyWidgetLanguage(lang)) {
-                        window.location.reload();
-                    }
-                }, WIDGET_RETRY_DELAY_MS);
-            }
-        };
-
-        if (lang === currentLang) {
-            setIsOpen(false);
-            applyLanguageWithFallback();
-            return;
-        }
-
-        setLanguageCookie(lang);
+        persistLanguage(lang);
         setCurrentLang(lang);
         setIsOpen(false);
-        applyLanguageWithFallback();
+
+        // Clear any existing retry interval
+        if (retryIntervalRef.current !== null) {
+            clearInterval(retryIntervalRef.current);
+            retryIntervalRef.current = null;
+        }
+
+        // Try to apply immediately
+        if (applyWidgetLanguage(lang)) return;
+
+        // Retry every 150ms for up to 4 seconds before reloading
+        let elapsed = 0;
+        retryIntervalRef.current = setInterval(() => {
+            elapsed += WIDGET_RETRY_DELAY_MS;
+            if (applyWidgetLanguage(lang)) {
+                clearInterval(retryIntervalRef.current!);
+                retryIntervalRef.current = null;
+                return;
+            }
+            if (elapsed >= 4000) {
+                clearInterval(retryIntervalRef.current!);
+                retryIntervalRef.current = null;
+                window.location.reload();
+            }
+        }, WIDGET_RETRY_DELAY_MS);
     };
 
     return (
@@ -461,17 +452,18 @@ function TranslationDropdown() {
                         </button>
                         <button
                             onClick={() => selectLanguage("fr")}
-                            disabled={!scriptReady}
                             className={cn(
                                 "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md transition-colors",
                                 currentLang === "fr"
                                     ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-950 dark:text-blue-400"
-                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
-                                !scriptReady && "opacity-50 cursor-not-allowed"
+                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                             )}
                         >
                             <span className="text-base">🇫🇷</span>
                             Français
+                            {!scriptReady && currentLang !== "fr" && (
+                                <span className="ml-auto inline-block h-3 w-3 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" aria-hidden="true" />
+                            )}
                             {currentLang === "fr" && <span className="ml-auto text-blue-600 dark:text-blue-400 text-xs">✓</span>}
                         </button>
                     </div>

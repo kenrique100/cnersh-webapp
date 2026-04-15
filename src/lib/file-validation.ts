@@ -173,8 +173,10 @@ export function validateFileSize(file: File, maxSize?: number): FileValidationRe
 
 /**
  * Combined size + type validation. Entry point used by the upload route.
+ * Accepts a pre-read Buffer to avoid consuming the File stream multiple times.
  */
 export async function validateFile(
+  buffer: Buffer,
   file: File,
   options: { allowedTypes?: string[]; maxSize?: number } = {}
 ): Promise<FileValidationResult> {
@@ -182,8 +184,8 @@ export async function validateFile(
   const sizeResult = validateFileSize(file, options.maxSize);
   if (!sizeResult.valid) return sizeResult;
 
-  // 2. Magic-byte type check
-  const typeResult = await validateFileType(file, options.allowedTypes);
+  // 2. Magic-byte type check using the pre-read buffer
+  const typeResult = await validateFileType(buffer, options.allowedTypes);
   if (!typeResult.valid) return typeResult;
 
   // 3. Security checks
@@ -212,11 +214,17 @@ function performSecurityChecks(file: File): FileValidationResult {
 /**
  * Basic malware heuristic: blocks executables, PHP, and shell scripts.
  * NOT a replacement for proper virus scanning.
+ * Accepts either a pre-read Buffer (preferred) or a File.
  */
-export async function performBasicMalwareCheck(file: File): Promise<FileValidationResult> {
+export async function performBasicMalwareCheck(fileOrBuffer: File | Buffer): Promise<FileValidationResult> {
   try {
-    const ab = await file.arrayBuffer();
-    const buffer = Buffer.from(ab.slice(0, 512)); // Only need the first 512 bytes
+    let buffer: Buffer;
+    if (Buffer.isBuffer(fileOrBuffer)) {
+      buffer = fileOrBuffer.subarray(0, 512);
+    } else {
+      const ab = await fileOrBuffer.arrayBuffer();
+      buffer = Buffer.from(ab.slice(0, 512)); // Only need the first 512 bytes
+    }
 
     const suspiciousPatterns: Buffer[] = [
       Buffer.from("MZ",          "ascii"), // Windows PE executable

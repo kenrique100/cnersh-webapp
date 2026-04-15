@@ -1,3 +1,5 @@
+// Route: /pages — This is an App Router URL segment, NOT the Next.js Pages Router.
+// The `pages/` directory here is intentional and acts as a /pages/* route group.
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileTextIcon, ExternalLinkIcon, DownloadIcon, ChevronRightIcon, ArrowLeftIcon, BuildingIcon, UsersIcon } from "lucide-react";

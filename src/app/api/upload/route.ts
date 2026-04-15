@@ -6,6 +6,7 @@ import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 
 export const maxDuration = 60;
+export const maxRequestBodySize = 10 * 1024 * 1024; // 10 MB
 
 // ─── Size limits (bytes) ────────────────────────────────────────────────────
 const MAX_IMAGE_SIZE    = 5  * 1024 * 1024; //  5 MB
@@ -81,10 +82,22 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     maxSize = MAX_DOCUMENT_SIZE;
   }
 
-  // 5. Deep file validation (magic-number check + size)
+  // 5. Read file bytes ONCE — reuse the same buffer for validation, security
+  //    checks, and base64 encoding. Reading file.arrayBuffer() multiple times
+  //    can fail in Next.js App Router because the stream may already be consumed.
+  let fileBuffer: Buffer;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    fileBuffer = Buffer.from(arrayBuffer);
+  } catch (err) {
+    console.error("[upload] file read error:", err);
+    return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
+  }
+
+  // 6. Deep file validation (magic-number check + size)
   let validation: Awaited<ReturnType<typeof validateFile>>;
   try {
-    validation = await validateFile(file, { allowedTypes, maxSize });
+    validation = await validateFile(fileBuffer, file, { allowedTypes, maxSize });
   } catch (err) {
     console.error("[upload] validateFile threw:", err);
     return NextResponse.json({ error: "File validation error" }, { status: 500 });
@@ -97,10 +110,10 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 6. Basic malware heuristic
+  // 7. Basic malware heuristic
   let malwareCheck: Awaited<ReturnType<typeof performBasicMalwareCheck>>;
   try {
-    malwareCheck = await performBasicMalwareCheck(file);
+    malwareCheck = await performBasicMalwareCheck(fileBuffer);
   } catch (err) {
     console.error("[upload] malwareCheck threw:", err);
     return NextResponse.json({ error: "Security check error" }, { status: 500 });
@@ -110,15 +123,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "File failed security check" }, { status: 400 });
   }
 
-  // 7. Read file bytes and encode as base64
-  let base64: string;
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    base64 = Buffer.from(arrayBuffer).toString("base64");
-  } catch (err) {
-    console.error("[upload] base64 conversion error:", err);
-    return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
-  }
+  // 8. Encode as base64 (reuse the already-read buffer)
+  const base64 = fileBuffer.toString("base64");
 
   const mimeType = validation.detectedType ?? file.type ?? "application/octet-stream";
   const fileType = resolveFileType(mimeType);

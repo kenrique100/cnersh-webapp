@@ -202,9 +202,9 @@ export default function ImageUpload({
             commitValue(fileUrl);
             toast.success("Image uploaded successfully");
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Upload failed";
+            const rawMsg = err instanceof Error ? err.message : "Upload failed";
+            const msg = rawMsg.length > 120 ? "Upload failed. Please try again." : rawMsg;
             setUploadError(msg);
-            toast.error(msg);
         } finally {
             setIsUploading(false);
             // Always reset the file input so the same file can be re-selected
@@ -415,7 +415,17 @@ export default function ImageUpload({
                     <>
                         <AlertCircle className="h-8 w-8 text-rose-500" />
                         <span className="text-sm text-rose-600 dark:text-rose-400 text-center">{uploadError}</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">Click to try again</span>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadError(null);
+                                fileInputRef.current?.click();
+                            }}
+                            className="mt-1 px-3 py-1 text-xs font-medium bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 rounded-md transition-colors"
+                        >
+                            Retry
+                        </button>
                     </>
                 ) : isDragging ? (
                     <>
