@@ -3,10 +3,14 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+// ─── NOTE ──────────────────────────────────────────────────────────────────
+// Prisma v7 removed `url` / `directUrl` from schema.prisma.
+// Connection URLs are now configured exclusively in prisma.config.ts.
+// The datasource block below only declares the provider.
+// See https://pris.ly/d/config-datasource
+
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -29,7 +33,6 @@ model User {
   banReason           String?
   banExpires          DateTime?
 
-  // Extended profile fields
   expertiseTags        String[]    @default([])
   pendingActivation    Boolean     @default(false)
   activationExpiresAt  DateTime?
@@ -117,10 +120,9 @@ enum Gender {
 }
 
 // ─── File Storage ─────────────────────────────────────────────────────────
-// Files are stored as base64 strings in a TEXT column.
-// Use the /api/files/[fileId] route to serve them back.
-// @db.Text maps the column to PostgreSQL TEXT (unbounded).
-// Without it Prisma/pg may truncate or error on large payloads.
+// Files stored as base64 in TEXT column.
+// @db.Text = PostgreSQL TEXT (unbounded). Required to avoid varchar overflow
+// on large base64 payloads. Without it uploads fail with a DB 500.
 
 enum FileType {
   avatar
@@ -137,9 +139,7 @@ model File {
   id        String   @id @default(uuid())
   filename  String
   mimeType  String
-  /// File size in bytes (original, before base64 encoding)
   size      Int
-  /// Base64-encoded file content — must be TEXT (unbounded) in PostgreSQL
   data      String   @db.Text
   type      FileType
   userId    String
