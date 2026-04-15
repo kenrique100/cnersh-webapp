@@ -10,11 +10,7 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/**",
       },
-      {
-        protocol: "https",
-        hostname: "*.public.blob.vercel-storage.com",
-        pathname: "/**",
-      },
+      // Vercel Blob removed — files now served from /api/files/[fileId]
     ],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
@@ -22,7 +18,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "100mb",
+      // 10 MB limit is sufficient for DB-stored files
+      bodySizeLimit: "10mb",
     },
   },
   headers: async () => [
@@ -57,16 +54,22 @@ const nextConfig: NextConfig = {
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com",
-            "style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://www.gstatic.com",
-            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://translate.google.com https://www.gstatic.com https://fonts.gstatic.com https://static.licdn.com https://*.public.blob.vercel-storage.com",
-            "font-src 'self' data:",
-            "connect-src 'self' https://api.resend.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.public.blob.vercel-storage.com",
-            "media-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
+            // Google Translate needs unsafe-eval for its runtime JS injection
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.google.com",
+            "style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://www.gstatic.com https://*.google.com",
+            // img-src must include translate.google.com and gstatic for Google Translate UI images
+            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://translate.google.com https://translate.googleapis.com https://www.gstatic.com https://fonts.gstatic.com https://static.licdn.com https://*.google.com",
+            "font-src 'self' data: https://fonts.gstatic.com",
+            // connect-src: removed Vercel Blob, kept Google Translate endpoints
+            "connect-src 'self' https://api.resend.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com https://*.google.com",
+            // media-src: blob: and data: for locally uploaded files rendered as object URLs
+            "media-src 'self' data: blob:",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
-            "frame-src https://translate.google.com",
+            // frame-src: Google Translate requires both translate.google.com AND *.google.com
+            // because the iframe src varies by locale (e.g. translate.google.com/translate_c?...)
+            "frame-src https://translate.google.com https://translate.googleapis.com https://*.google.com",
             "frame-ancestors 'none'",
             "upgrade-insecure-requests",
           ].join("; "),
@@ -79,6 +82,16 @@ const nextConfig: NextConfig = {
         {
           key: "Cache-Control",
           value: "no-store",
+        },
+      ],
+    },
+    {
+      // Allow browser to cache served files for 1 hour, revalidate with ETag
+      source: "/api/files/:fileId",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=3600, must-revalidate",
         },
       ],
     },

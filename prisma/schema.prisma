@@ -50,6 +50,7 @@ model User {
   saeReports         SAEReport[]
   aarApplications    AARApplication[]
   appeals            Appeal[]
+  files              File[]
 
   @@index([email])
   @@index([role])
@@ -111,6 +112,43 @@ enum Gender {
   female
 
   @@map("gender")
+}
+
+// ─── File Storage (replaces Vercel Blob) ───────────────────
+// Files are stored as base64 strings in a TEXT column.
+// Keep individual files ≤ 10 MB to avoid bloating the DB.
+// Use the /api/files/[fileId] route to serve them back.
+
+enum FileType {
+  avatar
+  protocol
+  document
+  image
+  video
+  audio
+
+  @@map("file_type")
+}
+
+model File {
+  id        String   @id @default(uuid())
+  filename  String
+  mimeType  String
+  /// File size in bytes (original, before base64 encoding)
+  size      Int
+  /// Base64-encoded file content stored as TEXT
+  data      String
+  type      FileType
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([userId, type])
+  @@index([createdAt])
+  @@map("file")
 }
 
 // ─── Feed System ───────────────────────────────────────────
