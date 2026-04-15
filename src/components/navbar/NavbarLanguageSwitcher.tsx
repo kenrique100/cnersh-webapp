@@ -3,24 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { GlobeIcon } from "lucide-react";
 
-declare global {
-    interface Window {
-        googleTranslateElementInit?: () => void;
-        google?: {
-            translate: {
-                TranslateElement: new (
-                    options: {
-                        pageLanguage: string;
-                        includedLanguages: string;
-                        autoDisplay: boolean;
-                    },
-                    elementId: string
-                ) => void;
-            };
-        };
-    }
-}
-
 function triggerGoogleTranslate(lang: "en" | "fr") {
     const combo = document.querySelector<HTMLSelectElement>(".goog-te-combo");
     if (combo) {
