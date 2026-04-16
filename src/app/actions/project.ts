@@ -590,9 +590,10 @@ export async function trackProjectByCode(trackingCode: string) {
     const code = trackingCode.trim().toUpperCase();
     if (!code) return null;
 
-    const project = await db.project.findFirst({
-        where: { trackingCode: code, deleted: false },
+    const project = await db.project.findUnique({
+        where: { trackingCode: code },
         select: {
+            deleted: true,
             id: true,
             trackingCode: true,
             title: true,
@@ -612,5 +613,16 @@ export async function trackProjectByCode(trackingCode: string) {
         },
     });
 
-    return project ?? null;
+    if (!project || project.deleted) return null;
+    return {
+        id: project.id,
+        trackingCode: project.trackingCode,
+        title: project.title,
+        category: project.category,
+        location: project.location,
+        status: project.status,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        statusHistory: project.statusHistory,
+    };
 }
