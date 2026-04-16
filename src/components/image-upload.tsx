@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { useUploadThing } from "@/lib/uploadthing";
-import { isAcceptedImageType, prepareImageForUpload } from "@/lib/client-image-upload";
+import { ACCEPTED_IMAGE_MIME_TYPES, isAcceptedImageType, prepareImageForUpload } from "@/lib/client-image-upload";
 
 // ─── Constants ────────────────────────────────────────────────────────────────────
 
@@ -341,7 +341,7 @@ export default function ImageUpload({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept={ALLOWED_MIME_TYPES.join(",")}
+                accept={ACCEPTED_IMAGE_MIME_TYPES.join(",")}
                 onChange={handleFileSelect}
                 className="sr-only"
                 disabled={isUploading}

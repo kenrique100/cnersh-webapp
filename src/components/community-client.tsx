@@ -164,7 +164,7 @@ export default function CommunityClient({
                 const normalizedFile = await prepareImageForUpload(file);
                 const uploaded = await startImageUpload([normalizedFile]);
                 const url = uploaded?.[0]?.url;
-                if (!url) throw new Error("Upload failed");
+                if (!url) throw new Error("Image upload failed");
                 setNewTopic((p) => ({ ...p, images: [...p.images, url] }));
                 return;
             }
@@ -189,7 +189,6 @@ export default function CommunityClient({
             const data = await res.json();
             if (data.url) {
                 switch (type) {
-                    case "image": setNewTopic((p) => ({ ...p, images: [...p.images, data.url] })); break;
                     case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, data.url] })); break;
                     case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, data.url] })); break;
                 }
@@ -548,7 +547,7 @@ export default function CommunityClient({
                 const normalizedFile = await prepareImageForUpload(file);
                 const uploaded = await startImageUpload([normalizedFile]);
                 const url = uploaded?.[0]?.url;
-                if (!url) throw new Error("Upload failed");
+                if (!url) throw new Error("Image upload failed");
                 setPendingImages((prev) => [...prev, url]);
                 return;
             }
@@ -569,7 +568,6 @@ export default function CommunityClient({
             const data = await res.json();
             if (data.url) {
                 switch (type) {
-                    case "image": setPendingImages((prev) => [...prev, data.url]); break;
                     case "video": setPendingVideos((prev) => [...prev, data.url]); break;
                     case "audio": setPendingAudios((prev) => [...prev, data.url]); break;
                     case "document": setPendingDocuments((prev) => [...prev, data.url]); break;

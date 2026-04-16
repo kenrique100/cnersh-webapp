@@ -1,6 +1,6 @@
 "use client";
 
-const ACCEPTED_IMAGE_MIME_TYPES = [
+export const ACCEPTED_IMAGE_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -77,4 +77,3 @@ export async function prepareImageForUpload(file: File): Promise<File> {
 
   throw new Error(`Unsupported file type (${file.type || "unknown"}). Please use JPEG, PNG, WebP, or GIF.`);
 }
-
