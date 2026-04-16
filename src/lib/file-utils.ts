@@ -46,7 +46,21 @@ export function isFileId(value: string): boolean {
 
 /** Returns true if the URL is a direct UploadThing CDN URL. */
 export function isUploadThingUrl(value: string): boolean {
-  return value.includes("ufilerl.io") || value.includes("utfs.io") || value.includes("ufs.sh") || value.includes("uploadthing");
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return (
+      hostname === "utfs.io" ||
+      hostname.endsWith(".utfs.io") ||
+      hostname === "ufs.sh" ||
+      hostname.endsWith(".ufs.sh") ||
+      hostname === "uploadthing.com" ||
+      hostname.endsWith(".uploadthing.com") ||
+      hostname === "ufilerl.io" ||
+      hostname.endsWith(".ufilerl.io")
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
