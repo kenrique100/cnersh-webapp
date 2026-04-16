@@ -21,20 +21,6 @@ const authenticate = async () => {
   return { userId: session.user.id };
 };
 
-// ─── File Router ───────────────────────────────────────────────────────────
-//
-// UploadThing maxFileSize only accepts power-of-2 values.
-// Valid: "1MB" "2MB" "4MB" "8MB" "16MB" "32MB" "64MB" "128MB" "256MB" "512MB" "1GB" "2GB"
-//
-// Requested limits rounded UP to nearest valid size:
-//   images / avatars  25 MB  → "32MB"
-//   videos           100 MB  → "128MB"
-//   audio              8 MB  → "8MB"
-//   docs / protocols  50 MB  → "64MB"
-//
-// onUploadComplete return values MUST be JSON-serialisable (JsonObject).
-// Date objects are NOT valid — serialise createdAt as an ISO string.
-
 export const ourFileRouter = {
   /**
    * General image uploader — post images, community topic/reply images, etc.
