@@ -185,9 +185,17 @@ export interface ReactionIconProps {
     style?: React.CSSProperties;
 }
 
-/** Renders the matching SVG icon for a given reaction type. */
+// reaction-icons.tsx
+
 export function ReactionIcon({ type, size = 24, className = "", style }: ReactionIconProps) {
     const IconComponent = REACTION_ICONS[type];
+    if (!IconComponent) {
+        // Log warning in development and render nothing (or a fallback)
+        if (process.env.NODE_ENV === "development") {
+            console.warn(`Unknown reaction type: "${type}"`);
+        }
+        return null;
+    }
     return (
         <span style={style} className="inline-flex shrink-0">
             <IconComponent size={size} className={className} />

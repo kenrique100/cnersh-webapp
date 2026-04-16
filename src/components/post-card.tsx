@@ -396,6 +396,9 @@ export function getReactionColor(label: string): string {
 // Backward compatibility
 export function getReactionEmoji(label: string): JSX.Element {
     const validLabel = label as ReactionType;
+    if (!REACTION_ICONS[validLabel]) {
+        return <span className="text-sm">👍</span>;
+    }
     return <ReactionIcon type={validLabel} size={14} />;
 }
 
