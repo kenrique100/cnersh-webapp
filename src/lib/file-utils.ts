@@ -54,9 +54,7 @@ export function isUploadThingUrl(value: string): boolean {
       hostname === "ufs.sh" ||
       hostname.endsWith(".ufs.sh") ||
       hostname === "uploadthing.com" ||
-      hostname.endsWith(".uploadthing.com") ||
-      hostname === "ufilerl.io" ||
-      hostname.endsWith(".ufilerl.io")
+      hostname.endsWith(".uploadthing.com")
     );
   } catch {
     return false;
