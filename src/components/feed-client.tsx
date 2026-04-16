@@ -93,6 +93,7 @@ import {
     postHasMedia,
 } from "@/components/post-card";
 import { ReactionsPicker } from "@/components/reactions-picker";
+import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 interface PostUser {
     id: string;
@@ -223,31 +224,8 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
 
         setIsUploading(true);
         try {
-            const formData = new FormData();
-            formData.append("file", file);
-
-            const res = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!res.ok) {
-                let errorMessage = "Upload failed";
-                try {
-                    const data = await res.json();
-                    errorMessage = data.error || errorMessage;
-                } catch {
-                    if (res.status === 413) {
-                        errorMessage = "Video file is too large for the server. Please try a smaller file.";
-                    }
-                }
-                throw new Error(errorMessage);
-            }
-
-            const data = await res.json();
-            if (data.url) {
-                onUpload(data.url);
-            }
+            const url = await uploadSingleFileToUploadThing("videoUploader", file);
+            onUpload(url);
         } catch (err) {
             console.error("Video upload error:", err);
             toast.error(err instanceof Error ? err.message : "Video upload failed");

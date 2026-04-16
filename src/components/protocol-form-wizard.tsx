@@ -15,6 +15,7 @@ import {
     ChevronLeftIcon, ChevronRightIcon, PlusIcon, FileTextIcon, SaveIcon,
     AlertCircleIcon, EyeIcon,
 } from "lucide-react";
+import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -331,26 +332,11 @@ function FileUploadField({
         }
         setUploading(true);
         try {
-            const uploadFormData = new FormData();
-            uploadFormData.append("file", f);
-            const res = await fetch("/api/upload", { method: "POST", body: uploadFormData });
-            if (!res.ok) {
-                let errorMessage = "Upload failed";
-                try {
-                    const d = await res.json();
-                    errorMessage = d.error || errorMessage;
-                } catch {
-                    if (res.status === 413) errorMessage = "File is too large for the server. Please try a smaller file.";
-                }
-                throw new Error(errorMessage);
-            }
-            const data = await res.json();
-            if (data.url) {
-                onUpload(data.url, data.name || f.name);
-                toast.success(`${label} uploaded successfully`);
-            }
-        } catch {
-            toast.error(`Failed to upload ${label.toLowerCase()}`);
+            const url = await uploadSingleFileToUploadThing("protocolUploader", f);
+            onUpload(url, f.name);
+            toast.success(`${label} uploaded successfully`);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : `Failed to upload ${label.toLowerCase()}`);
         } finally {
             setUploading(false);
             e.target.value = "";

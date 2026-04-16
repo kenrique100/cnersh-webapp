@@ -8,6 +8,7 @@ import { PlusIcon, TrashIcon, UploadIcon, FileTextIcon, XIcon, PencilIcon, Check
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createPage, deletePage, addPageItem, deletePageItem, updatePage, updatePageItem } from "@/app/actions/page-actions";
+import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -79,15 +80,7 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     const allPages = flattenPages(pages);
 
     const uploadFile = async (file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || "Upload failed");
-        }
-        const data = await res.json();
-        return data.url;
+        return uploadSingleFileToUploadThing("documentUploader", file);
     };
 
     const handleCreatePage = async (e: React.FormEvent) => {

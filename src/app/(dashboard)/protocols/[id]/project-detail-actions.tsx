@@ -11,6 +11,7 @@ import { updateProjectStatus, deleteProject, updateProject, forwardProjectToFeed
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ImageUpload from "@/components/image-upload";
+import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
 
@@ -162,28 +163,11 @@ export default function ProjectDetailActions({
         }
         setIsUploadingVideo(true);
         try {
-            const formData = new FormData();
-            formData.append("file", file);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) {
-                let errorMessage = "Upload failed";
-                try {
-                    const data = await res.json();
-                    errorMessage = data.error || errorMessage;
-                } catch {
-                    if (res.status === 413) {
-                        errorMessage = "Video file is too large for the server. Please try a smaller file.";
-                    }
-                }
-                throw new Error(errorMessage);
-            }
-            const data = await res.json();
-            if (data.url) {
-                setForwardVideos((prev) => [...prev, data.url]);
-                setShowForwardVideoUpload(false);
-            }
-        } catch {
-            toast.error("Video upload failed");
+            const url = await uploadSingleFileToUploadThing("videoUploader", file);
+            setForwardVideos((prev) => [...prev, url]);
+            setShowForwardVideoUpload(false);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Video upload failed");
         } finally {
             setIsUploadingVideo(false);
             if (videoInputRef.current) videoInputRef.current.value = "";
