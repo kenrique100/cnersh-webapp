@@ -112,6 +112,12 @@ export default function CommunityClient({
     const topicImageRef = useRef<HTMLInputElement>(null);
     const topicVideoRef = useRef<HTMLInputElement>(null);
     const topicDocRef = useRef<HTMLInputElement>(null);
+    const initialTopicsSignature = React.useMemo(
+        () => initialTopics
+            .map((topic) => `${topic.id}:${topic.title}:${topic._count.replies}:${topic._count.likes ?? 0}:${topic.chatEnabled ? 1 : 0}`)
+            .join("|"),
+        [initialTopics]
+    );
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
@@ -120,8 +126,13 @@ export default function CommunityClient({
     }, []);
 
     React.useEffect(() => {
-        setTopics(initialTopics);
-    }, [initialTopics]);
+        setTopics((prev) => {
+            const prevSignature = prev
+                .map((topic) => `${topic.id}:${topic.title}:${topic._count.replies}:${topic._count.likes ?? 0}:${topic.chatEnabled ? 1 : 0}`)
+                .join("|");
+            return prevSignature === initialTopicsSignature ? prev : initialTopics;
+        });
+    }, [initialTopics, initialTopicsSignature]);
 
     /* ─── Handlers ──────────────────────────────────────── */
 
@@ -193,11 +204,12 @@ export default function CommunityClient({
                 formData.append("file", file);
                 xhr.send(formData);
             });
-            if (data.url) {
+            const uploadedUrl = data.url;
+            if (uploadedUrl) {
                 switch (type) {
-                    case "image": setNewTopic((p) => ({ ...p, images: [...p.images, data.url] })); break;
-                    case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, data.url] })); break;
-                    case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, data.url] })); break;
+                    case "image": setNewTopic((p) => ({ ...p, images: [...p.images, uploadedUrl] })); break;
+                    case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, uploadedUrl] })); break;
+                    case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, uploadedUrl] })); break;
                 }
             }
         } catch (err) {
