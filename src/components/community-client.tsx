@@ -35,7 +35,7 @@ import {
 import { getDisplayName } from "./community/utils";
 import { useUploadThing } from "@/lib/uploadthing";
 import { prepareImageForUpload } from "@/lib/client-image-upload";
-import { extractUploadThingFileUrl } from "@/lib/uploadthing-client";
+import { extractUploadThingFileUrl, uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 /* ─── Props Interface ─────────────────────────────────── */
 
@@ -170,29 +170,11 @@ export default function CommunityClient({
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("file", file);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) {
-                let errorMessage = "Upload failed";
-                if (res.status === 413) {
-                    errorMessage = "File is too large";
-                } else {
-                    try {
-                        const d = await res.json();
-                        errorMessage = d.error || errorMessage;
-                    } catch {
-                        // use default error message
-                    }
-                }
-                throw new Error(errorMessage);
-            }
-            const data = await res.json();
-            if (data.url) {
-                switch (type) {
-                    case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, data.url] })); break;
-                    case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, data.url] })); break;
-                }
+            const endpoint = type === "video" ? "videoUploader" : "documentUploader";
+            const url = await uploadSingleFileToUploadThing(endpoint, file);
+            switch (type) {
+                case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, url] })); break;
+                case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, url] })); break;
             }
         } catch (err) {
             toast.error(err instanceof Error ? err.message : `Failed to upload ${type}`);
@@ -507,23 +489,11 @@ export default function CommunityClient({
             mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
                 try {
-                    const formData = new FormData();
-                    formData.append("file", audioBlob, "voice-note.webm");
-                    const res = await fetch("/api/upload", { method: "POST", body: formData });
-                    if (!res.ok) {
-                        let errorMessage = "Upload failed";
-                        try {
-                            const d = await res.json();
-                            errorMessage = d.error || errorMessage;
-                        } catch {
-                            if (res.status === 413) errorMessage = "File is too large for the server. Please try a smaller file.";
-                        }
-                        throw new Error(errorMessage);
-                    }
-                    const data = await res.json();
-                    if (data.url) setPendingVoiceNote(data.url);
-                } catch {
-                    toast.error("Failed to upload voice note");
+                    const audioFile = new File([audioBlob], "voice-note.webm", { type: "audio/webm" });
+                    const url = await uploadSingleFileToUploadThing("audioUploader", audioFile);
+                    setPendingVoiceNote(url);
+                } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Failed to upload voice note");
                 }
                 stream.getTracks().forEach((track) => track.stop());
             };
@@ -553,29 +523,25 @@ export default function CommunityClient({
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("file", file);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) {
-                let errorMessage = "Upload failed";
-                try {
-                    const d = await res.json();
-                    errorMessage = d.error || errorMessage;
-                } catch {
-                    if (res.status === 413) errorMessage = "File is too large for the server. Please try a smaller file.";
-                }
-                throw new Error(errorMessage);
-            }
-            const data = await res.json();
-            if (data.url) {
-                switch (type) {
-                    case "video": setPendingVideos((prev) => [...prev, data.url]); break;
-                    case "audio": setPendingAudios((prev) => [...prev, data.url]); break;
-                    case "document": setPendingDocuments((prev) => [...prev, data.url]); break;
-                }
-            }
-        } catch {
-            toast.error(`Failed to upload ${type}`);
+            const uploadConfig = {
+                video: {
+                    endpoint: "videoUploader" as const,
+                    apply: (url: string) => setPendingVideos((prev) => [...prev, url]),
+                },
+                audio: {
+                    endpoint: "audioUploader" as const,
+                    apply: (url: string) => setPendingAudios((prev) => [...prev, url]),
+                },
+                document: {
+                    endpoint: "documentUploader" as const,
+                    apply: (url: string) => setPendingDocuments((prev) => [...prev, url]),
+                },
+            };
+            const config = uploadConfig[type];
+            const url = await uploadSingleFileToUploadThing(config.endpoint, file);
+            config.apply(url);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : `Failed to upload ${type}`);
         }
     };
 

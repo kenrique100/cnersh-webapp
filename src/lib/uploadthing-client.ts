@@ -1,5 +1,8 @@
 "use client";
 
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
+import { uploadFiles } from "@/lib/uploadthing";
+
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
@@ -39,4 +42,21 @@ export function extractUploadThingFileUrl(file: unknown): string | null {
     asString(serverData.ufsUrl) ??
     asString(serverData.appUrl)
   );
+}
+
+export type UploadThingEndpoint = keyof OurFileRouter;
+
+export async function uploadSingleFileToUploadThing(
+  endpoint: UploadThingEndpoint,
+  file: File
+): Promise<string> {
+  const uploaded = await uploadFiles(endpoint, { files: [file] });
+  if (!uploaded?.length) {
+    throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}": no upload result.`);
+  }
+  const url = extractUploadThingFileUrl(uploaded[0]);
+  if (!url) {
+    throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}": missing file URL.`);
+  }
+  return url;
 }
