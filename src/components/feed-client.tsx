@@ -195,7 +195,8 @@ function CommentTextWithSeeMore({ content, threshold, isReply = false }: { conte
             {isLong && (
                 <button
                     onClick={() => setExpanded(!expanded)}
-                    className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    className="notranslate ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    translate="no"
                 >
                     {expanded ? "See less" : "See more"}
                 </button>
@@ -1765,7 +1766,8 @@ export default function FeedClient({
                                                             ...prev,
                                                             [post.id]: visibleCount + 5,
                                                         }))}
-                                                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                                        className="notranslate text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                                        translate="no"
                                                     >
                                                         Load more comments ({allComments.length - visibleCount} remaining)
                                                     </button>
