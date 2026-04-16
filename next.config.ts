@@ -11,12 +11,14 @@ const GOOGLE_TRANSLATE_DOMAINS = [
 // All UploadThing domains required for file uploads and serving
 // - uploadthing.com       → API / presign endpoint
 // - ingest.uploadthing.com → wildcard ingest nodes (sea1, iad1, etc.)
-// - utfs.io              → CDN that serves uploaded files
+// - utfs.io / ufs.sh     → CDN domains that serve uploaded files
 const UPLOADTHING_DOMAINS = [
   "https://uploadthing.com",
   "https://*.ingest.uploadthing.com",
   "https://utfs.io",
   "https://*.utfs.io",
+  "https://ufs.sh",
+  "https://*.ufs.sh",
 ].join(" ");
 
 const nextConfig: NextConfig = {
@@ -39,6 +41,16 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "*.utfs.io",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "ufs.sh",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.ufs.sh",
         pathname: "/**",
       },
     ],
@@ -70,13 +82,15 @@ const nextConfig: NextConfig = {
 
             `style-src 'self' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            // UploadThing CDN (utfs.io) must be in img-src so uploaded images render
+            // UploadThing CDN (utfs.io / ufs.sh) must be in img-src so uploaded images render
             "img-src 'self' data: blob:"
               + " https://lh3.googleusercontent.com"
               + " https://fonts.gstatic.com"
               + " https://static.licdn.com"
               + " https://utfs.io"
               + " https://*.utfs.io"
+              + " https://ufs.sh"
+              + " https://*.ufs.sh"
               + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             `font-src 'self' data: https://fonts.gstatic.com ${GOOGLE_TRANSLATE_DOMAINS}`,
@@ -84,13 +98,13 @@ const nextConfig: NextConfig = {
             // UploadThing requires connect-src for:
             //   1. uploadthing.com       — presign + route handler API calls
             //   2. *.ingest.uploadthing.com — the actual multipart PUT upload
-            //   3. utfs.io               — HEAD checks after upload completes
+            //   3. utfs.io / ufs.sh      — HEAD checks after upload completes
             "connect-src 'self'"
               + " https://api.resend.com"
               + ` ${UPLOADTHING_DOMAINS}`
               + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            "media-src 'self' data: blob: https://utfs.io https://*.utfs.io",
+            "media-src 'self' data: blob: https://utfs.io https://*.utfs.io https://ufs.sh https://*.ufs.sh",
 
             `worker-src 'self' blob: ${GOOGLE_TRANSLATE_DOMAINS}`,
 

@@ -46,7 +46,7 @@ export function isFileId(value: string): boolean {
 
 /** Returns true if the URL is a direct UploadThing CDN URL. */
 export function isUploadThingUrl(value: string): boolean {
-  return value.includes("ufilerl.io") || value.includes("utfs.io") || value.includes("uploadthing");
+  return value.includes("ufilerl.io") || value.includes("utfs.io") || value.includes("ufs.sh") || value.includes("uploadthing");
 }
 
 /**
