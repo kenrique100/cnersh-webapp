@@ -47,6 +47,7 @@ export function isFileId(value: string): boolean {
 /** Returns true if the URL is a direct UploadThing CDN URL. */
 export function isUploadThingUrl(value: string): boolean {
   try {
+    if (!/^https?:\/\//i.test(value)) return false;
     const hostname = new URL(value).hostname.toLowerCase();
     return (
       hostname === "utfs.io" ||
