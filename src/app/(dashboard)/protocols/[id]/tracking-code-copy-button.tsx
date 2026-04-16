@@ -9,6 +9,13 @@ export default function TrackingCodeCopyButton({ trackingCode }: { trackingCode:
     const [copyFailed, setCopyFailed] = useState(false);
 
     const handleCopy = async () => {
+        if (!navigator?.clipboard?.writeText) {
+            setCopied(false);
+            setCopyFailed(true);
+            setTimeout(() => setCopyFailed(false), 1500);
+            return;
+        }
+
         try {
             await navigator.clipboard.writeText(trackingCode);
             setCopied(true);

@@ -25,6 +25,8 @@ const COLUMN_LABELS = {
     date: "Date",
 } as const;
 
+const actionBadgeClass = "font-medium text-xs max-w-full whitespace-normal break-words h-auto py-1 text-left";
+
 function getActionColor(action: string): string {
     const key = Object.keys(actionColors).find((k) =>
         action.toUpperCase().includes(k)
@@ -101,7 +103,7 @@ export default async function AuditLogsPage() {
                                 >
                                     <div className="sm:col-span-3 min-w-0">
                                         <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{COLUMN_LABELS.action}</p>
-                                        <Badge className={`${getActionColor(log.action)} font-medium text-xs max-w-full whitespace-normal break-words h-auto py-1 text-left`}>
+                                        <Badge className={`${getActionColor(log.action)} ${actionBadgeClass}`}>
                                             {log.action}
                                         </Badge>
                                     </div>
