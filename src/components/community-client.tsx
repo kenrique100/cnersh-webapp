@@ -35,6 +35,7 @@ import {
 import { getDisplayName } from "./community/utils";
 import { useUploadThing } from "@/lib/uploadthing";
 import { prepareImageForUpload } from "@/lib/client-image-upload";
+import { extractUploadThingFileUrl } from "@/lib/uploadthing-client";
 
 /* ─── Props Interface ─────────────────────────────────── */
 
@@ -163,7 +164,7 @@ export default function CommunityClient({
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
                 const uploaded = await startImageUpload([normalizedFile]);
-                const url = uploaded?.[0]?.url;
+                const url = extractUploadThingFileUrl(uploaded?.[0]);
                 if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
                 setNewTopic((p) => ({ ...p, images: [...p.images, url] }));
                 return;
@@ -546,7 +547,7 @@ export default function CommunityClient({
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
                 const uploaded = await startImageUpload([normalizedFile]);
-                const url = uploaded?.[0]?.url;
+                const url = extractUploadThingFileUrl(uploaded?.[0]);
                 if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
                 setPendingImages((prev) => [...prev, url]);
                 return;
