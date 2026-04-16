@@ -36,7 +36,7 @@ const MAGIC_SIGNATURES: Array<{ mime: string; offset: number; bytes: number[] }>
   { mime: "audio/ogg",   offset: 0, bytes: [0x4f, 0x67, 0x67, 0x53] }, // OggS
   { mime: "audio/mp4",   offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // ftyp box (m4a)
   // Documents
-  { mime: "application/pdf",  offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }, // %PDF
+  { mime: "application/pdf",    offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }, // %PDF
   { mime: "application/msword", offset: 0, bytes: [0xd0, 0xcf, 0x11, 0xe0] }, // OLE2 (doc)
   // OOXML (docx/xlsx): ZIP signature — resolved to specific type via filename extension
   { mime: "application/zip", offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] },
@@ -48,15 +48,16 @@ const OOXML_TYPES: Record<string, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
-const MAX_AUDIO_SIZE   = 8  * 1024 * 1024;
-const MAX_VIDEO_SIZE   = 10 * 1024 * 1024;
-const MAX_DOC_SIZE     = 10 * 1024 * 1024;
+const MAX_IMAGE_SIZE  = 10 * 1024 * 1024; // 10 MB
+const MAX_AUDIO_SIZE  =  8 * 1024 * 1024; //  8 MB
+const MAX_VIDEO_SIZE  = 50 * 1024 * 1024; // 50 MB
+const MAX_DOC_SIZE    = 20 * 1024 * 1024; // 20 MB
 
 export const ALLOWED_FILE_TYPES: Record<string, { extensions: string[]; maxSize: number }> = {
-  "image/jpeg":   { extensions: ["jpg", "jpeg"], maxSize: 5 * 1024 * 1024 },
-  "image/png":    { extensions: ["png"],          maxSize: 5 * 1024 * 1024 },
-  "image/gif":    { extensions: ["gif"],          maxSize: 5 * 1024 * 1024 },
-  "image/webp":   { extensions: ["webp"],         maxSize: 5 * 1024 * 1024 },
+  "image/jpeg":   { extensions: ["jpg", "jpeg"], maxSize: MAX_IMAGE_SIZE },
+  "image/png":    { extensions: ["png"],          maxSize: MAX_IMAGE_SIZE },
+  "image/gif":    { extensions: ["gif"],          maxSize: MAX_IMAGE_SIZE },
+  "image/webp":   { extensions: ["webp"],         maxSize: MAX_IMAGE_SIZE },
   "video/mp4":    { extensions: ["mp4"],          maxSize: MAX_VIDEO_SIZE },
   "video/webm":   { extensions: ["webm"],         maxSize: MAX_VIDEO_SIZE },
   "video/ogg":    { extensions: ["ogv", "ogg"],   maxSize: MAX_VIDEO_SIZE },

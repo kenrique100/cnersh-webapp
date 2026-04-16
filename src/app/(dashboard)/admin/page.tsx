@@ -17,7 +17,7 @@ import {
     ClockIcon,
     ScrollTextIcon,
 } from "lucide-react";
-import AdminCharts from "@/components/admin-charts";
+import AdminChartsClient from "@/components/admin-charts-client";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -86,7 +86,6 @@ export default async function AdminOverviewPage() {
         },
     ];
 
-    // Additional stat cards for super admin
     const extraStatCards = isSuperAdmin
         ? [
             {
@@ -121,7 +120,7 @@ export default async function AdminOverviewPage() {
                 bg: "bg-rose-50 dark:bg-rose-950",
                 href: "/admin/reports",
             },
-        ]
+          ]
         : [
             {
                 title: "Total Posts",
@@ -139,7 +138,7 @@ export default async function AdminOverviewPage() {
                 bg: "bg-rose-50 dark:bg-rose-950",
                 href: "/admin/reports",
             },
-        ];
+          ];
 
     const allStatCards = [...statCards, ...extraStatCards];
 
@@ -233,7 +232,6 @@ export default async function AdminOverviewPage() {
                                     </div>
                                 )}
 
-                                {/* Pending Protocols for quick review */}
                                 {data.recentProjects.length > 0 && (
                                     <>
                                         <div className="border-t border-gray-100 dark:border-gray-800 my-2 pt-2">
@@ -321,7 +319,7 @@ export default async function AdminOverviewPage() {
                     </Card>
                 </div>
 
-                {/* Quick Actions for Admin */}
+                {/* Quick Actions */}
                 <div className="mb-4 sm:mb-6">
                     <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                         Quick Actions
@@ -382,13 +380,13 @@ export default async function AdminOverviewPage() {
                     </div>
                 </div>
 
-                {/* Charts Section (Super Admin gets full analytics) */}
+                {/* Charts — super admin only, client-side only (Recharts + React 19 compat) */}
                 {isSuperAdmin && (
                     <div>
                         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                             Platform Analytics
                         </h2>
-                        <AdminCharts stats={stats} />
+                        <AdminChartsClient stats={stats} />
                     </div>
                 )}
             </div>

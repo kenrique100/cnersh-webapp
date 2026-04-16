@@ -13,11 +13,12 @@ const REACTION_META: Record<ReactionType, { emoji: string; bg: string; label: st
     Angry: { emoji: "\uD83D\uDE21", bg: "#E5534B", label: "Angry" },
 };
 
-interface ReactionIconProps {
+export interface ReactionIconProps {
     type: ReactionType;
     /** Diameter of the circle in px. Default 24 */
     size?: number;
     className?: string;
+    /** Inline styles — used for overlap offset and z-index in stacked reaction displays */
     style?: React.CSSProperties;
 }
 

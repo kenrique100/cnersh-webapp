@@ -6,13 +6,14 @@ import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 
 export const maxDuration = 60;
-export const maxRequestBodySize = 10 * 1024 * 1024; // 10 MB
+// Must be larger than the largest allowed file + multipart overhead (~15% extra)
+export const maxRequestBodySize = 60 * 1024 * 1024; // 60 MB
 
 // ─── Size limits (bytes) ────────────────────────────────────────────────────
-const MAX_IMAGE_SIZE    = 5  * 1024 * 1024; //  5 MB
-const MAX_VIDEO_SIZE    = 10 * 1024 * 1024; // 10 MB
-const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_AUDIO_SIZE    = 8  * 1024 * 1024; //  8 MB
+const MAX_IMAGE_SIZE    = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_SIZE    = 50 * 1024 * 1024; // 50 MB
+const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_AUDIO_SIZE    =  8 * 1024 * 1024; //  8 MB
 
 // ─── FileType values that match the Prisma enum ────────────────────────────
 // Keep in sync with prisma/schema.prisma FileType enum.
@@ -129,7 +130,7 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   const mimeType = validation.detectedType ?? file.type ?? "application/octet-stream";
   const fileType = resolveFileType(mimeType);
 
-  // 8. Persist to database
+  // 9. Persist to database
   try {
     const stored = await db.file.create({
       data: {

@@ -4,7 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -114,10 +116,7 @@ enum Gender {
   @@map("gender")
 }
 
-// ─── File Storage (replaces Vercel Blob) ───────────────────
-// Files are stored as base64 strings in a TEXT column.
-// Keep individual files ≤ 10 MB to avoid bloating the DB.
-// Use the /api/files/[fileId] route to serve them back.
+// ─── File Storage ───────────────────────────────────────────
 
 enum FileType {
   avatar
@@ -134,9 +133,7 @@ model File {
   id        String   @id @default(uuid())
   filename  String
   mimeType  String
-  /// File size in bytes (original, before base64 encoding)
   size      Int
-  /// Base64-encoded file content stored as TEXT
   data      String
   type      FileType
   userId    String
@@ -464,7 +461,7 @@ model AuditLog {
   @@map("audit_log")
 }
 
-// ─── Pages System (Admin-managed) ──────────────────────────
+// ─── Pages System ──────────────────────────────────────────
 
 model Page {
   id        String     @id @default(uuid())
