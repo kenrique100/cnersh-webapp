@@ -120,7 +120,7 @@ export default async function AuditLogsPage() {
                                     </div>
                                     <div className={`${COLUMN_SPANS.detailsBody} min-w-0`}>
                                         <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{COLUMN_LABELS.details}</p>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 break-words line-clamp-3 sm:line-clamp-2">
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 break-words line-clamp-2">
                                             {log.details || "No details provided"}
                                         </p>
                                     </div>
