@@ -13,7 +13,14 @@ const config: Config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/generated/prisma(.*)$': '<rootDir>/src/generated/prisma$1',
+    '^next/server$': '<rootDir>/src/__mocks__/next/server.ts',
+    '^next/navigation$': '<rootDir>/src/__mocks__/next/navigation.ts',
+    '^isomorphic-dompurify$': '<rootDir>/src/__mocks__/isomorphic-dompurify.ts',
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(isomorphic-dompurify|@exodus/bytes|html-encoding-sniffer|jsdom|nwsapi|whatwg-url)/)',
+  ],
   testMatch: [
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',

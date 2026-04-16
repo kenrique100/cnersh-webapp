@@ -75,6 +75,11 @@ export function sanitizeUrl(url: string): string {
         return '';
     }
 
+    // Block protocol-relative URLs (e.g. //evil.com) — these adopt the page protocol
+    if (trimmedUrl.startsWith('//')) {
+        return '';
+    }
+
     try {
         const parsed = new URL(trimmedUrl, 'https://placeholder.com');
         // Only allow http, https, mailto protocols
@@ -124,23 +129,23 @@ export function sanitizeFilename(filename: string): string {
 /**
  * Sanitize object by applying sanitization to all string values
  */
-export function sanitizeObject<T extends Record<string, any>>(
+export function sanitizeObject<T extends Record<string, unknown>>(
     obj: T,
     sanitizer: (value: string) => string = sanitizeText
 ): T {
-    const sanitized = { ...obj };
+    const sanitized = { ...obj } as Record<string, unknown>;
 
     for (const key in sanitized) {
         if (typeof sanitized[key] === 'string') {
-            sanitized[key] = sanitizer(sanitized[key]) as any;
+            sanitized[key] = sanitizer(sanitized[key] as string);
         } else if (Array.isArray(sanitized[key])) {
-            sanitized[key] = sanitized[key].map((item: any) =>
+            sanitized[key] = (sanitized[key] as unknown[]).map((item: unknown) =>
                 typeof item === 'string' ? sanitizer(item) : item
-            ) as any;
+            );
         } else if (sanitized[key] && typeof sanitized[key] === 'object') {
-            sanitized[key] = sanitizeObject(sanitized[key], sanitizer) as any;
+            sanitized[key] = sanitizeObject(sanitized[key] as Record<string, unknown>, sanitizer);
         }
     }
 
-    return sanitized;
+    return sanitized as T;
 }

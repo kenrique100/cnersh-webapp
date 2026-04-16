@@ -36,7 +36,10 @@ export default function AdminCharts({ stats }: { stats: AdminStats }) {
     // and on the very first React 19 render pass. Gate all chart rendering behind
     // a mounted flag so Recharts only runs after the client is fully hydrated.
     const [mounted, setMounted] = useState(false);
-    useEffect(() => { setMounted(true); }, []);
+    useEffect(() => {
+        const id = setTimeout(() => setMounted(true), 0);
+        return () => clearTimeout(id);
+    }, []);
 
     if (!mounted) {
         return (

@@ -23,12 +23,20 @@ export function ReactionButton({ reaction, onClick, isActive = false, className 
         onClick();
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick();
+        }
+    };
+
     const validLabel = reaction.label as ReactionType;
     const hasIcon = validLabel in REACTION_ICONS;
 
     return (
         <button
             onClick={handleClick}
+            onKeyDown={handleKeyDown}
             type="button"
             className={cn(
                 "group relative flex flex-col items-center gap-1 px-2 sm:px-3 py-2 rounded-lg transition-all duration-200",

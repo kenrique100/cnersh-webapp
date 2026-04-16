@@ -12,6 +12,8 @@ const GOOGLE_TRANSLATE_DOMAINS = [
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  // Tell Next.js (and next/jest) to transpile these ESM-only packages
+  transpilePackages: ["@exodus/bytes"],
   images: {
     remotePatterns: [
       {
