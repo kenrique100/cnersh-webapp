@@ -10,7 +10,7 @@ const globalForPrisma = global as unknown as {
 // Create pool singleton with better configuration
 const createPool = () => {
     if (globalForPrisma.pool) {
-        console.log("♻️  Reusing existing database pool");
+        console.log("  Reusing existing database pool");
         return globalForPrisma.pool;
     }
 
