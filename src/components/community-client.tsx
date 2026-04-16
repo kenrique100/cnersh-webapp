@@ -523,23 +523,23 @@ export default function CommunityClient({
                 return;
             }
 
-            let endpoint: "videoUploader" | "audioUploader" | "documentUploader";
-            switch (type) {
-                case "video":
-                    endpoint = "videoUploader";
-                    break;
-                case "audio":
-                    endpoint = "audioUploader";
-                    break;
-                default:
-                    endpoint = "documentUploader";
-            }
-            const url = await uploadSingleFileToUploadThing(endpoint, file);
-            switch (type) {
-                case "video": setPendingVideos((prev) => [...prev, url]); break;
-                case "audio": setPendingAudios((prev) => [...prev, url]); break;
-                case "document": setPendingDocuments((prev) => [...prev, url]); break;
-            }
+            const uploadConfig = {
+                video: {
+                    endpoint: "videoUploader" as const,
+                    apply: (url: string) => setPendingVideos((prev) => [...prev, url]),
+                },
+                audio: {
+                    endpoint: "audioUploader" as const,
+                    apply: (url: string) => setPendingAudios((prev) => [...prev, url]),
+                },
+                document: {
+                    endpoint: "documentUploader" as const,
+                    apply: (url: string) => setPendingDocuments((prev) => [...prev, url]),
+                },
+            };
+            const config = uploadConfig[type as "video" | "audio" | "document"];
+            const url = await uploadSingleFileToUploadThing(config.endpoint, file);
+            config.apply(url);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : `Failed to upload ${type}`);
         }
