@@ -56,7 +56,9 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
         // Read saved preference immediately to reflect correct active button
         const saved = localStorage.getItem("cnersh_lang") as "en" | "fr" | null;
         const lang: "en" | "fr" = saved === "fr" ? "fr" : "en";
-        setCurrentLang(lang);
+
+        // Defer the setState call to avoid triggering it synchronously inside the effect body
+        const langId = setTimeout(() => setCurrentLang(lang), 0);
 
         // Poll until widget is injected, then drive combo if French
         const interval = setInterval(() => {
@@ -67,7 +69,10 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
             }
         }, 400);
 
-        return () => clearInterval(interval);
+        return () => {
+            clearTimeout(langId);
+            clearInterval(interval);
+        };
     }, []);
 
     const handleChange = useCallback(

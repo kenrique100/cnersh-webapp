@@ -1,43 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { RateLimitConfig, RATE_LIMITS } from './rate-limit-config';
 
-/**
- * Rate limiting configuration for different endpoint types
- */
-export interface RateLimitConfig {
-    windowMs: number; // Time window in milliseconds
-    maxRequests: number; // Maximum requests allowed in window
-}
-
-/**
- * Predefined rate limit tiers
- */
-export const RATE_LIMITS = {
-    // Authentication endpoints: 5 requests per 15 minutes
-    auth: {
-        windowMs: 15 * 60 * 1000,
-        maxRequests: 5,
-    },
-    // API endpoints: 100 requests per 15 minutes per user
-    api: {
-        windowMs: 15 * 60 * 1000,
-        maxRequests: 100,
-    },
-    // File uploads: 10 uploads per hour per user
-    fileUpload: {
-        windowMs: 60 * 60 * 1000,
-        maxRequests: 10,
-    },
-    // Report submissions: 5 reports per hour per user
-    reportSubmission: {
-        windowMs: 60 * 60 * 1000,
-        maxRequests: 5,
-    },
-    // Form submissions: 20 submissions per hour
-    formSubmission: {
-        windowMs: 60 * 60 * 1000,
-        maxRequests: 20,
-    },
-} as const;
+export type { RateLimitConfig };
+export { RATE_LIMITS };
 
 /**
  * In-memory rate limit store
@@ -175,15 +140,15 @@ export function rateLimit(
 /**
  * Higher-order function to wrap API routes with rate limiting
  */
-export function withRateLimit<T>(
-    handler: (req: NextRequest, context?: any) => Promise<NextResponse>,
+export function withRateLimit(
+    handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>,
     config: RateLimitConfig = RATE_LIMITS.api,
     options: {
         keyPrefix?: string;
         getUserId?: (req: NextRequest) => Promise<string | undefined>;
     } = {}
 ) {
-    return async (req: NextRequest, context?: any): Promise<NextResponse> => {
+    return async (req: NextRequest, context?: unknown): Promise<NextResponse> => {
         // Get user ID if function provided
         const userId = options.getUserId ? await options.getUserId(req) : undefined;
 

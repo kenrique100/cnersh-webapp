@@ -3,7 +3,7 @@
  * These tests mock the database and auth to test the feed action functions
  */
 
-import { toggleLike, addComment, toggleCommentLike } from "../../app/actions/feed";
+import { toggleLike, addComment, toggleCommentLike } from "../feed";
 
 // Mock dependencies
 jest.mock("@/lib/auth-utils", () => ({

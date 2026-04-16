@@ -1,6 +1,5 @@
 import {
     Body,
-    Button,
     Container,
     Head,
     Html,
@@ -108,7 +107,7 @@ export const OTPEmail = ({
                             • {appName} will never ask for this code via phone or email
                         </Text>
                         <Text className="text-[13px] text-gray-600 m-0">
-                            • If you didn't request this code, please ignore this email
+                            {"• If you didn't request this code, please ignore this email"}
                         </Text>
                     </Section>
 

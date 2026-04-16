@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Resend } from "resend";
 import { OTPEmail } from "@/emails/otp-email";
 
@@ -29,21 +30,10 @@ export function generateOTP(length: number = 6): string {
     const digits = '0123456789';
     let otp = '';
 
-    // Use crypto for secure random number generation
-    if (typeof window === 'undefined') {
-        // Node.js environment
-        const crypto = require('crypto');
-        for (let i = 0; i < length; i++) {
-            const randomByte = crypto.randomBytes(1)[0];
-            otp += digits[randomByte % digits.length];
-        }
-    } else {
-        // Browser environment
-        const array = new Uint8Array(length);
-        crypto.getRandomValues(array);
-        for (let i = 0; i < length; i++) {
-            otp += digits[array[i] % digits.length];
-        }
+    // Use Node.js crypto for secure random number generation (server-side only)
+    for (let i = 0; i < length; i++) {
+        const randomByte = crypto.randomBytes(1)[0];
+        otp += digits[randomByte % digits.length];
     }
 
     return otp;

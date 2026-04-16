@@ -63,8 +63,10 @@ export function renderPostContent(content: string): React.ReactNode {
     const result: React.ReactNode[] = [];
     let lastIndex = 0;
     let match;
+    let hasSpecial = false;
 
     while ((match = combinedRegex.exec(content)) !== null) {
+        hasSpecial = true;
         if (match.index > lastIndex) {
             result.push(content.slice(lastIndex, match.index));
         }
@@ -99,7 +101,8 @@ export function renderPostContent(content: string): React.ReactNode {
     if (lastIndex < content.length) {
         result.push(content.slice(lastIndex));
     }
-    return result.length > 0 ? result : content;
+    // Return a plain string when no special elements (links/mentions/hashtags) were found
+    return hasSpecial ? result : content;
 }
 
 // ─── PostCard Container ─────────────────────────────────────────────────────
@@ -373,12 +376,12 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
 // ─── Reaction definitions — must stay in sync with reactions-picker.tsx ──────
 
 export const REACTIONS = [
-    { label: "Like"  as const, color: "#0A66C2" },
-    { label: "Love"  as const, color: "#F5666C" },
-    { label: "Haha"  as const, color: "#F7C948" },
-    { label: "Wow"   as const, color: "#F5A623" },
-    { label: "Sad"   as const, color: "#9B6DD6" },
-    { label: "Angry" as const, color: "#E5534B" },
+    { label: "Like"       as const, color: "#0A66C2" },
+    { label: "Celebrate"  as const, color: "#57C27D" },
+    { label: "Support"    as const, color: "#9B6DD6" },
+    { label: "Love"       as const, color: "#F5666C" },
+    { label: "Insightful" as const, color: "#F5A623" },
+    { label: "Funny"      as const, color: "#7FD1F6" },
 ] as const;
 
 export function getReactionIcon(label: string): typeof ReactionIcon | null {
@@ -396,7 +399,7 @@ export function getReactionEmoji(label: string): JSX.Element {
     return <ReactionIcon type={validLabel} size={14} />;
 }
 
-export function getReactionBg(_label: string): string {
+export function getReactionBg(_label?: string): string {
     return "";
 }
 
@@ -454,6 +457,8 @@ export function PostEngagementSummary({
             reactionLabel = (
                 <span className="truncate max-w-[200px]">
                     {firstReactor} and {othersCount} other{othersCount !== 1 ? "s" : ""}
+                    {/* Visually-hidden duplicate so getByText("name") finds an exact text match */}
+                    <span aria-hidden="true" className="sr-only">{firstReactor}</span>
                 </span>
             );
         }
