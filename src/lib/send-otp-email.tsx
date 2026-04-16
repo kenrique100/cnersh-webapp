@@ -28,7 +28,7 @@ type OTPEmailProps = {
  */
 export function generateOTP(length: number = 6): string {
     const digits = '0123456789';
-    const digitCount = digits.length; // 10
+    const digitCount = digits.length;
     // Rejection sampling: discard bytes >= floor(256 / digitCount) * digitCount
     // to avoid modulo bias (256 is not evenly divisible by 10).
     const maxUnbiased = Math.floor(256 / digitCount) * digitCount; // 250
