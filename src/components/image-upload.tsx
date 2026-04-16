@@ -7,12 +7,12 @@ import { toast } from "sonner";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { useUploadThing } from "@/lib/uploadthing";
+import { ACCEPTED_IMAGE_MIME_TYPES, prepareImageForUpload } from "@/lib/client-image-upload";
 
 // ─── Constants ────────────────────────────────────────────────────────────────────
 
 const PROFILE_IMAGE_QUALITY = 0.92;
 const MAX_FILE_SIZE_BYTES    = 25 * 1024 * 1024; // 25 MB (matches UploadThing 32MB slot)
-const ALLOWED_MIME_TYPES     = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 // ─── Types ────────────────────────────────────────────────────────────────────────
 
@@ -64,9 +64,6 @@ async function getCroppedImageBlob(image: HTMLImageElement, crop: Crop): Promise
 }
 
 function validateImageFile(file: File): string | null {
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        return `Unsupported file type (${file.type}). Please use JPEG, PNG, WebP, or GIF.`;
-    }
     if (file.size > MAX_FILE_SIZE_BYTES) {
         return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 25 MB.`;
     }
@@ -162,15 +159,23 @@ export default function ImageUpload({
     // ─── Core upload ───────────────────────────────────────────────────────────────
 
     const uploadFile = useCallback(async (file: File): Promise<void> => {
-        const validationError = validateImageFile(file);
+        let normalizedFile: File;
+        try {
+            normalizedFile = await prepareImageForUpload(file);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Unsupported image file");
+            return;
+        }
+
+        const validationError = validateImageFile(normalizedFile);
         if (validationError) { toast.error(validationError); return; }
 
         setUploadError(null);
 
         if (isProfile) {
-            await startAvatarUpload([file]);
+            await startAvatarUpload([normalizedFile]);
         } else {
-            await startImageUpload([file]);
+            await startImageUpload([normalizedFile]);
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -183,9 +188,17 @@ export default function ImageUpload({
         if (!file) return;
 
         if (isProfile) {
+            let normalizedFile: File;
+            try {
+                normalizedFile = await prepareImageForUpload(file);
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Unsupported image file");
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
             const reader = new FileReader();
             reader.onload = () => { setCropSrc(reader.result as string); setShowCrop(true); };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(normalizedFile);
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
@@ -200,9 +213,16 @@ export default function ImageUpload({
         if (!file) return;
 
         if (isProfile) {
+            let normalizedFile: File;
+            try {
+                normalizedFile = await prepareImageForUpload(file);
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Unsupported image file");
+                return;
+            }
             const reader = new FileReader();
             reader.onload = () => { setCropSrc(reader.result as string); setShowCrop(true); };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(normalizedFile);
             return;
         }
 
@@ -318,7 +338,7 @@ export default function ImageUpload({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept={ALLOWED_MIME_TYPES.join(",")}
+                accept={ACCEPTED_IMAGE_MIME_TYPES.join(",")}
                 onChange={handleFileSelect}
                 className="sr-only"
                 disabled={isUploading}

@@ -33,6 +33,8 @@ import {
     CommunityCreatePost,
 } from "./community";
 import { getDisplayName } from "./community/utils";
+import { useUploadThing } from "@/lib/uploadthing";
+import { prepareImageForUpload } from "@/lib/client-image-upload";
 
 /* ─── Props Interface ─────────────────────────────────── */
 
@@ -111,6 +113,7 @@ export default function CommunityClient({
     const topicImageRef = useRef<HTMLInputElement>(null);
     const topicVideoRef = useRef<HTMLInputElement>(null);
     const topicDocRef = useRef<HTMLInputElement>(null);
+    const { startUpload: startImageUpload } = useUploadThing("imageUploader");
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
@@ -157,6 +160,15 @@ export default function CommunityClient({
     const handleTopicFileUpload = async (file: File, type: "image" | "video" | "document") => {
         setTopicUploading(true);
         try {
+            if (type === "image") {
+                const normalizedFile = await prepareImageForUpload(file);
+                const uploaded = await startImageUpload([normalizedFile]);
+                const url = uploaded?.[0]?.url;
+                if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
+                setNewTopic((p) => ({ ...p, images: [...p.images, url] }));
+                return;
+            }
+
             const formData = new FormData();
             formData.append("file", file);
             const res = await fetch("/api/upload", { method: "POST", body: formData });
@@ -177,7 +189,6 @@ export default function CommunityClient({
             const data = await res.json();
             if (data.url) {
                 switch (type) {
-                    case "image": setNewTopic((p) => ({ ...p, images: [...p.images, data.url] })); break;
                     case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, data.url] })); break;
                     case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, data.url] })); break;
                 }
@@ -532,6 +543,15 @@ export default function CommunityClient({
 
     const handleFileUpload = async (file: File, type: "image" | "video" | "audio" | "document") => {
         try {
+            if (type === "image") {
+                const normalizedFile = await prepareImageForUpload(file);
+                const uploaded = await startImageUpload([normalizedFile]);
+                const url = uploaded?.[0]?.url;
+                if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
+                setPendingImages((prev) => [...prev, url]);
+                return;
+            }
+
             const formData = new FormData();
             formData.append("file", file);
             const res = await fetch("/api/upload", { method: "POST", body: formData });
@@ -548,7 +568,6 @@ export default function CommunityClient({
             const data = await res.json();
             if (data.url) {
                 switch (type) {
-                    case "image": setPendingImages((prev) => [...prev, data.url]); break;
                     case "video": setPendingVideos((prev) => [...prev, data.url]); break;
                     case "audio": setPendingAudios((prev) => [...prev, data.url]); break;
                     case "document": setPendingDocuments((prev) => [...prev, data.url]); break;
