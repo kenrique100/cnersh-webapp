@@ -109,6 +109,7 @@ export default async function ProjectsPage() {
         ...statusOrder,
         ...Object.keys(groupedProjects).filter((status) => !statusOrder.includes(status)),
     ];
+    const summaryStatuses = orderedStatuses.filter((status) => (groupedProjects[status]?.length || 0) > 0);
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -138,7 +139,7 @@ export default async function ProjectsPage() {
                 {/* Status Summary */}
                 {projects.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-8">
-                        {orderedStatuses.map((status) => {
+                        {summaryStatuses.map((status) => {
                             const config = statusConfig[status] ?? {
                                 label: status,
                                 color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
