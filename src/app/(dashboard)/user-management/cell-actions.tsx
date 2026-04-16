@@ -253,7 +253,11 @@ export const CellActions = ({
                         </Button>
                         <Button
                             type="submit"
-                            className="cursor-pointer w-full sm:w-auto"
+                            className={`cursor-pointer w-full sm:w-auto text-white ${
+                                banned
+                                    ? "bg-emerald-600 hover:bg-emerald-700"
+                                    : "bg-rose-600 hover:bg-rose-700"
+                            }`}
                             variant={banned ? "default" : "destructive"}
                             onClick={onToggleBan}
                             disabled={isLoading}

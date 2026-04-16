@@ -239,30 +239,20 @@ export function PostTextContent({ content, customRender }: PostTextContentProps)
         return <div className="px-3 sm:px-4 py-3">{customRender}</div>;
     }
 
-    const displayText = !expanded && isLong ? content.slice(0, SEE_MORE_THRESHOLD) : content;
+    const displayText = !expanded && isLong ? `${content.slice(0, SEE_MORE_THRESHOLD)}…` : content;
 
     return (
         <div className="px-3 sm:px-4 py-3">
             <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                 {renderPostContent(displayText)}
-                {!expanded && isLong && (
-                    <>
-                        {"… "}
-                        <button
-                            onClick={() => setExpanded(true)}
-                            className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-sm"
-                        >
-                            See more
-                        </button>
-                    </>
-                )}
             </p>
-            {expanded && isLong && (
+            {isLong && (
                 <button
-                    onClick={() => setExpanded(false)}
-                    className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-sm mt-1"
+                    onClick={() => setExpanded((prev) => !prev)}
+                    className="notranslate text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-sm mt-1"
+                    translate="no"
                 >
-                    See less
+                    {expanded ? "See less" : "See more"}
                 </button>
             )}
         </div>

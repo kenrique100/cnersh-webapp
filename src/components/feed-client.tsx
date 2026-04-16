@@ -190,12 +190,13 @@ function CommentTextWithSeeMore({ content, threshold, isReply = false }: { conte
     const displayText = isLong && !expanded ? content.slice(0, threshold) + "…" : content;
 
     return (
-        <div className={`${isReply ? "text-xs" : "text-sm"} text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap`}>
-            {renderPostContent(displayText)}
+        <div className={`${isReply ? "text-xs" : "text-sm"} text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed`}>
+            <div className="whitespace-pre-wrap">{renderPostContent(displayText)}</div>
             {isLong && (
                 <button
                     onClick={() => setExpanded(!expanded)}
-                    className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    className="notranslate ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    translate="no"
                 >
                     {expanded ? "See less" : "See more"}
                 </button>
@@ -1765,7 +1766,8 @@ export default function FeedClient({
                                                             ...prev,
                                                             [post.id]: visibleCount + 5,
                                                         }))}
-                                                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                                        className="notranslate text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                                        translate="no"
                                                     >
                                                         Load more comments ({allComments.length - visibleCount} remaining)
                                                     </button>
