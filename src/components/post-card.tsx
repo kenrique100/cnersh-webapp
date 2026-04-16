@@ -382,6 +382,7 @@ export const REACTIONS = [
     { label: "Love"       as const, color: "#F5666C" },
     { label: "Insightful" as const, color: "#F5A623" },
     { label: "Funny"      as const, color: "#7FD1F6" },
+    { label: "Wow"        as const, color: "#F59E0B" },
 ] as const;
 
 export function getReactionIcon(label: string): typeof ReactionIcon | null {

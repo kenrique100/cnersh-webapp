@@ -1,7 +1,7 @@
 import React from "react";
 
 // LinkedIn-style reaction types used across the app
-export type ReactionType = "Like" | "Celebrate" | "Love" | "Insightful" | "Funny" | "Support";
+export type ReactionType = "Like" | "Celebrate" | "Love" | "Insightful" | "Funny" | "Support" | "Wow";
 
 interface IconProps {
     size?: number;
@@ -167,6 +167,38 @@ export function SupportIcon({ size = 24, className = "" }: IconProps) {
     );
 }
 
+// Add WowIcon component
+export function WowIcon({ size = 24, className = "" }: IconProps) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={className}
+        >
+            <defs>
+                <linearGradient id="wowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FBBF24" />
+                    <stop offset="100%" stopColor="#F59E0B" />
+                </linearGradient>
+            </defs>
+            <circle cx="12" cy="12" r="12" fill="url(#wowGradient)" />
+            <path
+                d="M8 12h.01M16 12h.01M12 16c1.5 0 2.5-1 3-2"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                fill="none"
+            />
+            <circle cx="8" cy="12" r="1.5" fill="white" />
+            <circle cx="16" cy="12" r="1.5" fill="white" />
+        </svg>
+    );
+}
+
+// REACTION_ICONS - Single definition with all reactions including Wow
 export const REACTION_ICONS: Record<ReactionType, React.ComponentType<{ size?: number; className?: string }>> = {
     Like: LikeIcon,
     Celebrate: CelebrateIcon,
@@ -174,6 +206,7 @@ export const REACTION_ICONS: Record<ReactionType, React.ComponentType<{ size?: n
     Insightful: InsightfulIcon,
     Funny: FunnyIcon,
     Support: SupportIcon,
+    Wow: WowIcon,
 };
 
 export interface ReactionIconProps {
@@ -184,8 +217,6 @@ export interface ReactionIconProps {
     /** Inline styles — used for overlap offset and z-index in stacked reaction displays */
     style?: React.CSSProperties;
 }
-
-// reaction-icons.tsx
 
 export function ReactionIcon({ type, size = 24, className = "", style }: ReactionIconProps) {
     const IconComponent = REACTION_ICONS[type];
