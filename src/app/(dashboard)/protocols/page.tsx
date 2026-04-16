@@ -72,7 +72,7 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
     },
     ARCHIVED: {
         label: "Archived",
-        color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
+        color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
         dot: "bg-gray-300",
     },
 };

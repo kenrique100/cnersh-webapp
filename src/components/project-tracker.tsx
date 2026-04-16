@@ -131,6 +131,12 @@ const statusConfig: Record<ProjectStatus, { label: string; color: string; dot: s
         icon: ClockIcon,
     },
 };
+const unknownStatusConfig = {
+    label: "Unknown Status",
+    color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+    dot: "bg-gray-400",
+    icon: ClockIcon,
+};
 
 export default function ProjectTracker() {
     const [code, setCode] = React.useState("");
@@ -176,7 +182,7 @@ export default function ProjectTracker() {
         }
     };
 
-    const config = result ? (statusConfig[result.status] ?? statusConfig.DRAFT) : null;
+    const config = result ? (statusConfig[result.status] ?? unknownStatusConfig) : null;
 
     return (
         <div className="space-y-4">

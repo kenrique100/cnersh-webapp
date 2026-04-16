@@ -7,13 +7,13 @@ interface IconProps {
     className?: string;
 }
 
-function EmojiIcon({ emoji, size = 24, className = "" }: IconProps & { emoji: string }) {
+function EmojiIcon({ emoji, label, size = 24, className = "" }: IconProps & { emoji: string; label: string }) {
     return (
         <span
             className={className}
             style={{ fontSize: `${size}px`, lineHeight: 1 }}
             role="img"
-            aria-label={emoji}
+            aria-label={label}
         >
             {emoji}
         </span>
@@ -21,31 +21,31 @@ function EmojiIcon({ emoji, size = 24, className = "" }: IconProps & { emoji: st
 }
 
 export function LikeIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="👍" />;
+    return <EmojiIcon {...props} emoji="👍" label="Like" />;
 }
 
 export function CelebrateIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="🎉" />;
+    return <EmojiIcon {...props} emoji="🎉" label="Celebrate" />;
 }
 
 export function LoveIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="❤️" />;
+    return <EmojiIcon {...props} emoji="❤️" label="Love" />;
 }
 
 export function InsightfulIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="💡" />;
+    return <EmojiIcon {...props} emoji="💡" label="Insightful" />;
 }
 
 export function FunnyIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="😂" />;
+    return <EmojiIcon {...props} emoji="😂" label="Funny" />;
 }
 
 export function SupportIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="🤝" />;
+    return <EmojiIcon {...props} emoji="🤝" label="Support" />;
 }
 
 export function WowIcon(props: IconProps) {
-    return <EmojiIcon {...props} emoji="😮" />;
+    return <EmojiIcon {...props} emoji="😮" label="Wow" />;
 }
 
 export const REACTION_ICONS: Record<ReactionType, React.ComponentType<{ size?: number; className?: string }>> = {
