@@ -96,7 +96,7 @@ export default async function AuditLogsPage() {
                                         <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                                             Action
                                         </p>
-                                        <Badge className={`${getActionColor(log.action)} font-medium text-xs max-w-full whitespace-normal break-all h-auto py-1 text-left`}>
+                                        <Badge className={`${getActionColor(log.action)} font-medium text-xs max-w-full whitespace-normal break-words h-auto py-1 text-left`}>
                                             {log.action}
                                         </Badge>
                                     </div>
