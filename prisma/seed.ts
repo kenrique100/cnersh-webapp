@@ -22,9 +22,9 @@ async function upsertUser(
                 where: { email: opts.email },
                 data: { role: opts.role },
             });
-            console.log(`✅ Existing user ${opts.email} updated to role: ${opts.role}`);
+            console.log(` Existing user ${opts.email} updated to role: ${opts.role}`);
         } else {
-            console.log(`ℹ️  User ${opts.email} already exists with role: ${opts.role}`);
+            console.log(`  User ${opts.email} already exists with role: ${opts.role}`);
         }
         return;
     }
@@ -53,7 +53,7 @@ async function upsertUser(
         },
     });
 
-    console.log(`✅ ${opts.role} created successfully!`);
+    console.log(` ${opts.role} created successfully!`);
     console.log(`   Email:    ${opts.email}`);
     console.log(`   Role:     ${opts.role}`);
 }
@@ -61,7 +61,7 @@ async function upsertUser(
 async function main() {
     const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
     if (!connectionString) {
-        console.error("❌ DATABASE_URL or DIRECT_URL must be set in .env");
+        console.error(" DATABASE_URL or DIRECT_URL must be set in .env");
         process.exit(1);
     }
 
@@ -69,7 +69,7 @@ async function main() {
     const adapter = new PrismaPg(pool);
     const prisma = new PrismaClient({ adapter });
 
-    console.log("🌱 Seeding database...\n");
+    console.log(" Seeding database...\n");
 
     // ── Super Admin ───────────────────────────────────────────────────────────
     await upsertUser(prisma, {
@@ -87,13 +87,13 @@ async function main() {
         role: "admin",
     });
 
-    console.log("\n🌱 Seeding complete!");
+    console.log("\n Seeding complete!");
 
     await prisma.$disconnect();
     await pool.end();
 }
 
 main().catch((e) => {
-    console.error("❌ Seed error:", e);
+    console.error(" Seed error:", e);
     process.exit(1);
 });
