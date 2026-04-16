@@ -4,6 +4,10 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/**
+ * Extracts the best available file URL from an UploadThing client response item.
+ * Supports top-level URL fields and serverData URL fields across response variants.
+ */
 export function extractUploadThingFileUrl(file: unknown): string | null {
   if (!file || typeof file !== "object") return null;
 

@@ -169,7 +169,7 @@ export default function ImageUpload({
             ? await startAvatarUpload([normalizedFile])
             : await startImageUpload([normalizedFile]);
         const url = extractUploadThingFileUrl(uploaded?.[0]);
-        if (!url) throw new Error("Image upload finished but no file URL was returned.");
+        if (!url) throw new Error("Failed to extract URL from upload response.");
 
         commitValue(url);
         toast.success("Image uploaded successfully");
