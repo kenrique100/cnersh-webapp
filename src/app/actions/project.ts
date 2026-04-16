@@ -588,8 +588,9 @@ export async function getProjectReviewAssignments(projectId: string) {
  */
 export async function trackProjectByCode(trackingCode: string) {
     const code = trackingCode.trim().toUpperCase();
+    if (!code) return null;
 
-    const project = await db.project.findUnique({
+    const project = await db.project.findFirst({
         where: { trackingCode: code, deleted: false },
         select: {
             id: true,

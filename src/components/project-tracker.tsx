@@ -16,9 +16,24 @@ import {
     XCircleIcon,
     ClockIcon,
     FileEditIcon,
+    CopyIcon,
+    CheckIcon,
 } from "lucide-react";
 
-type ProjectStatus = "DRAFT" | "SUBMITTED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+type ProjectStatus =
+    | "DRAFT"
+    | "SUBMITTED"
+    | "RETURNED_INCOMPLETE"
+    | "PENDING_REVIEW"
+    | "UNDER_REVIEW"
+    | "REVIEW_COMPLETE"
+    | "SESSION_SCHEDULED"
+    | "APPROVED"
+    | "APPROVED_WITH_CONDITIONS"
+    | "REJECTED"
+    | "UNDER_APPEAL"
+    | "APPEAL_RESOLVED"
+    | "ARCHIVED";
 
 interface TrackedProject {
     id: string;
@@ -55,10 +70,34 @@ const statusConfig: Record<ProjectStatus, { label: string; color: string; dot: s
         dot: "bg-amber-500",
         icon: ClockIcon,
     },
+    UNDER_REVIEW: {
+        label: "Under Review",
+        color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+        dot: "bg-purple-500",
+        icon: ClockIcon,
+    },
+    REVIEW_COMPLETE: {
+        label: "Review Complete",
+        color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+        dot: "bg-indigo-500",
+        icon: CheckCircle2Icon,
+    },
+    SESSION_SCHEDULED: {
+        label: "Session Scheduled",
+        color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+        dot: "bg-cyan-500",
+        icon: CalendarIcon,
+    },
     APPROVED: {
         label: "Approved",
         color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
         dot: "bg-emerald-500",
+        icon: CheckCircle2Icon,
+    },
+    APPROVED_WITH_CONDITIONS: {
+        label: "Approved with Conditions",
+        color: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+        dot: "bg-teal-500",
         icon: CheckCircle2Icon,
     },
     REJECTED: {
@@ -66,6 +105,30 @@ const statusConfig: Record<ProjectStatus, { label: string; color: string; dot: s
         color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
         dot: "bg-red-500",
         icon: XCircleIcon,
+    },
+    RETURNED_INCOMPLETE: {
+        label: "Returned Incomplete",
+        color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+        dot: "bg-orange-500",
+        icon: XCircleIcon,
+    },
+    UNDER_APPEAL: {
+        label: "Under Appeal",
+        color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+        dot: "bg-rose-500",
+        icon: ClockIcon,
+    },
+    APPEAL_RESOLVED: {
+        label: "Appeal Resolved",
+        color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+        dot: "bg-slate-500",
+        icon: CheckCircle2Icon,
+    },
+    ARCHIVED: {
+        label: "Archived",
+        color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+        dot: "bg-gray-300",
+        icon: ClockIcon,
     },
 };
 
@@ -75,6 +138,7 @@ export default function ProjectTracker() {
     const [error, setError] = React.useState<string | null>(null);
     const [result, setResult] = React.useState<TrackedProject | null>(null);
     const [searched, setSearched] = React.useState(false);
+    const [copied, setCopied] = React.useState(false);
 
     const handleTrack = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,7 +164,19 @@ export default function ProjectTracker() {
         }
     };
 
-    const config = result ? statusConfig[result.status] : null;
+    const handleCopyCode = async () => {
+        const textToCopy = result?.trackingCode || code.trim().toUpperCase();
+        if (!textToCopy) return;
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            setCopied(false);
+        }
+    };
+
+    const config = result ? (statusConfig[result.status] ?? statusConfig.DRAFT) : null;
 
     return (
         <div className="space-y-4">
@@ -133,6 +209,16 @@ export default function ProjectTracker() {
                     )}
                     <span className="ml-1.5 hidden sm:inline">Track</span>
                 </Button>
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyCode}
+                    disabled={!result?.trackingCode && !code.trim()}
+                    className="shrink-0"
+                    title="Copy tracking code"
+                >
+                    {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+                </Button>
             </form>
 
             {/* Error state */}
@@ -157,6 +243,13 @@ export default function ProjectTracker() {
 
                     {/* Project details */}
                     <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between rounded-md bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 px-3 py-2">
+                            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">Tracking Code</p>
+                            <code className="text-xs font-mono font-semibold tracking-wide text-indigo-900 dark:text-indigo-100">
+                                {result.trackingCode}
+                            </code>
+                        </div>
+
                         <div className="flex items-start gap-2">
                             <FolderIcon className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
                             <div>
