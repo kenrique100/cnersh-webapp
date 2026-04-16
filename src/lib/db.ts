@@ -6,7 +6,6 @@ const globalForPrisma = global as unknown as {
 };
 
 // Prisma 7 + @prisma/adapter-pg v7: pass connection config directly to the
-// adapter — do NOT pass a pg.Pool instance. The adapter manages its own
 // internal pool.
 const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL!,
