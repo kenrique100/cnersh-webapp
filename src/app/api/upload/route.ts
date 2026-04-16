@@ -1,3 +1,13 @@
+/**
+ * /api/upload  (legacy compatibility shim)
+ *
+ * This route is kept for backward compatibility with any existing client code
+ * that posts directly to /api/upload. New code should use UploadThing via
+ * useUploadThing() or <UploadButton> from @/lib/uploadthing.
+ *
+ * On Vercel this route WILL hit the 4.5 MB body limit for large files.
+ * Migrate callers to UploadThing endpoints to support files up to 50 MB.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { authSession } from "@/lib/auth-utils";
 import { validateFile, performBasicMalwareCheck } from "@/lib/file-validation";
@@ -6,24 +16,15 @@ import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 
 export const maxDuration = 60;
-// Must be larger than the largest allowed file + multipart overhead (~15% extra)
-export const maxRequestBodySize = 60 * 1024 * 1024; // 60 MB
+export const maxRequestBodySize = 60 * 1024 * 1024; // 60 MB (effective on local/Docker only)
 
-// ─── Size limits (bytes) ────────────────────────────────────────────────────
-const MAX_IMAGE_SIZE    = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE    = 50 * 1024 * 1024; // 50 MB
-const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20 MB
-const MAX_AUDIO_SIZE    =  8 * 1024 * 1024; //  8 MB
+const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE    = 50 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
+const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
 
-// ─── FileType values that match the Prisma enum ────────────────────────────
-// Keep in sync with prisma/schema.prisma FileType enum.
 type FileTypeValue = "avatar" | "protocol" | "document" | "image" | "video" | "audio";
 
-/**
- * Map a validated MIME type to the Prisma FileType enum value.
- * Uses string literals directly so this works even if the generated
- * Prisma enum import path differs between environments.
- */
 function resolveFileType(mimeType: string): FileTypeValue {
   if (mimeType.startsWith("image/")) return "image";
   if (mimeType.startsWith("video/")) return "video";
@@ -31,15 +32,12 @@ function resolveFileType(mimeType: string): FileTypeValue {
   return "document";
 }
 
-// ─── Core handler ──────────────────────────────────────────────────────────
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
-  // 1. Auth check
   const session = await authSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Parse multipart form
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -53,13 +51,11 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  // 3. Sanitize filename
   const sanitizedFilename = sanitizeFilename(file.name);
   if (!sanitizedFilename) {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  // 4. Determine allowed MIME types and size cap by declared category
   let allowedTypes: string[];
   let maxSize: number;
 
@@ -83,9 +79,6 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     maxSize = MAX_DOCUMENT_SIZE;
   }
 
-  // 5. Read file bytes ONCE — reuse the same buffer for validation, security
-  //    checks, and base64 encoding. Reading file.arrayBuffer() multiple times
-  //    can fail in Next.js App Router because the stream may already be consumed.
   let fileBuffer: Buffer;
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -95,7 +88,6 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
   }
 
-  // 6. Deep file validation (magic-number check + size)
   let validation: Awaited<ReturnType<typeof validateFile>>;
   try {
     validation = await validateFile(fileBuffer, file, { allowedTypes, maxSize });
@@ -111,7 +103,6 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 7. Basic malware heuristic
   let malwareCheck: Awaited<ReturnType<typeof performBasicMalwareCheck>>;
   try {
     malwareCheck = await performBasicMalwareCheck(fileBuffer);
@@ -124,13 +115,10 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "File failed security check" }, { status: 400 });
   }
 
-  // 8. Encode as base64 (reuse the already-read buffer)
   const base64 = fileBuffer.toString("base64");
-
   const mimeType = validation.detectedType ?? file.type ?? "application/octet-stream";
   const fileType = resolveFileType(mimeType);
 
-  // 9. Persist to database
   try {
     const stored = await db.file.create({
       data: {
@@ -138,9 +126,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         mimeType,
         size:      file.size,
         data:      base64,
-        // Cast as any so the string literal satisfies Prisma's generated enum
-        // type regardless of whether the enum import resolves correctly.
-        type:      fileType as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        url:       null,
+        type:      fileType as any,
         userId:    session.user.id,
       },
       select: {
@@ -163,12 +150,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
       createdAt: stored.createdAt,
     });
   } catch (err) {
-    // Log the full error so it appears in Vercel function logs
     console.error("[upload] DB write failed:", err);
-
-    // Surface a helpful message for common Prisma errors
-    const msg =
-      err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error ? err.message : String(err);
 
     if (msg.includes("relation") || msg.includes("table") || msg.includes("does not exist")) {
       return NextResponse.json(
@@ -176,19 +159,16 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-
     if (msg.includes("connect") || msg.includes("timeout") || msg.includes("ECONNREFUSED")) {
       return NextResponse.json(
         { error: "Database connection failed. Check DATABASE_URL environment variable." },
         { status: 500 }
       );
     }
-
     return NextResponse.json({ error: "Failed to save file" }, { status: 500 });
   }
 }
 
-// ─── Rate-limited wrapper ──────────────────────────────────────────────────
 const rateLimitedUploadHandler = withRateLimit(
   uploadHandler,
   RATE_LIMITS.fileUpload,
