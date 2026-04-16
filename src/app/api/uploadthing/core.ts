@@ -1,11 +1,10 @@
 import { createUploadthing, type FileRouter, UploadThingError } from "uploadthing/server";
 import { authSession } from "@/lib/auth-utils";
-import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 
 const f = createUploadthing();
 
-// ─── FileType resolver (mirrors the old upload route logic) ────────────────
+// ─── FileType resolver ─────────────────────────────────────────────────────
 function resolveFileType(
   mimeType: string
 ): "avatar" | "protocol" | "document" | "image" | "video" | "audio" {
@@ -23,14 +22,23 @@ const authenticate = async () => {
 };
 
 // ─── File Router ───────────────────────────────────────────────────────────
+//
+// IMPORTANT: UploadThing maxFileSize only accepts power-of-2 values.
+// Valid options: "1MB" "2MB" "4MB" "8MB" "16MB" "32MB" "64MB" "128MB" "256MB" "512MB" "1GB" "2GB"
+//
+// Requested limits rounded UP to the nearest valid power-of-2:
+//   images / avatars  25 MB  → "32MB"
+//   videos           100 MB  → "128MB"
+//   audio              8 MB  → "8MB"
+//   docs / protocols  50 MB  → "64MB"
+
 export const ourFileRouter = {
   /**
-   * General image uploader — used for post images, community topic images,
-   * community reply images, and any other image upload in the app.
-   * Supports up to 10 images at once, each up to 10 MB.
+   * General image uploader — post images, community topic/reply images, etc.
+   * Up to 10 images at once, each capped at 32 MB (covers the 25 MB requirement).
    */
   imageUploader: f({
-    image: { maxFileSize: "10MB", maxFileCount: 10 },
+    image: { maxFileSize: "32MB", maxFileCount: 10 },
   })
     .middleware(authenticate)
     .onUploadComplete(async ({ metadata, file }) => {
@@ -40,12 +48,20 @@ export const ourFileRouter = {
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: file.ufilerl ?? file.url,
+          url: file.url,
           data: null,
           type: fileType as any,
           userId: metadata.userId,
         },
-        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          type: true,
+          createdAt: true,
+          url: true,
+        },
       });
       return {
         fileId: stored.id,
@@ -59,10 +75,11 @@ export const ourFileRouter = {
     }),
 
   /**
-   * Avatar uploader — single image only, used for user profile pictures.
+   * Avatar uploader — single image for user profile pictures.
+   * Capped at 32 MB (covers the 25 MB requirement).
    */
   avatarUploader: f({
-    image: { maxFileSize: "10MB", maxFileCount: 1 },
+    image: { maxFileSize: "32MB", maxFileCount: 1 },
   })
     .middleware(authenticate)
     .onUploadComplete(async ({ metadata, file }) => {
@@ -71,12 +88,20 @@ export const ourFileRouter = {
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: file.ufilerl ?? file.url,
+          url: file.url,
           data: null,
           type: "avatar" as any,
           userId: metadata.userId,
         },
-        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          type: true,
+          createdAt: true,
+          url: true,
+        },
       });
       return {
         fileId: stored.id,
@@ -90,10 +115,11 @@ export const ourFileRouter = {
     }),
 
   /**
-   * Video uploader — up to 3 videos at once, each up to 50 MB.
+   * Video uploader — up to 3 videos at once.
+   * Capped at 128 MB per file (covers the 100 MB requirement).
    */
   videoUploader: f({
-    video: { maxFileSize: "50MB", maxFileCount: 3 },
+    video: { maxFileSize: "128MB", maxFileCount: 3 },
   })
     .middleware(authenticate)
     .onUploadComplete(async ({ metadata, file }) => {
@@ -102,12 +128,20 @@ export const ourFileRouter = {
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: file.ufilerl ?? file.url,
+          url: file.url,
           data: null,
           type: "video" as any,
           userId: metadata.userId,
         },
-        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          type: true,
+          createdAt: true,
+          url: true,
+        },
       });
       return {
         fileId: stored.id,
@@ -121,7 +155,7 @@ export const ourFileRouter = {
     }),
 
   /**
-   * Audio uploader — up to 5 audio files at once, each up to 8 MB.
+   * Audio uploader — up to 5 audio files at once, each capped at 8 MB.
    */
   audioUploader: f({
     audio: { maxFileSize: "8MB", maxFileCount: 5 },
@@ -133,12 +167,20 @@ export const ourFileRouter = {
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: file.ufilerl ?? file.url,
+          url: file.url,
           data: null,
           type: "audio" as any,
           userId: metadata.userId,
         },
-        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          type: true,
+          createdAt: true,
+          url: true,
+        },
       });
       return {
         fileId: stored.id,
@@ -152,18 +194,19 @@ export const ourFileRouter = {
     }),
 
   /**
-   * Document uploader — PDFs, Word, Excel. Up to 5 at once, each up to 20 MB.
+   * Document uploader — PDFs, Word, Excel.
+   * Up to 5 files at once, each capped at 64 MB (covers the 50 MB requirement).
    */
   documentUploader: f({
-    "application/pdf": { maxFileSize: "20MB", maxFileCount: 5 },
-    "application/msword": { maxFileSize: "20MB", maxFileCount: 5 },
+    "application/pdf": { maxFileSize: "64MB", maxFileCount: 5 },
+    "application/msword": { maxFileSize: "64MB", maxFileCount: 5 },
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-      maxFileSize: "20MB",
+      maxFileSize: "64MB",
       maxFileCount: 5,
     },
-    "application/vnd.ms-excel": { maxFileSize: "20MB", maxFileCount: 5 },
+    "application/vnd.ms-excel": { maxFileSize: "64MB", maxFileCount: 5 },
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-      maxFileSize: "20MB",
+      maxFileSize: "64MB",
       maxFileCount: 5,
     },
   })
@@ -174,12 +217,20 @@ export const ourFileRouter = {
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: file.ufilerl ?? file.url,
+          url: file.url,
           data: null,
           type: "document" as any,
           userId: metadata.userId,
         },
-        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          type: true,
+          createdAt: true,
+          url: true,
+        },
       });
       return {
         fileId: stored.id,
@@ -193,14 +244,14 @@ export const ourFileRouter = {
     }),
 
   /**
-   * Protocol / research document uploader — same as document but
-   * stored under the "protocol" FileType for audit trail purposes.
+   * Protocol / research document uploader — stored under "protocol" FileType for audit trail.
+   * Up to 3 files at once, each capped at 64 MB (covers the 50 MB requirement).
    */
   protocolUploader: f({
-    "application/pdf": { maxFileSize: "20MB", maxFileCount: 3 },
-    "application/msword": { maxFileSize: "20MB", maxFileCount: 3 },
+    "application/pdf": { maxFileSize: "64MB", maxFileCount: 3 },
+    "application/msword": { maxFileSize: "64MB", maxFileCount: 3 },
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-      maxFileSize: "20MB",
+      maxFileSize: "64MB",
       maxFileCount: 3,
     },
   })
@@ -211,12 +262,20 @@ export const ourFileRouter = {
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: file.ufilerl ?? file.url,
+          url: file.url,
           data: null,
           type: "protocol" as any,
           userId: metadata.userId,
         },
-        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          type: true,
+          createdAt: true,
+          url: true,
+        },
       });
       return {
         fileId: stored.id,
