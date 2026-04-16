@@ -190,8 +190,8 @@ function CommentTextWithSeeMore({ content, threshold, isReply = false }: { conte
     const displayText = isLong && !expanded ? content.slice(0, threshold) + "…" : content;
 
     return (
-        <div className={`${isReply ? "text-xs" : "text-sm"} text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed`}>
-            <div className="whitespace-pre-wrap">{renderPostContent(displayText)}</div>
+        <div className={`${isReply ? "text-xs" : "text-sm"} text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed whitespace-pre-wrap`}>
+            {renderPostContent(displayText)}
             {isLong && (
                 <button
                     onClick={() => setExpanded(!expanded)}

@@ -258,7 +258,6 @@ export const CellActions = ({
                                     ? "bg-emerald-600 hover:bg-emerald-700"
                                     : "bg-rose-600 hover:bg-rose-700"
                             }`}
-                            variant={banned ? "default" : "destructive"}
                             onClick={onToggleBan}
                             disabled={isLoading}
                         >

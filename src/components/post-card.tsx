@@ -239,7 +239,8 @@ export function PostTextContent({ content, customRender }: PostTextContentProps)
         return <div className="px-3 sm:px-4 py-3">{customRender}</div>;
     }
 
-    const displayText = !expanded && isLong ? `${content.slice(0, SEE_MORE_THRESHOLD)}…` : content;
+    const truncatedLength = Math.max(SEE_MORE_THRESHOLD - 1, 0);
+    const displayText = !expanded && isLong ? `${content.slice(0, truncatedLength)}…` : content;
 
     return (
         <div className="px-3 sm:px-4 py-3">
