@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
-// All Google domains required by the Translate widget (including the newer
-// translate-pa.googleapis.com endpoint used for supported-language lookups)
+// All Google domains required by the Translate widget
 const GOOGLE_TRANSLATE_DOMAINS = [
   "https://translate.google.com",
   "https://translate.googleapis.com",
@@ -9,16 +8,37 @@ const GOOGLE_TRANSLATE_DOMAINS = [
   "https://www.gstatic.com",
 ].join(" ");
 
+// All UploadThing domains required for file uploads and serving
+// - uploadthing.com       → API / presign endpoint
+// - ingest.uploadthing.com → wildcard ingest nodes (sea1, iad1, etc.)
+// - utfs.io              → CDN that serves uploaded files
+const UPLOADTHING_DOMAINS = [
+  "https://uploadthing.com",
+  "https://*.ingest.uploadthing.com",
+  "https://utfs.io",
+  "https://*.utfs.io",
+].join(" ");
+
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
-  // Tell Next.js (and next/jest) to transpile these ESM-only packages
   transpilePackages: ["@exodus/bytes"],
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+      // UploadThing CDN — serves all uploaded files
+      {
+        protocol: "https",
+        hostname: "utfs.io",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.utfs.io",
         pathname: "/**",
       },
     ],
@@ -46,31 +66,34 @@ const nextConfig: NextConfig = {
           value: [
             "default-src 'self'",
 
-            // translate-pa.googleapis.com is a newer Google Translate endpoint
-            // that loads supported-language metadata as a JSONP <script> tag
-            // inside the widget iframe (about:srcdoc). All four domains are needed.
             `script-src 'self' 'unsafe-eval' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             `style-src 'self' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
+            // UploadThing CDN (utfs.io) must be in img-src so uploaded images render
             "img-src 'self' data: blob:"
               + " https://lh3.googleusercontent.com"
               + " https://fonts.gstatic.com"
               + " https://static.licdn.com"
+              + " https://utfs.io"
+              + " https://*.utfs.io"
               + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             `font-src 'self' data: https://fonts.gstatic.com ${GOOGLE_TRANSLATE_DOMAINS}`,
 
+            // UploadThing requires connect-src for:
+            //   1. uploadthing.com       — presign + route handler API calls
+            //   2. *.ingest.uploadthing.com — the actual multipart PUT upload
+            //   3. utfs.io               — HEAD checks after upload completes
             "connect-src 'self'"
               + " https://api.resend.com"
+              + ` ${UPLOADTHING_DOMAINS}`
               + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            "media-src 'self' data: blob:",
+            "media-src 'self' data: blob: https://utfs.io https://*.utfs.io",
 
-            // Web worker loaded by the translate widget
             `worker-src 'self' blob: ${GOOGLE_TRANSLATE_DOMAINS}`,
 
-            // The widget itself runs inside an iframe sourced from these domains
             `frame-src 'self' ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             "object-src 'none'",
