@@ -53,7 +53,7 @@ export async function uploadSingleFileToUploadThing(
   const uploaded = await uploadFiles(endpoint, { files: [file] });
   const url = extractUploadThingFileUrl(uploaded?.[0]);
   if (!url) {
-    throw new Error("UploadThing returned no file URL.");
+    throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}".`);
   }
   return url;
 }
