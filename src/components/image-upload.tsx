@@ -6,17 +6,18 @@ import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { useUploadThing } from "@/lib/uploadthing";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────────
 
 const PROFILE_IMAGE_QUALITY = 0.92;
-const MAX_FILE_SIZE_BYTES    = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE_BYTES    = 25 * 1024 * 1024; // 25 MB (matches UploadThing 32MB slot)
 const ALLOWED_MIME_TYPES     = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────────
 
 interface ImageUploadProps {
-    /** Initial value — either a /api/files/<uuid> path or a full URL */
+    /** Initial value — either a /api/files/<uuid> path, a CDN URL, or null */
     defaultUrl?: string | null;
     /** Called whenever the stored value changes (url = null means cleared) */
     onChange?: (url: string | null) => void;
@@ -26,7 +27,7 @@ interface ImageUploadProps {
     className?: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────────────
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number): Crop {
     return centerCrop(
@@ -51,7 +52,6 @@ async function getCroppedImageBlob(image: HTMLImageElement, crop: Crop): Promise
 
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get canvas context");
-
     ctx.drawImage(image, px.x, px.y, px.width, px.height, 0, 0, px.width, px.height);
 
     return new Promise((resolve, reject) => {
@@ -63,36 +63,23 @@ async function getCroppedImageBlob(image: HTMLImageElement, crop: Crop): Promise
     });
 }
 
-/**
- * Validates a File before we even try to upload it.
- * Returns an error string or null if valid.
- */
 function validateImageFile(file: File): string | null {
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
         return `Unsupported file type (${file.type}). Please use JPEG, PNG, WebP, or GIF.`;
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-        return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 5 MB.`;
+        return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 25 MB.`;
     }
     return null;
 }
 
-/**
- * Calls DELETE /api/files/<id> for DB-stored files.
- * Falls back to the legacy /api/delete-blob endpoint for old Vercel Blob URLs
- * so nothing breaks for files uploaded before the migration.
- * Always best-effort — errors are swallowed so UX is never blocked.
- */
 async function deleteStoredFile(url: string): Promise<void> {
     try {
-        // DB-stored file path: /api/files/<uuid>
         const dbMatch = url.match(/\/api\/files\/([0-9a-f-]{36})/i);
         if (dbMatch) {
             await fetch(`/api/files/${dbMatch[1]}`, { method: "DELETE" });
             return;
         }
-
-        // Legacy Vercel Blob URL — send to backward-compat endpoint
         if (url.includes("vercel-storage.com") || url.includes("blob.vercel")) {
             await fetch("/api/delete-blob", {
                 method:  "DELETE",
@@ -100,13 +87,12 @@ async function deleteStoredFile(url: string): Promise<void> {
                 body:    JSON.stringify({ url }),
             });
         }
-        // data: URLs and other values have nothing to delete server-side
     } catch {
-        // Best-effort — do not surface errors to the user
+        // Best-effort
     }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────────────
 
 export default function ImageUpload({
     defaultUrl,
@@ -114,8 +100,7 @@ export default function ImageUpload({
     variant   = "profile",
     className = "",
 }: ImageUploadProps) {
-    const [value,      setValue]      = useState<string | null>(defaultUrl ?? null);
-    const [isUploading, setIsUploading] = useState(false);
+    const [value,       setValue]      = useState<string | null>(defaultUrl ?? null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [isDragging,  setIsDragging]  = useState(false);
 
@@ -124,11 +109,36 @@ export default function ImageUpload({
     const [cropSrc,   setCropSrc]   = useState<string | null>(null);
     const [crop,      setCrop]      = useState<Crop>();
     const cropImageRef = useRef<HTMLImageElement>(null);
-
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isProfile    = variant === "profile";
 
-    // ── Internal helpers ──────────────────────────────────────────────────────
+    // ─── UploadThing hooks ────────────────────────────────────────────────────────────
+
+    const { startUpload: startAvatarUpload, isUploading: isUploadingAvatar } =
+        useUploadThing("avatarUploader", {
+            onClientUploadComplete: (res) => {
+                const url = res?.[0]?.url ?? null;
+                if (url) { commitValue(url); toast.success("Image uploaded successfully"); }
+            },
+            onUploadError: (err) => {
+                setUploadError(err.message ?? "Upload failed");
+            },
+        });
+
+    const { startUpload: startImageUpload, isUploading: isUploadingImage } =
+        useUploadThing("imageUploader", {
+            onClientUploadComplete: (res) => {
+                const url = res?.[0]?.url ?? null;
+                if (url) { commitValue(url); toast.success("Image uploaded successfully"); }
+            },
+            onUploadError: (err) => {
+                setUploadError(err.message ?? "Upload failed");
+            },
+        });
+
+    const isUploading = isUploadingAvatar || isUploadingImage;
+
+    // ─── Internal helpers ────────────────────────────────────────────────────────────
 
     const commitValue = useCallback((url: string | null) => {
         setValue(url);
@@ -142,91 +152,33 @@ export default function ImageUpload({
         }
     }, [isProfile]);
 
-    // ── Core upload ───────────────────────────────────────────────────────────
+    // ─── Core upload ───────────────────────────────────────────────────────────────
 
-    /**
-     * Upload a File object to POST /api/upload.
-     * The route returns { url: "/api/files/<uuid>", ... }.
-     * We store that URL as the component value.
-     */
     const uploadFile = useCallback(async (file: File): Promise<void> => {
-        // Client-side guard before touching the network
         const validationError = validateImageFile(file);
-        if (validationError) {
-            toast.error(validationError);
-            return;
-        }
+        if (validationError) { toast.error(validationError); return; }
 
-        setIsUploading(true);
         setUploadError(null);
 
-        try {
-            const formData = new FormData();
-            formData.append("file", file);
-
-            const res = await fetch("/api/upload", {
-                method: "POST",
-                body:   formData,
-                // Do NOT set Content-Type manually — browser must set it
-                // automatically so the multipart boundary is included.
-            });
-
-            if (!res.ok) {
-                // Try to parse a JSON error body from our API route
-                let message = "Upload failed";
-                try {
-                    const body = (await res.json()) as { error?: string };
-                    if (body.error) message = body.error;
-                } catch { /* ignore JSON parse error */ }
-
-                if (res.status === 413) {
-                    message = "Image is too large for the server (max 10 MB).";
-                } else if (res.status === 401) {
-                    message = "You must be signed in to upload images.";
-                } else if (res.status === 429) {
-                    message = "Too many uploads. Please wait a moment and try again.";
-                }
-
-                throw new Error(message);
-            }
-
-            const data = (await res.json()) as { url?: string; fileId?: string };
-
-            // The upload route returns { url: "/api/files/<uuid>", fileId: "<uuid>", ... }
-            const fileUrl = data.url ?? (data.fileId ? `/api/files/${data.fileId}` : null);
-
-            if (!fileUrl) {
-                throw new Error("Server did not return a file URL. Please try again.");
-            }
-
-            commitValue(fileUrl);
-            toast.success("Image uploaded successfully");
-        } catch (err) {
-            const rawMsg = err instanceof Error ? err.message : "Upload failed";
-            const msg = rawMsg.length > 120 ? "Upload failed. Please try again." : rawMsg;
-            setUploadError(msg);
-        } finally {
-            setIsUploading(false);
-            // Always reset the file input so the same file can be re-selected
-            if (fileInputRef.current) fileInputRef.current.value = "";
+        if (isProfile) {
+            await startAvatarUpload([file]);
+        } else {
+            await startImageUpload([file]);
         }
-    }, [commitValue]);
 
-    // ── Event handlers ────────────────────────────────────────────────────────
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }, [isProfile, startAvatarUpload, startImageUpload]);
+
+    // ─── Event handlers ────────────────────────────────────────────────────────────
 
     const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         if (isProfile) {
-            // Show crop dialog before uploading
             const reader = new FileReader();
-            reader.onload = () => {
-                setCropSrc(reader.result as string);
-                setShowCrop(true);
-            };
+            reader.onload = () => { setCropSrc(reader.result as string); setShowCrop(true); };
             reader.readAsDataURL(file);
-            // Reset input early so cancel works correctly
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
@@ -242,10 +194,7 @@ export default function ImageUpload({
 
         if (isProfile) {
             const reader = new FileReader();
-            reader.onload = () => {
-                setCropSrc(reader.result as string);
-                setShowCrop(true);
-            };
+            reader.onload = () => { setCropSrc(reader.result as string); setShowCrop(true); };
             reader.readAsDataURL(file);
             return;
         }
@@ -255,7 +204,6 @@ export default function ImageUpload({
 
     const handleCropConfirm = useCallback(async () => {
         if (!cropImageRef.current || !crop) return;
-        setIsUploading(true);
         try {
             const blob = await getCroppedImageBlob(cropImageRef.current, crop);
             const file = new File([blob], "profile.jpg", { type: "image/jpeg" });
@@ -265,8 +213,6 @@ export default function ImageUpload({
         } catch (err) {
             console.error("[ImageUpload] crop error:", err);
             toast.error("Failed to process cropped image. Please try again.");
-        } finally {
-            setIsUploading(false);
         }
     }, [crop, uploadFile]);
 
@@ -276,7 +222,7 @@ export default function ImageUpload({
         setUploadError(null);
     }, [value, commitValue]);
 
-    // ── Render: crop dialog ───────────────────────────────────────────────────
+    // ─── Render: crop dialog ────────────────────────────────────────────────────────────
 
     if (showCrop && cropSrc) {
         return (
@@ -286,12 +232,7 @@ export default function ImageUpload({
                     Crop your profile picture
                 </p>
                 <div className="flex justify-center bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-hidden">
-                    <ReactCrop
-                        crop={crop}
-                        onChange={(c) => setCrop(c)}
-                        aspect={1}
-                        circularCrop
-                    >
+                    <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} circularCrop>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             ref={cropImageRef}
@@ -309,10 +250,7 @@ export default function ImageUpload({
                         disabled={isUploading}
                         className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
                     >
-                        {isUploading
-                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                            : <CheckIcon className="h-4 w-4" />
-                        }
+                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
                         {isUploading ? "Uploading…" : "Apply & Upload"}
                     </button>
                     <button
@@ -328,7 +266,7 @@ export default function ImageUpload({
         );
     }
 
-    // ── Render: preview (image already uploaded) ──────────────────────────────
+    // ─── Render: preview (image already uploaded) ─────────────────────────────────────────
 
     if (value) {
         return (
@@ -345,12 +283,9 @@ export default function ImageUpload({
                         className="object-cover"
                         fill
                         alt="Uploaded image preview"
-                        // unoptimized because images are served from our own API route,
-                        // not an external CDN, so Next.js image optimisation is unnecessary.
                         unoptimized
                     />
                 </div>
-
                 <button
                     type="button"
                     onClick={handleRemove}
@@ -369,7 +304,7 @@ export default function ImageUpload({
         );
     }
 
-    // ── Render: upload dropzone ───────────────────────────────────────────────
+    // ─── Render: upload dropzone ────────────────────────────────────────────────────────────
 
     return (
         <div className={`relative ${className}`}>
@@ -382,15 +317,11 @@ export default function ImageUpload({
                 disabled={isUploading}
                 aria-label="Upload image"
             />
-
             <button
                 type="button"
-                onClick={() => {
-                    setUploadError(null);
-                    fileInputRef.current?.click();
-                }}
+                onClick={() => { setUploadError(null); fileInputRef.current?.click(); }}
                 disabled={isUploading}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true);  }}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
                 className={[
@@ -417,11 +348,7 @@ export default function ImageUpload({
                         <span className="text-sm text-rose-600 dark:text-rose-400 text-center">{uploadError}</span>
                         <button
                             type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setUploadError(null);
-                                fileInputRef.current?.click();
-                            }}
+                            onClick={(e) => { e.stopPropagation(); setUploadError(null); fileInputRef.current?.click(); }}
                             className="mt-1 px-3 py-1 text-xs font-medium bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 rounded-md transition-colors"
                         >
                             Retry
@@ -440,8 +367,8 @@ export default function ImageUpload({
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500">
                             {isProfile
-                                ? "JPEG, PNG or WebP · max 5 MB · cropped to circle"
-                                : "JPEG, PNG, WebP or GIF · max 5 MB"}
+                                ? "JPEG, PNG or WebP · max 25 MB · cropped to circle"
+                                : "JPEG, PNG, WebP or GIF · max 25 MB"}
                         </span>
                     </>
                 )}
