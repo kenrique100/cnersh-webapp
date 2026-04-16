@@ -108,6 +108,7 @@ export default function CommunityClient({
         linkUrl: "",
     });
     const [topicUploading, setTopicUploading] = React.useState(false);
+    const [topicUploadProgress, setTopicUploadProgress] = React.useState<number | null>(null);
     const topicImageRef = useRef<HTMLInputElement>(null);
     const topicVideoRef = useRef<HTMLInputElement>(null);
     const topicDocRef = useRef<HTMLInputElement>(null);
@@ -117,6 +118,10 @@ export default function CommunityClient({
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
     }, []);
+
+    React.useEffect(() => {
+        setTopics(initialTopics);
+    }, [initialTopics]);
 
     /* ─── Handlers ──────────────────────────────────────── */
 
@@ -156,25 +161,38 @@ export default function CommunityClient({
 
     const handleTopicFileUpload = async (file: File, type: "image" | "video" | "document") => {
         setTopicUploading(true);
+        setTopicUploadProgress(0);
         try {
-            const formData = new FormData();
-            formData.append("file", file);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) {
-                let errorMessage = "Upload failed";
-                if (res.status === 413) {
-                    errorMessage = "File is too large";
-                } else {
-                    try {
-                        const d = await res.json();
-                        errorMessage = d.error || errorMessage;
-                    } catch {
-                        // use default error message
+            const data = await new Promise<{ url?: string }>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/upload");
+                xhr.responseType = "json";
+
+                xhr.upload.onprogress = (event) => {
+                    if (!event.lengthComputable) return;
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    setTopicUploadProgress(Math.min(percent, 100));
+                };
+
+                xhr.onerror = () => reject(new Error("Upload failed due to a network error"));
+
+                xhr.onload = () => {
+                    const response = (xhr.response ?? {}) as { error?: string; url?: string };
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(response);
+                        return;
                     }
-                }
-                throw new Error(errorMessage);
-            }
-            const data = await res.json();
+                    if (xhr.status === 413) {
+                        reject(new Error("File is too large"));
+                        return;
+                    }
+                    reject(new Error(response.error || "Upload failed"));
+                };
+
+                const formData = new FormData();
+                formData.append("file", file);
+                xhr.send(formData);
+            });
             if (data.url) {
                 switch (type) {
                     case "image": setNewTopic((p) => ({ ...p, images: [...p.images, data.url] })); break;
@@ -186,6 +204,7 @@ export default function CommunityClient({
             toast.error(err instanceof Error ? err.message : `Failed to upload ${type}`);
         } finally {
             setTopicUploading(false);
+            setTopicUploadProgress(null);
         }
     };
 
@@ -744,6 +763,7 @@ export default function CommunityClient({
                 setNewTopic={setNewTopic}
                 isAdmin={isAdmin}
                 topicUploading={topicUploading}
+                topicUploadProgress={topicUploadProgress}
                 onCreateTopic={handleCreateTopic}
                 onFileUpload={handleTopicFileUpload}
                 topicImageRef={topicImageRef as React.RefObject<HTMLInputElement>}

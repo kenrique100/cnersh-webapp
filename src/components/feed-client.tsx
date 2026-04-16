@@ -365,6 +365,10 @@ export default function FeedClient({
         };
     }, []);
 
+    React.useEffect(() => {
+        setPosts(initialPosts);
+    }, [initialPosts]);
+
     // Share counts (tracked in localStorage for persistence)
     const [shareCounts, setShareCounts] = React.useState<Record<string, number>>(() => {
         if (typeof window === "undefined") return {};
