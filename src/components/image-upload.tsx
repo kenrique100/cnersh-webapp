@@ -8,6 +8,7 @@ import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-cr
 import "react-image-crop/dist/ReactCrop.css";
 import { useUploadThing } from "@/lib/uploadthing";
 import { ACCEPTED_IMAGE_MIME_TYPES, prepareImageForUpload } from "@/lib/client-image-upload";
+import { extractUploadThingFileUrl } from "@/lib/uploadthing-client";
 
 // ─── Constants ────────────────────────────────────────────────────────────────────
 
@@ -114,10 +115,6 @@ export default function ImageUpload({
 
     const { startUpload: startAvatarUpload, isUploading: isUploadingAvatar } =
         useUploadThing("avatarUploader", {
-            onClientUploadComplete: (res) => {
-                const url = res?.[0]?.url ?? null;
-                if (url) { commitValue(url); toast.success("Image uploaded successfully"); }
-            },
             onUploadError: (err) => {
                 setUploadError(err.message ?? "Upload failed");
             },
@@ -125,10 +122,6 @@ export default function ImageUpload({
 
     const { startUpload: startImageUpload, isUploading: isUploadingImage } =
         useUploadThing("imageUploader", {
-            onClientUploadComplete: (res) => {
-                const url = res?.[0]?.url ?? null;
-                if (url) { commitValue(url); toast.success("Image uploaded successfully"); }
-            },
             onUploadError: (err) => {
                 setUploadError(err.message ?? "Upload failed");
             },
@@ -172,14 +165,17 @@ export default function ImageUpload({
 
         setUploadError(null);
 
-        if (isProfile) {
-            await startAvatarUpload([normalizedFile]);
-        } else {
-            await startImageUpload([normalizedFile]);
-        }
+        const uploaded = isProfile
+            ? await startAvatarUpload([normalizedFile])
+            : await startImageUpload([normalizedFile]);
+        const url = extractUploadThingFileUrl(uploaded?.[0]);
+        if (!url) throw new Error("Image upload finished but no file URL was returned.");
+
+        commitValue(url);
+        toast.success("Image uploaded successfully");
 
         if (fileInputRef.current) fileInputRef.current.value = "";
-    }, [isProfile, startAvatarUpload, startImageUpload]);
+    }, [commitValue, isProfile, startAvatarUpload, startImageUpload]);
 
     // ─── Event handlers ────────────────────────────────────────────────────────────
 
