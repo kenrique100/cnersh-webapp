@@ -27,6 +27,7 @@ import {
     LinkIcon,
     XIcon,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { NewTopicState } from "./types";
 import { CATEGORIES, CATEGORY_COLORS } from "./constants";
 import { deleteBlobUrl } from "./utils";
@@ -38,6 +39,7 @@ interface CommunityCreatePostProps {
     setNewTopic: React.Dispatch<React.SetStateAction<NewTopicState>>;
     isAdmin: boolean;
     topicUploading: boolean;
+    topicUploadProgress: number | null;
     onCreateTopic: () => void;
     onFileUpload: (file: File, type: "image" | "video" | "document") => Promise<void>;
     topicImageRef: React.RefObject<HTMLInputElement>;
@@ -52,6 +54,7 @@ export function CommunityCreatePost({
     setNewTopic,
     isAdmin,
     topicUploading,
+    topicUploadProgress,
     onCreateTopic,
     onFileUpload,
     topicImageRef,
@@ -146,6 +149,15 @@ export function CommunityCreatePost({
                     {/* Optional Media/Link - Only for Announcements */}
                     {newTopic.category === "Announcements" && (
                         <>
+                            {topicUploading && topicUploadProgress !== null && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <span>Uploading file...</span>
+                                        <span>{topicUploadProgress}%</span>
+                                    </div>
+                                    <Progress value={topicUploadProgress} className="h-2" />
+                                </div>
+                            )}
                             {/* Image Upload */}
                             <div>
                                 <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">

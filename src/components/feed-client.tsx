@@ -357,6 +357,12 @@ export default function FeedClient({
 
     // Reaction popup state (handled by ReactionsPicker component)
     const reactionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const initialPostsSignature = React.useMemo(
+        () => initialPosts
+            .map((post) => `${post.id}:${post.content}:${post._count.comments}:${post._count.likes}`)
+            .join("|"),
+        [initialPosts]
+    );
 
     // Clean up reaction timeout on unmount
     React.useEffect(() => {
@@ -364,6 +370,15 @@ export default function FeedClient({
             if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current);
         };
     }, []);
+
+    React.useEffect(() => {
+        setPosts((prev) => {
+            const prevSignature = prev
+                .map((post) => `${post.id}:${post.content}:${post._count.comments}:${post._count.likes}`)
+                .join("|");
+            return prevSignature === initialPostsSignature ? prev : initialPosts;
+        });
+    }, [initialPosts, initialPostsSignature]);
 
     // Share counts (tracked in localStorage for persistence)
     const [shareCounts, setShareCounts] = React.useState<Record<string, number>>(() => {
