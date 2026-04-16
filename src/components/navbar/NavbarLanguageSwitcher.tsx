@@ -50,7 +50,6 @@ interface NavbarLanguageSwitcherProps {
 
 export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguageSwitcherProps) {
     const [currentLang, setCurrentLang] = useState<"en" | "fr">("en");
-    const [ready, setReady] = useState(false);
 
     useEffect(() => {
         // Read saved preference immediately to reflect correct active button
@@ -63,7 +62,6 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
         // Poll until widget is injected, then drive combo if French
         const interval = setInterval(() => {
             if (document.querySelector(".goog-te-combo")) {
-                setReady(true);
                 clearInterval(interval);
                 if (lang === "fr") applyCombo(lang);
             }
@@ -85,7 +83,7 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
 
     if (mobile) {
         return (
-            <div className="border-t border-gray-200 dark:border-gray-800 pt-3 mt-1">
+            <div className="border-t border-gray-200 dark:border-gray-800 pt-3 mt-1 notranslate" translate="no">
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 mb-2">
                     Language
                 </p>
@@ -124,8 +122,9 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
 
     return (
         <div
-            className="flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1 py-1 shadow-sm"
-            title={ready ? "Switch language" : "Loading translator..."}
+            className="flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1 py-1 shadow-sm notranslate"
+            title="Switch language"
+            translate="no"
         >
             <button
                 onClick={() => handleChange("en")}

@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 // All Google domains required by the Translate widget
 const GOOGLE_TRANSLATE_DOMAINS = [
+  "https://www.google.com",
   "https://translate.google.com",
   "https://translate.googleapis.com",
   "https://translate-pa.googleapis.com",
