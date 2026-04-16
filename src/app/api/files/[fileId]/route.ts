@@ -4,9 +4,11 @@ import { db } from "@/lib/db";
 /**
  * GET /api/files/[fileId]
  *
- * Serves a file stored as base64 in the database.
- * Streams the decoded bytes back with the correct Content-Type header
- * so browsers can display images/videos inline or download documents.
+ * Supports two storage strategies:
+ *  1. Legacy — file content stored as base64 in the `data` column.
+ *     Decodes and streams the bytes back with the correct Content-Type.
+ *  2. UploadThing — file URL stored in the `url` column, `data` is null.
+ *     Issues a 302 redirect to the CDN URL so the browser fetches it directly.
  */
 export async function GET(
   _req: NextRequest,
@@ -18,11 +20,11 @@ export async function GET(
     return NextResponse.json({ error: "Missing file ID" }, { status: 400 });
   }
 
-  let file: { data: string; mimeType: string; filename: string } | null;
+  let file: { data: string | null; url: string | null; mimeType: string; filename: string } | null;
   try {
     file = await db.file.findUnique({
       where: { id: fileId },
-      select: { data: true, mimeType: true, filename: true },
+      select: { data: true, url: true, mimeType: true, filename: true },
     });
   } catch (err) {
     console.error("[files] DB lookup error:", err);
@@ -33,13 +35,22 @@ export async function GET(
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
-  // Decode base64 → binary
+  // ── UploadThing-stored file: redirect to CDN URL ───────────────────────
+  if (file.url && !file.data) {
+    return NextResponse.redirect(file.url, { status: 302 });
+  }
+
+  // ── Legacy base64-stored file: decode and stream ───────────────────────
+  if (!file.data) {
+    return NextResponse.json({ error: "File has no content" }, { status: 500 });
+  }
+
   const buffer = Buffer.from(file.data, "base64");
 
-  // Decide whether to inline (images/video/audio) or force-download (docs)
-  const isInline = file.mimeType.startsWith("image/") ||
-                   file.mimeType.startsWith("video/") ||
-                   file.mimeType.startsWith("audio/");
+  const isInline =
+    file.mimeType.startsWith("image/") ||
+    file.mimeType.startsWith("video/") ||
+    file.mimeType.startsWith("audio/");
 
   const disposition = isInline
     ? `inline; filename="${file.filename}"`
@@ -51,7 +62,6 @@ export async function GET(
       "Content-Type": file.mimeType,
       "Content-Length": String(buffer.byteLength),
       "Content-Disposition": disposition,
-      // Cache for 1 day — files are immutable once uploaded
       "Cache-Control": "public, max-age=86400, immutable",
     },
   });

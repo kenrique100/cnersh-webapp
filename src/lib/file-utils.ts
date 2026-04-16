@@ -1,8 +1,10 @@
 /**
  * file-utils.ts
  *
- * Centralised helpers for working with DB-stored files.
- * Import these instead of constructing /api/files URLs manually.
+ * Centralised helpers for working with files.
+ * Supports both:
+ *  - Legacy files: stored as base64 in DB, served via /api/files/[id]
+ *  - UploadThing files: stored as CDN URLs in DB, accessed directly
  */
 
 import { db } from "@/lib/db";
@@ -32,7 +34,7 @@ export interface FileUploadResult {
 
 // ─── URL Helpers ───────────────────────────────────────────────────────────
 
-/** Returns the canonical URL for a stored file. */
+/** Returns the canonical serving URL for a stored file. */
 export function getFileUrl(fileId: string): string {
   return `/api/files/${fileId}`;
 }
@@ -42,33 +44,72 @@ export function isFileId(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+/** Returns true if the URL is a direct UploadThing CDN URL. */
+export function isUploadThingUrl(value: string): boolean {
+  return value.includes("ufilerl.io") || value.includes("utfs.io") || value.includes("uploadthing");
+}
+
 /**
- * Resolves a stored value (fileId, data: URL, or absolute URL) to a
- * displayable src string. Pass-through for data: and http(s): URLs;
- * converts plain UUIDs to /api/files paths.
+ * Resolves a stored value (fileId, data URL, UploadThing URL, or absolute URL)
+ * to a displayable src string.
+ *  - UploadThing / http(s) / data: URLs  → returned as-is (direct CDN access)
+ *  - /api/... paths                       → returned as-is
+ *  - Plain UUIDs                          → converted to /api/files/[id]
  */
 export function resolveFileSrc(value: string | null | undefined): string | null {
   if (!value) return null;
-  if (value.startsWith("data:") || value.startsWith("http") || value.startsWith("/api/")) return value;
+  if (
+    value.startsWith("data:") ||
+    value.startsWith("http") ||
+    value.startsWith("/api/") ||
+    isUploadThingUrl(value)
+  ) {
+    return value;
+  }
   if (isFileId(value)) return getFileUrl(value);
   return value;
 }
 
-// ─── Server-side DB Helpers ─────────────────────────────────────────────────────
+// ─── Server-side DB Helpers ─────────────────────────────────────────────────
 // Only call these from Server Components, API routes, or Server Actions.
 
 /** Fetches lightweight metadata for a file (no binary data). */
 export async function getFileMetadata(fileId: string): Promise<FileMetadata | null> {
   const file = await db.file.findUnique({
     where: { id: fileId },
-    select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true },
+    select: { id: true, filename: true, mimeType: true, size: true, type: true, url: true, createdAt: true },
   });
   if (!file) return null;
-  return { ...file, url: getFileUrl(file.id) };
+  // Prefer the stored URL (UploadThing CDN), fall back to the legacy API route
+  const resolvedUrl = file.url ?? getFileUrl(file.id);
+  return { ...file, url: resolvedUrl };
 }
 
-/** Deletes a file record. Caller must verify ownership first. */
+/**
+ * Deletes a file record from the DB.
+ * For UploadThing-stored files, also deletes from the CDN via UTApi.
+ * Caller must verify ownership first.
+ */
 export async function deleteFile(fileId: string): Promise<void> {
+  const file = await db.file.findUnique({
+    where: { id: fileId },
+    select: { url: true, data: true },
+  });
+
+  // If it's an UploadThing file (has url, no base64 data), delete from CDN
+  if (file?.url && !file.data) {
+    try {
+      const { UTApi } = await import("uploadthing/server");
+      const utapi = new UTApi();
+      // Extract the file key from the URL (last path segment)
+      const key = file.url.split("/").pop();
+      if (key) await utapi.deleteFiles([key]);
+    } catch (err) {
+      console.error("[file-utils] Failed to delete file from UploadThing CDN:", err);
+      // Non-fatal: still delete the DB record below
+    }
+  }
+
   await db.file.delete({ where: { id: fileId } });
 }
 
@@ -83,7 +124,7 @@ export async function listUserFiles(
   const [files, total] = await Promise.all([
     db.file.findMany({
       where,
-      select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true },
+      select: { id: true, filename: true, mimeType: true, size: true, type: true, url: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -92,13 +133,13 @@ export async function listUserFiles(
   ]);
 
   return {
-    files: files.map((f) => ({ ...f, url: getFileUrl(f.id) })),
+    files: files.map((f) => ({ ...f, url: f.url ?? getFileUrl(f.id) })),
     total,
   };
 }
 
-// ─── Validation Constants ──────────────────────────────────────────────────────
-// Keep in sync with the upload route and file-validation.ts.
+// ─── Validation Constants ──────────────────────────────────────────────────
+// Keep in sync with the upload route and core.ts UploadThing router.
 
 export const ALLOWED_IMAGE_TYPES    = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 export const ALLOWED_VIDEO_TYPES    = ["video/mp4", "video/webm", "video/ogg"] as const;
@@ -111,14 +152,13 @@ export const ALLOWED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ] as const;
 
-// Must match the limits in src/app/api/upload/route.ts and file-validation.ts
 export const MAX_FILE_SIZES: Record<string, number> = {
-  avatar:   10 * 1024 * 1024, // 10 MB
-  image:    10 * 1024 * 1024, // 10 MB
-  video:    50 * 1024 * 1024, // 50 MB
-  audio:     8 * 1024 * 1024, //  8 MB
-  document: 20 * 1024 * 1024, // 20 MB
-  protocol: 20 * 1024 * 1024, // 20 MB
+  avatar:   10 * 1024 * 1024,
+  image:    10 * 1024 * 1024,
+  video:    50 * 1024 * 1024,
+  audio:     8 * 1024 * 1024,
+  document: 20 * 1024 * 1024,
+  protocol: 20 * 1024 * 1024,
 };
 
 /**
@@ -133,7 +173,7 @@ export function validateFileSizeClient(
   const limit = MAX_FILE_SIZES[category] ?? 20 * 1024 * 1024;
   if (file.size > limit) {
     const limitMB = (limit / (1024 * 1024)).toFixed(0);
-    return { valid: false, error: `File exceeds the ${limitMB} MB limit for ${category} files.` };
+    return { valid: false, error: `File exceeds the ${limitMB} MB limit for ${category} files.` };
   }
   return { valid: true };
 }
