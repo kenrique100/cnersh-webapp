@@ -54,7 +54,7 @@ export async function uploadSingleFileToUploadThing(
   if (!uploaded?.length) {
     throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}": no upload result.`);
   }
-  const url = extractUploadThingFileUrl(uploaded?.[0]);
+  const url = extractUploadThingFileUrl(uploaded[0]);
   if (!url) {
     throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}": missing file URL.`);
   }

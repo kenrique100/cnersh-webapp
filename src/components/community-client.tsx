@@ -537,7 +537,10 @@ export default function CommunityClient({
                     apply: (url: string) => setPendingDocuments((prev) => [...prev, url]),
                 },
             };
-            const config = uploadConfig[type as "video" | "audio" | "document"];
+            if (type !== "video" && type !== "audio" && type !== "document") {
+                throw new Error(`Unsupported upload type: ${type}`);
+            }
+            const config = uploadConfig[type];
             const url = await uploadSingleFileToUploadThing(config.endpoint, file);
             config.apply(url);
         } catch (err) {
