@@ -1,26 +1,9 @@
 // Jest mock for isomorphic-dompurify
-// Provides a simple sanitization that removes HTML tags for testing purposes
-
-function removeTags(dirty: string): string {
-    return dirty
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<[^>]+>/g, '');
-}
-
-const DOMPurify = {
-    sanitize(dirty: string, config?: { ALLOWED_TAGS?: string[]; ALLOWED_ATTR?: string[]; KEEP_CONTENT?: boolean }) {
-        if (!dirty || typeof dirty !== 'string') return '';
-        if (config?.ALLOWED_TAGS && config.ALLOWED_TAGS.length === 0) {
-            return removeTags(dirty);
-        }
-        // For allowed-tags config: strip script but allow safe tags
-        return dirty
-            .replace(/<script[\s\S]*?<\/script>/gi, '')
-            .replace(/\s+on\w+="[^"]*"/gi, '')
-            .replace(/\s+on\w+='[^']*'/gi, '')
-            .replace(/javascript:[^"']*/gi, '');
-    },
-};
+// Uses the browser-oriented dompurify package directly, since jsdom provides
+// window/document in the test environment (no need for the isomorphic wrapper).
+// This avoids loading @exodus/bytes which is an ESM-only package incompatible
+// with Jest's CommonJS transform.
+import DOMPurify from 'dompurify';
 
 export default DOMPurify;
-export const { sanitize } = DOMPurify;
+export const sanitize = DOMPurify.sanitize.bind(DOMPurify);

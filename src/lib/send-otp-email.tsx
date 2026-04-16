@@ -28,12 +28,17 @@ type OTPEmailProps = {
  */
 export function generateOTP(length: number = 6): string {
     const digits = '0123456789';
+    const digitCount = digits.length; // 10
+    // Rejection sampling: discard bytes >= floor(256 / digitCount) * digitCount
+    // to avoid modulo bias (256 is not evenly divisible by 10).
+    const maxUnbiased = Math.floor(256 / digitCount) * digitCount; // 250
     let otp = '';
 
-    // Use Node.js crypto for secure random number generation (server-side only)
-    for (let i = 0; i < length; i++) {
+    while (otp.length < length) {
         const randomByte = crypto.randomBytes(1)[0];
-        otp += digits[randomByte % digits.length];
+        if (randomByte < maxUnbiased) {
+            otp += digits[randomByte % digitCount];
+        }
     }
 
     return otp;

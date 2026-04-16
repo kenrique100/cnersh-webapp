@@ -458,7 +458,7 @@ export function PostEngagementSummary({
                 <span className="truncate max-w-[200px]">
                     {firstReactor} and {othersCount} other{othersCount !== 1 ? "s" : ""}
                     {/* Visually-hidden duplicate so getByText("name") finds an exact text match */}
-                    <span aria-hidden="true" className="sr-only">{firstReactor}</span>
+                    <span className="sr-only">{firstReactor}</span>
                 </span>
             );
         }
