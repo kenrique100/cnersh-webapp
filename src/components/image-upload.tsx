@@ -2,7 +2,7 @@
 
 import { Trash, ImageIcon, Loader2, CropIcon, CheckIcon, UploadCloud, AlertCircle } from "lucide-react";
 import Image from "next/image";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -110,6 +110,7 @@ export default function ImageUpload({
     const [crop,      setCrop]      = useState<Crop>();
     const cropImageRef = useRef<HTMLImageElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const lastNotifiedValueRef = useRef<string | null>(defaultUrl ?? null);
     const isProfile    = variant === "profile";
 
     // ─── UploadThing hooks ────────────────────────────────────────────────────────────
@@ -142,8 +143,14 @@ export default function ImageUpload({
 
     const commitValue = useCallback((url: string | null) => {
         setValue(url);
-        setTimeout(() => onChange?.(url), 0);
-    }, [onChange]);
+    }, []);
+
+    useEffect(() => {
+        if (isUploading) return;
+        if (lastNotifiedValueRef.current === value) return;
+        lastNotifiedValueRef.current = value;
+        onChange?.(value);
+    }, [isUploading, onChange, value]);
 
     const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
         if (isProfile) {
