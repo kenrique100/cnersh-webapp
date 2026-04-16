@@ -207,7 +207,6 @@ export default async function ProjectDetailPage({
                                 {canFileSAE && (
                                     <Link href={`/protocols/${project.id}/sae`}>
                                         <Button
-                                            variant="destructive"
                                             size="sm"
                                             className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600"
                                         >
