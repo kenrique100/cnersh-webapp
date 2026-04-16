@@ -523,12 +523,17 @@ export default function CommunityClient({
                 return;
             }
 
-            const endpoint =
-                type === "video"
-                    ? "videoUploader"
-                    : type === "audio"
-                        ? "audioUploader"
-                        : "documentUploader";
+            let endpoint: "videoUploader" | "audioUploader" | "documentUploader";
+            switch (type) {
+                case "video":
+                    endpoint = "videoUploader";
+                    break;
+                case "audio":
+                    endpoint = "audioUploader";
+                    break;
+                default:
+                    endpoint = "documentUploader";
+            }
             const url = await uploadSingleFileToUploadThing(endpoint, file);
             switch (type) {
                 case "video": setPendingVideos((prev) => [...prev, url]); break;

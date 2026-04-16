@@ -51,9 +51,12 @@ export async function uploadSingleFileToUploadThing(
   file: File
 ): Promise<string> {
   const uploaded = await uploadFiles(endpoint, { files: [file] });
+  if (!uploaded?.length) {
+    throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}": no upload result.`);
+  }
   const url = extractUploadThingFileUrl(uploaded?.[0]);
   if (!url) {
-    throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}".`);
+    throw new Error(`Upload failed on endpoint "${endpoint}" for file "${file.name}": missing file URL.`);
   }
   return url;
 }
