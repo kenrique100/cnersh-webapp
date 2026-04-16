@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import NotificationDropdown from "@/components/notification-dropdown";
 import type { NavbarProps } from "./navbar/types";
-import NavbarThemeToggle from "./navbar/NavbarThemeToggle";
 import SOPsDesktopSubmenuNav from "./navbar/NavbarSOPsDropdown";
 import OurPagesDesktopDropdown from "./navbar/NavbarOurPagesDropdown";
 import { ResourcesDesktopDropdown } from "./navbar/NavbarResourcesDropdown";
@@ -89,7 +88,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
 
                         {user ? (
                             <>
-                                <NavbarThemeToggle />
                                 <NotificationDropdown count={notificationCount} />
                                 <NavbarUserMenu
                                     user={user}
@@ -110,7 +108,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                             </>
                         ) : (
                             <>
-                                <NavbarThemeToggle />
                                 <div className="hidden sm:flex items-center gap-3">
                                     <Link href="/sign-in">
                                         <Button variant="ghost" className="text-sm font-medium">

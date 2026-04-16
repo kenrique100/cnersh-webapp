@@ -206,7 +206,11 @@ export default async function ProjectDetailPage({
                             <CardContent className="pt-0 flex flex-wrap gap-3">
                                 {canFileSAE && (
                                     <Link href={`/protocols/${project.id}/sae`}>
-                                        <Button variant="destructive" size="sm">
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600"
+                                        >
                                             <AlertTriangleIcon className="h-4 w-4 mr-1.5" />
                                             Report SAE
                                         </Button>
