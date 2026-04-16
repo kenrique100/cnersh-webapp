@@ -88,8 +88,6 @@ export function sanitizeUrl(url: string): string {
         }
         return trimmedUrl;
     } catch {
-        // If URL parsing fails, it's likely a relative URL or invalid
-        // Only allow relative URLs that don't start with dangerous patterns
         if (trimmedUrl.startsWith('/') && !trimmedUrl.startsWith('//')) {
             return trimmedUrl;
         }
