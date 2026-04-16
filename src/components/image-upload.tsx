@@ -142,7 +142,7 @@ export default function ImageUpload({
 
     const commitValue = useCallback((url: string | null) => {
         setValue(url);
-        onChange?.(url);
+        setTimeout(() => onChange?.(url), 0);
     }, [onChange]);
 
     const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
