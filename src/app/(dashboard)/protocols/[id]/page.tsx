@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ProjectDetailActions from "./project-detail-actions";
+import TrackingCodeCopyButton from "./tracking-code-copy-button";
 
 function daysSinceDate(date: Date | string): number {
     return (new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
@@ -149,6 +150,7 @@ export default async function ProjectDetailPage({
                     <code className="text-sm font-mono font-bold text-indigo-800 dark:text-indigo-200 tracking-widest">
                         {project.trackingCode}
                     </code>
+                    <TrackingCodeCopyButton trackingCode={project.trackingCode} />
                 </div>
 
                 {/* Header */}
