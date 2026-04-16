@@ -6,6 +6,7 @@ export const ACCEPTED_IMAGE_MIME_TYPES = [
   "image/webp",
   "image/gif",
 ] as const;
+const HEIC_CONVERSION_QUALITY = 0.92;
 
 const HEIC_LIKE_MIME_TYPES = [
   "image/heic",
@@ -31,7 +32,7 @@ function loadImageFromFile(file: File): Promise<HTMLImageElement> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("Unable to decode image file"));
+      reject(new Error("Unable to decode image. The file may be corrupted or in an unsupported format."));
     };
     img.src = objectUrl;
   });
@@ -44,14 +45,14 @@ async function convertHeicToJpeg(file: File): Promise<File> {
   canvas.height = img.naturalHeight || img.height;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Failed to prepare image conversion");
+  if (!ctx) throw new Error("Failed to initialize canvas for image conversion.");
   ctx.drawImage(img, 0, 0);
 
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, "image/jpeg", 0.92);
+    canvas.toBlob(resolve, "image/jpeg", HEIC_CONVERSION_QUALITY);
   });
 
-  if (!blob) throw new Error("Failed to convert HEIC/HEIF image");
+  if (!blob) throw new Error("Failed to convert HEIC/HEIF image to JPEG. Your browser may not support this conversion.");
 
   const normalizedName = file.name.replace(/\.(heic|heif)$/i, "") || "image";
   return new File([blob], `${normalizedName}.jpg`, {

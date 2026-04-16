@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { useUploadThing } from "@/lib/uploadthing";
-import { ACCEPTED_IMAGE_MIME_TYPES, isAcceptedImageType, prepareImageForUpload } from "@/lib/client-image-upload";
+import { ACCEPTED_IMAGE_MIME_TYPES, prepareImageForUpload } from "@/lib/client-image-upload";
 
 // ─── Constants ────────────────────────────────────────────────────────────────────
 
@@ -64,9 +64,6 @@ async function getCroppedImageBlob(image: HTMLImageElement, crop: Crop): Promise
 }
 
 function validateImageFile(file: File): string | null {
-    if (!isAcceptedImageType(file)) {
-        return `Unsupported file type (${file.type}). Please use JPEG, PNG, WebP, or GIF.`;
-    }
     if (file.size > MAX_FILE_SIZE_BYTES) {
         return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 25 MB.`;
     }

@@ -164,7 +164,7 @@ export default function CommunityClient({
                 const normalizedFile = await prepareImageForUpload(file);
                 const uploaded = await startImageUpload([normalizedFile]);
                 const url = uploaded?.[0]?.url;
-                if (!url) throw new Error("Image upload failed");
+                if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
                 setNewTopic((p) => ({ ...p, images: [...p.images, url] }));
                 return;
             }
@@ -547,7 +547,7 @@ export default function CommunityClient({
                 const normalizedFile = await prepareImageForUpload(file);
                 const uploaded = await startImageUpload([normalizedFile]);
                 const url = uploaded?.[0]?.url;
-                if (!url) throw new Error("Image upload failed");
+                if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
                 setPendingImages((prev) => [...prev, url]);
                 return;
             }
