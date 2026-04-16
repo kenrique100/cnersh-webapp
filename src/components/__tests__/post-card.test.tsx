@@ -385,7 +385,7 @@ describe("PostCard Components", () => {
 
 describe("REACTIONS constant", () => {
     it("contains all reaction types", () => {
-        expect(REACTIONS).toHaveLength(6);
+        expect(REACTIONS).toHaveLength(7);
         expect(REACTIONS.map((r) => r.label)).toEqual([
             "Like",
             "Celebrate",
@@ -393,6 +393,7 @@ describe("REACTIONS constant", () => {
             "Love",
             "Insightful",
             "Funny",
+            "Wow",
         ]);
     });
 

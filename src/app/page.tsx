@@ -136,6 +136,24 @@ export default async function Home() {
                             </div>
                         )}
 
+                        {/* Mobile Protocol Tracker - shown at top on small screens */}
+                        <div className="xl:hidden mb-4">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <SearchIcon className="w-4 h-4 text-blue-600" />
+                                        Track Your Protocol
+                                    </CardTitle>
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                        Enter your protocol tracking code to check status.
+                                    </p>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <ProjectTracker />
+                                </CardContent>
+                            </Card>
+                        </div>
+
                         {/* Feed Header */}
                         <div className="flex items-center gap-3 px-2 mb-4">
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
@@ -163,23 +181,6 @@ export default async function Home() {
                     </aside>
                 </div>
 
-                {/* Mobile Protocol Tracker - shown below feed on small screens */}
-                <div className="xl:hidden pb-6 mt-4">
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <SearchIcon className="w-4 h-4 text-blue-600" />
-                                Track Your Protocol
-                            </CardTitle>
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                Enter your protocol tracking code to check status.
-                            </p>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                            <ProjectTracker />
-                        </CardContent>
-                    </Card>
-                </div>
             </div>
 
 

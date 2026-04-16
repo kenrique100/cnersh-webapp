@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FolderIcon, CalendarIcon, MapPinIcon, TagIcon, HashIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import ProtocolCardActions from "./protocol-card-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,20 +20,60 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
         dot: "bg-blue-500",
     },
+    RETURNED_INCOMPLETE: {
+        label: "Returned — Incomplete",
+        color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+        dot: "bg-orange-500",
+    },
     PENDING_REVIEW: {
         label: "Pending Review",
         color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
         dot: "bg-amber-500",
+    },
+    UNDER_REVIEW: {
+        label: "Under Review",
+        color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+        dot: "bg-purple-500",
+    },
+    REVIEW_COMPLETE: {
+        label: "Review Complete",
+        color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+        dot: "bg-indigo-500",
+    },
+    SESSION_SCHEDULED: {
+        label: "Session Scheduled",
+        color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+        dot: "bg-cyan-500",
     },
     APPROVED: {
         label: "Approved",
         color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
         dot: "bg-emerald-500",
     },
+    APPROVED_WITH_CONDITIONS: {
+        label: "Approved with Conditions",
+        color: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+        dot: "bg-teal-500",
+    },
     REJECTED: {
         label: "Rejected",
         color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
         dot: "bg-red-500",
+    },
+    UNDER_APPEAL: {
+        label: "Under Appeal",
+        color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+        dot: "bg-rose-500",
+    },
+    APPEAL_RESOLVED: {
+        label: "Appeal Resolved",
+        color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+        dot: "bg-slate-500",
+    },
+    ARCHIVED: {
+        label: "Archived",
+        color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
+        dot: "bg-gray-300",
     },
 };
 
@@ -49,7 +90,26 @@ export default async function ProjectsPage() {
         groupedProjects[status].push(project);
     }
 
-    const statusOrder = ["PENDING_REVIEW", "SUBMITTED", "APPROVED", "DRAFT", "REJECTED"];
+    const statusOrder = [
+        "PENDING_REVIEW",
+        "UNDER_REVIEW",
+        "REVIEW_COMPLETE",
+        "SESSION_SCHEDULED",
+        "SUBMITTED",
+        "RETURNED_INCOMPLETE",
+        "APPROVED",
+        "APPROVED_WITH_CONDITIONS",
+        "DRAFT",
+        "REJECTED",
+        "UNDER_APPEAL",
+        "APPEAL_RESOLVED",
+        "ARCHIVED",
+    ];
+    const orderedStatuses = [
+        ...statusOrder,
+        ...Object.keys(groupedProjects).filter((status) => !statusOrder.includes(status)),
+    ];
+    const summaryStatuses = orderedStatuses.filter((status) => (groupedProjects[status]?.length || 0) > 0);
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -78,9 +138,13 @@ export default async function ProjectsPage() {
 
                 {/* Status Summary */}
                 {projects.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
-                        {statusOrder.map((status) => {
-                            const config = statusConfig[status];
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-8">
+                        {summaryStatuses.map((status) => {
+                            const config = statusConfig[status] ?? {
+                                label: status,
+                                color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+                                dot: "bg-gray-400",
+                            };
                             const count = groupedProjects[status]?.length || 0;
                             return (
                                 <div
@@ -121,10 +185,14 @@ export default async function ProjectsPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                        {statusOrder
+                        {orderedStatuses
                             .filter((status) => groupedProjects[status]?.length > 0)
                             .map((status) => {
-                                const config = statusConfig[status];
+                                const config = statusConfig[status] ?? {
+                                    label: status,
+                                    color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+                                    dot: "bg-gray-400",
+                                };
                                 const statusProjects = groupedProjects[status];
                                 return (
                                     <div key={status}>
@@ -141,18 +209,20 @@ export default async function ProjectsPage() {
 
                                         {/* Projects Grid */}
                                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                            {statusProjects.map((project) => (
-                                                <Link key={project.id} href={`/protocols/${project.id}`}>
+                                            {statusProjects.map((project) => {
+                                                const cardConfig = statusConfig[project.status] ?? config;
+                                                return (
                                                 <Card
-                                                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden cursor-pointer"
+                                                    key={project.id}
+                                                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden"
                                                 >
                                                     <CardHeader className="pb-3">
                                                         <div className="flex items-start justify-between gap-2">
                                                             <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">
                                                                 {project.title}
                                                             </CardTitle>
-                                                            <Badge className={`${config.color} shrink-0 text-xs`}>
-                                                                {config.label}
+                                                            <Badge className={`${cardConfig.color} shrink-0 text-xs`}>
+                                                                {cardConfig.label}
                                                             </Badge>
                                                         </div>
                                                         <div className="flex items-center gap-1 mt-1">
@@ -187,10 +257,16 @@ export default async function ProjectsPage() {
                                                                 <strong>Feedback:</strong> {project.feedback}
                                                             </div>
                                                         )}
+
+                                                        <ProtocolCardActions
+                                                            projectId={project.id}
+                                                            initialTitle={project.title}
+                                                            initialDescription={project.description}
+                                                        />
                                                     </CardContent>
                                                 </Card>
-                                                </Link>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 );
