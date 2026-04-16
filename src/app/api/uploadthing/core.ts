@@ -23,19 +23,22 @@ const authenticate = async () => {
 
 // ─── File Router ───────────────────────────────────────────────────────────
 //
-// IMPORTANT: UploadThing maxFileSize only accepts power-of-2 values.
-// Valid options: "1MB" "2MB" "4MB" "8MB" "16MB" "32MB" "64MB" "128MB" "256MB" "512MB" "1GB" "2GB"
+// UploadThing maxFileSize only accepts power-of-2 values.
+// Valid: "1MB" "2MB" "4MB" "8MB" "16MB" "32MB" "64MB" "128MB" "256MB" "512MB" "1GB" "2GB"
 //
-// Requested limits rounded UP to the nearest valid power-of-2:
+// Requested limits rounded UP to nearest valid size:
 //   images / avatars  25 MB  → "32MB"
 //   videos           100 MB  → "128MB"
 //   audio              8 MB  → "8MB"
 //   docs / protocols  50 MB  → "64MB"
+//
+// onUploadComplete return values MUST be JSON-serialisable (JsonObject).
+// Date objects are NOT valid — serialise createdAt as an ISO string.
 
 export const ourFileRouter = {
   /**
    * General image uploader — post images, community topic/reply images, etc.
-   * Up to 10 images at once, each capped at 32 MB (covers the 25 MB requirement).
+   * Up to 10 images at once, each capped at 32 MB.
    */
   imageUploader: f({
     image: { maxFileSize: "32MB", maxFileCount: 10 },
@@ -53,15 +56,7 @@ export const ourFileRouter = {
           type: fileType as any,
           userId: metadata.userId,
         },
-        select: {
-          id: true,
-          filename: true,
-          mimeType: true,
-          size: true,
-          type: true,
-          createdAt: true,
-          url: true,
-        },
+        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
       });
       return {
         fileId: stored.id,
@@ -69,14 +64,14 @@ export const ourFileRouter = {
         name: stored.filename,
         type: stored.mimeType,
         size: stored.size,
-        category: stored.type,
-        createdAt: stored.createdAt,
+        category: stored.type as string,
+        createdAt: stored.createdAt.toISOString(),
       };
     }),
 
   /**
    * Avatar uploader — single image for user profile pictures.
-   * Capped at 32 MB (covers the 25 MB requirement).
+   * Capped at 32 MB.
    */
   avatarUploader: f({
     image: { maxFileSize: "32MB", maxFileCount: 1 },
@@ -93,15 +88,7 @@ export const ourFileRouter = {
           type: "avatar" as any,
           userId: metadata.userId,
         },
-        select: {
-          id: true,
-          filename: true,
-          mimeType: true,
-          size: true,
-          type: true,
-          createdAt: true,
-          url: true,
-        },
+        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
       });
       return {
         fileId: stored.id,
@@ -109,14 +96,13 @@ export const ourFileRouter = {
         name: stored.filename,
         type: stored.mimeType,
         size: stored.size,
-        category: stored.type,
-        createdAt: stored.createdAt,
+        category: stored.type as string,
+        createdAt: stored.createdAt.toISOString(),
       };
     }),
 
   /**
-   * Video uploader — up to 3 videos at once.
-   * Capped at 128 MB per file (covers the 100 MB requirement).
+   * Video uploader — up to 3 videos at once, each capped at 128 MB.
    */
   videoUploader: f({
     video: { maxFileSize: "128MB", maxFileCount: 3 },
@@ -133,15 +119,7 @@ export const ourFileRouter = {
           type: "video" as any,
           userId: metadata.userId,
         },
-        select: {
-          id: true,
-          filename: true,
-          mimeType: true,
-          size: true,
-          type: true,
-          createdAt: true,
-          url: true,
-        },
+        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
       });
       return {
         fileId: stored.id,
@@ -149,8 +127,8 @@ export const ourFileRouter = {
         name: stored.filename,
         type: stored.mimeType,
         size: stored.size,
-        category: stored.type,
-        createdAt: stored.createdAt,
+        category: stored.type as string,
+        createdAt: stored.createdAt.toISOString(),
       };
     }),
 
@@ -172,15 +150,7 @@ export const ourFileRouter = {
           type: "audio" as any,
           userId: metadata.userId,
         },
-        select: {
-          id: true,
-          filename: true,
-          mimeType: true,
-          size: true,
-          type: true,
-          createdAt: true,
-          url: true,
-        },
+        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
       });
       return {
         fileId: stored.id,
@@ -188,14 +158,14 @@ export const ourFileRouter = {
         name: stored.filename,
         type: stored.mimeType,
         size: stored.size,
-        category: stored.type,
-        createdAt: stored.createdAt,
+        category: stored.type as string,
+        createdAt: stored.createdAt.toISOString(),
       };
     }),
 
   /**
    * Document uploader — PDFs, Word, Excel.
-   * Up to 5 files at once, each capped at 64 MB (covers the 50 MB requirement).
+   * Up to 5 files at once, each capped at 64 MB.
    */
   documentUploader: f({
     "application/pdf": { maxFileSize: "64MB", maxFileCount: 5 },
@@ -222,15 +192,7 @@ export const ourFileRouter = {
           type: "document" as any,
           userId: metadata.userId,
         },
-        select: {
-          id: true,
-          filename: true,
-          mimeType: true,
-          size: true,
-          type: true,
-          createdAt: true,
-          url: true,
-        },
+        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
       });
       return {
         fileId: stored.id,
@@ -238,14 +200,14 @@ export const ourFileRouter = {
         name: stored.filename,
         type: stored.mimeType,
         size: stored.size,
-        category: stored.type,
-        createdAt: stored.createdAt,
+        category: stored.type as string,
+        createdAt: stored.createdAt.toISOString(),
       };
     }),
 
   /**
-   * Protocol / research document uploader — stored under "protocol" FileType for audit trail.
-   * Up to 3 files at once, each capped at 64 MB (covers the 50 MB requirement).
+   * Protocol / research document uploader — stored under "protocol" FileType.
+   * Up to 3 files at once, each capped at 64 MB.
    */
   protocolUploader: f({
     "application/pdf": { maxFileSize: "64MB", maxFileCount: 3 },
@@ -267,15 +229,7 @@ export const ourFileRouter = {
           type: "protocol" as any,
           userId: metadata.userId,
         },
-        select: {
-          id: true,
-          filename: true,
-          mimeType: true,
-          size: true,
-          type: true,
-          createdAt: true,
-          url: true,
-        },
+        select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
       });
       return {
         fileId: stored.id,
@@ -283,8 +237,8 @@ export const ourFileRouter = {
         name: stored.filename,
         type: stored.mimeType,
         size: stored.size,
-        category: stored.type,
-        createdAt: stored.createdAt,
+        category: stored.type as string,
+        createdAt: stored.createdAt.toISOString(),
       };
     }),
 } satisfies FileRouter;
