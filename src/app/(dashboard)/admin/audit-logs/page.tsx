@@ -18,6 +18,13 @@ const actionColors: Record<string, string> = {
     WARNING: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
 };
 
+const COLUMN_LABELS = {
+    action: "Action",
+    details: "Details",
+    performedBy: "Performed By",
+    date: "Date",
+} as const;
+
 function getActionColor(action: string): string {
     const key = Object.keys(actionColors).find((k) =>
         action.toUpperCase().includes(k)
@@ -79,10 +86,10 @@ export default async function AuditLogsPage() {
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
                         {/* Table Header */}
                         <div className="hidden sm:grid sm:grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            <div className="col-span-3">Action</div>
-                            <div className="col-span-4">Details</div>
-                            <div className="col-span-3">Performed By</div>
-                            <div className="col-span-2">Date</div>
+                            <div className="col-span-3">{COLUMN_LABELS.action}</div>
+                            <div className="col-span-4">{COLUMN_LABELS.details}</div>
+                            <div className="col-span-3">{COLUMN_LABELS.performedBy}</div>
+                            <div className="col-span-2">{COLUMN_LABELS.date}</div>
                         </div>
 
                         {/* Table Body */}
@@ -93,25 +100,19 @@ export default async function AuditLogsPage() {
                                     className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 px-4 sm:px-6 py-4 items-start sm:items-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                                 >
                                     <div className="sm:col-span-3 min-w-0">
-                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                                            Action
-                                        </p>
+                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{COLUMN_LABELS.action}</p>
                                         <Badge className={`${getActionColor(log.action)} font-medium text-xs max-w-full whitespace-normal break-words h-auto py-1 text-left`}>
                                             {log.action}
                                         </Badge>
                                     </div>
                                     <div className="sm:col-span-4 min-w-0">
-                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                                            Details
-                                        </p>
+                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{COLUMN_LABELS.details}</p>
                                         <p className="text-sm text-gray-700 dark:text-gray-300 break-words line-clamp-3 sm:line-clamp-2">
                                             {log.details || "No details provided"}
                                         </p>
                                     </div>
                                     <div className="sm:col-span-3 min-w-0">
-                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                                            Performed By
-                                        </p>
+                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{COLUMN_LABELS.performedBy}</p>
                                         <div className="flex items-center gap-2">
                                             <div className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                                                 <UserIcon className="h-3.5 w-3.5 text-gray-500" />
@@ -122,9 +123,7 @@ export default async function AuditLogsPage() {
                                         </div>
                                     </div>
                                     <div className="sm:col-span-2">
-                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                                            Date
-                                        </p>
+                                        <p className="sm:hidden text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{COLUMN_LABELS.date}</p>
                                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                                             <ClockIcon className="h-3.5 w-3.5" />
                                             <span>{new Date(log.createdAt).toLocaleDateString()}</span>
