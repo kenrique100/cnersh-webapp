@@ -3,6 +3,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -11,9 +12,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
-import { assignProjectReviewer } from "@/app/actions/project";
+import {
+    assignProjectReviewer,
+    autoAssignProjectReviewer,
+    reassignProjectReviewer,
+} from "@/app/actions/project";
 import { toast } from "sonner";
-import { UserCheckIcon, HashIcon } from "lucide-react";
+import { UserCheckIcon, HashIcon, ZapIcon, RefreshCwIcon } from "lucide-react";
 
 interface ProjectUser {
     id: string;
@@ -28,6 +33,8 @@ interface AdminUser {
     email: string;
     image: string | null;
     role: string | null;
+    isAvailable?: boolean;
+    activeAssignmentCount?: number;
 }
 
 interface ProjectData {
@@ -70,27 +77,58 @@ const statusColors: Record<string, string> = {
     ARCHIVED: "bg-gray-100 text-gray-500",
 };
 
-export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers = [] }: ProjectReviewClientProps) {
+const ASSIGNABLE_STATUSES = ["SUBMITTED", "PENDING_REVIEW", "UNDER_REVIEW"];
+const HAS_ACTIVE_ASSIGNMENT_STATUSES = ["PENDING_REVIEW", "UNDER_REVIEW"];
+
+export default function ProjectReviewClient({
+                                                projects,
+                                                isSuperAdmin,
+                                                adminUsers = [],
+                                            }: ProjectReviewClientProps) {
     const router = useRouter();
-    const [assigningId, setAssigningId] = React.useState<string | null>(null);
+    const [loadingId, setLoadingId] = React.useState<string | null>(null);
 
     const formatDate = (date: Date) =>
         new Date(date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
+            month: "short", day: "numeric", year: "numeric",
         });
 
     const handleAssign = async (projectId: string, adminId: string) => {
         try {
-            setAssigningId(projectId);
+            setLoadingId(projectId);
             await assignProjectReviewer(projectId, adminId);
             toast.success("Reviewer assigned successfully");
             router.refresh();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to assign reviewer");
         } finally {
-            setAssigningId(null);
+            setLoadingId(null);
+        }
+    };
+
+    const handleAutoAssign = async (projectId: string) => {
+        try {
+            setLoadingId(projectId);
+            await autoAssignProjectReviewer(projectId);
+            toast.success("Protocol auto-assigned to an available reviewer");
+            router.refresh();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Auto-assign failed");
+        } finally {
+            setLoadingId(null);
+        }
+    };
+
+    const handleReassign = async (projectId: string) => {
+        try {
+            setLoadingId(projectId);
+            await reassignProjectReviewer(projectId);
+            toast.success("Protocol reassigned to next available reviewer");
+            router.refresh();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Reassignment failed");
+        } finally {
+            setLoadingId(null);
         }
     };
 
@@ -104,81 +142,138 @@ export default function ProjectReviewClient({ projects, isSuperAdmin, adminUsers
                 </Card>
             ) : (
                 <div className="space-y-3">
-                    {projects.map((project) => (
-                        <Card
-                            key={project.id}
-                            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-md transition-shadow"
-                        >
-                            <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between">
-                                    <div
-                                        className="cursor-pointer flex-1"
+                    {projects.map((project) => {
+                        const isLoading = loadingId === project.id;
+                        const hasActiveAssignment =
+                            HAS_ACTIVE_ASSIGNMENT_STATUSES.includes(project.status) && !!project.assignedToId;
+                        const canAssign =
+                            isSuperAdmin && ASSIGNABLE_STATUSES.includes(project.status);
+                        const assignedAdmin = adminUsers.find((a) => a.id === project.assignedToId);
+
+                        return (
+                            <Card
+                                key={project.id}
+                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-md transition-shadow"
+                            >
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-start justify-between">
+                                        <div
+                                            className="cursor-pointer flex-1"
+                                            onClick={() => router.push(`/protocols/${project.id}`)}
+                                        >
+                                            <CardTitle className="text-base">{project.title}</CardTitle>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                by {project.user.name} • {formatDate(project.createdAt)}
+                                            </p>
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
+                                                <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                                                    {project.trackingCode}
+                                                </code>
+                                            </div>
+                                        </div>
+                                        <Badge className={statusColors[project.status] || ""}>
+                                            {project.status.replace(/_/g, " ")}
+                                        </Badge>
+                                    </div>
+                                </CardHeader>
+
+                                <CardContent className="pt-0">
+                                    <p
+                                        className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 cursor-pointer"
                                         onClick={() => router.push(`/protocols/${project.id}`)}
                                     >
-                                        <CardTitle className="text-base">{project.title}</CardTitle>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            by {project.user.name} • {formatDate(project.createdAt)}
-                                        </p>
-                                        <div className="flex items-center gap-1 mt-1">
-                                            <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
-                                            <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
-                                                {project.trackingCode}
-                                            </code>
-                                        </div>
+                                        {project.description}
+                                    </p>
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        {project.category}
+                                        {project.location && ` • ${project.location}`}
                                     </div>
-                                    <Badge className={statusColors[project.status] || ""}>
-                                        {project.status.replace("_", " ")}
-                                    </Badge>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                                <p
-                                    className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 cursor-pointer"
-                                    onClick={() => router.push(`/protocols/${project.id}`)}
-                                >
-                                    {project.description}
-                                </p>
-                                <div className="mt-2 text-xs text-gray-500">
-                                    {project.category}
-                                    {project.location && ` • ${project.location}`}
-                                </div>
 
-                                {/* Assign reviewer - only for superadmin and submitted protocols */}
-                                {isSuperAdmin && (project.status === "SUBMITTED" || project.status === "PENDING_REVIEW") && (
-                                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-                                        <div className="flex items-center gap-2">
-                                            <UserCheckIcon className="h-4 w-4 text-gray-500 shrink-0" />
-                                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 shrink-0">
-                                                Assign Reviewer:
-                                            </span>
-                                            <Select
-                                                defaultValue={project.assignedToId || undefined}
-                                                onValueChange={(value) => handleAssign(project.id, value)}
-                                                disabled={assigningId === project.id}
-                                            >
-                                                <SelectTrigger className="h-8 text-xs flex-1">
-                                                    <SelectValue placeholder="Select admin..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {adminUsers.map((admin) => (
-                                                        <SelectItem key={admin.id} value={admin.id}>
-                                                            {admin.name || admin.email}
-                                                            {admin.role === "superadmin" ? " (Super Admin)" : " (Admin)"}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                    {canAssign && (
+                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                                            {/* Currently assigned info */}
+                                            {assignedAdmin && (
+                                                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                    <UserCheckIcon className="h-3 w-3" />
+                                                    Assigned to{" "}
+                                                    <span className="font-medium">
+                                                        {assignedAdmin.name || assignedAdmin.email}
+                                                    </span>
+                                                </p>
+                                            )}
+
+                                            {/* Manual assign dropdown */}
+                                            <div className="flex items-center gap-2">
+                                                <UserCheckIcon className="h-4 w-4 text-gray-500 shrink-0" />
+                                                <span className="text-xs font-medium text-gray-600 dark:text-gray-400 shrink-0">
+                                                    Manual Assign:
+                                                </span>
+                                                <Select
+                                                    defaultValue={project.assignedToId || undefined}
+                                                    onValueChange={(value) => handleAssign(project.id, value)}
+                                                    disabled={isLoading}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                                        <SelectValue placeholder="Select admin..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {adminUsers.map((admin) => (
+                                                            <SelectItem key={admin.id} value={admin.id}>
+                                                                <span className="flex items-center gap-2">
+                                                                    {admin.name || admin.email}
+                                                                    {admin.role === "superadmin" ? " (Super)" : ""}
+                                                                    {admin.isAvailable !== undefined && (
+                                                                        <span
+                                                                            className={`text-[10px] font-semibold px-1 rounded ${
+                                                                                admin.isAvailable
+                                                                                    ? "text-green-600 bg-green-100"
+                                                                                    : "text-amber-600 bg-amber-100"
+                                                                            }`}
+                                                                        >
+                                                                            {admin.isAvailable ? "Available" : "Busy"}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Auto-Assign / Reassign smart buttons */}
+                                            <div className="flex gap-2">
+                                                {!hasActiveAssignment && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-xs h-8 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                                                        onClick={() => handleAutoAssign(project.id)}
+                                                        disabled={isLoading}
+                                                    >
+                                                        <ZapIcon className="h-3 w-3 mr-1" />
+                                                        Auto-Assign
+                                                    </Button>
+                                                )}
+                                                {hasActiveAssignment && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-xs h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                                        onClick={() => handleReassign(project.id)}
+                                                        disabled={isLoading}
+                                                    >
+                                                        <RefreshCwIcon className="h-3 w-3 mr-1" />
+                                                        {isLoading ? "Reassigning..." : "Reassign"}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
-                                        {project.assignedToId && (
-                                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-6">
-                                                ✓ Assigned to {adminUsers.find(a => a.id === project.assignedToId)?.name || "an admin"}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
         </>

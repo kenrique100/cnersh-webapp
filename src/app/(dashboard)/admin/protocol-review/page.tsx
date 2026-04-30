@@ -24,15 +24,16 @@ export default async function ProjectReviewPage() {
         redirect("/dashboard");
     }
 
+    const isSuperAdmin = userRole === "superadmin";
+
     let projects: Awaited<ReturnType<typeof getAllProjects>> = [];
     try {
         projects = await getAllProjects();
     } catch (error) {
         console.error("Error fetching protocols for review:", error);
     }
-    const isSuperAdmin = userRole === "superadmin";
 
-    // Super admin can see the list of admins to assign reviewers
+    // getAdminUsers now includes isAvailable + activeAssignmentCount
     let adminUsers: Awaited<ReturnType<typeof getAdminUsers>> = [];
     if (isSuperAdmin) {
         try {

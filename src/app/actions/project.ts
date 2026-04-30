@@ -7,10 +7,8 @@ import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { randomBytes } from "crypto";
 
-/** Generate a unique, human-readable project tracking code.
- *  Format: CNERSH-{YEAR}-{8 uppercase alphanumeric chars}
- *  Example: CNERSH-2026-A3F7B29C
- */
+// ─── Private Utilities ────────────────────────────────────────────────────────
+
 async function generateTrackingCode(): Promise<string> {
     const year = new Date().getFullYear();
     for (let attempt = 0; attempt < 10; attempt++) {
@@ -19,10 +17,65 @@ async function generateTrackingCode(): Promise<string> {
         const existing = await db.project.findUnique({ where: { trackingCode: code } });
         if (!existing) return code;
     }
-    // Fallback: use timestamp-based unique code
     const ts = Date.now().toString(36).toUpperCase();
     return `CNERSH-${year}-${ts}`;
 }
+
+/**
+ * Returns the first admin/superadmin with no ACTIVE or PENDING_COI assignment.
+ * Excludes any IDs in the excludeIds list (e.g. the previous reviewer on reassignment).
+ */
+async function findAvailableAdmin(
+    excludeIds: string[] = []
+): Promise<{ id: string; name: string | null; email: string } | null> {
+    const busyRows = await db.reviewAssignment.findMany({
+        where: { status: { in: ["PENDING_COI", "ACTIVE"] } },
+        select: { reviewerId: true },
+    });
+    const busyIds = busyRows.map((r) => r.reviewerId);
+    const allExcluded = [...new Set([...busyIds, ...excludeIds])];
+
+    return db.user.findFirst({
+        where: {
+            role: { in: ["admin", "superadmin"] },
+            banned: { not: true },
+            id: { notIn: allExcluded },
+        },
+        select: { id: true, name: true, email: true },
+        orderBy: { name: "asc" },
+    });
+}
+
+/**
+ * Sends an in-app notification and a fire-and-forget email for assignment events.
+ */
+async function notifyAssignmentEvent(opts: {
+    type: "REVIEW_ASSIGNED" | "REVIEW_REASSIGNED";
+    userId: string;
+    userEmail: string;
+    userName: string | null;
+    message: string;
+    projectId: string;
+}) {
+    await db.notification.create({
+        data: {
+            type: opts.type,
+            message: opts.message,
+            link: `/protocols/${opts.projectId}`,
+            userId: opts.userId,
+        },
+    });
+
+    sendNotificationEmail({
+        to: opts.userEmail,
+        userName: opts.userName || "Admin",
+        notificationMessage: opts.message,
+        notificationType: opts.type,
+        actionUrl: `/protocols/${opts.projectId}`,
+    }).catch((err) => console.error(`Error sending ${opts.type} email:`, err));
+}
+
+// ─── Public Actions ───────────────────────────────────────────────────────────
 
 export async function submitProject(data: {
     title: string;
@@ -38,38 +91,28 @@ export async function submitProject(data: {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    // Validate required fields before database call
-    if (!data.title || data.title.trim().length === 0) {
-        throw new Error("Protocol title is required");
-    }
-    if (!data.description || data.description.trim().length === 0) {
-        throw new Error("Protocol description is required");
-    }
-    if (!data.category || data.category.trim().length === 0) {
-        throw new Error("Protocol category is required");
-    }
+    if (!data.title?.trim()) throw new Error("Protocol title is required");
+    if (!data.description?.trim()) throw new Error("Protocol description is required");
+    if (!data.category?.trim()) throw new Error("Protocol category is required");
 
     try {
-        // Check if user is admin
         const user = await db.user.findUnique({
             where: { id: session.user.id },
             select: { role: true },
         });
         const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-
-        // Admin-submitted projects are auto-approved, no review needed
         const projectStatus = isAdmin ? ProjectStatus.APPROVED : ProjectStatus.SUBMITTED;
-        const statusComment = isAdmin ? "Protocol submitted and auto-approved by admin" : "Protocol submitted";
+        const statusComment = isAdmin
+            ? "Protocol submitted and auto-approved by admin"
+            : "Protocol submitted";
 
         const trackingCode = await generateTrackingCode();
 
-        // Sanitize formData to ensure it's a valid JSON value for Prisma
         let sanitizedFormData: Prisma.InputJsonValue | undefined;
         if (data.formData) {
             try {
                 sanitizedFormData = JSON.parse(JSON.stringify(data.formData)) as Prisma.InputJsonValue;
-            } catch (sanitizeError) {
-                console.error("Failed to sanitize formData, storing without formData:", sanitizeError);
+            } catch {
                 sanitizedFormData = undefined;
             }
         }
@@ -89,38 +132,21 @@ export async function submitProject(data: {
                 status: projectStatus,
                 userId: session.user.id,
                 statusHistory: {
-                    create: {
-                        status: projectStatus,
-                        changedBy: session.user.id,
-                        comment: statusComment,
-                    },
+                    create: { status: projectStatus, changedBy: session.user.id, comment: statusComment },
                 },
             },
-            select: {
-                id: true,
-                trackingCode: true,
-                title: true,
-                status: true,
-                createdAt: true,
-                updatedAt: true,
-            },
+            select: { id: true, trackingCode: true, title: true, status: true, createdAt: true, updatedAt: true },
         });
 
-        // Notify admins about new project submission (only for non-admin users)
         if (!isAdmin) {
-            try {
-                await notifyAdmins({
-                    type: "PROJECT_STATUS",
-                    message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
-                    link: `/admin/protocol-review`,
-                    excludeUserId: session.user.id,
-                });
-            } catch (error) {
-                console.error("Error notifying admins about project submission:", error);
-            }
+            notifyAdmins({
+                type: "PROJECT_STATUS",
+                message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
+                link: `/admin/protocol-review`,
+                excludeUserId: session.user.id,
+            }).catch((err) => console.error("Error notifying admins:", err));
         }
 
-        // Return a plain serializable object
         return {
             id: project.id,
             trackingCode: project.trackingCode,
@@ -143,14 +169,14 @@ export async function getProjectById(projectId: string) {
         where: { id: projectId, deleted: false },
         include: {
             user: { select: { id: true, name: true, email: true, image: true } },
-            statusHistory: {
-                orderBy: { createdAt: "desc" },
-            },
+            statusHistory: { orderBy: { createdAt: "desc" } },
             reviewAssignments: {
                 include: {
                     reviewer: { select: { id: true, name: true, email: true, image: true } },
                     coiDeclaration: { select: { hasCOI: true, declaredAt: true } },
-                    evaluationReport: { select: { id: true, status: true, recommendation: true, submittedAt: true } },
+                    evaluationReport: {
+                        select: { id: true, status: true, recommendation: true, submittedAt: true },
+                    },
                 },
             },
             appeal: { select: { id: true, status: true, filedAt: true, deadlineAt: true, decision: true } },
@@ -161,30 +187,43 @@ export async function getProjectById(projectId: string) {
 
     if (!project) return null;
 
-    // Only allow project owner or admins to view
     const user = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
     });
 
     const isOwner = project.userId === session.user.id;
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-    // Also allow assigned reviewers to view (only after COI cleared)
+    const isSuperAdmin = user?.role === "superadmin";
+    const isRegularAdmin = user?.role === "admin";
     const isAssignedReviewer = project.reviewAssignments.some(
         (a) => a.reviewerId === session.user.id && a.status === "ACTIVE"
     );
 
-    if (!isOwner && !isAdmin && !isAssignedReviewer) throw new Error("Forbidden");
+    // Access rules:
+    // - Owner: sees own project, reviewer names hidden
+    // - Superadmin: full access
+    // - Assigned reviewer (ACTIVE only): sees their assignment
+    // - Regular admin (not assigned): read-only, no review workflow data
+    if (!isOwner && !isSuperAdmin && !isAssignedReviewer && !isRegularAdmin) {
+        throw new Error("Forbidden");
+    }
 
-    // If user is the PI, hide reviewer names until status is confirmed
-    // Never expose reviewer evaluation scores/comments to PI
-    if (isOwner && !isAdmin) {
+    // Regular admin not assigned: strip all review workflow data
+    if (isRegularAdmin && !isAssignedReviewer && !isSuperAdmin) {
+        return {
+            ...project,
+            reviewAssignments: [],
+        };
+    }
+
+    // PI (owner, non-admin): hide reviewer identity and evaluation details
+    if (isOwner && !isSuperAdmin && !isRegularAdmin) {
         return {
             ...project,
             reviewAssignments: project.reviewAssignments.map((a) => ({
                 ...a,
-                reviewer: null, // Hide reviewer identity from PI
-                evaluationReport: null, // Never show evaluation details to PI
+                reviewer: null,
+                evaluationReport: null,
             })),
         };
     }
@@ -200,9 +239,7 @@ export async function getUserProjects() {
         return await db.project.findMany({
             where: { userId: session.user.id, deleted: false },
             orderBy: { createdAt: "desc" },
-            include: {
-                statusHistory: { orderBy: { createdAt: "desc" }, take: 1 },
-            },
+            include: { statusHistory: { orderBy: { createdAt: "desc" }, take: 1 } },
         });
     } catch (error) {
         console.error("Error fetching user projects:", error);
@@ -218,16 +255,10 @@ export async function getAllProjects(status?: ProjectStatus) {
         where: { id: session.user.id },
         select: { role: true },
     });
-
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
-        throw new Error("Forbidden");
-    }
+    if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
 
     return db.project.findMany({
-        where: {
-            deleted: false,
-            ...(status ? { status } : {}),
-        },
+        where: { deleted: false, ...(status ? { status } : {}) },
         include: {
             user: { select: { id: true, name: true, email: true, image: true } },
             statusHistory: { orderBy: { createdAt: "desc" } },
@@ -236,11 +267,7 @@ export async function getAllProjects(status?: ProjectStatus) {
     });
 }
 
-export async function updateProjectStatus(
-    projectId: string,
-    status: ProjectStatus,
-    feedback?: string
-) {
+export async function updateProjectStatus(projectId: string, status: ProjectStatus, feedback?: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -248,10 +275,7 @@ export async function updateProjectStatus(
         where: { id: session.user.id },
         select: { role: true },
     });
-
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
-        throw new Error("Forbidden");
-    }
+    if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
 
     const project = await db.project.update({
         where: { id: projectId },
@@ -259,27 +283,16 @@ export async function updateProjectStatus(
             status,
             feedback: feedback || null,
             statusHistory: {
-                create: {
-                    status,
-                    changedBy: session.user.id,
-                    comment: feedback || `Status changed to ${status}`,
-                },
+                create: { status, changedBy: session.user.id, comment: feedback || `Status changed to ${status}` },
             },
         },
     });
 
-    // Create notification for project owner
     const statusMessage = `Your protocol "${project.title}" has been ${status.toLowerCase().replace("_", " ")}`;
     await db.notification.create({
-        data: {
-            type: "PROJECT_STATUS",
-            message: statusMessage,
-            link: `/protocols/${projectId}`,
-            userId: project.userId,
-        },
+        data: { type: "PROJECT_STATUS", message: statusMessage, link: `/protocols/${projectId}`, userId: project.userId },
     });
 
-    // Send email notification to project owner
     try {
         const projectOwner = await db.user.findUnique({
             where: { id: project.userId },
@@ -295,10 +308,9 @@ export async function updateProjectStatus(
             }).catch((err) => console.error("Error sending project status email:", err));
         }
     } catch (error) {
-        console.error("Error sending project status email notification:", error);
+        console.error("Error sending project status email:", error);
     }
 
-    // Create audit log
     await db.auditLog.create({
         data: {
             action: `PROJECT_${status}`,
@@ -315,61 +327,40 @@ export async function deleteProject(projectId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const project = await db.project.findUnique({
-        where: { id: projectId },
-        select: { userId: true },
-    });
-
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { userId: true } });
     if (!project) throw new Error("Protocol not found");
 
-    // Only owner can delete their own protocols
     if (project.userId !== session.user.id) {
-        const user = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true },
-        });
-        if (user?.role !== "admin" && user?.role !== "superadmin") {
-            throw new Error("Forbidden");
-        }
+        const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
     }
 
-    await db.project.update({
-        where: { id: projectId },
-        data: { deleted: true },
-    });
-
+    await db.project.update({ where: { id: projectId }, data: { deleted: true } });
     return { success: true };
 }
 
-export async function updateProject(projectId: string, data: {
-    title?: string;
-    description?: string;
-    objectives?: string;
-    category?: string;
-    location?: string;
-    timeline?: string;
-    budget?: string;
-    formData?: Record<string, unknown>;
-}) {
+export async function updateProject(
+    projectId: string,
+    data: {
+        title?: string;
+        description?: string;
+        objectives?: string;
+        category?: string;
+        location?: string;
+        timeline?: string;
+        budget?: string;
+        formData?: Record<string, unknown>;
+    }
+) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const project = await db.project.findUnique({
-        where: { id: projectId },
-        select: { userId: true },
-    });
-
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { userId: true } });
     if (!project) throw new Error("Protocol not found");
 
-    // Only owner can edit their own protocols
     if (project.userId !== session.user.id) {
-        const user = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true },
-        });
-        if (user?.role !== "admin" && user?.role !== "superadmin") {
-            throw new Error("Forbidden");
-        }
+        const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
     }
 
     return db.project.update({
@@ -387,34 +378,25 @@ export async function updateProject(projectId: string, data: {
     });
 }
 
-export async function forwardProjectToFeed(projectId: string, data: {
-    content: string;
-    images?: string[];
-    videos?: string[];
-    tags?: string[];
-}) {
+export async function forwardProjectToFeed(
+    projectId: string,
+    data: { content: string; images?: string[]; videos?: string[]; tags?: string[] }
+) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
     const project = await db.project.findUnique({
         where: { id: projectId, deleted: false },
-        select: { userId: true, title: true, objectives: true },
+        select: { userId: true, title: true },
     });
-
     if (!project) throw new Error("Protocol not found");
 
-    // Only owner or admin can forward protocol to feed
     if (project.userId !== session.user.id) {
-        const user = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true },
-        });
-        if (user?.role !== "admin" && user?.role !== "superadmin") {
-            throw new Error("Forbidden");
-        }
+        const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
     }
 
-    const post = await db.post.create({
+    return db.post.create({
         data: {
             content: data.content,
             images: data.images || [],
@@ -423,125 +405,101 @@ export async function forwardProjectToFeed(projectId: string, data: {
             userId: session.user.id,
         },
     });
-
-    return post;
 }
 
+/**
+ * Returns all admin/superadmin users with their current availability status.
+ * Superadmin only.
+ */
 export async function getAdminUsers() {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
+    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can list admin users");
 
-    if (user?.role !== "superadmin") {
-        throw new Error("Forbidden: Only super admins can list admin users");
-    }
-
-    return db.user.findMany({
-        where: {
-            role: { in: ["admin", "superadmin"] },
-            banned: { not: true },
-        },
+    const admins = await db.user.findMany({
+        where: { role: { in: ["admin", "superadmin"] }, banned: { not: true } },
         select: { id: true, name: true, email: true, image: true, role: true, expertiseTags: true },
         orderBy: { name: "asc" },
     });
+
+    // Enrich with availability data in one extra query
+    const busyRows = await db.reviewAssignment.findMany({
+        where: { status: { in: ["PENDING_COI", "ACTIVE"] } },
+        select: { reviewerId: true },
+    });
+    const busyCounts = busyRows.reduce<Record<string, number>>((acc, r) => {
+        acc[r.reviewerId] = (acc[r.reviewerId] || 0) + 1;
+        return acc;
+    }, {});
+
+    return admins.map((admin) => ({
+        ...admin,
+        activeAssignmentCount: busyCounts[admin.id] || 0,
+        isAvailable: !busyCounts[admin.id],
+    }));
 }
 
+/**
+ * Manually assign a specific admin to review a protocol. Superadmin only.
+ */
 export async function assignProjectReviewer(projectId: string, adminId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
+    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can assign reviewers");
 
-    if (user?.role !== "superadmin") {
-        throw new Error("Forbidden: Only super admins can assign reviewers");
-    }
-
-    const admin = await db.user.findUnique({
-        where: { id: adminId },
-        select: { id: true, name: true, email: true, role: true },
-    });
+    const [admin, project] = await Promise.all([
+        db.user.findUnique({
+            where: { id: adminId },
+            select: { id: true, name: true, email: true, role: true },
+        }),
+        db.project.findUnique({
+            where: { id: projectId },
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                reviewAssignments: { select: { reviewerId: true } },
+            },
+        }),
+    ]);
 
     if (!admin || (admin.role !== "admin" && admin.role !== "superadmin")) {
         throw new Error("Selected user is not an admin");
     }
-
-    const project = await db.project.findUnique({
-        where: { id: projectId },
-        include: {
-            user: { select: { id: true, name: true, email: true } },
-            reviewAssignments: { select: { reviewerId: true } },
-        },
-    });
-
     if (!project) throw new Error("Protocol not found");
 
-    // Check if this reviewer is already assigned
     const alreadyAssigned = project.reviewAssignments.some((a) => a.reviewerId === adminId);
-    if (alreadyAssigned) {
-        throw new Error("This reviewer is already assigned to this protocol");
-    }
+    if (alreadyAssigned) throw new Error("This reviewer is already assigned to this protocol");
 
-    // Create the ReviewAssignment record
-    await db.reviewAssignment.create({
-        data: {
-            projectId,
-            reviewerId: adminId,
-            status: "PENDING_COI",
-        },
-    });
+    const updatedProject = await db.$transaction(async (tx) => {
+        await tx.reviewAssignment.create({
+            data: { projectId, reviewerId: adminId, status: "PENDING_COI" },
+        });
 
-    // Update the project legacy assignedToId (for backward compat) and status
-    const updatedProject = await db.project.update({
-        where: { id: projectId },
-        data: {
-            assignedToId: adminId,
-            status: "PENDING_REVIEW",
-            statusHistory: {
-                create: {
-                    status: "PENDING_REVIEW",
-                    changedBy: session.user.id,
-                    comment: "Protocol assigned for review",
+        return tx.project.update({
+            where: { id: projectId },
+            data: {
+                assignedToId: adminId,
+                status: "PENDING_REVIEW",
+                statusHistory: {
+                    create: { status: "PENDING_REVIEW", changedBy: session.user.id, comment: "Protocol assigned for review" },
                 },
             },
-        },
-        include: {
-            user: { select: { id: true, name: true, email: true } },
-        },
+            include: { user: { select: { id: true, name: true, email: true } } },
+        });
     });
 
-    // Notify the assigned admin
-    await db.notification.create({
-        data: {
-            type: "REVIEW_ASSIGNED",
-            message: `You have been assigned to review the protocol: "${updatedProject.title}"`,
-            link: `/protocols/${projectId}`,
-            userId: adminId,
-        },
+    await notifyAssignmentEvent({
+        type: "REVIEW_ASSIGNED",
+        userId: adminId,
+        userEmail: admin.email,
+        userName: admin.name,
+        message: `You have been assigned to review the protocol: "${updatedProject.title}"`,
+        projectId,
     });
 
-    // Send email notification to the assigned admin
-    try {
-        if (admin.email) {
-            sendNotificationEmail({
-                to: admin.email,
-                userName: admin.name || "Admin",
-                notificationMessage: `You have been assigned to review the protocol: "${updatedProject.title}" submitted by ${updatedProject.user.name || "a user"}.`,
-                notificationType: "REVIEW_ASSIGNED",
-                actionUrl: `/protocols/${projectId}`,
-            }).catch((err) => console.error("Error sending review assignment email:", err));
-        }
-    } catch (error) {
-        console.error("Error sending review assignment email:", error);
-    }
-
-    // Create audit log
     await db.auditLog.create({
         data: {
             action: "ASSIGN_REVIEWER",
@@ -555,37 +513,193 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
 }
 
 /**
- * Get all review assignments for a protocol (admin/superadmin only)
+ * Automatically find an available admin and assign them to a protocol.
+ * Uses a transaction to prevent race conditions. Superadmin only.
  */
+export async function autoAssignProjectReviewer(projectId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can auto-assign reviewers");
+
+    const project = await db.project.findUnique({
+        where: { id: projectId },
+        include: {
+            user: { select: { id: true, name: true, email: true } },
+            reviewAssignments: { select: { reviewerId: true, status: true } },
+        },
+    });
+    if (!project) throw new Error("Protocol not found");
+
+    const hasActiveAssignment = project.reviewAssignments.some(
+        (a) => a.status === "PENDING_COI" || a.status === "ACTIVE"
+    );
+    if (hasActiveAssignment) throw new Error("This protocol already has an active reviewer assignment");
+
+    const availableAdmin = await findAvailableAdmin();
+    if (!availableAdmin) throw new Error("No available admin found. All admins currently have ongoing review assignments.");
+
+    const updatedProject = await db.$transaction(async (tx) => {
+        await tx.reviewAssignment.create({
+            data: { projectId, reviewerId: availableAdmin.id, status: "PENDING_COI" },
+        });
+
+        return tx.project.update({
+            where: { id: projectId },
+            data: {
+                assignedToId: availableAdmin.id,
+                status: "PENDING_REVIEW",
+                statusHistory: {
+                    create: {
+                        status: "PENDING_REVIEW",
+                        changedBy: session.user.id,
+                        comment: "Protocol auto-assigned for review",
+                    },
+                },
+            },
+            include: { user: { select: { id: true, name: true, email: true } } },
+        });
+    });
+
+    await notifyAssignmentEvent({
+        type: "REVIEW_ASSIGNED",
+        userId: availableAdmin.id,
+        userEmail: availableAdmin.email,
+        userName: availableAdmin.name,
+        message: `You have been automatically assigned to review the protocol: "${updatedProject.title}"`,
+        projectId,
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "AUTO_ASSIGN_REVIEWER",
+            details: `Auto-assigned ${availableAdmin.name || availableAdmin.email} to review protocol "${updatedProject.title}"`,
+            targetId: projectId,
+            userId: session.user.id,
+        },
+    });
+
+    return updatedProject;
+}
+
+/**
+ * Reassign a protocol from its current reviewer to the next available admin.
+ * Closes the old assignment cleanly, notifies both parties. Superadmin only.
+ */
+export async function reassignProjectReviewer(projectId: string, reason?: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can reassign reviewers");
+
+    const project = await db.project.findUnique({
+        where: { id: projectId },
+        include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!project) throw new Error("Protocol not found");
+
+    const currentAssignment = await db.reviewAssignment.findFirst({
+        where: { projectId, status: { in: ["PENDING_COI", "ACTIVE"] } },
+        include: { reviewer: { select: { id: true, name: true, email: true } } },
+    });
+    if (!currentAssignment) throw new Error("No active assignment found to reassign");
+
+    const nextAdmin = await findAvailableAdmin([currentAssignment.reviewerId]);
+    if (!nextAdmin) {
+        throw new Error(
+            "No available admin found for reassignment. All other admins currently have ongoing review assignments."
+        );
+    }
+
+    const updatedProject = await db.$transaction(async (tx) => {
+        await tx.reviewAssignment.update({
+            where: { id: currentAssignment.id },
+            data: { status: "EXCLUDED", reassignedAt: new Date() },
+        });
+
+        // Create new assignment, linking back to old reviewer for audit trail
+        await tx.reviewAssignment.create({
+            data: {
+                projectId,
+                reviewerId: nextAdmin.id,
+                status: "PENDING_COI",
+                reassignedFromId: currentAssignment.reviewerId,
+            },
+        });
+
+        // Keep legacy assignedToId in sync
+        return tx.project.update({
+            where: { id: projectId },
+            data: {
+                assignedToId: nextAdmin.id,
+                statusHistory: {
+                    create: {
+                        status: "PENDING_REVIEW",
+                        changedBy: session.user.id,
+                        comment: reason
+                            ? `Protocol reassigned: ${reason}`
+                            : "Protocol reassigned to a new reviewer",
+                    },
+                },
+            },
+            include: { user: { select: { id: true, name: true, email: true } } },
+        });
+    });
+
+    // Notify old reviewer (unassigned)
+    await notifyAssignmentEvent({
+        type: "REVIEW_REASSIGNED",
+        userId: currentAssignment.reviewer.id,
+        userEmail: currentAssignment.reviewer.email,
+        userName: currentAssignment.reviewer.name,
+        message: `You have been unassigned from the protocol: "${project.title}"${reason ? `. Reason: ${reason}` : ""}`,
+        projectId,
+    });
+
+    // Notify new reviewer (assigned)
+    await notifyAssignmentEvent({
+        type: "REVIEW_REASSIGNED",
+        userId: nextAdmin.id,
+        userEmail: nextAdmin.email,
+        userName: nextAdmin.name,
+        message: `You have been assigned to review the protocol: "${project.title}" (reassignment)`,
+        projectId,
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "REASSIGN_REVIEWER",
+            details: `Reassigned protocol "${project.title}" from ${currentAssignment.reviewer.name || currentAssignment.reviewer.email} to ${nextAdmin.name || nextAdmin.email}${reason ? `. Reason: ${reason}` : ""}`,
+            targetId: projectId,
+            userId: session.user.id,
+        },
+    });
+
+    return updatedProject;
+}
+
 export async function getProjectReviewAssignments(projectId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
-        throw new Error("Forbidden");
-    }
+    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+    if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
 
     return db.reviewAssignment.findMany({
         where: { projectId },
         include: {
             reviewer: { select: { id: true, name: true, email: true, image: true, expertiseTags: true } },
             coiDeclaration: true,
-            evaluationReport: { select: { id: true, status: true, recommendation: true, overallScore: true, submittedAt: true } },
+            evaluationReport: {
+                select: { id: true, status: true, recommendation: true, overallScore: true, submittedAt: true },
+            },
         },
         orderBy: { createdAt: "asc" },
     });
 }
 
-/**
- * Public project tracker — looks up a project by tracking code.
- * Returns safe, limited data (no submitter PII, no reviewer identity).
- * Accessible without authentication.
- */
 export async function trackProjectByCode(trackingCode: string) {
     const code = trackingCode.trim().toUpperCase();
     if (!code) return null;
@@ -604,11 +718,7 @@ export async function trackProjectByCode(trackingCode: string) {
             updatedAt: true,
             statusHistory: {
                 orderBy: { createdAt: "desc" },
-                select: {
-                    status: true,
-                    comment: true,
-                    createdAt: true,
-                },
+                select: { status: true, comment: true, createdAt: true },
             },
         },
     });
