@@ -16,8 +16,6 @@ import {
     XCircleIcon,
     ClockIcon,
     FileEditIcon,
-    CopyIcon,
-    CheckIcon,
 } from "lucide-react";
 
 type ProjectStatus =
@@ -144,7 +142,6 @@ export default function ProjectTracker() {
     const [error, setError] = React.useState<string | null>(null);
     const [result, setResult] = React.useState<TrackedProject | null>(null);
     const [searched, setSearched] = React.useState(false);
-    const [copied, setCopied] = React.useState(false);
 
     const handleTrack = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -170,17 +167,6 @@ export default function ProjectTracker() {
         }
     };
 
-    const handleCopyCode = async () => {
-        const textToCopy = result?.trackingCode || code.trim().toUpperCase();
-        if (!textToCopy) return;
-        try {
-            await navigator.clipboard.writeText(textToCopy);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-        } catch {
-            setCopied(false);
-        }
-    };
 
     const config = result ? (statusConfig[result.status] ?? unknownStatusConfig) : null;
 
@@ -214,16 +200,6 @@ export default function ProjectTracker() {
                         <SearchIcon className="h-4 w-4" />
                     )}
                     <span className="ml-1.5 hidden sm:inline">Track</span>
-                </Button>
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCopyCode}
-                    disabled={!result?.trackingCode && !code.trim()}
-                    className="shrink-0"
-                    title="Copy tracking code"
-                >
-                    {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
                 </Button>
             </form>
 
