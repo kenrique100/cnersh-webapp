@@ -47,7 +47,10 @@ interface CommunityPostCardProps {
     onReplyTo: (reply: ReplyData) => void;
     onStartEditReply: (replyId: string, content: string) => void;
     onVotePoll: (replyId: string, optionIndex: number) => void;
+    onReactToReply?: (replyId: string, emoji: string) => void;
 }
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 function renderMessageContent(content: string) {
     const parts = content.split(/(@\w+)/g);
@@ -66,11 +69,45 @@ function renderMessageContent(content: string) {
     });
 }
 
+function ReactionBar({
+                         reactions,
+                         currentUserId,
+                         onReact,
+                     }: {
+    reactions?: Record<string, string[]>;
+    currentUserId?: string;
+    onReact?: (emoji: string) => void;
+}) {
+    if (!reactions || Object.keys(reactions).length === 0) return null;
+    return (
+        <div className="flex flex-wrap gap-1 mt-1">
+            {Object.entries(reactions).map(([emoji, userIds]) => {
+                if (userIds.length === 0) return null;
+                const reacted = currentUserId && userIds.includes(currentUserId);
+                return (
+                    <button
+                        key={emoji}
+                        onClick={(e) => { e.stopPropagation(); onReact?.(emoji); }}
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                            reacted
+                                ? "bg-blue-100 border-blue-300 dark:bg-blue-900 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                                : "bg-gray-100 border-gray-200 dark:bg-gray-800 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        }`}
+                    >
+                        <span>{emoji}</span>
+                        <span className="font-medium">{userIds.length}</span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 function ReplyAttachments({
-    reply,
-    currentUserId,
-    onVotePoll,
-}: {
+                              reply,
+                              currentUserId,
+                              onVotePoll,
+                          }: {
     reply: ReplyData;
     currentUserId: string | undefined;
     onVotePoll: (replyId: string, optionIndex: number) => void;
@@ -138,9 +175,7 @@ function ReplyAttachments({
     }
 
     if (reply.linkUrl) {
-        attachments.push(
-            <LinkPreview key="link" url={reply.linkUrl} />
-        );
+        attachments.push(<LinkPreview key="link" url={reply.linkUrl} />);
     }
 
     if (reply.pollQuestion && reply.pollOptions && reply.pollOptions.length > 0) {
@@ -148,9 +183,7 @@ function ReplyAttachments({
         const totalVotes = Object.keys(votes).length;
         const userVote = currentUserId ? votes[currentUserId] : undefined;
         const optionCounts: Record<number, number> = {};
-        Object.values(votes).forEach((v) => {
-            optionCounts[v] = (optionCounts[v] || 0) + 1;
-        });
+        Object.values(votes).forEach((v) => { optionCounts[v] = (optionCounts[v] || 0) + 1; });
 
         attachments.push(
             <div key="poll" className="mt-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 max-w-sm">
@@ -206,31 +239,30 @@ function ReplyAttachments({
 }
 
 export function CommunityPostCard({
-    reply,
-    prevReply,
-    allReplies,
-    currentUserId,
-    isAdmin,
-    editingReplyId,
-    editingContent,
-    activeMessageId,
-    onSetEditingContent,
-    onEditReply,
-    onCancelEdit,
-    onMessageTap,
-    onUserClick,
-    onDeleteReply,
-    onReportChat,
-    onReplyTo,
-    onStartEditReply,
-    onVotePoll,
-}: CommunityPostCardProps) {
+                                      reply,
+                                      prevReply,
+                                      allReplies,
+                                      currentUserId,
+                                      isAdmin,
+                                      editingReplyId,
+                                      editingContent,
+                                      activeMessageId,
+                                      onSetEditingContent,
+                                      onEditReply,
+                                      onCancelEdit,
+                                      onMessageTap,
+                                      onUserClick,
+                                      onDeleteReply,
+                                      onReportChat,
+                                      onReplyTo,
+                                      onStartEditReply,
+                                      onVotePoll,
+                                      onReactToReply,
+                                  }: CommunityPostCardProps) {
     const showHeader =
         !prevReply ||
         prevReply.user.id !== reply.user.id ||
-        new Date(reply.createdAt).getTime() -
-            new Date(prevReply.createdAt).getTime() >
-            MESSAGE_GROUP_THRESHOLD_MS;
+        new Date(reply.createdAt).getTime() - new Date(prevReply.createdAt).getTime() > MESSAGE_GROUP_THRESHOLD_MS;
 
     const parentReply = reply.parentId
         ? allReplies.find((r) => r.id === reply.parentId)
@@ -241,44 +273,29 @@ export function CommunityPostCard({
             className="group hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded px-2 py-0.5 -mx-2 relative"
             onClick={() => onMessageTap(reply.id)}
         >
-            {/* Reply reference */}
+            {/* Reply reference — shown above the message (Discord-style quote) */}
             {parentReply && (
                 <div className="flex items-center gap-1.5 ml-12 mb-0.5 text-xs text-gray-500 dark:text-gray-400">
                     <div className="w-6 h-3 border-l-2 border-t-2 border-gray-300 dark:border-gray-600 rounded-tl ml-1" />
                     <Avatar className="h-4 w-4">
-                        <AvatarImage
-                            src={
-                                parentReply.user.image ||
-                                undefined
-                            }
-                        />
+                        <AvatarImage src={parentReply.user.image || undefined} />
                         <AvatarFallback className="text-xs bg-indigo-500 text-white">
-                            {getDisplayName(parentReply.user)
-                                ?.charAt(0)
-                                ?.toUpperCase() || "U"}
+                            {getDisplayName(parentReply.user)?.charAt(0)?.toUpperCase() || "U"}
                         </AvatarFallback>
                     </Avatar>
                     <span className="font-semibold text-gray-600 dark:text-gray-300 hover:underline cursor-pointer">
                         {getDisplayName(parentReply.user)}
                     </span>
-                    <span className="truncate max-w-[200px]">
-                        {parentReply.content}
-                    </span>
+                    <span className="truncate max-w-[200px]">{parentReply.content}</span>
                 </div>
             )}
 
             <div className="flex gap-3">
                 {showHeader ? (
                     <Avatar className="h-10 w-10 mt-0.5 shrink-0">
-                        <AvatarImage
-                            src={
-                                reply.user.image || undefined
-                            }
-                        />
+                        <AvatarImage src={reply.user.image || undefined} />
                         <AvatarFallback className="bg-indigo-500 text-white text-sm">
-                            {getDisplayName(reply.user)
-                                ?.charAt(0)
-                                ?.toUpperCase() || "U"}
+                            {getDisplayName(reply.user)?.charAt(0)?.toUpperCase() || "U"}
                         </AvatarFallback>
                     </Avatar>
                 ) : (
@@ -288,6 +305,7 @@ export function CommunityPostCard({
                         </span>
                     </div>
                 )}
+
                 <div className="flex-1 min-w-0">
                     {showHeader && (
                         <div className="flex items-baseline gap-2">
@@ -298,12 +316,13 @@ export function CommunityPostCard({
                                 {getDisplayName(reply.user)}
                             </span>
                             <span className="text-sm text-gray-500 dark:text-gray-400">
-                                {formatDate(reply.createdAt)}{" "}
-                                {formatTime(reply.createdAt)}
+                                {formatDate(reply.createdAt)} {formatTime(reply.createdAt)}
                             </span>
                         </div>
                     )}
-                    <p className="text-sm text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap">
+
+                    {/* Message text */}
+                    <p className="text-sm text-gray-800 dark:text-gray-200 wrap-break-word whitespace-pre-wrap">
                         {editingReplyId === reply.id ? (
                             <span className="flex items-center gap-2">
                                 <input
@@ -349,125 +368,169 @@ export function CommunityPostCard({
                             renderMessageContent(reply.content)
                         )}
                     </p>
+
+                    {/* Attachments */}
                     <ReplyAttachments reply={reply} currentUserId={currentUserId} onVotePoll={onVotePoll} />
-                    {/* Nested replies inline */}
-                    {reply.children &&
-                        reply.children.length > 0 && (
-                            <div className="mt-2 ml-4 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2">
-                                {reply.children.map(
-                                    (child) => (
-                                        <div
-                                            key={child.id}
-                                            className="group/child flex items-start gap-2.5 py-1.5 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 relative"
-                                            onClick={() => onMessageTap(child.id)}
-                                        >
-                                            <Avatar className="h-7 w-7 mt-0.5 shrink-0">
-                                                <AvatarImage
-                                                    src={
-                                                        child
-                                                            .user
-                                                            .image ||
-                                                        undefined
-                                                    }
-                                                />
-                                                <AvatarFallback className="text-xs bg-indigo-500 text-white">
-                                                    {getDisplayName(child.user)
-                                                        ?.charAt(
-                                                            0
-                                                        )
-                                                        ?.toUpperCase() ||
-                                                        "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                                                        {getDisplayName(child.user)}
-                                                    </span>
-                                                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                                                        {formatDate(child.createdAt)}{" "}
-                                                        {formatTime(child.createdAt)}
-                                                    </span>
-                                                </div>
-                                                {editingReplyId === child.id ? (
-                                                    <span className="flex items-center gap-2 mt-0.5">
-                                                        <input
-                                                            type="text"
-                                                            value={editingContent}
-                                                            onChange={(e) => onSetEditingContent(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === "Enter") onEditReply(child.id);
-                                                                if (e.key === "Escape") onCancelEdit();
-                                                            }}
-                                                            className="flex-1 text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            autoFocus
-                                                        />
-                                                        <button onClick={() => onEditReply(child.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded" title="Save">
-                                                            <CheckIcon className="h-3 w-3" />
-                                                        </button>
-                                                        <button onClick={onCancelEdit} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" title="Cancel">
-                                                            <XIcon className="h-3 w-3" />
-                                                        </button>
-                                                    </span>
-                                                ) : (
-                                                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5 whitespace-pre-wrap break-words">
-                                                        {renderMessageContent(child.content)}
-                                                    </p>
-                                                )}
-                                                <ReplyAttachments reply={child} currentUserId={currentUserId} onVotePoll={onVotePoll} />
-                                                {/* Child reply actions */}
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onReplyTo(child);
-                                                        }}
-                                                        className="text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
-                                                    >
-                                                        Reply
-                                                    </button>
-                                                    {currentUserId === child.user.id && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onStartEditReply(child.id, child.content);
-                                                            }}
-                                                            className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                    )}
-                                                    {(isAdmin || currentUserId === child.user.id) && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onDeleteReply(child.id);
-                                                            }}
-                                                            className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
+
+                    {/* Reaction bar — below content */}
+                    <ReactionBar
+                        reactions={reply.reactions}
+                        currentUserId={currentUserId}
+                        onReact={(emoji) => onReactToReply?.(reply.id, emoji)}
+                    />
+
+                    {/* Nested / child replies — always below content */}
+                    {reply.children && reply.children.length > 0 && (
+                        <div className="mt-2 ml-4 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2">
+                            {reply.children.map((child) => (
+                                <div
+                                    key={child.id}
+                                    className="group/child flex items-start gap-2.5 py-1.5 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 relative"
+                                    onClick={(e) => { e.stopPropagation(); onMessageTap(child.id); }}
+                                >
+                                    <Avatar className="h-7 w-7 mt-0.5 shrink-0">
+                                        <AvatarImage src={child.user.image || undefined} />
+                                        <AvatarFallback className="text-xs bg-indigo-500 text-white">
+                                            {getDisplayName(child.user)?.charAt(0)?.toUpperCase() || "U"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                                {getDisplayName(child.user)}
+                                            </span>
+                                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                                                {formatDate(child.createdAt)} {formatTime(child.createdAt)}
+                                            </span>
                                         </div>
-                                    )
-                                )}
-                            </div>
-                        )}
+                                        {editingReplyId === child.id ? (
+                                            <span className="flex items-center gap-2 mt-0.5">
+                                                <input
+                                                    type="text"
+                                                    value={editingContent}
+                                                    onChange={(e) => onSetEditingContent(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") onEditReply(child.id);
+                                                        if (e.key === "Escape") onCancelEdit();
+                                                    }}
+                                                    className="flex-1 text-xs px-2 py-1 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    autoFocus
+                                                />
+                                                <button onClick={() => onEditReply(child.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded">
+                                                    <CheckIcon className="h-3 w-3" />
+                                                </button>
+                                                <button onClick={onCancelEdit} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                                                    <XIcon className="h-3 w-3" />
+                                                </button>
+                                            </span>
+                                        ) : (
+                                            <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5 whitespace-pre-wrap wrap-break-word">
+                                                {renderMessageContent(child.content)}
+                                            </p>
+                                        )}
+                                        <ReplyAttachments reply={child} currentUserId={currentUserId} onVotePoll={onVotePoll} />
+
+                                        {/* Child reaction bar */}
+                                        <ReactionBar
+                                            reactions={child.reactions}
+                                            currentUserId={currentUserId}
+                                            onReact={(emoji) => onReactToReply?.(child.id, emoji)}
+                                        />
+
+                                        {/* Child action links — BELOW content */}
+                                        <div className="flex items-center gap-3 mt-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onReplyTo(child); }}
+                                                className="text-xs text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
+                                            >
+                                                Reply
+                                            </button>
+                                            {/* Quick emoji react */}
+                                            {onReactToReply && (
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="text-xs text-gray-500 hover:text-yellow-500 transition-colors"
+                                                        >
+                                                            😊
+                                                        </button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-2" align="start">
+                                                        <div className="flex gap-1">
+                                                            {QUICK_REACTIONS.map((emoji) => (
+                                                                <button
+                                                                    key={emoji}
+                                                                    onClick={(e) => { e.stopPropagation(); onReactToReply(child.id, emoji); }}
+                                                                    className="text-xl hover:scale-125 transition-transform p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                                >
+                                                                    {emoji}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            )}
+                                            {currentUserId === child.user.id && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onStartEditReply(child.id, child.content); }}
+                                                    className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                                                >
+                                                    Edit
+                                                </button>
+                                            )}
+                                            {(isAdmin || currentUserId === child.user.id) && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onDeleteReply(child.id); }}
+                                                    className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                {/* Message Actions (hover on desktop, tap on mobile) */}
+                {/* Hover action bar — top-right floating */}
                 <div
-                    className={`absolute top-0 right-2 -translate-y-1/2 flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg transition-opacity ${
+                    className={`absolute top-0 right-2 -translate-y-1/2 flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg transition-opacity z-10 ${
                         activeMessageId === reply.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     }`}
                     onClick={(e) => e.stopPropagation()}
                 >
+                    {/* React button with quick emoji picker */}
+                    {onReactToReply && (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    className="p-1.5 hover:bg-yellow-50 dark:hover:bg-yellow-950 rounded text-gray-500 hover:text-yellow-500 transition-colors"
+                                    title="React"
+                                >
+                                    <SmileIcon className="h-4 w-4" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2" align="end" side="top">
+                                <div className="flex gap-1">
+                                    {QUICK_REACTIONS.map((emoji) => (
+                                        <button
+                                            key={emoji}
+                                            onClick={() => onReactToReply(reply.id, emoji)}
+                                            className="text-xl hover:scale-125 transition-transform p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    )}
                     <button
-                        onClick={() => {
-                            onReplyTo(reply);
-                        }}
+                        onClick={() => onReplyTo(reply)}
                         className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                         title="Reply"
                     >
@@ -475,9 +538,7 @@ export function CommunityPostCard({
                     </button>
                     {currentUserId === reply.user.id && (
                         <button
-                            onClick={() => {
-                                onStartEditReply(reply.id, reply.content);
-                            }}
+                            onClick={() => onStartEditReply(reply.id, reply.content)}
                             className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 rounded text-gray-500 hover:text-blue-600 transition-colors"
                             title="Edit message"
                         >
@@ -486,7 +547,7 @@ export function CommunityPostCard({
                     )}
                     {(isAdmin || currentUserId === reply.user.id) && (
                         <button
-                            onClick={() => { onDeleteReply(reply.id); }}
+                            onClick={() => onDeleteReply(reply.id)}
                             className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-400 hover:text-red-600 transition-colors"
                             title="Delete message"
                         >
@@ -495,7 +556,7 @@ export function CommunityPostCard({
                     )}
                     {currentUserId !== reply.user.id && (
                         <button
-                            onClick={() => { onReportChat(reply.id); }}
+                            onClick={() => onReportChat(reply.id)}
                             className="p-1.5 hover:bg-orange-100 dark:hover:bg-orange-900 rounded text-gray-400 hover:text-orange-600 transition-colors"
                             title="Report message"
                         >
@@ -507,5 +568,3 @@ export function CommunityPostCard({
         </div>
     );
 }
-
-// (no additional exports needed)

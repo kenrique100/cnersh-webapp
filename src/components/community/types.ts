@@ -54,6 +54,7 @@ export interface ReplyData {
     user: TopicUser;
     parentId?: string | null;
     children?: ReplyData[];
+    reactions?: Record<string, string[]>;
 }
 
 export interface TopicDetail {
