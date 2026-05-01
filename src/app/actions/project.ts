@@ -21,10 +21,6 @@ async function generateTrackingCode(): Promise<string> {
     return `CNERSH-${year}-${ts}`;
 }
 
-/**
- * Returns the first admin/superadmin with no ACTIVE or PENDING_COI assignment.
- * Excludes any IDs in the excludeIds list (e.g. the previous reviewer on reassignment).
- */
 async function findAvailableAdmin(
     excludeIds: string[] = []
 ): Promise<{ id: string; name: string | null; email: string } | null> {
@@ -38,7 +34,7 @@ async function findAvailableAdmin(
     return db.user.findFirst({
         where: {
             role: { in: ["admin", "superadmin"] },
-            banned: { not: true },
+            OR: [{ banned: false }, { banned: null }],
             id: { notIn: allExcluded },
         },
         select: { id: true, name: true, email: true },
@@ -46,9 +42,6 @@ async function findAvailableAdmin(
     });
 }
 
-/**
- * Sends an in-app notification and a fire-and-forget email for assignment events.
- */
 async function notifyAssignmentEvent(opts: {
     type: "REVIEW_ASSIGNED" | "REVIEW_REASSIGNED";
     userId: string;
@@ -101,10 +94,21 @@ export async function submitProject(data: {
             select: { role: true },
         });
         const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-        const projectStatus = isAdmin ? ProjectStatus.APPROVED : ProjectStatus.SUBMITTED;
+
+        // Admins get APPROVED immediately; regular users go straight to PENDING_REVIEW
+        // if an available admin exists, otherwise fall back to SUBMITTED
+        const availableAdmin = isAdmin ? null : await findAvailableAdmin([session.user.id]);
+        const projectStatus = isAdmin
+            ? ProjectStatus.APPROVED
+            : availableAdmin
+                ? ProjectStatus.PENDING_REVIEW
+                : ProjectStatus.SUBMITTED;
+
         const statusComment = isAdmin
             ? "Protocol submitted and auto-approved by admin"
-            : "Protocol submitted";
+            : availableAdmin
+                ? "Protocol submitted and auto-assigned for review"
+                : "Protocol submitted — no reviewer available, pending manual assignment";
 
         const trackingCode = await generateTrackingCode();
 
@@ -117,31 +121,91 @@ export async function submitProject(data: {
             }
         }
 
-        const project = await db.project.create({
-            data: {
-                trackingCode,
-                title: data.title.trim(),
-                description: data.description.trim(),
-                objectives: data.objectives?.trim() || null,
-                category: data.category.trim(),
-                location: data.location?.trim() || null,
-                timeline: data.timeline?.trim() || null,
-                budget: data.budget?.trim() || null,
-                document: data.document?.trim() || null,
-                formData: sanitizedFormData,
-                status: projectStatus,
-                userId: session.user.id,
-                statusHistory: {
-                    create: { status: projectStatus, changedBy: session.user.id, comment: statusComment },
+        // Create project + auto-assignment in one transaction
+        const project = await db.$transaction(async (tx) => {
+            const created = await tx.project.create({
+                data: {
+                    trackingCode,
+                    title: data.title.trim(),
+                    description: data.description.trim(),
+                    objectives: data.objectives?.trim() || null,
+                    category: data.category.trim(),
+                    location: data.location?.trim() || null,
+                    timeline: data.timeline?.trim() || null,
+                    budget: data.budget?.trim() || null,
+                    document: data.document?.trim() || null,
+                    formData: sanitizedFormData,
+                    status: projectStatus,
+                    userId: session.user.id,
+                    // If auto-assigning, set assignedToId immediately
+                    ...(availableAdmin ? { assignedToId: availableAdmin.id } : {}),
+                    statusHistory: {
+                        create: {
+                            status: projectStatus,
+                            changedBy: session.user.id,
+                            comment: statusComment,
+                        },
+                    },
                 },
-            },
-            select: { id: true, trackingCode: true, title: true, status: true, createdAt: true, updatedAt: true },
+                select: {
+                    id: true,
+                    trackingCode: true,
+                    title: true,
+                    status: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+            });
+
+            // Create the review assignment immediately if an admin is available
+            if (availableAdmin) {
+                await tx.reviewAssignment.create({
+                    data: {
+                        projectId: created.id,
+                        reviewerId: availableAdmin.id,
+                        status: "PENDING_COI",
+                    },
+                });
+            }
+
+            return created;
         });
 
-        if (!isAdmin) {
+        // Fire-and-forget notifications (outside transaction)
+        if (availableAdmin) {
+            // Notify the assigned reviewer
+            notifyAssignmentEvent({
+                type: "REVIEW_ASSIGNED",
+                userId: availableAdmin.id,
+                userEmail: availableAdmin.email,
+                userName: availableAdmin.name,
+                message: `You have been automatically assigned to review a new protocol: "${project.title}"`,
+                projectId: project.id,
+            }).catch((err) => console.error("Error notifying auto-assigned reviewer:", err));
+
+            // Also notify all admins that a new protocol came in (so others are aware)
             notifyAdmins({
                 type: "PROJECT_STATUS",
-                message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}"`,
+                message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}" — auto-assigned to ${availableAdmin.name || availableAdmin.email}`,
+                link: `/admin/protocol-review`,
+                excludeUserId: session.user.id,
+            }).catch((err) => console.error("Error notifying admins:", err));
+
+            // Log the auto-assignment
+            db.auditLog.create({
+                data: {
+                    action: "AUTO_ASSIGN_ON_SUBMIT",
+                    details: `Protocol "${project.title}" auto-assigned to ${availableAdmin.name || availableAdmin.email} on submission`,
+                    targetId: project.id,
+                    userId: session.user.id,
+                },
+            }).catch((err) => console.error("Error writing audit log:", err));
+
+        } else if (!isAdmin) {
+            // No admin available — notify admins to assign manually
+            notifyAdmins({
+                type: "PROJECT_STATUS",
+                message: `${session.user.name || "A user"} submitted a new protocol: "${project.title}" — needs manual reviewer assignment`,
                 link: `/admin/protocol-review`,
                 excludeUserId: session.user.id,
             }).catch((err) => console.error("Error notifying admins:", err));
@@ -199,24 +263,14 @@ export async function getProjectById(projectId: string) {
         (a) => a.reviewerId === session.user.id && a.status === "ACTIVE"
     );
 
-    // Access rules:
-    // - Owner: sees own project, reviewer names hidden
-    // - Superadmin: full access
-    // - Assigned reviewer (ACTIVE only): sees their assignment
-    // - Regular admin (not assigned): read-only, no review workflow data
     if (!isOwner && !isSuperAdmin && !isAssignedReviewer && !isRegularAdmin) {
         throw new Error("Forbidden");
     }
 
-    // Regular admin not assigned: strip all review workflow data
     if (isRegularAdmin && !isAssignedReviewer && !isSuperAdmin) {
-        return {
-            ...project,
-            reviewAssignments: [],
-        };
+        return { ...project, reviewAssignments: [] };
     }
 
-    // PI (owner, non-admin): hide reviewer identity and evaluation details
     if (isOwner && !isSuperAdmin && !isRegularAdmin) {
         return {
             ...project,
@@ -407,10 +461,6 @@ export async function forwardProjectToFeed(
     });
 }
 
-/**
- * Returns all admin/superadmin users with their current availability status.
- * Superadmin only.
- */
 export async function getAdminUsers() {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -419,12 +469,11 @@ export async function getAdminUsers() {
     if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can list admin users");
 
     const admins = await db.user.findMany({
-        where: { role: { in: ["admin", "superadmin"] }, banned: { not: true } },
+        where: { role: { in: ["admin", "superadmin"] }, OR: [{ banned: false }, { banned: null }] },
         select: { id: true, name: true, email: true, image: true, role: true, expertiseTags: true },
         orderBy: { name: "asc" },
     });
 
-    // Enrich with availability data in one extra query
     const busyRows = await db.reviewAssignment.findMany({
         where: { status: { in: ["PENDING_COI", "ACTIVE"] } },
         select: { reviewerId: true },
@@ -441,9 +490,6 @@ export async function getAdminUsers() {
     }));
 }
 
-/**
- * Manually assign a specific admin to review a protocol. Superadmin only.
- */
 export async function assignProjectReviewer(projectId: string, adminId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -512,10 +558,6 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     return updatedProject;
 }
 
-/**
- * Automatically find an available admin and assign them to a protocol.
- * Uses a transaction to prevent race conditions. Superadmin only.
- */
 export async function autoAssignProjectReviewer(projectId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -523,70 +565,71 @@ export async function autoAssignProjectReviewer(projectId: string) {
     const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
     if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can auto-assign reviewers");
 
-    const project = await db.project.findUnique({
-        where: { id: projectId },
-        include: {
-            user: { select: { id: true, name: true, email: true } },
-            reviewAssignments: { select: { reviewerId: true, status: true } },
-        },
-    });
-    if (!project) throw new Error("Protocol not found");
-
-    const hasActiveAssignment = project.reviewAssignments.some(
-        (a) => a.status === "PENDING_COI" || a.status === "ACTIVE"
-    );
-    if (hasActiveAssignment) throw new Error("This protocol already has an active reviewer assignment");
-
-    const availableAdmin = await findAvailableAdmin();
-    if (!availableAdmin) throw new Error("No available admin found. All admins currently have ongoing review assignments.");
-
-    const updatedProject = await db.$transaction(async (tx) => {
-        await tx.reviewAssignment.create({
-            data: { projectId, reviewerId: availableAdmin.id, status: "PENDING_COI" },
-        });
-
-        return tx.project.update({
+    try {
+        const project = await db.project.findUnique({
             where: { id: projectId },
-            data: {
-                assignedToId: availableAdmin.id,
-                status: "PENDING_REVIEW",
-                statusHistory: {
-                    create: {
-                        status: "PENDING_REVIEW",
-                        changedBy: session.user.id,
-                        comment: "Protocol auto-assigned for review",
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                reviewAssignments: { select: { reviewerId: true, status: true } },
+            },
+        });
+        if (!project) throw new Error("Protocol not found");
+
+        const hasActiveAssignment = project.reviewAssignments.some(
+            (a) => a.status === "PENDING_COI" || a.status === "ACTIVE"
+        );
+        if (hasActiveAssignment) throw new Error("This protocol already has an active reviewer assignment");
+
+        const availableAdmin = await findAvailableAdmin();
+        if (!availableAdmin) throw new Error("No available admin found. All admins currently have ongoing review assignments.");
+
+        const updatedProject = await db.$transaction(async (tx) => {
+            await tx.reviewAssignment.create({
+                data: { projectId, reviewerId: availableAdmin.id, status: "PENDING_COI" },
+            });
+
+            return tx.project.update({
+                where: { id: projectId },
+                data: {
+                    assignedToId: availableAdmin.id,
+                    status: "PENDING_REVIEW",
+                    statusHistory: {
+                        create: {
+                            status: "PENDING_REVIEW",
+                            changedBy: session.user.id,
+                            comment: "Protocol auto-assigned for review",
+                        },
                     },
                 },
-            },
-            include: { user: { select: { id: true, name: true, email: true } } },
+                include: { user: { select: { id: true, name: true, email: true } } },
+            });
         });
-    });
 
-    await notifyAssignmentEvent({
-        type: "REVIEW_ASSIGNED",
-        userId: availableAdmin.id,
-        userEmail: availableAdmin.email,
-        userName: availableAdmin.name,
-        message: `You have been automatically assigned to review the protocol: "${updatedProject.title}"`,
-        projectId,
-    });
+        await notifyAssignmentEvent({
+            type: "REVIEW_ASSIGNED",
+            userId: availableAdmin.id,
+            userEmail: availableAdmin.email,
+            userName: availableAdmin.name,
+            message: `You have been automatically assigned to review the protocol: "${updatedProject.title}"`,
+            projectId,
+        });
 
-    await db.auditLog.create({
-        data: {
-            action: "AUTO_ASSIGN_REVIEWER",
-            details: `Auto-assigned ${availableAdmin.name || availableAdmin.email} to review protocol "${updatedProject.title}"`,
-            targetId: projectId,
-            userId: session.user.id,
-        },
-    });
+        await db.auditLog.create({
+            data: {
+                action: "AUTO_ASSIGN_REVIEWER",
+                details: `Auto-assigned ${availableAdmin.name || availableAdmin.email} to review protocol "${updatedProject.title}"`,
+                targetId: projectId,
+                userId: session.user.id,
+            },
+        });
 
-    return updatedProject;
+        return updatedProject;
+    } catch (error) {
+        console.error("[autoAssignProjectReviewer] ERROR:", error);
+        throw error;
+    }
 }
 
-/**
- * Reassign a protocol from its current reviewer to the next available admin.
- * Closes the old assignment cleanly, notifies both parties. Superadmin only.
- */
 export async function reassignProjectReviewer(projectId: string, reason?: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -619,7 +662,6 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
             data: { status: "EXCLUDED", reassignedAt: new Date() },
         });
 
-        // Create new assignment, linking back to old reviewer for audit trail
         await tx.reviewAssignment.create({
             data: {
                 projectId,
@@ -629,7 +671,6 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
             },
         });
 
-        // Keep legacy assignedToId in sync
         return tx.project.update({
             where: { id: projectId },
             data: {
@@ -648,7 +689,6 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
         });
     });
 
-    // Notify old reviewer (unassigned)
     await notifyAssignmentEvent({
         type: "REVIEW_REASSIGNED",
         userId: currentAssignment.reviewer.id,
@@ -658,7 +698,6 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
         projectId,
     });
 
-    // Notify new reviewer (assigned)
     await notifyAssignmentEvent({
         type: "REVIEW_REASSIGNED",
         userId: nextAdmin.id,
