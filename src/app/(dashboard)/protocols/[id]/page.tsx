@@ -20,6 +20,7 @@ import {
     AlertTriangleIcon,
     ScaleIcon,
     ClipboardListIcon,
+    ShieldIcon,
 } from "lucide-react";
 import Link from "next/link";
 import ProjectDetailActions from "./project-detail-actions";
@@ -355,6 +356,82 @@ export default async function ProjectDetailPage({
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Admin-only: Assignment & Reviewer Info */}
+                    {isAdmin && (
+                        <Card className="border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 rounded-xl">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base font-semibold text-violet-900 dark:text-violet-200 flex items-center gap-2">
+                                    <ShieldIcon className="h-4 w-4" />
+                                    Admin — Assignment &amp; Review Details
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Assigned To */}
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900 shrink-0">
+                                            <UserIcon className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Assigned To</p>
+                                            {project.assignedTo ? (
+                                                <>
+                                                    <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">
+                                                        {project.assignedTo.name || project.assignedTo.email}
+                                                    </p>
+                                                    <p className="text-xs text-violet-600 dark:text-violet-400">
+                                                        {project.assignedTo.email}
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <p className="text-sm text-violet-500 dark:text-violet-400 italic">Not assigned</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Reviewer (active review assignment) */}
+                                    {(() => {
+                                        const activeAssignment = project.reviewAssignments?.find(
+                                            (a) => a.status === "ACTIVE"
+                                        );
+                                        const latestAssignment = !activeAssignment
+                                            ? project.reviewAssignments?.[0]
+                                            : null;
+                                        const displayAssignment = activeAssignment || latestAssignment;
+
+                                        return (
+                                            <div className="flex items-start gap-3">
+                                                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900 shrink-0">
+                                                    <EyeIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                                                        Reviewed By
+                                                    </p>
+                                                    {displayAssignment?.reviewer ? (
+                                                        <>
+                                                            <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">
+                                                                {displayAssignment.reviewer.name || displayAssignment.reviewer.email}
+                                                            </p>
+                                                            <p className="text-xs text-violet-600 dark:text-violet-400">
+                                                                {displayAssignment.reviewer.email}
+                                                            </p>
+                                                            <p className="text-xs text-violet-500 dark:text-violet-500 mt-0.5">
+                                                                Status: {displayAssignment.status.replace(/_/g, " ")}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-sm text-violet-500 dark:text-violet-400 italic">No reviewer yet</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Document */}
                     {project.document && (

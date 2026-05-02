@@ -233,6 +233,7 @@ export async function getProjectById(projectId: string) {
         where: { id: projectId, deleted: false },
         include: {
             user: { select: { id: true, name: true, email: true, image: true } },
+            assignedTo: { select: { id: true, name: true, email: true } },
             statusHistory: { orderBy: { createdAt: "desc" } },
             reviewAssignments: {
                 include: {
@@ -268,7 +269,13 @@ export async function getProjectById(projectId: string) {
     }
 
     if (isRegularAdmin && !isAssignedReviewer && !isSuperAdmin) {
-        return { ...project, reviewAssignments: [] };
+        return {
+            ...project,
+            reviewAssignments: project.reviewAssignments.map((a) => ({
+                ...a,
+                evaluationReport: null,
+            })),
+        };
     }
 
     if (isOwner && !isSuperAdmin && !isRegularAdmin) {

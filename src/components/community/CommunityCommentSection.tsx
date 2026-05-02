@@ -624,7 +624,7 @@ export function CommunityCommentSection({
 
                         {/* WhatsApp-style attachment panel */}
                         {showAttachmentPanel && (
-                            <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-3 w-64 z-50">
+                            <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-3 w-56 sm:w-64 z-50 max-w-[calc(100vw-2rem)]">
                                 <div className="grid grid-cols-3 gap-2">
                                     {/* Image */}
                                     <label className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
@@ -767,7 +767,7 @@ export function CommunityCommentSection({
                         </button>
 
                         {showEmojiPicker && (
-                            <div className="absolute bottom-full right-0 mb-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-3 w-64 z-50">
+                            <div className="absolute bottom-full right-0 mb-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-3 w-56 sm:w-64 z-50 max-w-[calc(100vw-2rem)]">
                                 <div className="grid grid-cols-8 gap-1">
                                     {EMOJI_LIST.map((emoji) => (
                                         <button
@@ -798,7 +798,7 @@ export function CommunityCommentSection({
                         </button>
 
                         {showMentions && (
-                            <div className="absolute bottom-full right-0 mb-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl w-56 max-h-48 overflow-y-auto z-50">
+                            <div className="absolute bottom-full right-0 mb-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl w-48 sm:w-56 max-h-48 overflow-y-auto z-50 max-w-[calc(100vw-2rem)]">
                                 <div className="p-2 border-b border-gray-200 dark:border-gray-800">
                                     <Input
                                         placeholder="Search members..."
@@ -840,7 +840,7 @@ export function CommunityCommentSection({
                     </div>
 
                     {/* @mention all button */}
-                    <div className="shrink-0 mb-0.5">
+                    <div className="hidden sm:block shrink-0 mb-0.5">
                         <button
                             onClick={onMentionAll}
                             className="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:text-orange-500 transition-colors"
