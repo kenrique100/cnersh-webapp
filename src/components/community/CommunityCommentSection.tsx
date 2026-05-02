@@ -113,7 +113,6 @@ interface CommunityCommentSectionProps {
     onShowMobileChannels: () => void;
     onReplyTo: (reply: ReplyData) => void;
     onStartEditReply: (replyId: string, content: string) => void;
-    onReactToReply: (replyId: string, emoji: string) => void;
 }
 
 export function CommunityCommentSection({
@@ -190,7 +189,6 @@ export function CommunityCommentSection({
     onShowMobileChannels,
     onReplyTo,
     onStartEditReply,
-    onReactToReply,
 }: CommunityCommentSectionProps) {
     const filteredUsers = users.filter(
         (u) =>
@@ -433,7 +431,6 @@ export function CommunityCommentSection({
                             onReplyTo={onReplyTo}
                             onStartEditReply={onStartEditReply}
                             onVotePoll={onVotePoll}
-                            onReactToReply={onReactToReply}
                         />
                     );
                 })}

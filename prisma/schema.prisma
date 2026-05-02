@@ -354,7 +354,6 @@ model CommunityReply {
   pollQuestion  String?
   pollOptions   String[]         @default([])
   pollVotes     Json?
-  reactions     Json?
   eventTitle    String?
   eventDate     DateTime?
   eventLocation String?
