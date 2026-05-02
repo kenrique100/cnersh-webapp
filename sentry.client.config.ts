@@ -15,6 +15,10 @@ Sentry.init({
 
     integrations: [
         Sentry.replayIntegration(),
+        Sentry.feedbackIntegration({
+            colorScheme: "system",
+            isEmailRequired: true,
+        }),
     ],
 
     // Optional: Set environment (staging, production, etc.)
