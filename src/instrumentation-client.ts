@@ -20,7 +20,8 @@ Sentry.init({
     // Optional: Set environment (staging, production, etc.)
     environment: process.env.NODE_ENV,
 
-    // Route Sentry requests through the Next.js app to avoid ad-blockers
+    // Route Sentry requests through the Next.js app to avoid ad-blockers.
+    // The /monitoring API route is set up via withSentryConfig tunnelRoute in next.config.ts.
     tunnel: "/monitoring",
 
     integrations: [

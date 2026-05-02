@@ -363,7 +363,7 @@ export default async function ProjectDetailPage({
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base font-semibold text-violet-900 dark:text-violet-200 flex items-center gap-2">
                                     <ShieldIcon className="h-4 w-4" />
-                                    Admin — Assignment &amp; Review Details
+                                    Admin — Assignment & Review Details
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
