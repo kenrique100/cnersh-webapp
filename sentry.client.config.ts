@@ -13,6 +13,10 @@ Sentry.init({
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
 
+    integrations: [
+        Sentry.replayIntegration(),
+    ],
+
     // Optional: Set environment (staging, production, etc.)
     environment: process.env.NODE_ENV,
     tunnel: "/monitoring",
