@@ -74,7 +74,6 @@ export default async function Home() {
     if (!navUser) {
         publicPosts = await getPublicPosts(20);
     }
-    myUndefinedFunction();
     return (
         <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
             {/* Navbar */}
