@@ -5,27 +5,32 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: "https://6969231c5d116b2cfe973bc8e8e94374@o4511320193105920.ingest.de.sentry.io/4511320196907088",
+    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-  // Add optional integrations for additional features
-  integrations: [Sentry.replayIntegration()],
+    // Adjust this value in production
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
+    // Only enable debug in development
+    debug: process.env.NODE_ENV === "development",
 
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
+    // Enable Session Replay for better debugging
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
 
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
+    // Optional: Set environment (staging, production, etc.)
+    environment: process.env.NODE_ENV,
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+    // Route Sentry requests through the Next.js app to avoid ad-blockers.
+    // The /monitoring API route is set up via withSentryConfig tunnelRoute in next.config.ts.
+    tunnel: "/monitoring",
+
+    integrations: [
+        Sentry.replayIntegration(),
+        Sentry.feedbackIntegration({
+            colorScheme: "system",
+            isEmailRequired: true,
+        }),
+    ],
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
