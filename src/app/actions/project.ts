@@ -315,6 +315,7 @@ export async function getAllProjects(status?: ProjectStatus) {
         where: { deleted: false, ...(status ? { status } : {}) },
         include: {
             user: { select: { id: true, name: true, email: true, image: true } },
+            assignedTo: { select: { id: true, name: true, email: true } },
             statusHistory: { orderBy: { createdAt: "desc" } },
         },
         orderBy: { createdAt: "desc" },

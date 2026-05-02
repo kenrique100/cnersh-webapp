@@ -16,6 +16,7 @@ import {
     toggleTopicLike,
     toggleTopicChat,
     voteOnPoll,
+    reactToReply,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 
@@ -573,6 +574,29 @@ export default function CommunityClient({
         setMessageText(`@${userName} `);
     };
 
+    const handleReactToReply = async (replyId: string, emoji: string) => {
+        try {
+            const result = await reactToReply(replyId, emoji);
+            if (selectedTopic) {
+                setSelectedTopic({
+                    ...selectedTopic,
+                    replies: selectedTopic.replies.map((r) =>
+                        r.id === replyId
+                            ? { ...r, reactions: result.reactions }
+                            : {
+                                  ...r,
+                                  children: (r.children || []).map((c) =>
+                                      c.id === replyId ? { ...c, reactions: result.reactions } : c
+                                  ),
+                              }
+                    ),
+                });
+            }
+        } catch {
+            toast.error("Failed to react");
+        }
+    };
+
     const handleStartEditReply = (replyId: string, content: string) => {
         setEditingReplyId(replyId);
         setEditingContent(content);
@@ -596,7 +620,7 @@ export default function CommunityClient({
     /* ─── Main Layout ──────────────────────────────────── */
 
     return (
-        <div className="h-[calc(100vh-6rem)] flex overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
+        <div className="h-[calc(100vh-4rem)] sm:h-[calc(100vh-6rem)] flex overflow-hidden sm:rounded-xl border-0 sm:border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
             {/* Desktop Sidebar */}
             <div className="hidden md:block w-60 shrink-0 border-r border-gray-200 dark:border-gray-800">
                 {channelSidebar}
@@ -692,6 +716,7 @@ export default function CommunityClient({
                         onShowMobileChannels={() => setShowMobileChannels(true)}
                         onReplyTo={handleReplyTo}
                         onStartEditReply={handleStartEditReply}
+                        onReactToReply={handleReactToReply}
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full bg-white dark:bg-gray-950 text-center">
