@@ -208,33 +208,6 @@ npm run db:studio      # Open Prisma Studio
 
 ## Migration Guide
 
-### For Developers
-
-If you're working with the old emoji-based reactions:
-
-1. **Import Changes:**
-```typescript
-// Old
-import { getReactionEmoji, getReactionBg } from "@/components/post-card";
-
-// New
-import { ReactionIcon } from "@/components/reaction-icons";
-import { ReactionButton } from "@/components/reaction-button";
-```
-
-2. **Usage Changes:**
-```typescript
-// Old
-<span className={getReactionBg(label)}>
-    {getReactionEmoji(label)}
-</span>
-
-// New
-<ReactionIcon type={label as ReactionType} size={24} />
-```
-
-3. **Backward Compatibility:**
-The old functions still exist for backward compatibility but return SVG icons instead of emojis.
 
 ## Future Enhancements
 

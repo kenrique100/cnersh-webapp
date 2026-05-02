@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // All Google domains required by the Translate widget
 const GOOGLE_TRANSLATE_DOMAINS = [
@@ -63,6 +64,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // instrumentationHook: true, // REMOVE THIS LINE - not needed
   },
   headers: async () => [
     {
@@ -85,14 +87,14 @@ const nextConfig: NextConfig = {
 
             // UploadThing CDN (utfs.io / ufs.sh) must be in img-src so uploaded images render
             "img-src 'self' data: blob:"
-              + " https://lh3.googleusercontent.com"
-              + " https://fonts.gstatic.com"
-              + " https://static.licdn.com"
-              + " https://utfs.io"
-              + " https://*.utfs.io"
-              + " https://ufs.sh"
-              + " https://*.ufs.sh"
-              + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
+            + " https://lh3.googleusercontent.com"
+            + " https://fonts.gstatic.com"
+            + " https://static.licdn.com"
+            + " https://utfs.io"
+            + " https://*.utfs.io"
+            + " https://ufs.sh"
+            + " https://*.ufs.sh"
+            + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
 
             `font-src 'self' data: https://fonts.gstatic.com ${GOOGLE_TRANSLATE_DOMAINS}`,
 
@@ -101,9 +103,12 @@ const nextConfig: NextConfig = {
             //   2. *.ingest.uploadthing.com — the actual multipart PUT upload
             //   3. utfs.io / ufs.sh      — HEAD checks after upload completes
             "connect-src 'self'"
-              + " https://api.resend.com"
-              + ` ${UPLOADTHING_DOMAINS}`
-              + ` ${GOOGLE_TRANSLATE_DOMAINS}`,
+            + " https://api.resend.com"
+            + ` ${UPLOADTHING_DOMAINS}`
+            + ` ${GOOGLE_TRANSLATE_DOMAINS}`
+            // Add Sentry domains to connect-src
+            + " https://*.sentry.io"
+            + " https://sentry.io",
 
             "media-src 'self' data: blob: https://utfs.io https://*.utfs.io https://ufs.sh https://*.ufs.sh",
 
@@ -131,4 +136,13 @@ const nextConfig: NextConfig = {
   ],
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  disableLogger: true,
+  reactComponentAnnotation: { enabled: true },
+});
