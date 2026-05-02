@@ -51,7 +51,6 @@ interface ProjectData {
     status: string;
     feedback: string | null;
     assignedToId: string | null;
-    assignedTo?: { id: string; name: string | null; email: string } | null;
     createdAt: Date;
     user: ProjectUser;
 }
@@ -150,12 +149,6 @@ export default function ProjectReviewClient({
                         const canAssign =
                             isSuperAdmin && ASSIGNABLE_STATUSES.includes(project.status);
                         const assignedAdmin = adminUsers.find((a) => a.id === project.assignedToId);
-                        // Reviewer name: prefer adminUsers list (enriched), fall back to assignedTo from DB
-                        const reviewerName = assignedAdmin
-                            ? (assignedAdmin.name || assignedAdmin.email)
-                            : project.assignedTo
-                            ? (project.assignedTo.name || project.assignedTo.email)
-                            : null;
 
                         return (
                             <Card
@@ -197,22 +190,19 @@ export default function ProjectReviewClient({
                                         {project.location && ` • ${project.location}`}
                                     </div>
 
-                                    {/* Reviewer info — visible to all admins */}
-                                    {reviewerName && (
-                                        <div className="mt-2 flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                            <UserCheckIcon className="h-3 w-3" />
-                                            <span>Reviewed by <span className="font-semibold">{reviewerName}</span></span>
-                                        </div>
-                                    )}
-                                    {!reviewerName && project.assignedToId && (
-                                        <div className="mt-2 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                                            <UserCheckIcon className="h-3 w-3" />
-                                            <span>Reviewer assigned</span>
-                                        </div>
-                                    )}
-
                                     {canAssign && (
                                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                                            {/* Currently assigned info */}
+                                            {assignedAdmin && (
+                                                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                    <UserCheckIcon className="h-3 w-3" />
+                                                    Assigned to{" "}
+                                                    <span className="font-medium">
+                                                        {assignedAdmin.name || assignedAdmin.email}
+                                                    </span>
+                                                </p>
+                                            )}
+
                                             {/* Manual assign dropdown */}
                                             <div className="flex items-center gap-2">
                                                 <UserCheckIcon className="h-4 w-4 text-gray-500 shrink-0" />
