@@ -50,7 +50,7 @@ export default function FeedLeftSidebar({
       <div className="space-y-4">
         {/* Guest Welcome Card */}
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-4 pb-6 text-center">
+          <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-4 pb-6 text-center">
             <div className="flex justify-center mb-2">
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-md">
                 <Image
