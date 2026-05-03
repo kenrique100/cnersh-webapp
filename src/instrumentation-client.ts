@@ -30,7 +30,7 @@ Sentry.init({
             colorScheme: "system",
             isEmailRequired: true,
             placement: "bottom-left",
-            onSubmitSuccess: (feedback) => {
+            onSubmitSuccess: (feedback: { message?: unknown; name?: unknown; email?: unknown }) => {
                 const truncatedMessage = typeof feedback.message === "string"
                     ? feedback.message.slice(0, 500)
                     : "No message provided";
