@@ -31,7 +31,10 @@ Sentry.init({
             isEmailRequired: true,
             placement: "bottom-left",
             onSubmitSuccess: (feedback) => {
-                Sentry.captureMessage(`Bug Report: ${feedback.message}`, {
+                const truncatedMessage = typeof feedback.message === "string"
+                    ? feedback.message.slice(0, 500)
+                    : "No message provided";
+                Sentry.captureMessage(`Bug Report: ${truncatedMessage}`, {
                     level: "error",
                     tags: { source: "user-feedback" },
                     extra: {
