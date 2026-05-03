@@ -29,10 +29,9 @@ const adminNavItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
-const communityFooterLinks: { label: string; href?: string; action?: string }[] = [
+const communityFooterLinks: { label: string; href: string }[] = [
   { label: "About", href: "/pages/about" },
   { label: "Accessibility", href: "/pages/accessibility" },
-  { label: "Help Center", action: "open-chatbox" },
   { label: "Privacy & Terms", href: "/pages/privacy-terms" },
 ];
 
@@ -184,24 +183,13 @@ export default function FeedLeftSidebar({
         <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-3">
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {communityFooterLinks.map((link) => (
-              link.action ? (
-                <button
-                  key={link.label}
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent(link.action!))}
-                  className="text-[11px] text-zinc-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:underline transition-colors cursor-pointer"
-                >
-                  {link.label}
-                </button>
-              ) : (
-                <Link
-                  key={link.href}
-                  href={link.href!}
-                  className="text-[11px] text-zinc-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:underline transition-colors"
-                >
-                  {link.label}
-                </Link>
-              )
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-[11px] text-zinc-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:underline transition-colors"
+              >
+                {link.label}
+              </Link>
             ))}
           </div>
           <p className="text-[10px] text-zinc-300 dark:text-zinc-600 mt-2">CNERSH © {new Date().getFullYear()}</p>

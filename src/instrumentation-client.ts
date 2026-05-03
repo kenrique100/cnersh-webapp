@@ -29,6 +29,18 @@ Sentry.init({
         Sentry.feedbackIntegration({
             colorScheme: "system",
             isEmailRequired: true,
+            placement: "bottom-left",
+            onSubmitSuccess: (feedback) => {
+                Sentry.captureMessage(`Bug Report: ${feedback.message}`, {
+                    level: "error",
+                    tags: { source: "user-feedback" },
+                    extra: {
+                        name: feedback.name,
+                        email: feedback.email,
+                        message: feedback.message,
+                    },
+                });
+            },
         }),
     ],
 });

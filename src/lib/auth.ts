@@ -21,8 +21,8 @@ export const auth = betterAuth({
         : [],
 
     session: {
-        expiresIn: 60 * 60, // 1 hour when "Remember Me" is NOT checked
-        updateAge: 60 * 5, // Update session every 5 minutes
+        expiresIn: 60 * 60 * 24, // 24 hours — session expires 24h after login
+        updateAge: 60 * 60 * 24, // Do not extend sessions; each login gets a fresh 24h token
     },
 
     emailAndPassword: {

@@ -4,31 +4,13 @@ import Link from "next/link";
 
 function SidebarFooterLink({
   href,
-  onClick,
   children,
 }: {
-  href?: string;
-  onClick?: () => void;
+  href: string;
   children: React.ReactNode;
 }) {
   const className =
     "text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors cursor-pointer";
-
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className={className}>
-        {children}
-      </button>
-    );
-  }
-
-  if (!href) {
-    return (
-      <span className={className} role="link" aria-disabled="true">
-        {children}
-      </span>
-    );
-  }
 
   return (
     <Link href={href} className={className}>
@@ -48,10 +30,6 @@ function DotSeparator() {
 export default function SidebarFooter() {
   const currentYear = new Date().getFullYear();
 
-  const handleOpenHelpCenter = () => {
-    window.dispatchEvent(new CustomEvent("open-chatbox"));
-  };
-
   return (
     <nav
       aria-label="Footer navigation"
@@ -62,8 +40,6 @@ export default function SidebarFooter() {
         <SidebarFooterLink href="/pages/about">About</SidebarFooterLink>
         <DotSeparator />
         <SidebarFooterLink href="/pages/accessibility">Accessibility</SidebarFooterLink>
-        <DotSeparator />
-        <SidebarFooterLink onClick={handleOpenHelpCenter}>Help Center</SidebarFooterLink>
       </div>
 
       {/* Row 2 */}
