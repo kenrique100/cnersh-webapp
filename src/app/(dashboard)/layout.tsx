@@ -4,7 +4,6 @@ import { getUnreadNotificationCount } from "@/app/actions/notification";
 import { getPages } from "@/app/actions/page-actions";
 import Navbar from "@/components/navbar";
 import DashboardShell from "@/components/dashboard-shell";
-import ChatBox from "@/components/chat-box";
 import React from "react";
 
 export default async function DashboardLayout({
@@ -39,7 +38,6 @@ export default async function DashboardLayout({
             <DashboardShell role={user?.role}>
                 {children}
             </DashboardShell>
-            <ChatBox />
         </div>
     );
 }
