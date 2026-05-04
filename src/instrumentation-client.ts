@@ -29,7 +29,21 @@ Sentry.init({
             colorScheme: "system",
             isEmailRequired: true,
             placement: "bottom-left",
-            // Remove custom onSubmitSuccess unless specifically needed
+            onSubmitSuccess: (feedback: { name?: string; email?: string; message?: string }) => {
+                fetch("/api/sentry-feedback", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: feedback.name,
+                        email: feedback.email,
+                        message: feedback.message,
+                    }),
+                }).catch((err) => {
+                    if (process.env.NODE_ENV === "development") {
+                        console.error("Failed to notify admins of Sentry feedback:", err);
+                    }
+                });
+            },
         }),
     ],
 });
