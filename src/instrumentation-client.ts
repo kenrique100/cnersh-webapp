@@ -19,7 +19,9 @@ Sentry.init({
 
     environment: process.env.NODE_ENV,
 
-    tunnel: "/monitoring",
+    // tunnel: "/monitoring",
+
+    sendDefaultPii: true, // Add this if you need user PII
 
     integrations: [
         Sentry.replayIntegration(),
@@ -27,20 +29,7 @@ Sentry.init({
             colorScheme: "system",
             isEmailRequired: true,
             placement: "bottom-left",
-            onSubmitSuccess: (feedback: { message?: unknown; name?: unknown; email?: unknown }) => {
-                const truncatedMessage = typeof feedback.message === "string"
-                    ? feedback.message.slice(0, 500)
-                    : "No message provided";
-                Sentry.captureMessage(`Bug Report: ${truncatedMessage}`, {
-                    level: "error",
-                    tags: { source: "user-feedback" },
-                    extra: {
-                        name: feedback.name,
-                        email: feedback.email,
-                        message: feedback.message,
-                    },
-                });
-            },
+            // Remove custom onSubmitSuccess unless specifically needed
         }),
     ],
 });

@@ -53,7 +53,7 @@ export default function Page() {
           <a
             target="_blank"
             rel="noopener"
-            href="https://akentech.sentry.io/issues/?project=4511329774075984"
+            href="https://akentech.sentry.io/issues/?project=4511329868775504"
           >
             Issues Page
           </a>
