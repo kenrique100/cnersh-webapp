@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         `;
 
         const tags = results.map((r) => ({
-            tag: r.tag.charAt(0).toUpperCase() + r.tag.slice(1),
+            tag: r.tag.replace(/\b\w/g, (c) => c.toUpperCase()),
             posts: Number(r.count),
         }));
 

@@ -65,6 +65,8 @@ const activityColors = {
 
 export default function FeedRightSidebar({ trendingTags = [], userActivity = [], isLoggedIn = false }: FeedRightSidebarProps) {
   const [displayTags, setDisplayTags] = React.useState<TrendingTag[]>(trendingTags);
+  // Start in loading state only when the server provided no tags, so we show a
+  // skeleton while the client-side fetch runs instead of flashing the empty state.
   const [tagsLoading, setTagsLoading] = React.useState(trendingTags.length === 0);
   const [showAll, setShowAll] = React.useState(false);
 

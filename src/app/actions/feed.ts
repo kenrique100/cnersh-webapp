@@ -203,7 +203,7 @@ export async function getTrendingTags(limit: number = 5) {
         `;
 
         return results.map((r) => ({
-            tag: r.tag.charAt(0).toUpperCase() + r.tag.slice(1),
+            tag: r.tag.replace(/\b\w/g, (c) => c.toUpperCase()),
             posts: Number(r.count),
         }));
     } catch (error) {
