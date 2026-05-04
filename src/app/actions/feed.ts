@@ -192,16 +192,18 @@ export async function getPublicPosts(limit: number = 10) {
 export async function getTrendingTags(limit: number = 5) {
     try {
         const results = await db.$queryRaw<{ tag: string; count: bigint }[]>`
-            SELECT LOWER(TRIM(t)) as tag, COUNT(*) as count
-            FROM post, unnest(tags) AS t
-            WHERE deleted = false AND TRIM(t) != ''
-            GROUP BY LOWER(TRIM(t))
+            SELECT LOWER(TRIM(u.tag)) AS tag, COUNT(*) AS count
+            FROM post
+            CROSS JOIN LATERAL unnest(tags) AS u(tag)
+            WHERE deleted = false
+              AND TRIM(u.tag) <> ''
+            GROUP BY LOWER(TRIM(u.tag))
             ORDER BY count DESC
             LIMIT ${limit}
         `;
 
         return results.map((r) => ({
-            tag: r.tag.charAt(0).toUpperCase() + r.tag.slice(1),
+            tag: r.tag.replace(/\b\w/g, (c) => c.toUpperCase()),
             posts: Number(r.count),
         }));
     } catch (error) {
