@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { RateLimitConfig, RATE_LIMITS } from './rate-limit-config';
 
 export type { RateLimitConfig };
@@ -21,38 +22,56 @@ class RateLimitStore {
     } {
         const now = Date.now();
         const record = this.store.get(key);
+        const expired = !record || now > record.resetTime;
 
-        // If no record or window expired, create new record
-        if (!record || now > record.resetTime) {
-            this.store.set(key, {
-                count: 1,
-                resetTime: now + config.windowMs,
-            });
+        return Sentry.startSpan(
+            {
+                name: "rate-limit-cache-lookup",
+                op: "cache.get",
+                attributes: { "cache.key": key, "cache.hit": !expired },
+            },
+            () => {
+                if (expired) {
+                    // Cache miss — write a fresh entry
+                    Sentry.startSpan(
+                        {
+                            name: "rate-limit-cache-set",
+                            op: "cache.set",
+                            attributes: { "cache.key": key },
+                        },
+                        () => {
+                            this.store.set(key, {
+                                count: 1,
+                                resetTime: now + config.windowMs,
+                            });
+                        }
+                    );
 
-            return {
-                allowed: true,
-                remaining: config.maxRequests - 1,
-                resetTime: now + config.windowMs,
-            };
-        }
+                    return {
+                        allowed: true,
+                        remaining: config.maxRequests - 1,
+                        resetTime: now + config.windowMs,
+                    };
+                }
 
-        // Increment count
-        record.count++;
+                // Cache hit — increment and return existing entry
+                record.count++;
 
-        // Check if limit exceeded
-        if (record.count > config.maxRequests) {
-            return {
-                allowed: false,
-                remaining: 0,
-                resetTime: record.resetTime,
-            };
-        }
+                if (record.count > config.maxRequests) {
+                    return {
+                        allowed: false,
+                        remaining: 0,
+                        resetTime: record.resetTime,
+                    };
+                }
 
-        return {
-            allowed: true,
-            remaining: config.maxRequests - record.count,
-            resetTime: record.resetTime,
-        };
+                return {
+                    allowed: true,
+                    remaining: config.maxRequests - record.count,
+                    resetTime: record.resetTime,
+                };
+            }
+        );
     }
 
     /**

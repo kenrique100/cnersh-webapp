@@ -27,14 +27,14 @@ Sentry.init({
         Sentry.replayIntegration(),
         Sentry.feedbackIntegration({
             colorScheme: "system",
+            showName: false,
             isEmailRequired: true,
             placement: "bottom-left",
-            onSubmitSuccess: (feedback: { name?: string; email?: string; message?: string }) => {
+            onSubmitSuccess: (feedback: { email?: string; message?: string }) => {
                 fetch("/api/sentry-feedback", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        name: feedback.name,
                         email: feedback.email,
                         message: feedback.message,
                     }),
