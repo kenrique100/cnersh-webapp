@@ -3,7 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
-import type { Event } from "@sentry/nextjs";
+import type { ErrorEvent } from "@sentry/nextjs";
 
 // Tracks recently-notified fingerprints so admins aren't spammed for repeated errors.
 // Cleared per fingerprint after a 60-second cooldown.
@@ -22,7 +22,7 @@ Sentry.init({
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
 
-  beforeSend(event: Event) {
+  beforeSend(event: ErrorEvent) {
     if (event.level === "error" || event.level === "fatal") {
       const key =
         event.fingerprint?.join("-") ??
