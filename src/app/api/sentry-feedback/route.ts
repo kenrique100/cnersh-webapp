@@ -24,9 +24,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { name, email, message } = body as Record<string, unknown>;
+    const { email, message } = body as Record<string, unknown>;
 
-    const safeName = sanitizeText(typeof name === "string" ? name : "");
     const safeEmail = sanitizeText(typeof email === "string" ? email : "");
     const safeMessage = sanitizeText(typeof message === "string" ? message : "");
 
@@ -44,9 +43,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true });
     }
 
-    const senderLabel = safeName
-        ? safeEmail ? `${safeName} (${safeEmail})` : safeName
-        : safeEmail || "Anonymous";
+    const senderLabel = safeEmail || "Anonymous";
     const notificationMessage = `User feedback received via Sentry from ${senderLabel}: "${safeMessage}"`;
 
     await Promise.allSettled(
