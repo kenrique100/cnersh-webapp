@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient } from "@/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { hashPassword } from "better-auth/crypto";
@@ -22,9 +22,9 @@ async function upsertUser(
                 where: { email: opts.email },
                 data: { role: opts.role },
             });
-            console.log(` Existing user ${opts.email} updated to role: ${opts.role}`);
+            console.log(`✅ Existing user ${opts.email} updated to role: ${opts.role}`);
         } else {
-            console.log(`  User ${opts.email} already exists with role: ${opts.role}`);
+            console.log(`User ${opts.email} already exists with role: ${opts.role}`);
         }
         return;
     }
@@ -53,7 +53,7 @@ async function upsertUser(
         },
     });
 
-    console.log(` ${opts.role} created successfully!`);
+    console.log(`✨ ${opts.role} created successfully!`);
     console.log(`   Email:    ${opts.email}`);
     console.log(`   Role:     ${opts.role}`);
 }
@@ -61,7 +61,7 @@ async function upsertUser(
 async function main() {
     const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
     if (!connectionString) {
-        console.error(" DATABASE_URL or DIRECT_URL must be set in .env");
+        console.error("❌ DATABASE_URL or DIRECT_URL must be set in .env");
         process.exit(1);
     }
 
@@ -69,31 +69,42 @@ async function main() {
     const adapter = new PrismaPg(pool);
     const prisma = new PrismaClient({ adapter });
 
-    console.log(" Seeding database...\n");
+    console.log("Seeding database...\n");
+
+    // Check for required environment variables
+    if (!process.env.SUPER_ADMIN_EMAIL || !process.env.SUPER_ADMIN_PASSWORD) {
+        console.error("❌ SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env");
+        process.exit(1);
+    }
+
+    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+        console.error("❌ ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
+        process.exit(1);
+    }
 
     // ── Super Admin ───────────────────────────────────────────────────────────
     await upsertUser(prisma, {
-        email: process.env.SUPER_ADMIN_EMAIL || "superadmin@cnersh.cm",
-        password: process.env.SUPER_ADMIN_PASSWORD || "SuperAdmin@cnersh2026!",
-        name: process.env.SUPER_ADMIN_NAME || "CNERSH Super Admin",
+        email: process.env.SUPER_ADMIN_EMAIL,
+        password: process.env.SUPER_ADMIN_PASSWORD,
+        name: process.env.SUPER_ADMIN_NAME || "Super Admin",
         role: "superadmin",
     });
 
     // ── Admin ─────────────────────────────────────────────────────────────────
     await upsertUser(prisma, {
-        email: process.env.ADMIN_EMAIL || "admin@cnersh.cm",
-        password: process.env.ADMIN_PASSWORD || "Admin@cnersh2026!",
-        name: process.env.ADMIN_NAME || "CNERSH Admin",
+        email: process.env.ADMIN_EMAIL,
+        password: process.env.ADMIN_PASSWORD,
+        name: process.env.ADMIN_NAME || "Admin User",
         role: "admin",
     });
 
-    console.log("\n Seeding complete!");
+    console.log("\n✅ Seeding complete!");
 
     await prisma.$disconnect();
     await pool.end();
 }
 
 main().catch((e) => {
-    console.error(" Seed error:", e);
+    console.error("❌ Seed error:", e);
     process.exit(1);
 });
