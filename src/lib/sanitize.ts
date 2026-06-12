@@ -59,7 +59,7 @@ export function escapeHtml(text: string): string {
 }
 
 /**
- * Sanitize URL to prevent javascript: and data: URLs
+ * Sanitize URL to prevent javaScript: and data: URLs
  */
 export function sanitizeUrl(url: string): string {
     if (!url || typeof url !== 'string') {
