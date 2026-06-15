@@ -62,6 +62,14 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     maxSize = MAX_DOCUMENT_SIZE;
   }
 
+  // 1. Native Size and Type Verification
+  if (!allowedTypes.includes(file.type)) {
+    return NextResponse.json({ error: `File type ${file.type} is not allowed.` }, { status: 400 });
+  }
+  if (file.size > maxSize) {
+    return NextResponse.json({ error: `File exceeds size limit.` }, { status: 400 });
+  }
+
   let fileBuffer: Buffer;
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -70,19 +78,23 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
   }
 
-  const validation = await validateFile(fileBuffer, file, { allowedTypes, maxSize, maxPages: 4 });
-  if (!validation.valid) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+  // 2. Fixed Malware Check (Passes both buffer and filename, checks .safe)
+  const malwareCheck = await performBasicMalwareCheck(fileBuffer, file.name);
+  if (!malwareCheck.safe) {
+    return NextResponse.json({ error: malwareCheck.error || "File failed security check" }, { status: 400 });
   }
 
-  const malwareCheck = await performBasicMalwareCheck(fileBuffer);
-  if (!malwareCheck.valid) {
-    return NextResponse.json({ error: "File failed security check" }, { status: 400 });
+  // 3. Fixed validateFile (Only accepts maxPages, and only runs if it's a document)
+  const fileCategory = resolveFileType(file.type);
+  if (fileCategory === "document") {
+    const validation = await validateFile(fileBuffer, file, { maxPages: 4 });
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
   }
 
   const base64 = fileBuffer.toString("base64");
-  const mimeType = validation.detectedType ?? file.type ?? "application/octet-stream";
-  const fileType = resolveFileType(mimeType);
+  const mimeType = file.type || "application/octet-stream";
 
   try {
     const stored = await db.file.create({
@@ -92,7 +104,7 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         size: file.size,
         data: base64,
         url: null,
-        type: fileType,
+        type: fileCategory,
         userId: session.user.id,
       },
       select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true },

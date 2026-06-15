@@ -11,7 +11,7 @@ export const ALLOWED_DOCUMENT_TYPES = [
 export const MAX_FILE_SIZES = {
   avatar:   8  * 1024 * 1024,
   image:    16 * 1024 * 1024,
-  video:    50 * 1024 * 1024,
+  video:    64 * 1024 * 1024,
   audio:    8  * 1024 * 1024,
   document: 10 * 1024 * 1024,
   protocol: 64 * 1024 * 1024,
@@ -21,7 +21,7 @@ export const MAX_FILE_SIZES = {
 export const UT_MAX_SIZES = {
   avatar:   "8MB",
   image:    "16MB",
-  video:    "50MB",
+  video:    "64MB",
   audio:    "8MB",
   document: "10MB",
   protocol: "64MB",
