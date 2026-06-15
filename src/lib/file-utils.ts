@@ -6,27 +6,26 @@ export const MAX_DOCUMENT_PAGES = 4;
 export const ALLOWED_DOCUMENT_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-] as const; // .doc and spreadsheets removed – not supported for page validation
+] as const;
 
 export const MAX_FILE_SIZES = {
   avatar:   8  * 1024 * 1024,
   image:    16 * 1024 * 1024,
   video:    64 * 1024 * 1024,
   audio:    8  * 1024 * 1024,
-  document: 10 * 1024 * 1024,
+  document: 16 * 1024 * 1024,
   protocol: 64 * 1024 * 1024,
 } as const;
 
-// UploadThing size strings – must match exact literal union
+// UploadThing size strings – must match exact literal union types
 export const UT_MAX_SIZES = {
   avatar:   "8MB",
   image:    "16MB",
   video:    "64MB",
   audio:    "8MB",
-  document: "10MB",
+  document: "16MB",
   protocol: "64MB",
 } as const;
-
 
 export function getFileUrl(fileId: string): string {
   return `/api/files/${fileId}`;

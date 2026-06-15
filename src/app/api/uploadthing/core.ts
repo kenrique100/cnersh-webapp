@@ -20,19 +20,21 @@ const authenticate = async () => {
     return { userId: session.user.id };
 };
 
-const documentMimeConfig = Object.fromEntries(
-    ALLOWED_DOCUMENT_TYPES.map(mime => [mime, { maxFileSize: UT_MAX_SIZES.document, maxFileCount: 5 }])
-);
-
-const protocolMimeConfig = Object.fromEntries(
-    ALLOWED_DOCUMENT_TYPES.map(mime => [mime, { maxFileSize: UT_MAX_SIZES.protocol, maxFileCount: 3 }])
-);
-
 async function validateAndCleanup(file: { ufsUrl: string; key: string; name: string; type: string }) {
+    // Resolved ESLint explicit-any by safe widening cast to readonly string[]
+    if (!(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.type)) {
+        try {
+            const { UTApi } = await import("uploadthing/server");
+            await new UTApi().deleteFiles([file.key]);
+        } catch (err) {
+            console.error("Cleanup failed for illegal file type:", file.key, err);
+        }
+        throw new UploadThingError("Invalid file type. Only PDF and DOCX files are allowed.");
+    }
+
     const response = await fetch(file.ufsUrl);
     const buffer = Buffer.from(await response.arrayBuffer());
 
-    // Cast the return type so TypeScript understands 'error' can be read safely
     const validation = await validateFile(
         buffer,
         new File([buffer], file.name, { type: file.type }),
@@ -46,7 +48,6 @@ async function validateAndCleanup(file: { ufsUrl: string; key: string; name: str
         } catch (err) {
             console.error("Cleanup failed for orphaned file:", file.key, err);
         }
-        // TypeScript is now completely happy with this line
         throw new UploadThingError(validation.error ?? "Document validation failed.");
     }
 }
@@ -93,10 +94,10 @@ export const ourFileRouter = {
             return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    documentUploader: f(documentMimeConfig)
+    documentUploader: f({ blob: { maxFileSize: UT_MAX_SIZES.document, maxFileCount: 5 } })
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
-            await validateAndCleanup(file);
+            await validateAndCleanup({ ufsUrl: file.ufsUrl, key: file.key, name: file.name, type: file.type });
             const stored = await db.file.create({
                 data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "document", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
@@ -104,10 +105,10 @@ export const ourFileRouter = {
             return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    protocolUploader: f(protocolMimeConfig)
+    protocolUploader: f({ blob: { maxFileSize: UT_MAX_SIZES.protocol, maxFileCount: 3 } })
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
-            await validateAndCleanup(file);
+            await validateAndCleanup({ ufsUrl: file.ufsUrl, key: file.key, name: file.name, type: file.type });
             const stored = await db.file.create({
                 data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "protocol", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
