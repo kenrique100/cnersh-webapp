@@ -42,7 +42,7 @@ async function validatePdf(buffer: Buffer, maxPages: number) {
     const parser = new PDFParse({ data: buffer });
     const info = await parser.getInfo();
 
-    // Fix: The v2 API exposes the page count via the `total` property.
+    // The v2 API exposes the page count via the `total` property.
     const pageCount = info?.total || 0;
 
     if (pageCount === 0) return { valid: false, error: "PDF is empty (0 pages)." };
@@ -95,4 +95,28 @@ export async function validateFile(buffer: Buffer, file: File, options?: { maxPa
   }
 
   return { valid: true };
+}
+
+export async function performBasicMalwareCheck(buffer: Buffer, filename: string) {
+  // 1. Block inherently dangerous extensions
+  const dangerousExtensions = [
+    ".exe", ".bat", ".cmd", ".sh", ".php", ".js",
+    ".vbs", ".scr", ".dll", ".msi", ".ps1"
+  ];
+
+  const lowerFilename = filename.toLowerCase();
+  if (dangerousExtensions.some(ext => lowerFilename.endsWith(ext))) {
+    return { safe: false, error: "File extension is not allowed for security reasons." };
+  }
+
+  // 2. Block Windows Executables via Magic Bytes (MZ header)
+  // Even if they renamed 'virus.exe' to 'virus.pdf', this catches it.
+  if (buffer.length >= 2) {
+    const header = buffer.subarray(0, 2).toString("ascii");
+    if (header === "MZ") {
+      return { safe: false, error: "Executable file signatures detected." };
+    }
+  }
+
+  return { safe: true };
 }
