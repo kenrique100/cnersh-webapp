@@ -2,6 +2,7 @@ import { createUploadthing, type FileRouter, UploadThingError } from "uploadthin
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { validateFile } from "@/lib/file-validation";
+import { ALLOWED_DOCUMENT_TYPES, UT_MAX_SIZES, MAX_DOCUMENT_PAGES } from "@/lib/file-utils";
 import type { FileType } from "@/generated/prisma";
 
 const f = createUploadthing();
@@ -19,183 +20,92 @@ const authenticate = async () => {
     return { userId: session.user.id };
 };
 
+const documentMimeConfig = Object.fromEntries(
+    ALLOWED_DOCUMENT_TYPES.map(mime => [mime, { maxFileSize: UT_MAX_SIZES.document, maxFileCount: 5 }])
+);
+
+const protocolMimeConfig = Object.fromEntries(
+    ALLOWED_DOCUMENT_TYPES.map(mime => [mime, { maxFileSize: UT_MAX_SIZES.protocol, maxFileCount: 3 }])
+);
+
+async function validateAndCleanup(file: { ufsUrl: string; key: string; name: string; type: string }) {
+    const response = await fetch(file.ufsUrl);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const validation = await validateFile(buffer, new File([buffer], file.name, { type: file.type }), { maxPages: MAX_DOCUMENT_PAGES });
+    if (!validation.valid) {
+        try {
+            const { UTApi } = await import("uploadthing/server");
+            await new UTApi().deleteFiles([file.key]);
+        } catch (err) {
+            console.error("Cleanup failed for orphaned file:", file.key, err);
+        }
+        // validation.error is guaranteed to exist when valid === false
+        throw new UploadThingError(validation.error ?? "Document validation failed.");
+    }
+}
+
 export const ourFileRouter = {
-    imageUploader: f({ image: { maxFileSize: "32MB", maxFileCount: 10 } })
+    imageUploader: f({ image: { maxFileSize: UT_MAX_SIZES.image, maxFileCount: 10 } })
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
             const stored = await db.file.create({
-                data: {
-                    filename: file.name,
-                    mimeType: file.type,
-                    size: file.size,
-                    url: file.ufsUrl,
-                    data: null,
-                    type: resolveFileType(file.type),
-                    userId: metadata.userId,
-                },
+                data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: resolveFileType(file.type), userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
             });
-            return {
-                fileId: stored.id,
-                url: stored.url ?? file.ufsUrl,
-                name: stored.filename,
-                type: stored.mimeType,
-                size: stored.size,
-                category: stored.type,
-                createdAt: stored.createdAt.toISOString(),
-            };
+            return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    avatarUploader: f({ image: { maxFileSize: "32MB", maxFileCount: 1 } })
+    avatarUploader: f({ image: { maxFileSize: UT_MAX_SIZES.avatar, maxFileCount: 1 } })
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
+            await db.file.deleteMany({ where: { userId: metadata.userId, type: "avatar" } });
             const stored = await db.file.create({
-                data: {
-                    filename: file.name,
-                    mimeType: file.type,
-                    size: file.size,
-                    url: file.ufsUrl,
-                    data: null,
-                    type: "avatar",
-                    userId: metadata.userId,
-                },
+                data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "avatar", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
             });
-            return {
-                fileId: stored.id,
-                url: stored.url ?? file.ufsUrl,
-                name: stored.filename,
-                type: stored.mimeType,
-                size: stored.size,
-                category: stored.type,
-                createdAt: stored.createdAt.toISOString(),
-            };
+            return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    videoUploader: f({ video: { maxFileSize: "128MB", maxFileCount: 3 } })
+    videoUploader: f({ video: { maxFileSize: UT_MAX_SIZES.video, maxFileCount: 3 } })
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
             const stored = await db.file.create({
-                data: {
-                    filename: file.name,
-                    mimeType: file.type,
-                    size: file.size,
-                    url: file.ufsUrl,
-                    data: null,
-                    type: "video",
-                    userId: metadata.userId,
-                },
+                data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "video", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
             });
-            return {
-                fileId: stored.id,
-                url: stored.url ?? file.ufsUrl,
-                name: stored.filename,
-                type: stored.mimeType,
-                size: stored.size,
-                category: stored.type,
-                createdAt: stored.createdAt.toISOString(),
-            };
+            return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    audioUploader: f({ audio: { maxFileSize: "8MB", maxFileCount: 5 } })
+    audioUploader: f({ audio: { maxFileSize: UT_MAX_SIZES.audio, maxFileCount: 5 } })
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
             const stored = await db.file.create({
-                data: {
-                    filename: file.name,
-                    mimeType: file.type,
-                    size: file.size,
-                    url: file.ufsUrl,
-                    data: null,
-                    type: "audio",
-                    userId: metadata.userId,
-                },
+                data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "audio", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
             });
-            return {
-                fileId: stored.id,
-                url: stored.url ?? file.ufsUrl,
-                name: stored.filename,
-                type: stored.mimeType,
-                size: stored.size,
-                category: stored.type,
-                createdAt: stored.createdAt.toISOString(),
-            };
+            return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    documentUploader: f({
-        "application/pdf": { maxFileSize: "64MB", maxFileCount: 5 },
-        "application/msword": { maxFileSize: "64MB", maxFileCount: 5 },
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "64MB", maxFileCount: 5 },
-        "application/vnd.ms-excel": { maxFileSize: "64MB", maxFileCount: 5 },
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { maxFileSize: "64MB", maxFileCount: 5 },
-    })
+    documentUploader: f(documentMimeConfig)
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
-            const response = await fetch(file.ufsUrl);
-            const buffer = Buffer.from(await response.arrayBuffer());
-            const validation = await validateFile(buffer, new File([buffer], file.name, { type: file.type }), { maxPages: 4 });
-            if (!validation.valid) {
-                throw new UploadThingError(validation.error ?? "Document page count validation failed");
-            }
+            await validateAndCleanup(file);
             const stored = await db.file.create({
-                data: {
-                    filename: file.name,
-                    mimeType: file.type,
-                    size: file.size,
-                    url: file.ufsUrl,
-                    data: null,
-                    type: "document",
-                    userId: metadata.userId,
-                },
+                data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "document", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
             });
-            return {
-                fileId: stored.id,
-                url: stored.url ?? file.ufsUrl,
-                name: stored.filename,
-                type: stored.mimeType,
-                size: stored.size,
-                category: stored.type,
-                createdAt: stored.createdAt.toISOString(),
-            };
+            return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 
-    protocolUploader: f({
-        "application/pdf": { maxFileSize: "64MB", maxFileCount: 3 },
-        "application/msword": { maxFileSize: "64MB", maxFileCount: 3 },
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "64MB", maxFileCount: 3 },
-    })
+    protocolUploader: f(protocolMimeConfig)
         .middleware(authenticate)
         .onUploadComplete(async ({ metadata, file }) => {
-            const response = await fetch(file.ufsUrl);
-            const buffer = Buffer.from(await response.arrayBuffer());
-            const validation = await validateFile(buffer, new File([buffer], file.name, { type: file.type }), { maxPages: 4 });
-            if (!validation.valid) {
-                throw new UploadThingError(validation.error ?? "Document page count validation failed");
-            }
+            await validateAndCleanup(file);
             const stored = await db.file.create({
-                data: {
-                    filename: file.name,
-                    mimeType: file.type,
-                    size: file.size,
-                    url: file.ufsUrl,
-                    data: null,
-                    type: "protocol",
-                    userId: metadata.userId,
-                },
+                data: { filename: file.name, mimeType: file.type, size: file.size, url: file.ufsUrl, data: null, type: "protocol", userId: metadata.userId },
                 select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
             });
-            return {
-                fileId: stored.id,
-                url: stored.url ?? file.ufsUrl,
-                name: stored.filename,
-                type: stored.mimeType,
-                size: stored.size,
-                category: stored.type,
-                createdAt: stored.createdAt.toISOString(),
-            };
+            return { fileId: stored.id, url: stored.url ?? file.ufsUrl, name: stored.filename, type: stored.mimeType, size: stored.size, category: stored.type, createdAt: stored.createdAt.toISOString() };
         }),
 } satisfies FileRouter;
 

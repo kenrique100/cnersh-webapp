@@ -10,7 +10,7 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE    = 50 * 1024 * 1024;
-const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
 
 function resolveFileType(mimeType: string): FileType {
