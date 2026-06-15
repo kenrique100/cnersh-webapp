@@ -31,7 +31,14 @@ const protocolMimeConfig = Object.fromEntries(
 async function validateAndCleanup(file: { ufsUrl: string; key: string; name: string; type: string }) {
     const response = await fetch(file.ufsUrl);
     const buffer = Buffer.from(await response.arrayBuffer());
-    const validation = await validateFile(buffer, new File([buffer], file.name, { type: file.type }), { maxPages: MAX_DOCUMENT_PAGES });
+
+    // Cast the return type so TypeScript understands 'error' can be read safely
+    const validation = await validateFile(
+        buffer,
+        new File([buffer], file.name, { type: file.type }),
+        { maxPages: MAX_DOCUMENT_PAGES }
+    ) as { valid: boolean; error?: string };
+
     if (!validation.valid) {
         try {
             const { UTApi } = await import("uploadthing/server");
@@ -39,7 +46,7 @@ async function validateAndCleanup(file: { ufsUrl: string; key: string; name: str
         } catch (err) {
             console.error("Cleanup failed for orphaned file:", file.key, err);
         }
-        // validation.error is guaranteed to exist when valid === false
+        // TypeScript is now completely happy with this line
         throw new UploadThingError(validation.error ?? "Document validation failed.");
     }
 }

@@ -87,9 +87,10 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   // 3. Fixed validateFile (Only accepts maxPages, and only runs if it's a document)
   const fileCategory = resolveFileType(file.type);
   if (fileCategory === "document") {
-    const validation = await validateFile(fileBuffer, file, { maxPages: 4 });
+    const validation = await validateFile(fileBuffer, file, { maxPages: 4 }) as { valid: boolean; error?: string };
+
     if (!validation.valid) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+      return NextResponse.json({ error: validation.error ?? "Document validation failed" }, { status: 400 });
     }
   }
 
