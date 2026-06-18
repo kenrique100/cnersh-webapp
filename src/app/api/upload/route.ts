@@ -5,13 +5,15 @@ import { sanitizeFilename } from "@/lib/sanitize";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import type { FileType } from "@/generated/prisma";
+import { withIdempotency } from "@/middleware/idempotency";
+import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 export const maxDuration = 60;
 
-const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
-const MAX_VIDEO_SIZE    = 50 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
-const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
+const MAX_AUDIO_SIZE = 8 * 1024 * 1024;
 
 function resolveFileType(mimeType: string): FileType {
   if (mimeType.startsWith("image/")) return "image";
@@ -78,24 +80,33 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
   }
 
-  // 2. Fixed Malware Check (Passes both buffer and filename, checks .safe)
+  // 2. Basic Malware Check
   const malwareCheck = await performBasicMalwareCheck(fileBuffer, file.name);
   if (!malwareCheck.safe) {
     return NextResponse.json({ error: malwareCheck.error || "File failed security check" }, { status: 400 });
   }
 
-  // 3. Fixed validateFile (Only accepts maxPages, and only runs if it's a document)
+  // 3. Document Validation (page count, emptiness)
   const fileCategory = resolveFileType(file.type);
   if (fileCategory === "document") {
-    const validation = await validateFile(fileBuffer, file, { maxPages: 4 }) as { valid: boolean; error?: string };
+    const validation = (await validateFile(fileBuffer, file, { maxPages: 4 })) as { valid: boolean; error?: string };
 
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error ?? "Document validation failed" }, { status: 400 });
     }
   }
 
-  const base64 = fileBuffer.toString("base64");
   const mimeType = file.type || "application/octet-stream";
+
+  // 4. Upload to UploadThing (streaming clients may be used on the frontend);
+  // here we upload and save the returned URL rather than storing large base64 blobs.
+  let uploadedUrl: string | null = null;
+  try {
+    uploadedUrl = await uploadSingleFileToUploadThing("default", file as File);
+  } catch (err) {
+    console.error("[upload] uploadthing failed:", err);
+    return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
+  }
 
   try {
     const stored = await db.file.create({
@@ -103,16 +114,16 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         filename: sanitizedFilename,
         mimeType,
         size: file.size,
-        data: base64,
-        url: null,
+        data: null,
+        url: uploadedUrl,
         type: fileCategory,
         userId: session.user.id,
       },
-      select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true },
+      select: { id: true, filename: true, mimeType: true, size: true, type: true, createdAt: true, url: true },
     });
     return NextResponse.json({
       fileId: stored.id,
-      url: `/api/files/${stored.id}`,
+      url: stored.url,
       name: stored.filename,
       type: stored.mimeType,
       size: stored.size,
@@ -133,10 +144,13 @@ const rateLimitedUploadHandler = withRateLimit(uploadHandler, RATE_LIMITS.fileUp
   },
 });
 
+const idempotentHandler = withIdempotency(rateLimitedUploadHandler, { lockTtlSeconds: 60, responseTtlSeconds: 24 * 60 * 60 });
+
 export async function POST(req: NextRequest) {
   try {
-    return await rateLimitedUploadHandler(req);
-  } catch {
+    return await idempotentHandler(req);
+  } catch (err) {
+    console.error("[upload] unexpected error:", err);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }
