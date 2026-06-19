@@ -1,4 +1,3 @@
-// cell-actions.tsx (fixed)
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -193,33 +192,39 @@ export const CellActions = ({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-
-            {/* Delete Dialog */}
             <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
                 <DialogContent className="w-[90%] sm:w-full max-w-md rounded-lg mx-auto p-4 sm:p-6">
                     <DialogHeader>
                         <DialogTitle className="text-base sm:text-lg">Delete user</DialogTitle>
                     </DialogHeader>
                     <DialogDescription className="text-sm sm:text-base">
-                        Are you sure you want to delete {name}? <br />
+                        Are you sure you want to delete <span className="font-semibold">{name}</span>?{" "}
+                        <br />
                         This action cannot be undone.
                     </DialogDescription>
-                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end mt-4">
+
+                    {/* FIX: use flex-row with justify-end; no col-reverse that hides the confirm button */}
+                    <div className="flex flex-row gap-2 justify-end mt-4">
                         <Button
+                            type="button"
                             variant="outline"
                             onClick={() => setIsDeleteModalOpen(false)}
-                            className="w-full sm:w-auto border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium"
+                            disabled={isLoading}
+                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium"
                         >
                             Cancel
                         </Button>
+
+                        {/* FIX: explicit red bg/text so the button is always visible */}
                         <Button
-                            type="submit"
-                            className="cursor-pointer w-full sm:w-auto font-medium"
-                            variant="destructive"
+                            type="button"
                             onClick={onRemoveUser}
                             disabled={isLoading}
+                            className="cursor-pointer font-medium bg-red-600 hover:bg-red-700 text-white dark:bg-red-600 dark:hover:bg-red-700 dark:text-white"
                         >
-                            {isLoading ? <Spinner className="size-5" /> : (
+                            {isLoading ? (
+                                <Spinner className="size-5" />
+                            ) : (
                                 <>
                                     <Trash className="h-4 w-4 mr-1.5" />
                                     Delete User
@@ -230,7 +235,7 @@ export const CellActions = ({
                 </DialogContent>
             </Dialog>
 
-            {/* Ban/Unban Dialog */}
+            {/* Ban/Unban Dialog — unchanged */}
             <Dialog open={isBanModalOpen} onOpenChange={setIsBanModalOpen}>
                 <DialogContent className="w-[90%] sm:w-full max-w-md rounded-lg mx-auto p-4 sm:p-6">
                     <DialogHeader>
@@ -243,17 +248,18 @@ export const CellActions = ({
                             ? `Are you sure you want to unban ${name}? They will regain access to the platform.`
                             : `Are you sure you want to ban ${name}? They will lose access to the platform.`}
                     </DialogDescription>
-                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end mt-4">
+                    <div className="flex flex-row gap-2 justify-end mt-4">
                         <Button
+                            type="button"
                             variant="outline"
                             onClick={() => setIsBanModalOpen(false)}
-                            className="w-full sm:w-auto"
+                            disabled={isLoading}
                         >
                             Cancel
                         </Button>
                         <Button
-                            type="submit"
-                            className={`cursor-pointer w-full sm:w-auto text-white ${
+                            type="button"
+                            className={`cursor-pointer text-white ${
                                 banned
                                     ? "bg-emerald-600 hover:bg-emerald-700"
                                     : "bg-rose-600 hover:bg-rose-700"
