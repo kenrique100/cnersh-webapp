@@ -67,17 +67,21 @@ export async function createPost(data: { content: string; image?: string; video?
                         userId: u.id,
                     })),
                 });
-                for (const u of mentionedUsers) {
-                    if (u.email) {
+
+                // Send mention emails concurrently
+                const emailPromises = mentionedUsers
+                    .filter(u => u.email)
+                    .map(u =>
                         sendNotificationEmail({
                             to: u.email,
                             userName: u.name || "User",
                             notificationMessage: mentionMessage,
                             notificationType: "MENTION",
                             actionUrl: "/feeds",
-                        }).catch((err) => console.error("Error sending post mention email:", err));
-                    }
-                }
+                        }).catch((err) => console.error("Error sending post mention email:", err))
+                    );
+
+                void Promise.allSettled(emailPromises);
             }
         }
     } catch (error) {

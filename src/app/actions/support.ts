@@ -37,16 +37,20 @@ export async function submitSupportMessage(message: string) {
         })),
     });
 
-    // Send email to super admins (non-blocking)
-    for (const admin of superAdmins) {
-        sendNotificationEmail({
-            to: admin.email,
-            userName: admin.name || "Super Admin",
-            notificationMessage: `Support message from ${session.user.name || session.user.email}: "${trimmedMessage}"`,
-            notificationType: "SYSTEM",
-            actionUrl: `/admin/reports`,
-        }).catch((err) => console.error("Error sending support message email:", err));
-    }
+    // Send email to super admins (dispatched concurrently)
+    const emailPromises = superAdmins
+        .filter((a) => a.email)
+        .map((admin) =>
+            sendNotificationEmail({
+                to: admin.email,
+                userName: admin.name || "Super Admin",
+                notificationMessage: `Support message from ${session.user.name || session.user.email}: "${trimmedMessage}"`,
+                notificationType: "SYSTEM",
+                actionUrl: `/admin/reports`,
+            }).catch((err) => console.error("Error sending support message email:", err))
+        );
+
+    void Promise.allSettled(emailPromises);
 
     return { success: true };
 }

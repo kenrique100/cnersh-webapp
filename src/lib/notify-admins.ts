@@ -33,27 +33,40 @@ export async function notifyAdmins(data: {
         })),
     });
 
-    // Send email notifications to admins (non-blocking)
-    for (const admin of admins) {
-        Sentry.startSpan(
-            {
-                name: "admin-notifications",
-                op: "queue.publish",
-                attributes: {
-                    "messaging.destination.name": "admin-notifications",
-                    "messaging.message.id": randomUUID(),
-                    "messaging.message.body.size": data.message.length,
+    // Send email notifications to admins (fire-and-forget, dispatched concurrently)
+    const emailPromises = admins
+        .filter((a) => a.email)
+        .map((admin) => {
+            Sentry.startSpan(
+                {
+                    name: "admin-notifications",
+                    op: "queue.publish",
+                    attributes: {
+                        "messaging.destination.name": "admin-notifications",
+                        "messaging.message.id": randomUUID(),
+                        "messaging.message.body.size": data.message.length,
+                    },
                 },
-            },
-            () => {
-                sendNotificationEmail({
-                    to: admin.email,
-                    userName: admin.name || "Admin",
-                    notificationMessage: data.message,
-                    notificationType: data.type,
-                    actionUrl: data.link,
-                }).catch((err) => console.error("Error sending admin email notification:", err));
-            }
-        );
-    }
+                () => {
+                    // Return the promise so we can track it
+                    return sendNotificationEmail({
+                        to: admin.email,
+                        userName: admin.name || "Admin",
+                        notificationMessage: data.message,
+                        notificationType: data.type,
+                        actionUrl: data.link,
+                    }).catch((err) => console.error("Error sending admin email notification:", err));
+                }
+            );
+            return sendNotificationEmail({
+                to: admin.email,
+                userName: admin.name || "Admin",
+                notificationMessage: data.message,
+                notificationType: data.type,
+                actionUrl: data.link,
+            }).catch((err) => console.error("Error sending admin email notification:", err));
+        });
+
+    // Dispatch concurrently without blocking the caller
+    void Promise.allSettled(emailPromises);
 }

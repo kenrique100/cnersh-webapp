@@ -177,8 +177,8 @@ export async function addReply(data: {
 
     // Only admins and superadmins can access the community
     const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
+        where: {id: session.user.id},
+        select: {role: true},
     });
     if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
         throw new Error("Only admins and superadmins can access the community");
@@ -208,7 +208,7 @@ export async function addReply(data: {
             userId: session.user.id,
         },
         include: {
-            user: { select: { id: true, name: true, image: true, role: true } },
+            user: {select: {id: true, name: true, image: true, role: true}},
         },
     });
 
@@ -222,8 +222,8 @@ export async function addReply(data: {
         if (mentionMatches) {
             const mentionedNames = mentionMatches.map(m => m.slice(1).trim());
             const mentionedUsers = await db.user.findMany({
-                where: { name: { in: mentionedNames }, banned: { not: true } },
-                select: { id: true, email: true, name: true },
+                where: {name: {in: mentionedNames}, banned: {not: true}},
+                select: {id: true, email: true, name: true},
             });
             for (const u of mentionedUsers) {
                 if (u.id !== session.user.id) {
@@ -249,8 +249,8 @@ export async function addReply(data: {
         // Notify parent reply author when someone replies to their message
         if (data.parentId) {
             const parentReply = await db.communityReply.findUnique({
-                where: { id: data.parentId },
-                select: { userId: true, user: { select: { email: true, name: true } } },
+                where: {id: data.parentId},
+                select: {userId: true, user: {select: {email: true, name: true}}},
             });
             if (parentReply && parentReply.userId !== session.user.id) {
                 const replyMessage = `${session.user.name || "Someone"} replied to your message in the community`;
@@ -272,19 +272,23 @@ export async function addReply(data: {
         }
 
         if (notifications.length > 0) {
-            await db.notification.createMany({ data: notifications });
+            await db.notification.createMany({data: notifications});
         }
 
-        // Send email notifications (non-blocking)
-        for (const recipient of emailRecipients) {
-            sendNotificationEmail({
-                to: recipient.email,
-                userName: recipient.name,
-                notificationMessage: recipient.message,
-                notificationType: recipient.type,
-                actionUrl: "/community",
-            }).catch((err) => console.error("Error sending community email:", err));
-        }
+        // Send email notifications (dispatched concurrently)
+        const emailPromises = emailRecipients
+            .filter(r => r.email)
+            .map(recipient =>
+                sendNotificationEmail({
+                    to: recipient.email,
+                    userName: recipient.name,
+                    notificationMessage: recipient.message,
+                    notificationType: recipient.type,
+                    actionUrl: "/community",
+                }).catch((err) => console.error("Error sending community email:", err))
+            );
+
+        void Promise.allSettled(emailPromises);
 
         // Also notify admins about community activity
         await notifyAdmins({
