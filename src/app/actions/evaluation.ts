@@ -143,15 +143,13 @@ export async function submitEvaluationReport(assignmentId: string, scores: Evalu
         data: { status: "COMPLETED" },
     });
 
-    // Check how many evaluations are complete for this project
-    const allAssignments = await db.reviewAssignment.findMany({
-        where: { projectId: assignment.project.id },
-        include: { evaluationReport: { select: { status: true } } },
+    // Check how many evaluations are complete for this project using a DB count (avoids loading all assignments)
+    const submittedCount = await db.reviewAssignment.count({
+        where: {
+            projectId: assignment.project.id,
+            evaluationReport: { is: { status: "SUBMITTED" } },
+        },
     });
-
-    const submittedCount = allAssignments.filter(
-        (a) => a.evaluationReport?.status === "SUBMITTED"
-    ).length;
 
     // If 2+ reports submitted, mark protocol as REVIEW_COMPLETE
     if (submittedCount >= 2) {
