@@ -33,9 +33,7 @@ import {
     CommunityCreatePost,
 } from "./community";
 import { getDisplayName } from "./community/utils";
-import { useUploadThing } from "@/lib/uploadthing";
 import { prepareImageForUpload } from "@/lib/client-image-upload";
-import { extractUploadThingFileUrl, uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 /* ─── Props Interface ─────────────────────────────────── */
 
@@ -48,12 +46,12 @@ interface CommunityClientProps {
 }
 
 export default function CommunityClient({
-    initialTopics,
-    users,
-    isAdmin = false,
-    currentUserId,
-    currentUserRole,
-}: CommunityClientProps) {
+                                            initialTopics,
+                                            users,
+                                            isAdmin = false,
+                                            currentUserId,
+                                            currentUserRole,
+                                        }: CommunityClientProps) {
     const router = useRouter();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -114,13 +112,26 @@ export default function CommunityClient({
     const topicImageRef = useRef<HTMLInputElement>(null);
     const topicVideoRef = useRef<HTMLInputElement>(null);
     const topicDocRef = useRef<HTMLInputElement>(null);
-    const { startUpload: startImageUpload } = useUploadThing("imageUploader");
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
     }, []);
+
+    /* ─── Upload Helper ────────────────────────────────── */
+
+    const uploadFileToVercelBlob = async (file: File): Promise<string> => {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Upload failed");
+        }
+        const result = await res.json();
+        return result.url;
+    };
 
     /* ─── Handlers ──────────────────────────────────────── */
 
@@ -163,15 +174,11 @@ export default function CommunityClient({
         try {
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
-                const uploaded = await startImageUpload([normalizedFile]);
-                const url = extractUploadThingFileUrl(uploaded?.[0]);
-                if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
+                const url = await uploadFileToVercelBlob(normalizedFile);
                 setNewTopic((p) => ({ ...p, images: [...p.images, url] }));
                 return;
             }
-
-            const endpoint = type === "video" ? "videoUploader" : "documentUploader";
-            const url = await uploadSingleFileToUploadThing(endpoint, file);
+            const url = await uploadFileToVercelBlob(file);
             switch (type) {
                 case "video": setNewTopic((p) => ({ ...p, videos: [...p.videos, url] })); break;
                 case "document": setNewTopic((p) => ({ ...p, documents: [...p.documents, url] })); break;
@@ -240,13 +247,13 @@ export default function CommunityClient({
                             r.id === replyingTo.id
                                 ? { ...r, children: [...(r.children || []), replyData] }
                                 : {
-                                      ...r,
-                                      children: (r.children || []).map((c) =>
-                                          c.id === replyingTo.id
-                                              ? { ...c, children: [...(c.children || []), replyData] }
-                                              : c
-                                      ),
-                                  }
+                                    ...r,
+                                    children: (r.children || []).map((c) =>
+                                        c.id === replyingTo.id
+                                            ? { ...c, children: [...(c.children || []), replyData] }
+                                            : c
+                                    ),
+                                }
                         ),
                     };
                 }
@@ -345,11 +352,11 @@ export default function CommunityClient({
                     r.id === replyId
                         ? { ...r, content: editingContent }
                         : {
-                              ...r,
-                              children: (r.children || []).map((c) =>
-                                  c.id === replyId ? { ...c, content: editingContent } : c
-                              ),
-                          }
+                            ...r,
+                            children: (r.children || []).map((c) =>
+                                c.id === replyId ? { ...c, content: editingContent } : c
+                            ),
+                        }
                 ),
             });
             setEditingReplyId(null);
@@ -490,7 +497,7 @@ export default function CommunityClient({
                 const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
                 try {
                     const audioFile = new File([audioBlob], "voice-note.webm", { type: "audio/webm" });
-                    const url = await uploadSingleFileToUploadThing("audioUploader", audioFile);
+                    const url = await uploadFileToVercelBlob(audioFile);
                     setPendingVoiceNote(url);
                 } catch (err) {
                     toast.error(err instanceof Error ? err.message : "Failed to upload voice note");
@@ -516,30 +523,16 @@ export default function CommunityClient({
         try {
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
-                const uploaded = await startImageUpload([normalizedFile]);
-                const url = extractUploadThingFileUrl(uploaded?.[0]);
-                if (!url) throw new Error("Image upload failed: UploadThing returned no file URL.");
+                const url = await uploadFileToVercelBlob(normalizedFile);
                 setPendingImages((prev) => [...prev, url]);
                 return;
             }
-
-            const uploadConfig = {
-                video: {
-                    endpoint: "videoUploader" as const,
-                    apply: (url: string) => setPendingVideos((prev) => [...prev, url]),
-                },
-                audio: {
-                    endpoint: "audioUploader" as const,
-                    apply: (url: string) => setPendingAudios((prev) => [...prev, url]),
-                },
-                document: {
-                    endpoint: "documentUploader" as const,
-                    apply: (url: string) => setPendingDocuments((prev) => [...prev, url]),
-                },
-            };
-            const config = uploadConfig[type];
-            const url = await uploadSingleFileToUploadThing(config.endpoint, file);
-            config.apply(url);
+            const url = await uploadFileToVercelBlob(file);
+            switch (type) {
+                case "video": setPendingVideos((prev) => [...prev, url]); break;
+                case "audio": setPendingAudios((prev) => [...prev, url]); break;
+                case "document": setPendingDocuments((prev) => [...prev, url]); break;
+            }
         } catch (err) {
             toast.error(err instanceof Error ? err.message : `Failed to upload ${type}`);
         }

@@ -15,23 +15,16 @@ import {
     ChevronLeftIcon, ChevronRightIcon, PlusIcon, FileTextIcon, SaveIcon,
     AlertCircleIcon, EyeIcon,
 } from "lucide-react";
-import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
 
 async function deleteBlobUrl(url: string) {
     try {
-        const parsed = new URL(url);
-        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
         await fetch("/api/delete-blob", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url }),
         });
     } catch {
-        // Best-effort deletion; do not surface errors to the user
+        // Best-effort
     }
 }
 
@@ -104,9 +97,7 @@ const STEP_LABELS = [
 ];
 
 const AUTOSAVE_KEY = "cnersh-protocol-draft";
-const AUTOSAVE_INTERVAL = 30000; // 30 seconds
-
-// ─── Types ──────────────────────────────────────────────────────────────────
+const AUTOSAVE_INTERVAL = 30000;
 
 interface CoInvestigator {
     name: string;
@@ -123,13 +114,10 @@ interface FileUpload {
 }
 
 interface FormState {
-    // Step 1: Protocol Info
     protocolTitle: string;
     studyType: string;
     researchField: string;
     projectDescription: string;
-
-    // Step 2: Principal Investigator
     piFullName: string;
     piInstitution: string;
     piAddress: string;
@@ -138,37 +126,21 @@ interface FormState {
     piQualification: string;
     piExperience: string;
     piCv: FileUpload;
-
-    // Step 3: Co-Investigators
     coInvestigators: CoInvestigator[];
-
-    // Step 4: Sponsor/Funding
     sponsorName: string;
     sponsorAddress: string;
     sponsorCountry: string;
     fundingSourceType: string;
     fundingAmount: string;
     fundingDocument: FileUpload;
-
-    // Step 5: Study Summary
     studySummaryEnglish: string;
     studySummaryFrench: string;
-
-    // Step 6: Research Background
     researchBackground: string;
-
-    // Step 7: Research Question
     mainResearchQuestion: string;
     researchHypothesis: string;
-
-    // Step 8: Objectives
     generalObjective: string;
     specificObjectives: string[];
-
-    // Step 9: Literature Review
     literatureReview: string;
-
-    // Step 10: Methodology
     methodStudyType: string;
     studyLocation: string;
     studyStartDate: string;
@@ -180,30 +152,18 @@ interface FormState {
     exclusionCriteria: string;
     dataCollectionMethods: string;
     dataAnalysisPlan: string;
-
-    // Step 11: Ethics
     participantProtection: string;
     confidentialityMeasures: string;
     potentialRisks: string;
     expectedBenefits: string;
     compensation: string;
-
-    // Step 12: Consent Documents
     infoSheetFrench: FileUpload;
     infoSheetEnglish: FileUpload;
     consentFormFrench: FileUpload;
     consentFormEnglish: FileUpload;
-
-    // Step 13: Data Collection Tools
     dataCollectionTools: FileUpload;
-
-    // Step 14: Budget
     budgetDocument: FileUpload;
-
-    // Step 15: Institutional Authorization
     authorizationLetter: FileUpload;
-
-    // Step 16: Additional Documents (Conditional)
     investigatorsBrochure: FileUpload;
     participantInsurance: FileUpload;
     protocolErrorInsurance: FileUpload;
@@ -211,11 +171,7 @@ interface FormState {
     foreignEthicsApproval: FileUpload;
     materialTransferAgreement: FileUpload;
     dataSharingAgreement: FileUpload;
-
-    // Step 17: Payment
     paymentReceipt: FileUpload;
-
-    // Step 18: confirmed
     confirmed: boolean;
 }
 
@@ -226,7 +182,6 @@ const initialFormState: FormState = {
     studyType: "",
     researchField: "",
     projectDescription: "",
-
     piFullName: "",
     piInstitution: "",
     piAddress: "",
@@ -235,29 +190,21 @@ const initialFormState: FormState = {
     piQualification: "",
     piExperience: "",
     piCv: { ...emptyFileUpload },
-
     coInvestigators: [],
-
     sponsorName: "",
     sponsorAddress: "",
     sponsorCountry: "",
     fundingSourceType: "",
     fundingAmount: "",
     fundingDocument: { ...emptyFileUpload },
-
     studySummaryEnglish: "",
     studySummaryFrench: "",
-
     researchBackground: "",
-
     mainResearchQuestion: "",
     researchHypothesis: "",
-
     generalObjective: "",
     specificObjectives: [""],
-
     literatureReview: "",
-
     methodStudyType: "",
     studyLocation: "",
     studyStartDate: "",
@@ -269,24 +216,18 @@ const initialFormState: FormState = {
     exclusionCriteria: "",
     dataCollectionMethods: "",
     dataAnalysisPlan: "",
-
     participantProtection: "",
     confidentialityMeasures: "",
     potentialRisks: "",
     expectedBenefits: "",
     compensation: "",
-
     infoSheetFrench: { ...emptyFileUpload },
     infoSheetEnglish: { ...emptyFileUpload },
     consentFormFrench: { ...emptyFileUpload },
     consentFormEnglish: { ...emptyFileUpload },
-
     dataCollectionTools: { ...emptyFileUpload },
-
     budgetDocument: { ...emptyFileUpload },
-
     authorizationLetter: { ...emptyFileUpload },
-
     investigatorsBrochure: { ...emptyFileUpload },
     participantInsurance: { ...emptyFileUpload },
     protocolErrorInsurance: { ...emptyFileUpload },
@@ -294,24 +235,20 @@ const initialFormState: FormState = {
     foreignEthicsApproval: { ...emptyFileUpload },
     materialTransferAgreement: { ...emptyFileUpload },
     dataSharingAgreement: { ...emptyFileUpload },
-
     paymentReceipt: { ...emptyFileUpload },
-
     confirmed: false,
 };
 
-// ─── File Upload Component ──────────────────────────────────────────────────
-
 function FileUploadField({
-    label,
-    required,
-    file,
-    accept,
-    maxSizeMB = 8,
-    fieldId,
-    onUpload,
-    onRemove,
-}: {
+                             label,
+                             required,
+                             file,
+                             accept,
+                             maxSizeMB = 8,
+                             fieldId,
+                             onUpload,
+                             onRemove,
+                         }: {
     label: string;
     required?: boolean;
     file: FileUpload;
@@ -332,8 +269,15 @@ function FileUploadField({
         }
         setUploading(true);
         try {
-            const url = await uploadSingleFileToUploadThing("protocolUploader", f);
-            onUpload(url, f.name);
+            const formData = new FormData();
+            formData.append("file", f);
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Upload failed");
+            }
+            const result = await res.json();
+            onUpload(result.url, f.name);
             toast.success(`${label} uploaded successfully`);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : `Failed to upload ${label.toLowerCase()}`);
@@ -398,8 +342,6 @@ function FileUploadField({
     );
 }
 
-// ─── Main Component ─────────────────────────────────────────────────────────
-
 export default function ProtocolFormWizard() {
     const router = useRouter();
     const [step, setStep] = React.useState(0);
@@ -410,8 +352,6 @@ export default function ProtocolFormWizard() {
 
     const totalSteps = STEP_LABELS.length;
 
-    // ─── Autosave / Draft ───────────────────────────────────────────────
-    // Load draft on mount
     React.useEffect(() => {
         try {
             const saved = localStorage.getItem(AUTOSAVE_KEY);
@@ -423,7 +363,6 @@ export default function ProtocolFormWizard() {
         } catch { /* ignore */ }
     }, []);
 
-    // Autosave every 30s
     React.useEffect(() => {
         const timer = setInterval(() => {
             try {
@@ -447,7 +386,6 @@ export default function ProtocolFormWizard() {
         setDraftLoaded(false);
     };
 
-    // ─── Helpers ────────────────────────────────────────────────────────
     const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
@@ -462,19 +400,17 @@ export default function ProtocolFormWizard() {
         setForm((prev) => ({ ...prev, [key]: { url: null, name: null } }));
     };
 
-    // Conditional checks
     const isClinicalTrial = form.studyType === "Clinical Trial";
     const isForeignSponsor = form.sponsorCountry.trim().length > 0 &&
         form.sponsorCountry.trim().toLowerCase() !== "cameroon" &&
         form.sponsorCountry.trim().toLowerCase() !== "cameroun";
 
-    // ─── Step Validation ────────────────────────────────────────────────
     const stepValid = (s: number): boolean => {
         switch (s) {
             case 0: return form.protocolTitle.trim().length >= 5 && !!form.studyType && !!form.researchField && form.projectDescription.trim().length >= 20;
             case 1: return form.piFullName.trim().length >= 2 && form.piInstitution.trim().length >= 2 && form.piEmail.trim().length >= 5;
-            case 2: return true; // co-investigators are optional
-            case 3: return true; // sponsor is optional
+            case 2: return true;
+            case 3: return true;
             case 4: return form.studySummaryEnglish.trim().length >= 20;
             case 5: return form.researchBackground.trim().length >= 20;
             case 6: return form.mainResearchQuestion.trim().length >= 10;
@@ -482,12 +418,12 @@ export default function ProtocolFormWizard() {
             case 8: return form.literatureReview.trim().length >= 50;
             case 9: return form.studyLocation.trim().length >= 2 && form.targetPopulation.trim().length >= 5 && form.sampleSize.trim().length >= 1;
             case 10: return form.participantProtection.trim().length >= 10;
-            case 11: return true; // consent documents optional
-            case 12: return true; // data collection tools optional
-            case 13: return true; // budget optional
-            case 14: return true; // auth letter optional
-            case 15: return true; // additional docs conditional
-            case 16: return true; // payment optional
+            case 11: return true;
+            case 12: return true;
+            case 13: return true;
+            case 14: return true;
+            case 15: return true;
+            case 16: return true;
             case 17: return form.confirmed;
             default: return true;
         }
@@ -496,14 +432,11 @@ export default function ProtocolFormWizard() {
     const completedSteps = STEP_LABELS.map((_, i) => stepValid(i));
     const completedCount = completedSteps.filter(Boolean).length;
     const progressPercent = Math.round((completedCount / totalSteps) * 100);
-
     const canSubmit = completedSteps.every(Boolean);
 
-    // ─── Navigation ─────────────────────────────────────────────────────
     const goNext = () => { if (step < totalSteps - 1) setStep(step + 1); };
     const goPrev = () => { if (step > 0) setStep(step - 1); };
 
-    // ─── Submit ─────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (!canSubmit) {
             toast.error("Please complete all required fields before submitting");
@@ -514,7 +447,6 @@ export default function ProtocolFormWizard() {
             const timeline = form.studyStartDate && form.studyEndDate
                 ? `${form.studyStartDate} to ${form.studyEndDate}`
                 : form.studyStartDate || form.studyEndDate || undefined;
-
             const project = await submitProject({
                 title: form.protocolTitle,
                 description: form.projectDescription,
@@ -544,7 +476,6 @@ export default function ProtocolFormWizard() {
         }
     };
 
-    // ─── Success Screen ─────────────────────────────────────────────────
     if (submittedTrackingCode) {
         return (
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
@@ -553,21 +484,15 @@ export default function ProtocolFormWizard() {
                         <CheckCircleIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                            Protocol Submitted Successfully!
-                        </h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Protocol Submitted Successfully!</h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             Your protocol has been submitted for ethical review by the National Ethics Committee for Human Health Research (CNERSH). Use the tracking code below to check your protocol status.
                         </p>
                     </div>
                     <div className="w-full max-w-sm p-4 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 uppercase tracking-wide">
-                            Your Protocol File Number
-                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1 uppercase tracking-wide">Your Protocol File Number</p>
                         <div className="flex items-center gap-2">
-                            <span className="flex-1 text-xl font-bold font-mono text-blue-900 dark:text-blue-100 tracking-widest">
-                                {submittedTrackingCode}
-                            </span>
+                            <span className="flex-1 text-xl font-bold font-mono text-blue-900 dark:text-blue-100 tracking-widest">{submittedTrackingCode}</span>
                             <button onClick={handleCopyCode} className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors" title="Copy tracking code">
                                 <CopyIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </button>
@@ -585,10 +510,8 @@ export default function ProtocolFormWizard() {
         );
     }
 
-    // ─── Step Content ───────────────────────────────────────────────────
     const renderStep = () => {
         switch (step) {
-            // ── Step 1: Research Protocol Information ──
             case 0:
                 return (
                     <div className="space-y-4">
@@ -617,16 +540,11 @@ export default function ProtocolFormWizard() {
                             <Input value={new Date().toLocaleDateString("en-GB")} disabled className="bg-gray-100 dark:bg-gray-800" />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">
-                                Project Description <span className="text-red-500">*</span>
-                                <span className="ml-1 text-xs text-gray-400">({form.projectDescription.trim().length}/20 min chars)</span>
-                            </label>
+                            <label className="text-sm font-medium">Project Description <span className="text-red-500">*</span> <span className="ml-1 text-xs text-gray-400">({form.projectDescription.trim().length}/20 min chars)</span></label>
                             <Textarea value={form.projectDescription} onChange={(e) => updateField("projectDescription", e.target.value)} placeholder="Provide a brief description of the research project" className="min-h-[120px]" />
                         </div>
                     </div>
                 );
-
-            // ── Step 2: Principal Investigator ──
             case 1:
                 return (
                     <div className="space-y-4">
@@ -664,17 +582,9 @@ export default function ProtocolFormWizard() {
                                 <Input value={form.piExperience} onChange={(e) => updateField("piExperience", e.target.value)} placeholder="e.g., 10" />
                             </div>
                         </div>
-                        <FileUploadField
-                            label="CV Upload"
-                            fieldId="pi-cv-upload"
-                            file={form.piCv}
-                            onUpload={(url, name) => updateFileField("piCv", url, name)}
-                            onRemove={() => removeFileField("piCv")}
-                        />
+                        <FileUploadField label="CV Upload" fieldId="pi-cv-upload" file={form.piCv} onUpload={(url, name) => updateFileField("piCv", url, name)} onRemove={() => removeFileField("piCv")} />
                     </div>
                 );
-
-            // ── Step 3: Co-Investigators ──
             case 2:
                 return (
                     <div className="space-y-4">
@@ -683,61 +593,20 @@ export default function ProtocolFormWizard() {
                             <div key={idx} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Co-Investigator {idx + 1}</span>
-                                    <button type="button" onClick={() => {
-                                        const updated = form.coInvestigators.filter((_, i) => i !== idx);
-                                        updateField("coInvestigators", updated);
-                                    }} className="text-red-500 hover:text-red-700">
-                                        <TrashIcon className="h-4 w-4" />
-                                    </button>
+                                    <button type="button" onClick={() => { const updated = form.coInvestigators.filter((_, i) => i !== idx); updateField("coInvestigators", updated); }} className="text-red-500 hover:text-red-700"><TrashIcon className="h-4 w-4" /></button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <Input value={ci.name} onChange={(e) => {
-                                        const updated = [...form.coInvestigators];
-                                        updated[idx] = { ...updated[idx], name: e.target.value };
-                                        updateField("coInvestigators", updated);
-                                    }} placeholder="Full Name" />
-                                    <Input value={ci.institution} onChange={(e) => {
-                                        const updated = [...form.coInvestigators];
-                                        updated[idx] = { ...updated[idx], institution: e.target.value };
-                                        updateField("coInvestigators", updated);
-                                    }} placeholder="Institution" />
-                                    <Input type="email" value={ci.email} onChange={(e) => {
-                                        const updated = [...form.coInvestigators];
-                                        updated[idx] = { ...updated[idx], email: e.target.value };
-                                        updateField("coInvestigators", updated);
-                                    }} placeholder="Email" />
-                                    <Input value={ci.role} onChange={(e) => {
-                                        const updated = [...form.coInvestigators];
-                                        updated[idx] = { ...updated[idx], role: e.target.value };
-                                        updateField("coInvestigators", updated);
-                                    }} placeholder="Role in Research" />
+                                    <Input value={ci.name} onChange={(e) => { const updated = [...form.coInvestigators]; updated[idx] = { ...updated[idx], name: e.target.value }; updateField("coInvestigators", updated); }} placeholder="Full Name" />
+                                    <Input value={ci.institution} onChange={(e) => { const updated = [...form.coInvestigators]; updated[idx] = { ...updated[idx], institution: e.target.value }; updateField("coInvestigators", updated); }} placeholder="Institution" />
+                                    <Input type="email" value={ci.email} onChange={(e) => { const updated = [...form.coInvestigators]; updated[idx] = { ...updated[idx], email: e.target.value }; updateField("coInvestigators", updated); }} placeholder="Email" />
+                                    <Input value={ci.role} onChange={(e) => { const updated = [...form.coInvestigators]; updated[idx] = { ...updated[idx], role: e.target.value }; updateField("coInvestigators", updated); }} placeholder="Role in Research" />
                                 </div>
-                                <FileUploadField
-                                    label="CV"
-                                    fieldId={`co-inv-cv-${idx}`}
-                                    file={{ url: ci.cvUrl, name: ci.cvName }}
-                                    onUpload={(url, name) => {
-                                        const updated = [...form.coInvestigators];
-                                        updated[idx] = { ...updated[idx], cvUrl: url, cvName: name };
-                                        updateField("coInvestigators", updated);
-                                    }}
-                                    onRemove={() => {
-                                        const updated = [...form.coInvestigators];
-                                        updated[idx] = { ...updated[idx], cvUrl: null, cvName: null };
-                                        updateField("coInvestigators", updated);
-                                    }}
-                                />
+                                <FileUploadField label="CV" fieldId={`co-inv-cv-${idx}`} file={{ url: ci.cvUrl, name: ci.cvName }} onUpload={(url, name) => { const updated = [...form.coInvestigators]; updated[idx] = { ...updated[idx], cvUrl: url, cvName: name }; updateField("coInvestigators", updated); }} onRemove={() => { const updated = [...form.coInvestigators]; updated[idx] = { ...updated[idx], cvUrl: null, cvName: null }; updateField("coInvestigators", updated); }} />
                             </div>
                         ))}
-                        <Button type="button" variant="outline" onClick={() => {
-                            updateField("coInvestigators", [...form.coInvestigators, { name: "", institution: "", email: "", role: "", cvUrl: null, cvName: null }]);
-                        }} className="w-full">
-                            <PlusIcon className="h-4 w-4 mr-2" /> Add Co-Investigator
-                        </Button>
+                        <Button type="button" variant="outline" onClick={() => { updateField("coInvestigators", [...form.coInvestigators, { name: "", institution: "", email: "", role: "", cvUrl: null, cvName: null }]); }} className="w-full"><PlusIcon className="h-4 w-4 mr-2" /> Add Co-Investigator</Button>
                     </div>
                 );
-
-            // ── Step 4: Sponsor / Funding ──
             case 3:
                 return (
                     <div className="space-y-4">
@@ -768,25 +637,14 @@ export default function ProtocolFormWizard() {
                                 <Input value={form.fundingAmount} onChange={(e) => updateField("fundingAmount", e.target.value)} placeholder="e.g., 5,000,000 XAF" />
                             </div>
                         </div>
-                        <FileUploadField
-                            label="Funding Document"
-                            fieldId="funding-doc-upload"
-                            file={form.fundingDocument}
-                            onUpload={(url, name) => updateFileField("fundingDocument", url, name)}
-                            onRemove={() => removeFileField("fundingDocument")}
-                        />
+                        <FileUploadField label="Funding Document" fieldId="funding-doc-upload" file={form.fundingDocument} onUpload={(url, name) => updateFileField("fundingDocument", url, name)} onRemove={() => removeFileField("fundingDocument")} />
                     </div>
                 );
-
-            // ── Step 5: Study Summary ──
             case 4:
                 return (
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">
-                                Study Summary in English <span className="text-red-500">*</span>
-                                <span className="ml-1 text-xs text-gray-400">({form.studySummaryEnglish.trim().length}/20 min chars)</span>
-                            </label>
+                            <label className="text-sm font-medium">Study Summary in English <span className="text-red-500">*</span> <span className="ml-1 text-xs text-gray-400">({form.studySummaryEnglish.trim().length}/20 min chars)</span></label>
                             <Textarea value={form.studySummaryEnglish} onChange={(e) => updateField("studySummaryEnglish", e.target.value)} placeholder="Provide a concise summary of the study in English..." className="min-h-[150px]" />
                         </div>
                         <div className="space-y-2">
@@ -795,23 +653,16 @@ export default function ProtocolFormWizard() {
                         </div>
                     </div>
                 );
-
-            // ── Step 6: Research Background ──
             case 5:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Explain the context and justification of the study. Include relevant background information that motivates this research.</p>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">
-                                Research Background and Introduction <span className="text-red-500">*</span>
-                                <span className="ml-1 text-xs text-gray-400">({form.researchBackground.trim().length}/20 min chars)</span>
-                            </label>
+                            <label className="text-sm font-medium">Research Background and Introduction <span className="text-red-500">*</span> <span className="ml-1 text-xs text-gray-400">({form.researchBackground.trim().length}/20 min chars)</span></label>
                             <Textarea value={form.researchBackground} onChange={(e) => updateField("researchBackground", e.target.value)} placeholder="Provide the research background, context, and justification for this study..." className="min-h-[250px]" />
                         </div>
                     </div>
                 );
-
-            // ── Step 7: Research Question and Hypothesis ──
             case 6:
                 return (
                     <div className="space-y-4">
@@ -825,8 +676,6 @@ export default function ProtocolFormWizard() {
                         </div>
                     </div>
                 );
-
-            // ── Step 8: Research Objectives ──
             case 7:
                 return (
                     <div className="space-y-4">
@@ -839,43 +688,26 @@ export default function ProtocolFormWizard() {
                             {form.specificObjectives.map((obj, idx) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <span className="text-xs text-gray-400 w-5 shrink-0">{idx + 1}.</span>
-                                    <Input value={obj} onChange={(e) => {
-                                        const updated = [...form.specificObjectives];
-                                        updated[idx] = e.target.value;
-                                        updateField("specificObjectives", updated);
-                                    }} placeholder={`Specific objective ${idx + 1}`} />
+                                    <Input value={obj} onChange={(e) => { const updated = [...form.specificObjectives]; updated[idx] = e.target.value; updateField("specificObjectives", updated); }} placeholder={`Specific objective ${idx + 1}`} />
                                     {form.specificObjectives.length > 1 && (
-                                        <button type="button" onClick={() => {
-                                            updateField("specificObjectives", form.specificObjectives.filter((_, i) => i !== idx));
-                                        }} className="text-red-500 hover:text-red-700 shrink-0">
-                                            <TrashIcon className="h-4 w-4" />
-                                        </button>
+                                        <button type="button" onClick={() => { updateField("specificObjectives", form.specificObjectives.filter((_, i) => i !== idx)); }} className="text-red-500 hover:text-red-700 shrink-0"><TrashIcon className="h-4 w-4" /></button>
                                     )}
                                 </div>
                             ))}
-                            <Button type="button" variant="outline" size="sm" onClick={() => updateField("specificObjectives", [...form.specificObjectives, ""])}>
-                                <PlusIcon className="h-3 w-3 mr-1" /> Add Objective
-                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => updateField("specificObjectives", [...form.specificObjectives, ""])}><PlusIcon className="h-3 w-3 mr-1" /> Add Objective</Button>
                         </div>
                     </div>
                 );
-
-            // ── Step 9: Literature Review ──
             case 8:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Provide a comprehensive literature review. Expected length: 10–15 pages of content.</p>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">
-                                Literature Review <span className="text-red-500">*</span>
-                                <span className="ml-1 text-xs text-gray-400">({form.literatureReview.trim().length}/50 min chars)</span>
-                            </label>
+                            <label className="text-sm font-medium">Literature Review <span className="text-red-500">*</span> <span className="ml-1 text-xs text-gray-400">({form.literatureReview.trim().length}/50 min chars)</span></label>
                             <Textarea value={form.literatureReview} onChange={(e) => updateField("literatureReview", e.target.value)} placeholder="Write or paste your comprehensive literature review here..." className="min-h-[400px]" />
                         </div>
                     </div>
                 );
-
-            // ── Step 10: Methodology ──
             case 9:
                 return (
                     <div className="space-y-4">
@@ -934,8 +766,6 @@ export default function ProtocolFormWizard() {
                         </div>
                     </div>
                 );
-
-            // ── Step 11: Ethical Considerations ──
             case 10:
                 return (
                     <div className="space-y-4">
@@ -961,135 +791,85 @@ export default function ProtocolFormWizard() {
                         </div>
                     </div>
                 );
-
-            // ── Step 12: Consent Documents ──
             case 11:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Upload consent documents in both French and English.</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FileUploadField label="Participant Information Sheet (English)" fieldId="info-sheet-en" file={form.infoSheetEnglish}
-                                onUpload={(url, name) => updateFileField("infoSheetEnglish", url, name)}
-                                onRemove={() => removeFileField("infoSheetEnglish")} />
-                            <FileUploadField label="Participant Information Sheet (French)" fieldId="info-sheet-fr" file={form.infoSheetFrench}
-                                onUpload={(url, name) => updateFileField("infoSheetFrench", url, name)}
-                                onRemove={() => removeFileField("infoSheetFrench")} />
+                            <FileUploadField label="Participant Information Sheet (English)" fieldId="info-sheet-en" file={form.infoSheetEnglish} onUpload={(url, name) => updateFileField("infoSheetEnglish", url, name)} onRemove={() => removeFileField("infoSheetEnglish")} />
+                            <FileUploadField label="Participant Information Sheet (French)" fieldId="info-sheet-fr" file={form.infoSheetFrench} onUpload={(url, name) => updateFileField("infoSheetFrench", url, name)} onRemove={() => removeFileField("infoSheetFrench")} />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FileUploadField label="Informed Consent Form (English)" fieldId="consent-en" file={form.consentFormEnglish}
-                                onUpload={(url, name) => updateFileField("consentFormEnglish", url, name)}
-                                onRemove={() => removeFileField("consentFormEnglish")} />
-                            <FileUploadField label="Informed Consent Form (French)" fieldId="consent-fr" file={form.consentFormFrench}
-                                onUpload={(url, name) => updateFileField("consentFormFrench", url, name)}
-                                onRemove={() => removeFileField("consentFormFrench")} />
+                            <FileUploadField label="Informed Consent Form (English)" fieldId="consent-en" file={form.consentFormEnglish} onUpload={(url, name) => updateFileField("consentFormEnglish", url, name)} onRemove={() => removeFileField("consentFormEnglish")} />
+                            <FileUploadField label="Informed Consent Form (French)" fieldId="consent-fr" file={form.consentFormFrench} onUpload={(url, name) => updateFileField("consentFormFrench", url, name)} onRemove={() => removeFileField("consentFormFrench")} />
                         </div>
                     </div>
                 );
-
-            // ── Step 13: Data Collection Tools ──
             case 12:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Upload questionnaires, interview guides, CRFs, or discussion guides used for data collection.</p>
-                        <FileUploadField label="Data Collection Tools" fieldId="data-tools-upload" file={form.dataCollectionTools}
-                            onUpload={(url, name) => updateFileField("dataCollectionTools", url, name)}
-                            onRemove={() => removeFileField("dataCollectionTools")} />
+                        <FileUploadField label="Data Collection Tools" fieldId="data-tools-upload" file={form.dataCollectionTools} onUpload={(url, name) => updateFileField("dataCollectionTools", url, name)} onRemove={() => removeFileField("dataCollectionTools")} />
                     </div>
                 );
-
-            // ── Step 14: Budget ──
             case 13:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Upload a detailed project budget document.</p>
-                        <FileUploadField label="Budget Document" fieldId="budget-upload" file={form.budgetDocument}
-                            onUpload={(url, name) => updateFileField("budgetDocument", url, name)}
-                            onRemove={() => removeFileField("budgetDocument")} />
+                        <FileUploadField label="Budget Document" fieldId="budget-upload" file={form.budgetDocument} onUpload={(url, name) => updateFileField("budgetDocument", url, name)} onRemove={() => removeFileField("budgetDocument")} />
                     </div>
                 );
-
-            // ── Step 15: Institutional Authorization ──
             case 14:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Upload the approval letter from the healthcare facility where the study will be conducted.</p>
-                        <FileUploadField label="Authorization Letter" fieldId="auth-letter-upload" file={form.authorizationLetter}
-                            onUpload={(url, name) => updateFileField("authorizationLetter", url, name)}
-                            onRemove={() => removeFileField("authorizationLetter")} />
+                        <FileUploadField label="Authorization Letter" fieldId="auth-letter-upload" file={form.authorizationLetter} onUpload={(url, name) => updateFileField("authorizationLetter", url, name)} onRemove={() => removeFileField("authorizationLetter")} />
                     </div>
                 );
-
-            // ── Step 16: Additional Documents (Conditional) ──
             case 15: {
                 const showClinicalTrialDocs = isClinicalTrial;
                 const showForeignDocs = isForeignSponsor;
-
                 if (!showClinicalTrialDocs && !showForeignDocs) {
                     return (
                         <div className="space-y-4">
                             <div className="p-6 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                                 <FileTextIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    No additional documents required for this submission type.
-                                </p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                    Additional documents are required for Clinical Trials or when the sponsor is outside Cameroon.
-                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">No additional documents required for this submission type.</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Additional documents are required for Clinical Trials or when the sponsor is outside Cameroon.</p>
                             </div>
                         </div>
                     );
                 }
-
                 return (
                     <div className="space-y-6">
                         {showClinicalTrialDocs && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">Clinical Trial Documents</h3>
-                                <FileUploadField label="Investigator's Brochure" fieldId="inv-brochure" file={form.investigatorsBrochure}
-                                    onUpload={(url, name) => updateFileField("investigatorsBrochure", url, name)}
-                                    onRemove={() => removeFileField("investigatorsBrochure")} />
-                                <FileUploadField label="Participant Insurance" fieldId="part-insurance" file={form.participantInsurance}
-                                    onUpload={(url, name) => updateFileField("participantInsurance", url, name)}
-                                    onRemove={() => removeFileField("participantInsurance")} />
-                                <FileUploadField label="Protocol Error Insurance" fieldId="protocol-insurance" file={form.protocolErrorInsurance}
-                                    onUpload={(url, name) => updateFileField("protocolErrorInsurance", url, name)}
-                                    onRemove={() => removeFileField("protocolErrorInsurance")} />
-                                <FileUploadField label="End-of-Trial Treatment Agreement" fieldId="end-trial" file={form.endOfTrialAgreement}
-                                    onUpload={(url, name) => updateFileField("endOfTrialAgreement", url, name)}
-                                    onRemove={() => removeFileField("endOfTrialAgreement")} />
+                                <FileUploadField label="Investigator's Brochure" fieldId="inv-brochure" file={form.investigatorsBrochure} onUpload={(url, name) => updateFileField("investigatorsBrochure", url, name)} onRemove={() => removeFileField("investigatorsBrochure")} />
+                                <FileUploadField label="Participant Insurance" fieldId="part-insurance" file={form.participantInsurance} onUpload={(url, name) => updateFileField("participantInsurance", url, name)} onRemove={() => removeFileField("participantInsurance")} />
+                                <FileUploadField label="Protocol Error Insurance" fieldId="protocol-insurance" file={form.protocolErrorInsurance} onUpload={(url, name) => updateFileField("protocolErrorInsurance", url, name)} onRemove={() => removeFileField("protocolErrorInsurance")} />
+                                <FileUploadField label="End-of-Trial Treatment Agreement" fieldId="end-trial" file={form.endOfTrialAgreement} onUpload={(url, name) => updateFileField("endOfTrialAgreement", url, name)} onRemove={() => removeFileField("endOfTrialAgreement")} />
                             </div>
                         )}
                         {showForeignDocs && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">Foreign Sponsor Documents</h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Required because the sponsor country is outside Cameroon ({form.sponsorCountry}).</p>
-                                <FileUploadField label="Foreign Ethics Approval" fieldId="foreign-ethics" file={form.foreignEthicsApproval}
-                                    onUpload={(url, name) => updateFileField("foreignEthicsApproval", url, name)}
-                                    onRemove={() => removeFileField("foreignEthicsApproval")} />
-                                <FileUploadField label="Material Transfer Agreement (MTA)" fieldId="mta" file={form.materialTransferAgreement}
-                                    onUpload={(url, name) => updateFileField("materialTransferAgreement", url, name)}
-                                    onRemove={() => removeFileField("materialTransferAgreement")} />
-                                <FileUploadField label="Data Sharing Agreement (DSA)" fieldId="dsa" file={form.dataSharingAgreement}
-                                    onUpload={(url, name) => updateFileField("dataSharingAgreement", url, name)}
-                                    onRemove={() => removeFileField("dataSharingAgreement")} />
+                                <FileUploadField label="Foreign Ethics Approval" fieldId="foreign-ethics" file={form.foreignEthicsApproval} onUpload={(url, name) => updateFileField("foreignEthicsApproval", url, name)} onRemove={() => removeFileField("foreignEthicsApproval")} />
+                                <FileUploadField label="Material Transfer Agreement (MTA)" fieldId="mta" file={form.materialTransferAgreement} onUpload={(url, name) => updateFileField("materialTransferAgreement", url, name)} onRemove={() => removeFileField("materialTransferAgreement")} />
+                                <FileUploadField label="Data Sharing Agreement (DSA)" fieldId="dsa" file={form.dataSharingAgreement} onUpload={(url, name) => updateFileField("dataSharingAgreement", url, name)} onRemove={() => removeFileField("dataSharingAgreement")} />
                             </div>
                         )}
                     </div>
                 );
             }
-
-            // ── Step 17: Submission Fee Proof ──
             case 16:
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Upload proof of payment for the ethics committee submission fee.</p>
-                        <FileUploadField label="Payment Receipt" fieldId="payment-receipt" file={form.paymentReceipt}
-                            onUpload={(url, name) => updateFileField("paymentReceipt", url, name)}
-                            onRemove={() => removeFileField("paymentReceipt")} />
+                        <FileUploadField label="Payment Receipt" fieldId="payment-receipt" file={form.paymentReceipt} onUpload={(url, name) => updateFileField("paymentReceipt", url, name)} onRemove={() => removeFileField("paymentReceipt")} />
                     </div>
                 );
-
-            // ── Step 18: Final Review & Submit ──
             case 17:
                 return (
                     <div className="space-y-6">
@@ -1097,58 +877,18 @@ export default function ProtocolFormWizard() {
                             <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Review Your Submission</h3>
                             <p className="text-xs text-blue-700 dark:text-blue-300">Please verify all information below before submitting your protocol for ethical review.</p>
                         </div>
-
-                        {/* Summary sections */}
                         <div className="space-y-4">
-                            <SummarySection title="Protocol Information" items={[
-                                { label: "Title", value: form.protocolTitle },
-                                { label: "Study Type", value: form.studyType },
-                                { label: "Research Field", value: form.researchField },
-                                { label: "Description", value: form.projectDescription, truncate: true },
-                            ]} />
-                            <SummarySection title="Principal Investigator" items={[
-                                { label: "Name", value: form.piFullName },
-                                { label: "Institution", value: form.piInstitution },
-                                { label: "Email", value: form.piEmail },
-                                { label: "Qualification", value: form.piQualification },
-                                { label: "CV", value: form.piCv.name || "" },
-                            ]} />
+                            <SummarySection title="Protocol Information" items={[{ label: "Title", value: form.protocolTitle }, { label: "Study Type", value: form.studyType }, { label: "Research Field", value: form.researchField }, { label: "Description", value: form.projectDescription, truncate: true }]} />
+                            <SummarySection title="Principal Investigator" items={[{ label: "Name", value: form.piFullName }, { label: "Institution", value: form.piInstitution }, { label: "Email", value: form.piEmail }, { label: "Qualification", value: form.piQualification }, { label: "CV", value: form.piCv.name || "" }]} />
                             {form.coInvestigators.length > 0 && (
-                                <SummarySection title="Co-Investigators" items={form.coInvestigators.map((ci, i) => ({
-                                    label: `Co-Investigator ${i + 1}`,
-                                    value: `${ci.name} (${ci.institution}) - ${ci.role}`,
-                                }))} />
+                                <SummarySection title="Co-Investigators" items={form.coInvestigators.map((ci, i) => ({ label: `Co-Investigator ${i + 1}`, value: `${ci.name} (${ci.institution}) - ${ci.role}` }))} />
                             )}
                             {form.sponsorName && (
-                                <SummarySection title="Sponsor / Funding" items={[
-                                    { label: "Sponsor", value: form.sponsorName },
-                                    { label: "Country", value: form.sponsorCountry },
-                                    { label: "Funding Type", value: form.fundingSourceType },
-                                    { label: "Amount", value: form.fundingAmount },
-                                ]} />
+                                <SummarySection title="Sponsor / Funding" items={[{ label: "Sponsor", value: form.sponsorName }, { label: "Country", value: form.sponsorCountry }, { label: "Funding Type", value: form.fundingSourceType }, { label: "Amount", value: form.fundingAmount }]} />
                             )}
-                            <SummarySection title="Research Details" items={[
-                                { label: "Research Question", value: form.mainResearchQuestion, truncate: true },
-                                { label: "General Objective", value: form.generalObjective, truncate: true },
-                                { label: "Study Location", value: form.studyLocation },
-                                { label: "Sample Size", value: form.sampleSize },
-                                { label: "Study Period", value: form.studyStartDate && form.studyEndDate ? `${form.studyStartDate} to ${form.studyEndDate}` : "" },
-                            ]} />
-                            <SummarySection title="Documents Uploaded" items={[
-                                { label: "PI CV", value: form.piCv.name || "Not uploaded" },
-                                { label: "Funding Document", value: form.fundingDocument.name || "Not uploaded" },
-                                { label: "Info Sheet (EN)", value: form.infoSheetEnglish.name || "Not uploaded" },
-                                { label: "Info Sheet (FR)", value: form.infoSheetFrench.name || "Not uploaded" },
-                                { label: "Consent Form (EN)", value: form.consentFormEnglish.name || "Not uploaded" },
-                                { label: "Consent Form (FR)", value: form.consentFormFrench.name || "Not uploaded" },
-                                { label: "Data Collection Tools", value: form.dataCollectionTools.name || "Not uploaded" },
-                                { label: "Budget Document", value: form.budgetDocument.name || "Not uploaded" },
-                                { label: "Authorization Letter", value: form.authorizationLetter.name || "Not uploaded" },
-                                { label: "Payment Receipt", value: form.paymentReceipt.name || "Not uploaded" },
-                            ]} />
+                            <SummarySection title="Research Details" items={[{ label: "Research Question", value: form.mainResearchQuestion, truncate: true }, { label: "General Objective", value: form.generalObjective, truncate: true }, { label: "Study Location", value: form.studyLocation }, { label: "Sample Size", value: form.sampleSize }, { label: "Study Period", value: form.studyStartDate && form.studyEndDate ? `${form.studyStartDate} to ${form.studyEndDate}` : "" }]} />
+                            <SummarySection title="Documents Uploaded" items={[{ label: "PI CV", value: form.piCv.name || "Not uploaded" }, { label: "Funding Document", value: form.fundingDocument.name || "Not uploaded" }, { label: "Info Sheet (EN)", value: form.infoSheetEnglish.name || "Not uploaded" }, { label: "Info Sheet (FR)", value: form.infoSheetFrench.name || "Not uploaded" }, { label: "Consent Form (EN)", value: form.consentFormEnglish.name || "Not uploaded" }, { label: "Consent Form (FR)", value: form.consentFormFrench.name || "Not uploaded" }, { label: "Data Collection Tools", value: form.dataCollectionTools.name || "Not uploaded" }, { label: "Budget Document", value: form.budgetDocument.name || "Not uploaded" }, { label: "Authorization Letter", value: form.authorizationLetter.name || "Not uploaded" }, { label: "Payment Receipt", value: form.paymentReceipt.name || "Not uploaded" }]} />
                         </div>
-
-                        {/* Incomplete steps warning */}
                         {!canSubmit && (
                             <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 flex items-start gap-2">
                                 <AlertCircleIcon className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -1156,142 +896,76 @@ export default function ProtocolFormWizard() {
                                     <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Some required sections are incomplete</p>
                                     <ul className="mt-1 text-xs text-amber-700 dark:text-amber-300 space-y-0.5">
                                         {STEP_LABELS.map((label, i) => !completedSteps[i] && i < totalSteps - 1 && (
-                                            <li key={i}>
-                                                <button type="button" onClick={() => setStep(i)} className="underline hover:text-amber-900 dark:hover:text-amber-100">
-                                                    Step {i + 1}: {label}
-                                                </button>
-                                            </li>
+                                            <li key={i}><button type="button" onClick={() => setStep(i)} className="underline hover:text-amber-900 dark:hover:text-amber-100">Step {i + 1}: {label}</button></li>
                                         ))}
                                     </ul>
                                 </div>
                             </div>
                         )}
-
-                        {/* Confirmation checkbox */}
                         <label className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50">
-                            <input
-                                type="checkbox"
-                                checked={form.confirmed}
-                                onChange={(e) => updateField("confirmed", e.target.checked)}
-                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                                I confirm that all information provided is accurate and complete. I understand that this protocol will be reviewed by the National Ethics Committee for Human Health Research (CNERSH) in accordance with the guidelines of the Ministry of Public Health, Cameroon.
-                            </span>
+                            <input type="checkbox" checked={form.confirmed} onChange={(e) => updateField("confirmed", e.target.checked)} className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">I confirm that all information provided is accurate and complete. I understand that this protocol will be reviewed by the National Ethics Committee for Human Health Research (CNERSH) in accordance with the guidelines of the Ministry of Public Health, Cameroon.</span>
                         </label>
                     </div>
                 );
-
             default:
                 return null;
         }
     };
 
-    // ─── Main Render ────────────────────────────────────────────────────
     return (
         <div className="space-y-6">
-            {/* Draft notification */}
             {draftLoaded && step === 0 && (
                 <div className="p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <SaveIcon className="h-4 w-4 text-blue-600" />
                         <span className="text-sm text-blue-800 dark:text-blue-200">A saved draft has been restored.</span>
                     </div>
-                    <button onClick={() => { setForm(initialFormState); clearDraft(); setDraftLoaded(false); }} className="text-xs text-blue-600 hover:text-blue-800 underline">
-                        Start fresh
-                    </button>
+                    <button onClick={() => { setForm(initialFormState); clearDraft(); setDraftLoaded(false); }} className="text-xs text-blue-600 hover:text-blue-800 underline">Start fresh</button>
                 </div>
             )}
-
-            {/* Progress Indicator */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
                 <CardContent className="py-4">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Step {step + 1} of {totalSteps}: <span className="font-semibold">{STEP_LABELS[step]}</span>
-                        </span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Step {step + 1} of {totalSteps}: <span className="font-semibold">{STEP_LABELS[step]}</span></span>
                         <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{progressPercent}% complete</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                        <div
-                            className="h-2 rounded-full transition-all duration-500 bg-blue-600"
-                            style={{ width: `${progressPercent}%` }}
-                        />
+                        <div className="h-2 rounded-full transition-all duration-500 bg-blue-600" style={{ width: `${progressPercent}%` }} />
                     </div>
-                    {/* Step indicator dots */}
                     <div className="flex gap-1 mt-3 flex-wrap">
                         {STEP_LABELS.map((label, i) => (
-                            <button
-                                key={i}
-                                type="button"
-                                onClick={() => setStep(i)}
-                                title={`${label}${completedSteps[i] ? " ✓" : ""}`}
-                                className={`h-2 flex-1 min-w-[12px] rounded-full transition-all ${
-                                    i === step
-                                        ? "bg-blue-600 ring-2 ring-blue-300 dark:ring-blue-700"
-                                        : completedSteps[i]
-                                        ? "bg-green-500"
-                                        : "bg-gray-300 dark:bg-gray-600"
-                                }`}
+                            <button key={i} type="button" onClick={() => setStep(i)} title={`${label}${completedSteps[i] ? " ✓" : ""}`}
+                                    className={`h-2 flex-1 min-w-[12px] rounded-full transition-all ${
+                                        i === step ? "bg-blue-600 ring-2 ring-blue-300 dark:ring-blue-700" :
+                                            completedSteps[i] ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+                                    }`}
                             />
                         ))}
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Step Content */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-bold">
-                            {step + 1}
-                        </span>
+                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-bold">{step + 1}</span>
                         {STEP_LABELS[step]}
                     </CardTitle>
-                    <CardDescription>
-                        {step === 17 ? "Review all information and confirm before submitting" : "Complete the fields below and proceed to the next step"}
-                    </CardDescription>
+                    <CardDescription>{step === 17 ? "Review all information and confirm before submitting" : "Complete the fields below and proceed to the next step"}</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    {renderStep()}
-                </CardContent>
+                <CardContent>{renderStep()}</CardContent>
             </Card>
-
-            {/* Navigation */}
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={goPrev}
-                        disabled={step === 0}
-                    >
-                        <ChevronLeftIcon className="h-4 w-4 mr-1" /> Previous
-                    </Button>
-                    <Button type="button" variant="outline" onClick={saveDraft}>
-                        <SaveIcon className="h-4 w-4 mr-1" /> Save Draft
-                    </Button>
+                    <Button type="button" variant="outline" onClick={goPrev} disabled={step === 0}><ChevronLeftIcon className="h-4 w-4 mr-1" /> Previous</Button>
+                    <Button type="button" variant="outline" onClick={saveDraft}><SaveIcon className="h-4 w-4 mr-1" /> Save Draft</Button>
                 </div>
-
                 <div className="flex items-center gap-2">
                     {step < totalSteps - 1 ? (
-                        <Button type="button" onClick={goNext} className="bg-blue-700 hover:bg-blue-800 text-white">
-                            Next <ChevronRightIcon className="h-4 w-4 ml-1" />
-                        </Button>
+                        <Button type="button" onClick={goNext} className="bg-blue-700 hover:bg-blue-800 text-white">Next <ChevronRightIcon className="h-4 w-4 ml-1" /></Button>
                     ) : (
-                        <Button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={isSubmitting || !canSubmit}
-                            className="bg-green-700 hover:bg-green-800 text-white px-6"
-                        >
-                            {isSubmitting ? (
-                                <span className="flex items-center gap-2">
-                                    <Spinner className="size-4" /> Submitting...
-                                </span>
-                            ) : (
-                                "Submit Protocol"
-                            )}
+                        <Button type="button" onClick={handleSubmit} disabled={isSubmitting || !canSubmit} className="bg-green-700 hover:bg-green-800 text-white px-6">
+                            {isSubmitting ? (<span className="flex items-center gap-2"><Spinner className="size-4" /> Submitting...</span>) : "Submit Protocol"}
                         </Button>
                     )}
                 </div>
@@ -1299,8 +973,6 @@ export default function ProtocolFormWizard() {
         </div>
     );
 }
-
-// ─── Summary Section Helper ─────────────────────────────────────────────────
 
 function SummarySection({ title, items }: { title: string; items: { label: string; value: string; truncate?: boolean }[] }) {
     const filteredItems = items.filter((item) => item.value);
@@ -1314,9 +986,7 @@ function SummarySection({ title, items }: { title: string; items: { label: strin
                 {filteredItems.map((item, i) => (
                     <div key={i} className="px-4 py-2 flex flex-col sm:flex-row gap-1">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 sm:w-40 shrink-0">{item.label}</span>
-                        <span className={`text-sm text-gray-800 dark:text-gray-200 ${item.truncate ? "line-clamp-2" : ""}`}>
-                            {item.value}
-                        </span>
+                        <span className={`text-sm text-gray-800 dark:text-gray-200 ${item.truncate ? "line-clamp-2" : ""}`}>{item.value}</span>
                     </div>
                 ))}
             </div>

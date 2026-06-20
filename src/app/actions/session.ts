@@ -2,7 +2,7 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { SessionType, SessionStatus } from "@/generated/prisma";
+import { SessionType, SessionStatus, ProjectStatus } from "@/generated/prisma";
 
 export async function createCommitteeSession(data: {
     sessionType: SessionType;
@@ -32,10 +32,12 @@ export async function createCommitteeSession(data: {
             project: { status: { in: ["PENDING_REVIEW", "REVIEW_COMPLETE"] }, deleted: false },
         },
         _count: { _all: true },
-        having: { _count: { _all: { gte: 2 } } },
     });
 
-    const eligibleProtocolIds = groups.map((g) => g.projectId);
+    // Filter manually: only protocols with at least 2 completed reviews
+    const eligibleProtocolIds = groups
+        .filter((g) => (g._count?._all ?? 0) >= 2)
+        .map((g) => g.projectId);
 
     const committeeSession = await db.committeeSession.create({
         data: {
@@ -49,22 +51,19 @@ export async function createCommitteeSession(data: {
         },
     });
 
-    // Update protocols on the agenda to SESSION_SCHEDULED
     if (eligibleProtocolIds.length > 0) {
         await db.project.updateMany({
             where: { id: { in: eligibleProtocolIds } },
-            data: { status: "SESSION_SCHEDULED" },
+            data: { status: ProjectStatus.SESSION_SCHEDULED },
         });
 
-        // Record status history for each using a bulk insert to avoid N separate queries
         const statusHistoryEntries = eligibleProtocolIds.map((projectId) => ({
             projectId,
-            status: "SESSION_SCHEDULED",
+            status: ProjectStatus.SESSION_SCHEDULED,
             changedBy: session.user.id,
             comment: `Scheduled for committee session on ${sessionDate.toLocaleDateString()}`,
         }));
 
-        // createMany is atomic and much faster than creating one row per project
         await db.projectStatusHistory.createMany({ data: statusHistoryEntries });
     }
 
@@ -136,17 +135,15 @@ export async function updateSessionStatus(
             },
         });
 
-        // Update all protocols on this session's agenda in bulk
         if (committeeSession.agenda && committeeSession.agenda.length > 0) {
             await db.project.updateMany({
                 where: { id: { in: committeeSession.agenda } },
-                data: { status: "REVIEW_COMPLETE" },
+                data: { status: ProjectStatus.REVIEW_COMPLETE },
             });
 
-            // Create status history entries in bulk
             const historyEntries = committeeSession.agenda.map((projectId) => ({
                 projectId,
-                status: "REVIEW_COMPLETE",
+                status: ProjectStatus.REVIEW_COMPLETE,
                 changedBy: session.user.id,
                 comment: "Session cancelled — rescheduling required",
             }));

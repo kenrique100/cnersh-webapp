@@ -58,7 +58,7 @@ npm run dev
 ### Step 1: Install Dependencies (Already Done)
 Your app already has all required dependencies:
 - `resend` for email sending
-- `@react-email/components` for email templates
+- `react-email` for email templates
 
 ### Step 2: Configure Environment Variables
 
