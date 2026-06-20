@@ -8,7 +8,6 @@ import { PlusIcon, TrashIcon, UploadIcon, FileTextIcon, XIcon, PencilIcon, Check
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createPage, deletePage, addPageItem, deletePageItem, updatePage, updatePageItem } from "@/app/actions/page-actions";
-import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
 
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -45,6 +44,18 @@ function validateFileType(file: File): boolean {
     return allowed.includes(file.type);
 }
 
+async function uploadFileToVercelBlob(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Upload failed");
+    }
+    const result = await res.json();
+    return result.url;
+}
+
 export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     const router = useRouter();
     const [pageName, setPageName] = useState("");
@@ -53,20 +64,16 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     const [pageFile, setPageFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // For adding items to existing pages
     const [addingToPage, setAddingToPage] = useState<string | null>(null);
     const [newItem, setNewItem] = useState<NewItem>({ name: "", url: "", file: null });
     const [isAddingItem, setIsAddingItem] = useState(false);
 
-    // For editing page name
     const [editingPageId, setEditingPageId] = useState<string | null>(null);
     const [editPageName, setEditPageName] = useState("");
 
-    // For editing items
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [editItemData, setEditItemData] = useState<{ name: string; url: string; file: File | null }>({ name: "", url: "", file: null });
 
-    // Flatten pages for parent selector
     const flattenPages = (pageList: Page[], depth = 0): { id: string; name: string; depth: number }[] => {
         const result: { id: string; name: string; depth: number }[] = [];
         for (const p of pageList) {
@@ -79,10 +86,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     };
     const allPages = flattenPages(pages);
 
-    const uploadFile = async (file: File): Promise<string> => {
-        return uploadSingleFileToUploadThing("documentUploader", file);
-    };
-
     const handleCreatePage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!pageName.trim()) {
@@ -94,7 +97,7 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
         try {
             let fileUrl: string | undefined;
             if (pageFile) {
-                fileUrl = await uploadFile(pageFile);
+                fileUrl = await uploadFileToVercelBlob(pageFile);
             }
 
             const items: { name: string; url?: string; fileUrl?: string }[] = [];
@@ -165,7 +168,7 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
         try {
             let fileUrl: string | undefined;
             if (newItem.file) {
-                fileUrl = await uploadFile(newItem.file);
+                fileUrl = await uploadFileToVercelBlob(newItem.file);
             }
             await addPageItem(pageId, {
                 name: newItem.name.trim(),
@@ -196,7 +199,7 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     toast.error("Only PDF, DOC, and DOCX files are allowed");
                     return;
                 }
-                fileUrl = await uploadFile(editItemData.file);
+                fileUrl = await uploadFileToVercelBlob(editItemData.file);
             }
             await updatePageItem(itemId, {
                 name: editItemData.name.trim(),
@@ -280,7 +283,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                 </div>
             </CardHeader>
             <CardContent>
-                {/* Add item form */}
                 {addingToPage === page.id && (
                     <div className="flex flex-col sm:flex-row gap-2 p-3 mb-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
                         <Input
@@ -326,7 +328,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     </div>
                 )}
 
-                {/* Existing items */}
                 {page.items.length === 0 && (!page.children || page.children.length === 0) ? (
                     <p className="text-xs text-gray-500">No items yet.</p>
                 ) : (
@@ -418,7 +419,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     </ul>
                 )}
 
-                {/* Nested sub-pages */}
                 {page.children && page.children.length > 0 && (
                     <div className="mt-3 space-y-3 ml-2">
                         {page.children.map((child) => renderPage(child, depth + 1))}
@@ -432,7 +432,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
         <div className="flex flex-col px-3 sm:px-8 py-4 sm:py-6 w-full max-w-4xl mx-auto">
             <h1 className="text-lg font-semibold mb-4">Manage Pages</h1>
 
-            {/* Create New Page */}
             <Card className="mb-6">
                 <CardHeader>
                     <CardTitle className="text-sm">Create New Page</CardTitle>
@@ -440,85 +439,43 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                 <CardContent>
                     <form onSubmit={handleCreatePage} className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Page Name *
-                            </label>
-                            <Input
-                                value={pageName}
-                                onChange={(e) => setPageName(e.target.value)}
-                                placeholder="e.g. Resources, Ethical Clearance"
-                                className="mt-1"
-                            />
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Page Name *</label>
+                            <Input value={pageName} onChange={(e) => setPageName(e.target.value)} placeholder="e.g. Resources, Ethical Clearance" className="mt-1" />
                         </div>
-
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Parent Page (optional — for nested sub-pages)
-                            </label>
-                            <select
-                                value={parentId}
-                                onChange={(e) => setParentId(e.target.value)}
-                                className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                            >
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Parent Page (optional — for nested sub-pages)</label>
+                            <select value={parentId} onChange={(e) => setParentId(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm">
                                 <option value="">None (top-level page)</option>
-                                {allPages.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {"—".repeat(p.depth)} {p.name}
-                                    </option>
-                                ))}
+                                {allPages.map((p) => (<option key={p.id} value={p.id}>{"—".repeat(p.depth)} {p.name}</option>))}
                             </select>
                         </div>
-
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                URL (optional — link to another website)
-                            </label>
-                            <Input
-                                value={pageUrl}
-                                onChange={(e) => setPageUrl(e.target.value)}
-                                placeholder="https://example.com"
-                                className="mt-1"
-                                disabled={!!pageFile}
-                            />
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">URL (optional — link to another website)</label>
+                            <Input value={pageUrl} onChange={(e) => setPageUrl(e.target.value)} placeholder="https://example.com" className="mt-1" disabled={!!pageFile} />
                         </div>
-
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Upload Document (optional — PDF, DOC, DOCX)
-                            </label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Document (optional — PDF, DOC, DOCX)</label>
                             <div className="mt-1 flex items-center gap-2">
                                 <label className="cursor-pointer flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-2">
                                     <UploadIcon className="w-4 h-4" />
                                     {pageFile ? pageFile.name.slice(0, 25) + (pageFile.name.length > 25 ? "..." : "") : "Choose File"}
-                                    <input
-                                        type="file"
-                                        accept={ACCEPTED_FILE_TYPES}
-                                        className="hidden"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0] || null;
-                                            if (file && !validateFileType(file)) {
-                                                toast.error("Only PDF, DOC, and DOCX files are allowed");
-                                                e.target.value = "";
-                                                return;
-                                            }
-                                            setPageFile(file);
-                                        }}
-                                    />
+                                    <input type="file" accept={ACCEPTED_FILE_TYPES} className="hidden" onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        if (file && !validateFileType(file)) {
+                                            toast.error("Only PDF, DOC, and DOCX files are allowed");
+                                            e.target.value = "";
+                                            return;
+                                        }
+                                        setPageFile(file);
+                                    }} />
                                 </label>
                                 {pageFile && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setPageFile(null)}
-                                        className="text-red-500 hover:text-red-700 h-8 w-8"
-                                    >
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => setPageFile(null)} className="text-red-500 hover:text-red-700 h-8 w-8">
                                         <XIcon className="w-4 h-4" />
                                     </Button>
                                 )}
                             </div>
                         </div>
-
                         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                             {isSubmitting ? "Creating..." : "Create Page"}
                         </Button>
@@ -526,7 +483,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                 </CardContent>
             </Card>
 
-            {/* Existing Pages */}
             <h2 className="text-sm font-semibold mb-3">Existing Pages</h2>
             {pages.length === 0 ? (
                 <p className="text-sm text-gray-500">No pages created yet.</p>

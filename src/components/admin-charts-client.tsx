@@ -2,10 +2,6 @@
 
 import dynamic from "next/dynamic";
 
-// Recharts 2.x accesses an internal ThemeContext that is undefined on the server
-// and during the React 19 first-render pass. `ssr: false` must live in a Client
-// Component — this thin wrapper satisfies that requirement so the Server
-// Component (admin/page.tsx) can import it safely.
 const AdminCharts = dynamic(() => import("@/components/admin-charts"), {
     ssr: false,
     loading: () => (

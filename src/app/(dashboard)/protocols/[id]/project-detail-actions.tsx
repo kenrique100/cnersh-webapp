@@ -11,24 +11,30 @@ import { updateProjectStatus, deleteProject, updateProject, forwardProjectToFeed
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ImageUpload from "@/components/image-upload";
-import { uploadSingleFileToUploadThing } from "@/lib/uploadthing-client";
-
-const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
 
 async function deleteBlobUrl(url: string) {
     try {
-        const parsed = new URL(url);
-        if (!parsed.hostname.endsWith(VERCEL_BLOB_HOSTNAME)) return;
         await fetch("/api/delete-blob", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url }),
         });
     } catch {
-        // Best-effort deletion; do not surface errors to the user
+        // Best-effort
     }
 }
 
+async function uploadFileToVercelBlob(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Upload failed");
+    }
+    const result = await res.json();
+    return result.url;
+}
 
 interface ProjectDetailActionsProps {
     projectId: string;
@@ -41,14 +47,14 @@ interface ProjectDetailActionsProps {
 }
 
 export default function ProjectDetailActions({
-    projectId,
-    currentStatus,
-    isOwner,
-    isAdmin,
-    projectTitle,
-    projectObjectives,
-    projectDescription,
-}: ProjectDetailActionsProps) {
+                                                 projectId,
+                                                 currentStatus,
+                                                 isOwner,
+                                                 isAdmin,
+                                                 projectTitle,
+                                                 projectObjectives,
+                                                 projectDescription,
+                                             }: ProjectDetailActionsProps) {
     const router = useRouter();
     const [feedback, setFeedback] = React.useState("");
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -57,7 +63,6 @@ export default function ProjectDetailActions({
     const [editTitle, setEditTitle] = React.useState(projectTitle);
     const [editDescription, setEditDescription] = React.useState(projectDescription);
 
-    // Forward to feed state
     const [showForwardForm, setShowForwardForm] = React.useState(false);
     const [forwardContent, setForwardContent] = React.useState(projectObjectives || projectDescription);
     const [forwardImages, setForwardImages] = React.useState<string[]>([]);
@@ -70,7 +75,6 @@ export default function ProjectDetailActions({
     const [isUploadingVideo, setIsUploadingVideo] = React.useState(false);
     const videoInputRef = React.useRef<HTMLInputElement>(null);
 
-    // Only show admin review for projects NOT owned by the viewing admin
     const showAdminReview = isAdmin && !isOwner;
 
     const handleStatusUpdate = async (status: "APPROVED" | "REJECTED" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW") => {
@@ -163,7 +167,7 @@ export default function ProjectDetailActions({
         }
         setIsUploadingVideo(true);
         try {
-            const url = await uploadSingleFileToUploadThing("videoUploader", file);
+            const url = await uploadFileToVercelBlob(file);
             setForwardVideos((prev) => [...prev, url]);
             setShowForwardVideoUpload(false);
         } catch (err) {
@@ -176,13 +180,10 @@ export default function ProjectDetailActions({
 
     return (
         <div className="space-y-4">
-            {/* Owner Actions: Edit, Delete, Forward to Feed */}
             {isOwner && (
                 <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            Project Actions
-                        </CardTitle>
+                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Project Actions</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         {showEditForm ? (
@@ -205,7 +206,6 @@ export default function ProjectDetailActions({
                                     placeholder="Write your post content... (use @ to mention users)"
                                     className="min-h-[100px]"
                                 />
-                                {/* Forward images preview */}
                                 {forwardImages.length > 0 && (
                                     <div className="flex flex-wrap gap-2">
                                         {forwardImages.map((img, idx) => (
@@ -218,7 +218,6 @@ export default function ProjectDetailActions({
                                         ))}
                                     </div>
                                 )}
-                                {/* Forward videos preview */}
                                 {forwardVideos.length > 0 && (
                                     <div className="space-y-2">
                                         {forwardVideos.map((vid, idx) => (
@@ -231,7 +230,6 @@ export default function ProjectDetailActions({
                                         ))}
                                     </div>
                                 )}
-                                {/* Image upload */}
                                 {showForwardImageUpload && (
                                     <ImageUpload
                                         variant="feed"
@@ -243,7 +241,6 @@ export default function ProjectDetailActions({
                                         }}
                                     />
                                 )}
-                                {/* Video upload */}
                                 {showForwardVideoUpload && (
                                     <div>
                                         <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
@@ -253,7 +250,6 @@ export default function ProjectDetailActions({
                                         </button>
                                     </div>
                                 )}
-                                {/* Tags */}
                                 {forwardTags.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">
                                         {forwardTags.map((tag, idx) => (
@@ -298,22 +294,13 @@ export default function ProjectDetailActions({
                         ) : (
                             <div className="flex flex-wrap gap-2">
                                 <Button onClick={() => setShowEditForm(true)} variant="outline" size="sm">
-                                    <PencilIcon className="h-4 w-4 mr-1" />
-                                    Edit
+                                    <PencilIcon className="h-4 w-4 mr-1" />Edit
                                 </Button>
-                                <Button
-                                    onClick={handleDelete}
-                                    disabled={isDeleting}
-                                    variant="destructive"
-                                    size="sm"
-                                    className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600"
-                                >
-                                    <TrashIcon className="h-4 w-4 mr-1" />
-                                    {isDeleting ? "Deleting..." : "Delete"}
+                                <Button onClick={handleDelete} disabled={isDeleting} variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600">
+                                    <TrashIcon className="h-4 w-4 mr-1" />{isDeleting ? "Deleting..." : "Delete"}
                                 </Button>
                                 <Button onClick={() => setShowForwardForm(true)} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                    <SendIcon className="h-4 w-4 mr-1" />
-                                    Post to Feed
+                                    <SendIcon className="h-4 w-4 mr-1" />Post to Feed
                                 </Button>
                             </div>
                         )}
@@ -321,16 +308,11 @@ export default function ProjectDetailActions({
                 </Card>
             )}
 
-            {/* Admin Review Actions (only for non-owned projects) */}
             {showAdminReview && (
                 <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/50 rounded-xl">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            Review Actions
-                        </CardTitle>
-                        <p className="text-xs text-gray-500">
-                            Current status: <span className="font-medium">{currentStatus.replace(/_/g, " ")}</span>
-                        </p>
+                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Review Actions</CardTitle>
+                        <p className="text-xs text-gray-500">Current status: <span className="font-medium">{currentStatus.replace(/_/g, " ")}</span></p>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         <Textarea
@@ -339,11 +321,8 @@ export default function ProjectDetailActions({
                             onChange={(e) => setFeedback(e.target.value)}
                             className="min-h-[80px]"
                         />
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                            Feedback is required when rejecting, returning incomplete, or approving with conditions.
-                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Feedback is required when rejecting, returning incomplete, or approving with conditions.</p>
                         <div className="flex flex-wrap gap-2">
-                            {/* SUBMITTED: can return incomplete or move to pending review */}
                             {currentStatus === "SUBMITTED" && (
                                 <Button
                                     onClick={() => handleStatusUpdate("RETURNED_INCOMPLETE")}
@@ -351,11 +330,9 @@ export default function ProjectDetailActions({
                                     variant="outline"
                                     className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
                                 >
-                                    <RotateCcwIcon className="h-4 w-4 mr-1" />
-                                    Return — Incomplete
+                                    <RotateCcwIcon className="h-4 w-4 mr-1" />Return — Incomplete
                                 </Button>
                             )}
-                            {/* SESSION_SCHEDULED: can schedule for statuses ready for committee */}
                             {["REVIEW_COMPLETE", "PENDING_REVIEW", "UNDER_REVIEW"].includes(currentStatus) && (
                                 <Button
                                     onClick={() => handleStatusUpdate("SESSION_SCHEDULED")}
@@ -363,46 +340,23 @@ export default function ProjectDetailActions({
                                     variant="outline"
                                     className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-400 dark:hover:bg-cyan-950"
                                 >
-                                    <CalendarIcon className="h-4 w-4 mr-1" />
-                                    Schedule Session
+                                    <CalendarIcon className="h-4 w-4 mr-1" />Schedule Session
                                 </Button>
                             )}
-                            <Button
-                                onClick={() => handleStatusUpdate("APPROVED")}
-                                disabled={isSubmitting}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                <CheckIcon className="h-4 w-4 mr-1" />
-                                Approve
+                            <Button onClick={() => handleStatusUpdate("APPROVED")} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
+                                <CheckIcon className="h-4 w-4 mr-1" />Approve
                             </Button>
-                            {/* APPROVED_WITH_CONDITIONS: available for review-stage protocols */}
                             {["REVIEW_COMPLETE", "SESSION_SCHEDULED"].includes(currentStatus) && (
-                                <Button
-                                    onClick={() => handleStatusUpdate("APPROVED_WITH_CONDITIONS")}
-                                    disabled={isSubmitting}
-                                    className="bg-teal-600 hover:bg-teal-700 text-white"
-                                >
-                                    <CheckCircle2Icon className="h-4 w-4 mr-1" />
-                                    Approve with Conditions
+                                <Button onClick={() => handleStatusUpdate("APPROVED_WITH_CONDITIONS")} disabled={isSubmitting} className="bg-teal-600 hover:bg-teal-700 text-white">
+                                    <CheckCircle2Icon className="h-4 w-4 mr-1" />Approve with Conditions
                                 </Button>
                             )}
-                            <Button
-                                onClick={() => handleStatusUpdate("REJECTED")}
-                                disabled={isSubmitting}
-                                variant="destructive"
-                            >
-                                <XIcon className="h-4 w-4 mr-1" />
-                                Reject
+                            <Button onClick={() => handleStatusUpdate("REJECTED")} disabled={isSubmitting} variant="destructive">
+                                <XIcon className="h-4 w-4 mr-1" />Reject
                             </Button>
-                            {/* Legacy: pending review assignment (only when submitted) */}
                             {currentStatus === "SUBMITTED" && (
-                                <Button
-                                    onClick={() => handleStatusUpdate("PENDING_REVIEW")}
-                                    disabled={isSubmitting}
-                                    variant="outline"
-                                >
-                                    <ClockIcon className="h-4 w-4 mr-1" />
-                                    Mark Pending Review
+                                <Button onClick={() => handleStatusUpdate("PENDING_REVIEW")} disabled={isSubmitting} variant="outline">
+                                    <ClockIcon className="h-4 w-4 mr-1" />Mark Pending Review
                                 </Button>
                             )}
                         </div>

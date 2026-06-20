@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
-import { SunIcon, MoonIcon, MonitorIcon, ChevronDownIcon } from "lucide-react";
+import { SunIcon, MoonIcon, MonitorIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
     Select,
