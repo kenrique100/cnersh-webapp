@@ -124,12 +124,12 @@ export default async function ProjectDetailPage({
     // Determine which PI-specific actions are available based on status
     const canFileSAE = isOwner && ["APPROVED", "APPROVED_WITH_CONDITIONS", "UNDER_APPEAL", "APPEAL_RESOLVED"].includes(project.status);
     const canStartAAR = isOwner && ["APPROVED", "APPROVED_WITH_CONDITIONS"].includes(project.status) && !project.aarApplication;
-    const canFileAppeal = isOwner && project.status === "REJECTED" && !project.appeal;
+    const canFileAppeal = isOwner && project.status === "RESUBMIT" && !project.appeal;
 
     // Check 30-day appeal window
     let appealWindowOpen = false;
     if (canFileAppeal) {
-        const rejectionEntry = project.statusHistory?.find((h) => h.status === "REJECTED");
+        const rejectionEntry = project.statusHistory?.find((h) => h.status === "RESUBMIT");
         const rejectionDate = rejectionEntry?.createdAt ?? project.updatedAt;
         appealWindowOpen = daysSinceDate(rejectionDate) <= 30;
     }
