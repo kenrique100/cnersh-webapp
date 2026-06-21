@@ -77,8 +77,8 @@ export default function ProjectDetailActions({
 
     const showAdminReview = isAdmin && !isOwner;
 
-    const handleStatusUpdate = async (status: "APPROVED" | "REJECTED" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW") => {
-        if (status === "REJECTED" && !feedback.trim()) {
+    const handleStatusUpdate = async (status: "APPROVED" | "RESUBMIT" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW") => {
+        if (status === "RESUBMIT" && !feedback.trim()) {
             toast.error("Please provide a rejection reason before rejecting");
             return;
         }
@@ -351,7 +351,7 @@ export default function ProjectDetailActions({
                                     <CheckCircle2Icon className="h-4 w-4 mr-1" />Approve with Conditions
                                 </Button>
                             )}
-                            <Button onClick={() => handleStatusUpdate("REJECTED")} disabled={isSubmitting} variant="destructive">
+                            <Button onClick={() => handleStatusUpdate("RESUBMIT")} disabled={isSubmitting} variant="destructive">
                                 <XIcon className="h-4 w-4 mr-1" />Reject
                             </Button>
                             {currentStatus === "SUBMITTED" && (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authSession } from '@/lib/auth-utils';
 import { performBasicMalwareCheck } from '@/lib/file-validation';
-import { sanitizeFilename } from '@/lib/sanitize';
+import { sanitizeFilename } from '@/lib/sanitize-filename';
 import { withRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import type { FileType } from '@/generated/prisma';
