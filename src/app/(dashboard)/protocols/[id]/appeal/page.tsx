@@ -27,7 +27,7 @@ export default async function AppealPage({
     if (!project) notFound();
 
     // Only rejected protocols can have appeals filed by their owner
-    if (project.status !== "REJECTED") {
+    if (project.status !== "RESUBMIT") {
         redirect(`/protocols/${id}`);
     }
 
@@ -42,7 +42,7 @@ export default async function AppealPage({
     }
 
     // Check the 30-day window
-    const rejectionEntry = project.statusHistory?.find((h) => h.status === "REJECTED");
+    const rejectionEntry = project.statusHistory?.find((h) => h.status === "RESUBMIT");
     const rejectionDate = rejectionEntry?.createdAt ?? project.updatedAt;
     const elapsed = daysSinceDate(rejectionDate);
 
