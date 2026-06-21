@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authSession } from '@/lib/auth-utils';
-import { validateFile, performBasicMalwareCheck } from '@/lib/file-validation';
+import { performBasicMalwareCheck } from '@/lib/file-validation';
 import { sanitizeFilename } from '@/lib/sanitize';
 import { withRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import type { FileType } from '@/generated/prisma';
 import { withIdempotency } from '@/middleware/idempotency';
 import { uploadFileToVercelBlob } from '@/lib/vercel-blob-client';
+import { pdf } from 'pdf-page-counter';
 
 export const maxDuration = 60;
 
@@ -85,10 +86,16 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   }
 
   const fileCategory = resolveFileType(file.type);
-  if (fileCategory === 'document') {
-    const validation = (await validateFile(fileBuffer, file, { maxPages: 4 })) as { valid: boolean; error?: string };
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.error ?? 'Document validation failed' }, { status: 400 });
+
+  // Document validation (only for PDFs, using lightweight pdf-page-counter)
+  if (fileCategory === 'document' && file.type === 'application/pdf') {
+    try {
+      const pdfDoc = await pdf(fileBuffer);
+      if (pdfDoc.numpages > 4) {
+        return NextResponse.json({ error: 'PDF exceeds 4 pages' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid or corrupted PDF file' }, { status: 400 });
     }
   }
 
