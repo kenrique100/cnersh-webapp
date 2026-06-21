@@ -328,7 +328,7 @@ export async function getAllProjects(status?: ProjectStatus) {
     });
 }
 
-export async function updateProjectStatus(projectId: string, status: ProjectStatus, feedback?: string) {
+export async function updateProjectStatus(projectId: string, status: "APPROVED" | "RESUBMIT" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW", feedback?: string | undefined) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
