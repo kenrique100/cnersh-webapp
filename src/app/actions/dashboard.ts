@@ -132,7 +132,7 @@ export async function getAdminDashboardData() {
             db.post.count({ where: { deleted: false } }),
             db.project.count({ where: { deleted: false } }),
             db.project.count({ where: { status: "APPROVED", deleted: false } }),
-            db.project.count({ where: { status: "REJECTED", deleted: false } }),
+            db.project.count({ where: { status: "RESUBMIT", deleted: false } }),
             db.project.count({
                 where: {
                     status: { in: ["SUBMITTED", "PENDING_REVIEW"] },
