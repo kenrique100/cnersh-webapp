@@ -63,13 +63,6 @@ Run the seed script to create both privileged accounts:
 npm run db:seed
 ```
 
-**Default credentials:**
-
-| Role | Email | Password |
-|------|-------|----------|
-| Super Admin | `superadmin@cnersh.cm` | `SuperAdmin@cnersh2026!` |
-| Admin | `admin@cnersh.cm` | `Admin@cnersh2026!` |
-
 To use custom credentials, set these in your `.env` before seeding:
 
 ```env
