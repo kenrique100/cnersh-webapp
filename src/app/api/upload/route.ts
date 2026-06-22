@@ -1,3 +1,4 @@
+// app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { authSession } from '@/lib/auth-utils';
 import { performBasicMalwareCheck } from '@/lib/file-validation';
@@ -10,6 +11,7 @@ import { uploadFileToVercelBlob } from '@/lib/vercel-blob-client';
 import { pdf } from 'pdf-page-counter';
 
 export const maxDuration = 60;
+export const runtime = 'nodejs';
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
@@ -87,7 +89,6 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
 
   const fileCategory = resolveFileType(file.type);
 
-  // Document validation (only for PDFs, using lightweight pdf-page-counter)
   if (fileCategory === 'document' && file.type === 'application/pdf') {
     try {
       const pdfDoc = await pdf(fileBuffer);
