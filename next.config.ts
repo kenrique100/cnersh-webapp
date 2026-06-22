@@ -64,7 +64,13 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    // instrumentationHook: true, // REMOVE THIS LINE - not needed
+    // Add this array to externalize the problem modules
+    serverComponentsExternalPackages: [
+      "jsdom",
+      "html-encoding-sniffer",
+      "isomorphic-dompurify",
+      "pdf-page-counter"
+    ],
   },
   headers: async () => [
     {
@@ -156,7 +162,6 @@ export default withSentryConfig(nextConfig, {
   // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
   // This can increase your server load as well as your hosting bill.
   // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
   tunnelRoute: "/monitoring",
 
   webpack: {

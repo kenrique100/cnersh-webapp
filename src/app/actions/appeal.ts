@@ -35,7 +35,7 @@ export async function fileAppeal(data: {
 
     // Protocol must be rejected
     if (project.status !== "RESUBMIT") {
-        throw new Error("Appeals can only be filed against protocols flagged for resubmission");
+        throw new Error("Appeals can only be filed against rejected protocols");
     }
 
     // Only one appeal per unfavorable decision
@@ -45,7 +45,7 @@ export async function fileAppeal(data: {
 
     // Check the 30-day window from the rejection notification date
     const rejectionDate = project.statusHistory[0]?.createdAt;
-    if (!rejectionDate) throw new Error("Resubmission date not found");
+    if (!rejectionDate) throw new Error("Rejection date not found");
 
     const now = new Date();
     const daysSinceRejection = (now.getTime() - rejectionDate.getTime()) / (1000 * 60 * 60 * 24);
@@ -80,7 +80,7 @@ export async function fileAppeal(data: {
                 create: {
                     status: "UNDER_APPEAL",
                     changedBy: session.user.id,
-                    comment: "PI filed an appeal against the resubmission decision",
+                    comment: "PI filed an appeal against the rejection decision",
                 },
             },
         },
