@@ -16,8 +16,8 @@ model User {
   hasDeletePermission Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
-  welcomeEmailSent    Boolean   @default(false)
   emailVerified       Boolean   @default(false)
+  welcomeEmailSent    Boolean   @default(false)
   image               String?
   gender              Gender?
   profession          String?
