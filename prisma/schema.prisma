@@ -17,6 +17,7 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   emailVerified       Boolean   @default(false)
+  welcomeEmailSent    Boolean   @default(false)
   image               String?
   gender              Gender?
   profession          String?

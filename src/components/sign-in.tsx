@@ -27,28 +27,22 @@ import { toast } from "sonner";
 import { Separator } from "./ui/separator";
 import { Spinner } from "./ui/spinner";
 import Image from "next/image";
-
-// Email validation schema with comprehensive rules
-const emailSchema = z
-    .string()
-    .min(1, "Email address is required")
-    .email("Please enter a valid email address (e.g., name@domain.com)");
+import { useState } from "react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const formSchema = z.object({
-    email: emailSchema,
+    email: z.string().min(1, "Email address is required").email("Please enter a valid email address"),
     password: z.string().min(1, "Password is required"),
     rememberMe: z.boolean().optional(),
 });
 
 export function SignInForm() {
     const router = useRouter();
+    const [showPassword, setShowPassword] = useState(false);
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            email: "",
-            password: "",
-            rememberMe: false,
-        },
+        defaultValues: { email: "", password: "", rememberMe: false },
     });
 
     const onSubmit = async (data: z.infer<typeof formSchema>) => {
@@ -61,27 +55,22 @@ export function SignInForm() {
                     rememberMe: data.rememberMe ?? false,
                 },
                 {
-                    onSuccess: async () => {
+                    onSuccess: () => {
                         router.push("/dashboard");
                         toast.success("Signed in successfully");
                     },
                     onError: (ctx) => {
-                        // ✅ Better error handling
-                        const errorMessage = ctx.error.message || "Invalid email or password";
-
-                        if (errorMessage.includes("verify") || errorMessage.includes("verification")) {
-                            toast.error("Please verify your email before signing in. Check your inbox.");
-                        } else if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-                            toast.error("Access denied. Please check your credentials or verify your email.");
+                        const msg = ctx.error.message || "Invalid email or password";
+                        if (msg.toLowerCase().includes("verify")) {
+                            toast.error("Please verify your email before signing in.");
                         } else {
-                            toast.error(errorMessage);
+                            toast.error(msg);
                         }
                     },
                 }
             );
         } catch (error) {
-            console.error("Sign-in error:", error);
-            toast.error("An unexpected error occurred. Please try again.");
+            toast.error("An unexpected error occurred.");
         } finally {
             form.reset();
         }
@@ -101,10 +90,9 @@ export function SignInForm() {
     return (
         <Card className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg rounded-2xl">
             <CardHeader className="space-y-6 px-6 sm:px-8 pt-10 pb-6">
-            {/* Government-style Logo and Brand Section */}
                 <div className="flex flex-col items-center space-y-3">
                     <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
-                    <div className="flex items-center justify-center w-full h-full">
+                        <div className="flex items-center justify-center w-full h-full">
                             <Image
                                 src="/logo.png"
                                 alt="Government Services"
@@ -127,11 +115,11 @@ export function SignInForm() {
             </CardHeader>
 
             <CardContent className="px-6 sm:px-8 pb-4">
-            <form
+                <form
                     id="signin-form"
                     onSubmit={form.handleSubmit(onSubmit)}
                     className="flex flex-col gap-6"
-            >
+                >
                     <FieldGroup className="space-y-2">
                         <Controller
                             name="email"
@@ -173,14 +161,27 @@ export function SignInForm() {
                                             Forgot password?
                                         </Link>
                                     </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        type="password"
-                                        placeholder="Enter your password"
-                                        autoComplete="current-password"
-                                        aria-invalid={fieldState.invalid}
-                                        className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            {...field}
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Enter your password"
+                                            autoComplete="current-password"
+                                            aria-invalid={fieldState.invalid}
+                                            className="h-11 text-sm px-4 pr-10 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                        >
+                                            {showPassword ? (
+                                                <EyeOffIcon className="h-4 w-4" />
+                                            ) : (
+                                                <EyeIcon className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError
                                             errors={[fieldState.error]}
@@ -192,7 +193,6 @@ export function SignInForm() {
                         />
                     </FieldGroup>
 
-                    {/* Remember Me */}
                     <Controller
                         name="rememberMe"
                         control={form.control}
@@ -245,9 +245,9 @@ export function SignInForm() {
                         <Separator className="w-full bg-gray-200 dark:bg-gray-800" />
                     </div>
                     <div className="relative flex justify-center text-xs">
-                        <span className="px-2 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
-                            Or continue with
-                        </span>
+            <span className="px-2 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
+              Or continue with
+            </span>
                     </div>
                 </div>
 
@@ -280,13 +280,11 @@ export function SignInForm() {
                                 d="M24 48c6.2 0 11.68-2.05 15.58-5.6l-7.2-5.6c-2 1.35-4.55 2.15-8.38 2.15-6.24 0-11.4-3.52-13.52-8.98l-8 6.24C6.4 42.6 14.64 48 24 48z"
                             />
                         </svg>
-
                         Continue with Google
                     </Button>
                 </div>
             </CardFooter>
 
-            {/* FOOTER ADDED HERE - Copyright section */}
             <div className="px-6 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400">
                     &copy; 2026 CNERSH - Cameroon National Ethics Community. All rights reserved.

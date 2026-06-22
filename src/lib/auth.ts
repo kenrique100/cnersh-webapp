@@ -12,17 +12,17 @@ export const auth = betterAuth({
         provider: "postgresql",
     }),
 
-    secret: process.env.BETTER_AUTH_SECRET,
+    secret: process.env.BETTER_AUTH_SECRET!,
 
     baseURL: process.env.BETTER_AUTH_URL,
 
     trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
-        ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map(origin => origin.trim())
+        ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((origin) => origin.trim())
         : [],
 
     session: {
-        expiresIn: 60 * 60 * 24, // 24 hours — session expires 24h after login
-        updateAge: 60 * 60 * 24, // Do not extend sessions; each login gets a fresh 24h token
+        expiresIn: 60 * 60 * 24,     // 24 hours
+        updateAge: 60 * 60 * 24,
     },
 
     emailAndPassword: {
@@ -56,13 +56,13 @@ export const auth = betterAuth({
             if (!user?.email) {
                 throw new Error("User email is required for verification");
             }
-            // Set callbackURL to homepage
             const verificationUrl = new URL(url);
             verificationUrl.searchParams.set("callbackURL", "/");
+
             await sendVerificationEmail({
                 to: user.email,
                 verificationUrl: verificationUrl.toString(),
-                userName: user.name,
+                userName: user.name ?? undefined,
             });
         },
     },
@@ -86,6 +86,11 @@ export const auth = betterAuth({
                 required: false,
                 input: true,
             },
+            // Welcome email tracking field
+            welcomeEmailSent: {
+                type: "boolean",
+                default: false,
+            },
         },
     },
 
@@ -105,7 +110,6 @@ export const auth = betterAuth({
             defaultRole: "user",
             adminRoles: ["admin", "superadmin"],
         }),
-
         nextCookies(),
     ],
 });
