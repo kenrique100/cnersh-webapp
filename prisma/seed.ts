@@ -14,7 +14,9 @@ async function upsertUser(
         role: "superadmin" | "admin";
     }
 ) {
-    const existing = await prisma.user.findUnique({ where: { email: opts.email } });
+    const existing = await prisma.user.findUnique({
+        where: { email: opts.email },
+    });
 
     if (existing) {
         if (existing.role !== opts.role) {
@@ -22,9 +24,9 @@ async function upsertUser(
                 where: { email: opts.email },
                 data: { role: opts.role },
             });
-            console.log(`Existing user ${opts.email} updated to role: ${opts.role}`);
+            console.log(`Updated ${opts.email} to role: ${opts.role}`);
         } else {
-            console.log(`User ${opts.email} already exists with role: ${opts.role}`);
+            console.log(`ℹUser ${opts.email} already exists with role: ${opts.role}`);
         }
         return;
     }
@@ -40,6 +42,7 @@ async function upsertUser(
             name: opts.name,
             role: opts.role,
             emailVerified: true,
+            // welcomeEmailSent defaults to false
         },
     });
 
@@ -53,9 +56,7 @@ async function upsertUser(
         },
     });
 
-    console.log(`${opts.role} created successfully!`);
-    console.log(`   Email:    ${opts.email}`);
-    console.log(`   Role:     ${opts.role}`);
+    console.log(`${opts.role} created: ${opts.email}`);
 }
 
 async function main() {
@@ -69,36 +70,39 @@ async function main() {
     const adapter = new PrismaPg(pool);
     const prisma = new PrismaClient({ adapter });
 
-    console.log("Seeding database...\n");
+    console.log("🌱 Seeding database...\n");
 
-    // Check for required environment variables
-    if (!process.env.SUPER_ADMIN_EMAIL || !process.env.SUPER_ADMIN_PASSWORD) {
-        console.error("SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env");
-        process.exit(1);
-    }
-
-    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-        console.error("ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
-        process.exit(1);
+    // Check required env vars
+    const required = [
+        "SUPER_ADMIN_EMAIL",
+        "SUPER_ADMIN_PASSWORD",
+        "ADMIN_EMAIL",
+        "ADMIN_PASSWORD",
+    ];
+    for (const key of required) {
+        if (!process.env[key]) {
+            console.error(`Missing ${key} in .env`);
+            process.exit(1);
+        }
     }
 
     // ── Super Admin ───────────────────────────────────────────────────────────
     await upsertUser(prisma, {
-        email: process.env.SUPER_ADMIN_EMAIL,
-        password: process.env.SUPER_ADMIN_PASSWORD,
+        email: process.env.SUPER_ADMIN_EMAIL!,
+        password: process.env.SUPER_ADMIN_PASSWORD!,
         name: process.env.SUPER_ADMIN_NAME || "Super Admin",
         role: "superadmin",
     });
 
     // ── Admin ─────────────────────────────────────────────────────────────────
     await upsertUser(prisma, {
-        email: process.env.ADMIN_EMAIL,
-        password: process.env.ADMIN_PASSWORD,
+        email: process.env.ADMIN_EMAIL!,
+        password: process.env.ADMIN_PASSWORD!,
         name: process.env.ADMIN_NAME || "Admin User",
         role: "admin",
     });
 
-    console.log("\nSeeding complete!");
+    console.log("\n✅ Seeding complete!");
 
     await prisma.$disconnect();
     await pool.end();
