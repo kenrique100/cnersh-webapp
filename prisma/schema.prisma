@@ -22,17 +22,15 @@ model User {
   gender              Gender?
   profession          String?
   title               String?
-  sessions            Session[]
-  accounts            Account[]
   banned              Boolean?
   banReason           String?
   banExpires          DateTime?
-
-  // Extended profile fields
   expertiseTags       String[]  @default([])
   pendingActivation   Boolean   @default(false)
   activationExpiresAt DateTime?
 
+  sessions            Session[]
+  accounts            Account[]
   posts               Post[]
   comments            Comment[]
   likes               Like[]
@@ -62,16 +60,15 @@ model User {
 model Session {
   id             String   @id
   expiresAt      DateTime
-  token          String
+  token          String   @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   ipAddress      String?
   userAgent      String?
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
   @@index([userId])
   @@map("session")
 }
@@ -81,7 +78,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -91,6 +87,7 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("account")
@@ -135,9 +132,9 @@ model File {
   data      String?
   type      FileType
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -157,13 +154,13 @@ model Post {
   linkUrl         String?
   linkType        String?
   commentsEnabled Boolean   @default(true)
+  deleted         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments        Comment[]
   likes           Like[]
-  deleted         Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
 
   @@index([userId])
   @@index([createdAt])
@@ -175,17 +172,17 @@ model Post {
 model Comment {
   id           String        @id @default(uuid())
   content      String
-  postId       String
-  post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentId     String?
-  parent       Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
-  replies      Comment[]     @relation("CommentReplies")
-  commentLikes CommentLike[]
   deleted      Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  postId       String
+  userId       String
+  parentId     String?
+  post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies      Comment[]     @relation("CommentReplies")
+  commentLikes CommentLike[]
 
   @@index([postId])
   @@index([userId])
@@ -195,13 +192,13 @@ model Comment {
 
 model CommentLike {
   id           String   @id @default(uuid())
-  commentId    String
-  comment      Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   isDislike    Boolean  @default(false)
   reactionType String   @default("Like")
   createdAt    DateTime @default(now())
+  commentId    String
+  userId       String
+  comment      Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([commentId, userId])
   @@index([commentId])
@@ -211,20 +208,18 @@ model CommentLike {
 
 model Like {
   id           String   @id @default(uuid())
-  postId       String
-  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reactionType String   @default("Like")
   createdAt    DateTime @default(now())
+  postId       String
+  userId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
   @@map("like")
 }
-
-// ─── Project Submission System ─────────────────────────────────────────────
 
 model Project {
   id                String                 @id @default(uuid())
@@ -241,18 +236,18 @@ model Project {
   formData          Json?
   status            ProjectStatus          @default(DRAFT)
   feedback          String?
+  deleted           Boolean                @default(false)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   userId            String
-  user              User                   @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
   assignedToId      String?
+  user              User                   @relation("ProjectOwner", fields: [userId], references: [id], onDelete: Cascade)
   assignedTo        User?                  @relation("ProjectReviewer", fields: [assignedToId], references: [id], onDelete: SetNull)
   statusHistory     ProjectStatusHistory[]
   reviewAssignments ReviewAssignment[]
   appeal            Appeal?
   aarApplication    AARApplication?
   saeReports        SAEReport[]
-  deleted           Boolean                @default(false)
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
 
   @@index([userId])
   @@index([assignedToId])
@@ -267,12 +262,12 @@ model Project {
 
 model ProjectStatusHistory {
   id        String        @id @default(uuid())
-  projectId String
-  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   status    ProjectStatus
   comment   String?
   changedBy String
   createdAt DateTime      @default(now())
+  projectId String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@map("project_status_history")
@@ -296,8 +291,6 @@ enum ProjectStatus {
   @@map("project_status")
 }
 
-// ─── Community Discussion System ───────────────────────────────────────────
-
 model CommunityTopic {
   id          String               @id @default(uuid())
   title       String
@@ -310,13 +303,13 @@ model CommunityTopic {
   documents   String[]             @default([])
   linkUrl     String?
   chatEnabled Boolean              @default(true)
+  deleted     Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   userId      String
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   replies     CommunityReply[]
   likes       CommunityTopicLike[]
-  deleted     Boolean              @default(false)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
 
   @@index([userId])
   @@index([category])
@@ -326,12 +319,12 @@ model CommunityTopic {
 
 model CommunityTopicLike {
   id        String         @id @default(uuid())
-  topicId   String
-  topic     CommunityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   isDislike Boolean        @default(false)
   createdAt DateTime       @default(now())
+  topicId   String
+  userId    String
+  topic     CommunityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([topicId, userId])
   @@index([topicId])
@@ -358,16 +351,16 @@ model CommunityReply {
   eventTitle    String?
   eventDate     DateTime?
   eventLocation String?
-  topicId       String
-  topic         CommunityTopic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  parentId      String?
-  parent        CommunityReply?  @relation("ReplyToReply", fields: [parentId], references: [id])
-  children      CommunityReply[] @relation("ReplyToReply")
-  userId        String
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   deleted       Boolean          @default(false)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+  topicId       String
+  parentId      String?
+  userId        String
+  topic         CommunityTopic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  parent        CommunityReply?  @relation("ReplyToReply", fields: [parentId], references: [id])
+  children      CommunityReply[] @relation("ReplyToReply")
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
   @@index([userId])
@@ -375,18 +368,16 @@ model CommunityReply {
   @@map("community_reply")
 }
 
-// ─── Reporting System ──────────────────────────────────────────────────────
-
 model Report {
   id          String       @id @default(uuid())
   reason      String
   contentType ReportTarget
   contentId   String
-  userId      String
-  user        User         @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
   status      ReportStatus @default(PENDING)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  userId      String
+  user        User         @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([contentType, contentId])
@@ -410,17 +401,15 @@ enum ReportStatus {
   @@map("report_status")
 }
 
-// ─── Notification System ───────────────────────────────────────────────────
-
 model Notification {
   id        String           @id @default(uuid())
   type      NotificationType
   message   String
   link      String?
   read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime         @default(now())
 
   @@index([userId])
   @@index([read])
@@ -441,16 +430,14 @@ enum NotificationType {
   @@map("notification_type")
 }
 
-// ─── Audit Log System ──────────────────────────────────────────────────────
-
 model AuditLog {
   id        String   @id @default(uuid())
   action    String
   details   String?
   targetId  String?
+  createdAt DateTime @default(now())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([action])
@@ -458,17 +445,15 @@ model AuditLog {
   @@map("audit_log")
 }
 
-// ─── Pages System (Admin-managed) ──────────────────────────────────────────
-
 model Page {
   id        String     @id @default(uuid())
   name      String
   parentId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   parent    Page?      @relation("PageChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children  Page[]     @relation("PageChildren")
   items     PageItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
 
   @@index([name])
   @@index([parentId])
@@ -480,32 +465,26 @@ model PageItem {
   name      String
   url       String?
   fileUrl   String?
+  createdAt DateTime @default(now())
   pageId    String
   page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
 
   @@index([pageId])
   @@map("page_item")
 }
 
-// ─── Review Assignment System ───────────────────────────────────────────────
-
 model ReviewAssignment {
-  id         String                 @id @default(uuid())
-  projectId  String
-  project    Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reviewerId String
-  reviewer   User                   @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
-  status     ReviewAssignmentStatus @default(PENDING_COI)
-  dueDate    DateTime?
-
-  // Reassignment tracking
+  id               String                 @id @default(uuid())
+  status           ReviewAssignmentStatus @default(PENDING_COI)
+  dueDate          DateTime?
   reassignedFromId String?
   reassignedAt     DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  projectId        String
+  reviewerId       String
+  project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer         User                   @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
   coiDeclaration   COIDeclaration?
   evaluationReport EvaluationReport?
 
@@ -524,39 +503,29 @@ enum ReviewAssignmentStatus {
   @@map("review_assignment_status")
 }
 
-// ─── COI Declaration System ─────────────────────────────────────────────────
-
 model COIDeclaration {
   id           String           @id @default(uuid())
-  assignmentId String           @unique
-  assignment   ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   hasCOI       Boolean
   details      String?
   declaredAt   DateTime         @default(now())
+  assignmentId String           @unique
+  userId       String
+  assignment   ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("coi_declaration")
 }
 
-// ─── Evaluation Report System ───────────────────────────────────────────────
-
 model EvaluationReport {
-  id           String           @id @default(uuid())
-  assignmentId String           @unique
-  assignment   ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  reviewerId   String
-  reviewer     User             @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
-
-  socialValue                   Int?
-  scientificValidity            Int?
-  riskBenefitAnalysis           Int?
-  participantSelection          Int?
-  informedConsentProcess        Int?
-  confidentialityDataProtection Int?
-  collaborativePartnership      Int?
-
+  id                                   String                    @id @default(uuid())
+  socialValue                          Int?
+  scientificValidity                   Int?
+  riskBenefitAnalysis                  Int?
+  participantSelection                 Int?
+  informedConsentProcess               Int?
+  confidentialityDataProtection        Int?
+  collaborativePartnership             Int?
   socialValueComment                   String?
   scientificValidityComment            String?
   riskBenefitAnalysisComment           String?
@@ -564,16 +533,18 @@ model EvaluationReport {
   informedConsentProcessComment        String?
   confidentialityDataProtectionComment String?
   collaborativePartnershipComment      String?
-
-  overallScore       Float?
-  recommendation     EvaluationRecommendation?
-  generalComments    String?
-  additionalCriteria Json?
-
-  status      EvaluationStatus @default(DRAFT)
-  submittedAt DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  overallScore                         Float?
+  recommendation                       EvaluationRecommendation?
+  generalComments                      String?
+  additionalCriteria                   Json?
+  status                               EvaluationStatus          @default(DRAFT)
+  submittedAt                          DateTime?
+  createdAt                            DateTime                  @default(now())
+  updatedAt                            DateTime                  @updatedAt
+  assignmentId                         String                    @unique
+  reviewerId                           String
+  assignment                           ReviewAssignment          @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewer                             User                      @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
 
   @@index([reviewerId])
   @@map("evaluation_report")
@@ -593,8 +564,6 @@ enum EvaluationStatus {
 
   @@map("evaluation_status")
 }
-
-// ─── Committee Session System ───────────────────────────────────────────────
 
 model CommitteeSession {
   id          String        @id @default(uuid())
@@ -632,14 +601,8 @@ enum SessionStatus {
   @@map("session_status")
 }
 
-// ─── Appeal System ──────────────────────────────────────────────────────────
-
 model Appeal {
   id           String       @id @default(uuid())
-  projectId    String       @unique
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  appellantId  String
-  appellant    User         @relation(fields: [appellantId], references: [id], onDelete: Cascade)
   grounds      String
   evidence     String?
   status       AppealStatus @default(PENDING)
@@ -648,6 +611,10 @@ model Appeal {
   filedAt      DateTime     @default(now())
   deadlineAt   DateTime
   updatedAt    DateTime     @updatedAt
+  projectId    String       @unique
+  appellantId  String
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  appellant    User         @relation(fields: [appellantId], references: [id], onDelete: Cascade)
 
   @@index([appellantId])
   @@map("appeal")
@@ -662,14 +629,8 @@ enum AppealStatus {
   @@map("appeal_status")
 }
 
-// ─── AAR Application System ─────────────────────────────────────────────────
-
 model AARApplication {
   id             String    @id @default(uuid())
-  projectId      String    @unique
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  applicantId    String
-  applicant      User      @relation(fields: [applicantId], references: [id], onDelete: Cascade)
   status         AARStatus @default(DRAFT)
   submittedAt    DateTime?
   drosReceivedAt DateTime?
@@ -678,6 +639,10 @@ model AARApplication {
   notes          String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  projectId      String    @unique
+  applicantId    String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  applicant      User      @relation(fields: [applicantId], references: [id], onDelete: Cascade)
 
   @@index([applicantId])
   @@map("aar_application")
@@ -694,14 +659,8 @@ enum AARStatus {
   @@map("aar_status")
 }
 
-// ─── SAE Report System ──────────────────────────────────────────────────────
-
 model SAEReport {
   id               String       @id @default(uuid())
-  projectId        String
-  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reporterId       String
-  reporter         User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
   eventType        SAEEventType
   eventDate        DateTime
   description      String
@@ -709,6 +668,10 @@ model SAEReport {
   isLate           Boolean      @default(false)
   reportedAt       DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+  projectId        String
+  reporterId       String
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporter         User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@index([reporterId])

@@ -1,187 +1,89 @@
-import { NextRequest, NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
-import { RateLimitConfig, RATE_LIMITS } from './rate-limit-config';
+import { NextRequest, NextResponse } from "next/server";
+import { redis } from "@/lib/redis";
+import { RateLimitConfig, RATE_LIMITS } from "@/lib/rate-limit-config";
 
 export type { RateLimitConfig };
 export { RATE_LIMITS };
 
-/**
- * In-memory rate limit store
- * For production, use Redis or similar distributed cache
- */
-class RateLimitStore {
-    private store: Map<string, { count: number; resetTime: number }> = new Map();
-
-    /**
-     * Check if request exceeds rate limit
-     */
-    check(key: string, config: RateLimitConfig): {
-        allowed: boolean;
-        remaining: number;
-        resetTime: number;
-    } {
-        const now = Date.now();
-        const record = this.store.get(key);
-        const expired = !record || now > record.resetTime;
-
-        return Sentry.startSpan(
-            {
-                name: "rate-limit-cache-lookup",
-                op: "cache.get",
-                attributes: { "cache.key": key, "cache.hit": !expired },
-            },
-            () => {
-                if (expired) {
-                    // Cache miss — write a fresh entry
-                    Sentry.startSpan(
-                        {
-                            name: "rate-limit-cache-set",
-                            op: "cache.set",
-                            attributes: { "cache.key": key },
-                        },
-                        () => {
-                            this.store.set(key, {
-                                count: 1,
-                                resetTime: now + config.windowMs,
-                            });
-                        }
-                    );
-
-                    return {
-                        allowed: true,
-                        remaining: config.maxRequests - 1,
-                        resetTime: now + config.windowMs,
-                    };
-                }
-
-                // Cache hit — increment and return existing entry
-                record.count++;
-
-                if (record.count > config.maxRequests) {
-                    return {
-                        allowed: false,
-                        remaining: 0,
-                        resetTime: record.resetTime,
-                    };
-                }
-
-                return {
-                    allowed: true,
-                    remaining: config.maxRequests - record.count,
-                    resetTime: record.resetTime,
-                };
-            }
-        );
-    }
-
-    /**
-     * Clean up expired entries (call periodically)
-     */
-    cleanup(): void {
-        const now = Date.now();
-        for (const [key, record] of this.store.entries()) {
-            if (now > record.resetTime) {
-                this.store.delete(key);
-            }
-        }
-    }
-}
-
-// Global store instance
-const rateLimitStore = new RateLimitStore();
-
-// Cleanup expired entries every 5 minutes
-if (typeof window === 'undefined') {
-    setInterval(() => rateLimitStore.cleanup(), 5 * 60 * 1000);
-}
-
-/**
- * Get identifier for rate limiting
- * Uses IP address if available, otherwise uses a session identifier
- */
 function getIdentifier(req: NextRequest, userId?: string): string {
-    // If user is authenticated, use userId for more accurate tracking
-    if (userId) {
-        return `user:${userId}`;
-    }
-
-    // Otherwise use IP address
+    if (userId) return `user:${userId}`;
     const ip =
-        req.headers.get('x-forwarded-for')?.split(',')[0] ||
-        req.headers.get('x-real-ip') ||
-        'unknown';
-
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown";
     return `ip:${ip}`;
 }
 
-/**
- * Rate limit middleware
- */
-export function rateLimit(
-    config: RateLimitConfig = RATE_LIMITS.api,
-    options: {
-        keyPrefix?: string;
-        userId?: string;
-    } = {}
-) {
-    return async (req: NextRequest): Promise<NextResponse | null> => {
-        const identifier = getIdentifier(req, options.userId);
-        const key = options.keyPrefix ? `${options.keyPrefix}:${identifier}` : identifier;
+async function slidingWindowCheck(
+    key: string,
+    config: RateLimitConfig
+): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+    const now = Date.now();
+    const windowStart = now - config.windowMs;
+    const windowSec = Math.ceil(config.windowMs / 1000);
+    const member = `${now}-${Math.random().toString(36).slice(2, 9)}`;
 
-        const result = rateLimitStore.check(key, config);
+    try {
+        const pipe = redis.pipeline();
+        pipe.zremrangebyscore(key, 0, windowStart);
+        pipe.zcard(key);
+        pipe.zadd(key, now, member);
+        pipe.expire(key, windowSec + 1);
+        const results = await pipe.exec();
+        const countBeforeAdd = (results?.[1]?.[1] as number) ?? 0;
+        const currentCount = countBeforeAdd + 1;
+        const allowed = currentCount <= config.maxRequests;
 
-        // Add rate limit headers
-        const headers = new Headers();
-        headers.set('X-RateLimit-Limit', config.maxRequests.toString());
-        headers.set('X-RateLimit-Remaining', result.remaining.toString());
-        headers.set('X-RateLimit-Reset', new Date(result.resetTime).toISOString());
-
-        if (!result.allowed) {
-            const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
-            headers.set('Retry-After', retryAfter.toString());
-
-            return NextResponse.json(
-                {
-                    error: 'Too many requests',
-                    message: `Rate limit exceeded. Try again in ${retryAfter} seconds.`,
-                },
-                {
-                    status: 429,
-                    headers,
-                }
-            );
-        }
-
-        return null; // Allow request
-    };
+        return {
+            allowed,
+            remaining: Math.max(0, config.maxRequests - currentCount),
+            resetTime: now + config.windowMs,
+        };
+    } catch {
+        return { allowed: true, remaining: config.maxRequests, resetTime: now + config.windowMs };
+    }
 }
 
-/**
- * Higher-order function to wrap API routes with rate limiting
- */
+export async function rateLimit(
+    req: NextRequest,
+    config: RateLimitConfig,
+    keyPrefix: string,
+    userId?: string
+): Promise<NextResponse | null> {
+    const identifier = getIdentifier(req, userId);
+    const key = `rl:${keyPrefix}:${identifier}`;
+    const result = await slidingWindowCheck(key, config);
+
+    const headers = new Headers();
+    headers.set("X-RateLimit-Limit", config.maxRequests.toString());
+    headers.set("X-RateLimit-Remaining", result.remaining.toString());
+    headers.set("X-RateLimit-Reset", new Date(result.resetTime).toISOString());
+
+    if (!result.allowed) {
+        const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+        headers.set("Retry-After", retryAfter.toString());
+        return NextResponse.json(
+            { error: "Too Many Requests", message: `Retry in ${retryAfter}s.` },
+            { status: 429, headers }
+        );
+    }
+
+    return null;
+}
+
 export function withRateLimit(
-    handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>,
+    handler: (req: NextRequest) => Promise<NextResponse>,
     config: RateLimitConfig = RATE_LIMITS.api,
     options: {
         keyPrefix?: string;
         getUserId?: (req: NextRequest) => Promise<string | undefined>;
     } = {}
 ) {
-    return async (req: NextRequest, context?: unknown): Promise<NextResponse> => {
-        // Get user ID if function provided
+    return async (req: NextRequest): Promise<NextResponse> => {
         const userId = options.getUserId ? await options.getUserId(req) : undefined;
-
-        // Check rate limit
-        const rateLimitResponse = await rateLimit(config, {
-            keyPrefix: options.keyPrefix,
-            userId,
-        })(req);
-
-        if (rateLimitResponse) {
-            return rateLimitResponse;
-        }
-
-        // Proceed to actual handler
-        return handler(req, context);
+        const keyPrefix = options.keyPrefix ?? "api";
+        const limited = await rateLimit(req, config, keyPrefix, userId);
+        if (limited) return limited;
+        return handler(req);
     };
 }
