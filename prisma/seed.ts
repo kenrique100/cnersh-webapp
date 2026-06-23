@@ -22,7 +22,7 @@ async function upsertUser(
                 where: { email: opts.email },
                 data: { role: opts.role },
             });
-            console.log(`✅ Existing user ${opts.email} updated to role: ${opts.role}`);
+            console.log(`Existing user ${opts.email} updated to role: ${opts.role}`);
         } else {
             console.log(`User ${opts.email} already exists with role: ${opts.role}`);
         }
@@ -53,7 +53,7 @@ async function upsertUser(
         },
     });
 
-    console.log(`✨ ${opts.role} created successfully!`);
+    console.log(`${opts.role} created successfully!`);
     console.log(`   Email:    ${opts.email}`);
     console.log(`   Role:     ${opts.role}`);
 }
@@ -61,7 +61,7 @@ async function upsertUser(
 async function main() {
     const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
     if (!connectionString) {
-        console.error("❌ DATABASE_URL or DIRECT_URL must be set in .env");
+        console.error("DATABASE_URL or DIRECT_URL must be set in .env");
         process.exit(1);
     }
 
@@ -73,12 +73,12 @@ async function main() {
 
     // Check for required environment variables
     if (!process.env.SUPER_ADMIN_EMAIL || !process.env.SUPER_ADMIN_PASSWORD) {
-        console.error("❌ SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env");
+        console.error("SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env");
         process.exit(1);
     }
 
     if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-        console.error("❌ ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
+        console.error("ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
         process.exit(1);
     }
 
@@ -98,13 +98,13 @@ async function main() {
         role: "admin",
     });
 
-    console.log("\n✅ Seeding complete!");
+    console.log("\nSeeding complete!");
 
     await prisma.$disconnect();
     await pool.end();
 }
 
 main().catch((e) => {
-    console.error("❌ Seed error:", e);
+    console.error("Seed error:", e);
     process.exit(1);
 });
