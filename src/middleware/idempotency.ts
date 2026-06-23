@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { claimKey, getResponse, saveResponse } from "@/lib/idempotency-store";
+import { claimKey, getResponse, releaseKey, saveResponse } from "@/lib/idempotency-store";
 
 export interface IdempotencyOptions {
     lockTtlSeconds?: number;
@@ -8,63 +8,75 @@ export interface IdempotencyOptions {
     pollTimeoutMs?: number;
 }
 
+function extractKey(req: NextRequest): string | null {
+    return req.headers.get("Idempotency-Key") || req.headers.get("idempotency-key");
+}
+
 export function withIdempotency(
     handler: (req: NextRequest) => Promise<NextResponse>,
     options: IdempotencyOptions = {}
 ) {
     const lockTtl = options.lockTtlSeconds ?? 60;
-    const respTtl = options.responseTtlSeconds ?? 24 * 60 * 60; // 24h
+    const respTtl = options.responseTtlSeconds ?? 86_400;
     const pollInterval = options.pollIntervalMs ?? 500;
-    const pollTimeout = options.pollTimeoutMs ?? 10_000; // 10s
+    const pollTimeout = options.pollTimeoutMs ?? 10_000;
 
     return async function (req: NextRequest): Promise<NextResponse> {
-        try {
-            const key = req.headers.get("Idempotency-Key") || req.headers.get("Idempotency-Key".toLowerCase());
-            if (!key) return await handler(req);
+        const key = extractKey(req);
+        if (!key) return handler(req);
 
-            // If there's already a stored response, return it
+        try {
             const existing = await getResponse(key);
             if (existing) {
-                return NextResponse.json(existing.body as any, { status: existing.status });
+                const res = NextResponse.json(existing.body, { status: existing.status });
+                res.headers.set("Idempotency-Replay", "true");
+                return res;
             }
 
-            // Try to claim the key (setnx)
             const claimed = await claimKey(key, lockTtl);
+
             if (!claimed) {
                 const start = Date.now();
                 while (Date.now() - start < pollTimeout) {
-                    const r = await getResponse(key);
-                    if (r) return NextResponse.json(r.body as any, { status: r.status });
                     await new Promise((r) => setTimeout(r, pollInterval));
+                    const ready = await getResponse(key);
+                    if (ready) {
+                        const res = NextResponse.json(ready.body, { status: ready.status });
+                        res.headers.set("Idempotency-Replay", "true");
+                        return res;
+                    }
                 }
+                return NextResponse.json(
+                    { error: "Conflict", message: "Request is still being processed." },
+                    { status: 409 }
+                );
             }
 
-            // We are the owner (or timed out). Process request.
-            const res = await handler(req);
-
-            // Try to parse the JSON body from the response
-            let body: unknown = null;
+            let response: NextResponse;
             try {
-
-                if (typeof res.json === "function") {
-                    body = await res.json();
-                }
-            } catch {
-                body = null;
-            }
-
-            // Save response for future idempotent calls
-            try {
-                await saveResponse(key, res.status, body, respTtl);
+                response = await handler(req);
             } catch (err) {
-                // non-fatal: log and continue
-                console.error("[idempotency] failed to save response:", err);
+                await releaseKey(key);
+                throw err;
             }
 
-            return res;
+            let body: unknown = null;
+            const ct = response.headers.get("content-type") ?? "";
+            if (ct.includes("application/json")) {
+                try { body = await response.clone().json(); } catch { body = null; }
+            }
+
+            try {
+                await saveResponse(key, response.status, body, respTtl);
+            } catch (err) {
+                console.error("[idempotency] save failed:", err);
+            }
+
+            response.headers.set("Idempotency-Key", key);
+            return response;
         } catch (err) {
             console.error("[idempotency] unexpected error:", err);
-            return NextResponse.json({ error: "Idempotency handling failed" }, { status: 500 });
+            return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
         }
     };
 }

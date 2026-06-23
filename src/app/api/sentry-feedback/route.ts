@@ -4,14 +4,13 @@ import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { sanitizeText } from "@/lib/sanitize";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-const feedbackRateLimit = rateLimit(
-    { windowMs: RATE_LIMITS.reportSubmission.windowMs, maxRequests: 5 },
-    { keyPrefix: "sentry-feedback" }
-);
-
-export async function POST(req: NextRequest) {
-    const rateLimitResponse = await feedbackRateLimit(req);
-    if (rateLimitResponse) return rateLimitResponse;
+export async function POST(req: NextRequest): Promise<NextResponse> {
+    const limited = await rateLimit(
+        req,
+        { windowMs: RATE_LIMITS.reportSubmission.windowMs, maxRequests: 5 },
+        "sentry-feedback"
+    );
+    if (limited) return limited;
 
     let body: unknown;
     try {
@@ -33,7 +32,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    // Find all super admins to notify
     const superAdmins = await db.user.findMany({
         where: { role: "superadmin", banned: { not: true } },
         select: { id: true, email: true, name: true },
@@ -50,11 +48,11 @@ export async function POST(req: NextRequest) {
         superAdmins.map((admin) =>
             sendNotificationEmail({
                 to: admin.email,
-                userName: admin.name || "Super Admin",
+                userName: admin.name ?? "Super Admin",
                 notificationMessage,
                 notificationType: "USER_FEEDBACK",
                 actionUrl: "/admin/reports",
-            }).catch((err) => console.error("Error sending Sentry feedback email:", err))
+            }).catch((err) => console.error("[sentry-feedback] email error:", err))
         )
     );
 

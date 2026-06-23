@@ -1,22 +1,42 @@
-// lib/vercel-blob-client.ts
-import { put } from '@vercel/blob';
-import { sanitizeFilename } from '@/lib/sanitize';
+import { put, del, head } from "@vercel/blob";
+
+export interface BlobUploadOptions {
+    access?: "public" | "private";
+    contentType?: string;
+    folder?: string;
+}
+
+export interface BlobUploadResult {
+    url: string;
+    pathname: string;
+    contentType: string;
+    contentDisposition: string;
+}
 
 export async function uploadFileToVercelBlob(
     file: File,
-    options?: { access?: 'public' | 'private' }
-) {
-    const sanitized = sanitizeFilename(file.name);
-    if (!sanitized) throw new Error('Invalid filename');
+    options: BlobUploadOptions = {}
+): Promise<BlobUploadResult> {
+    const { access = "private", folder = "uploads" } = options;
+    const pathname = `${folder}/${Date.now()}-${file.name}`;
 
-    const blob = await put(sanitized, file, {
-        access: options?.access ?? 'private',
-        contentType: file.type,
+    const blob = await put(pathname, file, {
+        access,
+        contentType: file.type || "application/octet-stream",
     });
 
     return {
         url: blob.url,
         pathname: blob.pathname,
         contentType: blob.contentType,
+        contentDisposition: blob.contentDisposition,
     };
+}
+
+export async function deleteFileFromVercelBlob(url: string): Promise<void> {
+    await del(url);
+}
+
+export async function getFileMeta(url: string) {
+    return head(url);
 }

@@ -1,107 +1,203 @@
 import Redis from "ioredis";
 
-type InMemoryStore = Map<string, string>;
+type StoreEntry = { value: string; expiry: number };
 
-// Cache the Redis client on globalThis to avoid creating multiple connections
-// during hot reloads or serverless cold starts.
 declare global {
-    var __global_redis_client: Redis | null | undefined;
-    var __global_inmemory_store: InMemoryStore | null | undefined;
-     
-    var __global_inmemory_timers: Map<string, ReturnType<typeof setTimeout>> | undefined;
+    var __redis: Redis | undefined;
+    var __redis_mem: Map<string, StoreEntry> | undefined;
+    var __redis_zsets: Map<string, Map<string, number>> | undefined;
 }
 
-let client: Redis | null = typeof globalThis !== "undefined" ? globalThis.__global_redis_client ?? null : null;
-let inMemory: InMemoryStore | null = typeof globalThis !== "undefined" ? globalThis.__global_inmemory_store ?? null : null;
-let inMemoryTimers: Map<string, ReturnType<typeof setTimeout>> | undefined = typeof globalThis !== "undefined" ? globalThis.__global_inmemory_timers : undefined;
+type PipelineResult = [null, unknown][];
 
-if (!client && process.env.REDIS_URL) {
-    // create and cache on globalThis
-    client = new Redis(process.env.REDIS_URL);
-    client.on("error", (err) => console.error("Redis error:", err));
-    if (typeof globalThis !== "undefined") globalThis.__global_redis_client = client;
+interface MemoryPipeline {
+    zremrangebyscore(key: string, min: number, max: number): void;
+    zcard(key: string): void;
+    zadd(key: string, score: number, member: string): void;
+    expire(key: string, seconds: number): void;
+    exec(): Promise<PipelineResult>;
 }
 
-if (!inMemory) {
-    inMemory = new Map();
-    if (typeof globalThis !== "undefined") globalThis.__global_inmemory_store = inMemory;
+interface UnifiedClient {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string, mode?: string, ttl?: number): Promise<string>;
+    del(key: string): Promise<number>;
+    setnx(key: string, value: string): Promise<number>;
+    expire(key: string, seconds: number): Promise<number>;
+    pipeline(): MemoryPipeline;
 }
 
-if (!inMemoryTimers) {
-    inMemoryTimers = new Map();
-    if (typeof globalThis !== "undefined") globalThis.__global_inmemory_timers = inMemoryTimers;
+function buildMemoryClient(): UnifiedClient {
+    if (!globalThis.__redis_mem) globalThis.__redis_mem = new Map();
+    if (!globalThis.__redis_zsets) globalThis.__redis_zsets = new Map();
+
+    const mem = globalThis.__redis_mem!;
+    const zsets = globalThis.__redis_zsets!;
+
+    setInterval(() => {
+        const now = Date.now();
+        for (const [k, v] of mem.entries()) {
+            if (v.expiry > 0 && v.expiry < now) mem.delete(k);
+        }
+    }, 60_000).unref();
+
+    function alive(key: string): boolean {
+        const e = mem.get(key);
+        if (!e) return false;
+        if (e.expiry > 0 && e.expiry < Date.now()) {
+            mem.delete(key);
+            return false;
+        }
+        return true;
+    }
+
+    return {
+        async get(key) {
+            return alive(key) ? mem.get(key)!.value : null;
+        },
+        async set(key, value, mode?, ttl?) {
+            if (mode === "NX" && alive(key)) return "nil";
+            const expiry = ttl ? Date.now() + ttl * 1000 : 0;
+            mem.set(key, { value, expiry });
+            return "OK";
+        },
+        async del(key) {
+            return mem.delete(key) ? 1 : 0;
+        },
+        async setnx(key, value) {
+            if (alive(key)) return 0;
+            mem.set(key, { value, expiry: 0 });
+            return 1;
+        },
+        async expire(key, seconds) {
+            const e = mem.get(key);
+            if (!e) return 0;
+            e.expiry = Date.now() + seconds * 1000;
+            return 1;
+        },
+        pipeline(): MemoryPipeline {
+            const ops: Array<() => [null, unknown]> = [];
+            return {
+                zremrangebyscore(key, min, max) {
+                    ops.push(() => {
+                        const z = zsets.get(key);
+                        if (z) {
+                            for (const [m, s] of z) {
+                                if (s >= min && s <= max) z.delete(m);
+                            }
+                        }
+                        return [null, 0];
+                    });
+                },
+                zcard(key) {
+                    ops.push(() => [null, zsets.get(key)?.size ?? 0]);
+                },
+                zadd(key, score, member) {
+                    ops.push(() => {
+                        if (!zsets.has(key)) zsets.set(key, new Map());
+                        zsets.get(key)!.set(member, score);
+                        return [null, 1];
+                    });
+                },
+                expire(key, seconds) {
+                    ops.push(() => {
+                        const e = mem.get(key);
+                        if (e) e.expiry = Date.now() + seconds * 1000;
+                        return [null, 1];
+                    });
+                },
+                async exec() {
+                    return ops.map((op) => op());
+                },
+            };
+        },
+    };
+}
+
+function buildIoRedisClient(): Redis {
+    if (globalThis.__redis) return globalThis.__redis;
+    const c = new Redis(process.env.REDIS_URL!, {
+        maxRetriesPerRequest: 3,
+        lazyConnect: true,
+        enableReadyCheck: true,
+    });
+    c.on("error", (err: Error) => console.error("[Redis]", err.message));
+    globalThis.__redis = c;
+    return c;
+}
+
+const useRedis = Boolean(process.env.REDIS_URL);
+const client: Redis | UnifiedClient = useRedis
+    ? buildIoRedisClient()
+    : buildMemoryClient();
+
+async function redisSetnx(
+    key: string,
+    value: string,
+    ttlSeconds?: number
+): Promise<boolean> {
+    const ioredis = client as Redis;
+    if (ttlSeconds) {
+        const result = await ioredis.set(key, value, "EX", ttlSeconds, "NX");
+        return result === "OK";
+    }
+    const result = await ioredis.set(key, value, "NX");
+    return result === "OK";
 }
 
 export const redis = {
     async get(key: string): Promise<string | null> {
-        if (client) {
-            return await client.get(key);
-        }
-        return inMemory!.get(key) ?? null;
+        if (useRedis) return (client as Redis).get(key);
+        return (client as UnifiedClient).get(key);
     },
 
     async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-        if (client) {
-            if (ttlSeconds) await client.set(key, value, "EX", ttlSeconds);
-            else await client.set(key, value);
-            return;
+        if (useRedis) {
+            const ioredis = client as Redis;
+            if (ttlSeconds) {
+                await ioredis.set(key, value, "EX", ttlSeconds);
+            } else {
+                await ioredis.set(key, value);
+            }
+        } else {
+            await (client as UnifiedClient).set(key, value, undefined, ttlSeconds);
         }
+    },
 
-        inMemory!.set(key, value);
-
-        // Clear any existing timer for this key
-        const existing = inMemoryTimers!.get(key);
-        if (existing) clearTimeout(existing);
-
-        if (ttlSeconds) {
-            const t = setTimeout(() => {
-                inMemory!.delete(key);
-                inMemoryTimers!.delete(key);
-            }, ttlSeconds * 1000);
-            if (typeof (t as any).unref === "function") (t as any).unref();
-            inMemoryTimers!.set(key, t);
+    async del(key: string): Promise<void> {
+        if (useRedis) {
+            await (client as Redis).del(key);
+        } else {
+            await (client as UnifiedClient).del(key);
         }
     },
 
     async setnx(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
-        if (client) {
-            const args: Array<string | number> = [key, value];
-            if (ttlSeconds) args.push("EX", ttlSeconds);
-            args.push("NX");
-            const res = await (client as any).set(...(args as any));
-            return res === "OK";
+        if (useRedis) {
+            return redisSetnx(key, value, ttlSeconds);
         }
-
-        if (inMemory!.has(key)) return false;
-        inMemory!.set(key, value);
-
-        // Clear any existing timer for this key
-        const existing = inMemoryTimers!.get(key);
-        if (existing) clearTimeout(existing);
-
-        if (ttlSeconds) {
-            const t = setTimeout(() => {
-                inMemory!.delete(key);
-                inMemoryTimers!.delete(key);
-            }, ttlSeconds * 1000);
-            if (typeof (t as any).unref === "function") (t as any).unref();
-            inMemoryTimers!.set(key, t);
-        }
-
-        return true;
+        const mem = client as UnifiedClient;
+        const result = await mem.setnx(key, value);
+        if (result === 1 && ttlSeconds) await mem.expire(key, ttlSeconds);
+        return result === 1;
     },
 
-    async del(key: string): Promise<void> {
-        if (client) {
-            await client.del(key);
-            return;
+    async getJson<T>(key: string): Promise<T | null> {
+        const raw = await redis.get(key);
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw) as T;
+        } catch {
+            return null;
         }
+    },
 
-        inMemory!.delete(key);
-        const existing = inMemoryTimers!.get(key);
-        if (existing) {
-            clearTimeout(existing);
-            inMemoryTimers!.delete(key);
-        }
+    async setJson(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
+        await redis.set(key, JSON.stringify(value), ttlSeconds);
+    },
+
+    pipeline(): ReturnType<Redis["pipeline"]> | MemoryPipeline {
+        if (useRedis) return (client as Redis).pipeline();
+        return (client as UnifiedClient).pipeline();
     },
 };
