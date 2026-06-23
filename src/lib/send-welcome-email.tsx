@@ -1,6 +1,5 @@
-// lib/send-welcome-email.tsx
 import { Resend } from "resend";
-import WelcomeEmail from "@/emails/welcome-email";   // ← This should now resolve
+import WelcomeEmail from "@/emails/welcome-email";
 
 const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
 
