@@ -18,7 +18,9 @@ export const authIsRequired = async () => {
     const session = await authSession();
     if (!session) redirect("/sign-in");
 
+    // Send welcome email only once, atomically
     await sendWelcomeEmailIfNeeded(session.user.id);
+
     return session;
 };
 
@@ -30,32 +32,38 @@ export const authIsNotRequired = async () => {
     if (session) redirect(getDashboardPath(session.user?.role));
 };
 
-// Send welcome email once
 async function sendWelcomeEmailIfNeeded(userId: string) {
     try {
+        // 1. Fetch user details (no lock)
         const user = await db.user.findUnique({
             where: { id: userId },
             select: {
                 email: true,
                 name: true,
                 emailVerified: true,
-                welcomeEmailSent: true,
             },
         });
 
-        if (!user || !user.emailVerified || user.welcomeEmailSent) return;
+        if (!user || !user.emailVerified) return;
 
+        const result = await db.user.updateMany({
+            where: {
+                id: userId,
+                welcomeEmailSent: false, // only update if not sent
+            },
+            data: { welcomeEmailSent: true },
+        });
+
+        if (result.count === 0) {
+            console.log(`Welcome email already sent for user ${userId}, skipping.`);
+            return;
+        }
         await sendWelcomeEmail({
             to: user.email,
             userName: user.name || "User",
         });
 
-        await db.user.update({
-            where: { id: userId },
-            data: { welcomeEmailSent: true },
-        });
-
-        console.log(`Welcome email sent and marked for user ${userId}`);
+        console.log(`Welcome email sent for user ${userId}`);
     } catch (error) {
         console.error("Failed to send welcome email:", error);
     }

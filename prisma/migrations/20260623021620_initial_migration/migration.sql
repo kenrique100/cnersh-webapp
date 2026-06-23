@@ -51,6 +51,7 @@ CREATE TABLE "user" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    "welcomeEmailSent" BOOLEAN NOT NULL DEFAULT false,
     "image" TEXT,
     "gender" "gender",
     "profession" TEXT,
