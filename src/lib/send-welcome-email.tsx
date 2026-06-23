@@ -1,5 +1,6 @@
+// lib/send-welcome-email.tsx
 import { Resend } from "resend";
-import WelcomeEmail from "@/emails/welcome-email";
+import WelcomeEmail from "@/emails/welcome-email";   // ← This should now resolve
 
 const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
 
@@ -27,7 +28,7 @@ export const sendWelcomeEmail = async ({ to, userName }: SendWelcomeEmailProps) 
             throw new Error(`Invalid email address: ${to}`);
         }
 
-        console.log(`📧 Sending welcome email to: ${to}`);
+        console.log(`Sending welcome email to: ${to}`);
 
         const response = await getResend().emails.send({
             from: process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
@@ -41,7 +42,7 @@ export const sendWelcomeEmail = async ({ to, userName }: SendWelcomeEmailProps) 
             throw new Error(`Failed to send welcome email: ${response.error.message}`);
         }
 
-        console.log(`Welcome email sent successfully to ${to}. ID: ${response.data?.id}`);
+        console.log(`Welcome email sent to ${to}. ID: ${response.data?.id}`);
         return response;
     } catch (error) {
         console.error("Error in sendWelcomeEmail:", error);

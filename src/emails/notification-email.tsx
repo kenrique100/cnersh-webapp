@@ -20,50 +20,41 @@ interface NotificationEmailProps {
 }
 
 export const NotificationEmail = ({
-    userName,
-    notificationMessage,
-    notificationType,
-    actionUrl,
-    appName = "National Ethics Committee for Health Research on Humans",
-}: NotificationEmailProps) => (
+                                      userName,
+                                      notificationMessage,
+                                      notificationType,
+                                      actionUrl,
+                                      appName = "National Ethics Committee for Health Research on Humans",
+                                  }: NotificationEmailProps) => (
     <Html>
         <Head />
         <Tailwind>
             <Body className="bg-white font-sans">
                 <Preview>{notificationMessage}</Preview>
-                <Container className="mx-auto py-5 pb-12 px-4 max-w-150">
+                <Container className="mx-auto py-5 pb-12 px-4 max-w-[600px]">
+                    {/* Header */}
                     <Section className="mb-6">
                         <table className="w-full">
                             <tbody>
-                                <tr>
-                                    <td className="pb-4">
-                                        <table className="w-full">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="text-center">
-                                                        <div style={{ display: 'inline-block', background: 'linear-gradient(135deg, #5F51E8 0%, #7C6CF0 100%)', padding: '12px 24px', borderRadius: '8px' }}>
-                                                            <Text className="text-[22px] font-bold text-white m-0 tracking-wide">
-                                                                {appName}
-                                                            </Text>
-                                                        </div>
-                                                        <Text className="text-[14px] text-gray-500 mt-2 m-0">
-                                                            Ethics • Integrity • Community
-                                                        </Text>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
+                            <tr>
+                                <td className="text-center">
+                                    <div style={{ display: 'inline-block', background: 'linear-gradient(135deg, #5F51E8 0%, #7C6CF0 100%)', padding: '12px 24px', borderRadius: '8px' }}>
+                                        <Text className="text-[22px] font-bold text-white m-0 tracking-wide">
+                                            {appName}
+                                        </Text>
+                                    </div>
+                                    <Text className="text-[14px] text-gray-500 mt-2 m-0">
+                                        Ethics • Integrity • Community
+                                    </Text>
+                                </td>
+                            </tr>
                             </tbody>
                         </table>
                     </Section>
 
                     <Hr className="border border-solid border-gray-200 my-6" />
 
-                    <Text className="text-[16px] leading-6.5 text-gray-800">
-                        Hi {userName},
-                    </Text>
+                    <Text className="text-[16px] leading-6.5 text-gray-800">Hi {userName},</Text>
 
                     <Text className="text-[16px] leading-6.5 text-gray-700">
                         You have a new <strong>{notificationType.toLowerCase().replace("_", " ")}</strong> notification:
@@ -92,7 +83,7 @@ export const NotificationEmail = ({
                         This is an automated notification from {appName}.
                     </Text>
 
-                    <Text className="text-[#8898aa] text-[12px] text-center mt-2">
+                    <Text className="text-[#8898aa] text-[12px] text-center mt-1">
                         © {new Date().getFullYear()} {appName}. All rights reserved.
                     </Text>
                 </Container>
