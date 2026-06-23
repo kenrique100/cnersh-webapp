@@ -2,7 +2,8 @@
 
 import { authClient } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -11,145 +12,111 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
-import { useState } from "react";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
 
-const formSchema = z
-    .object({
-        newPassword: z.string().min(10, "Password must be at least 10 characters"),
-        confirmNewPassword: z.string(),
-    })
-    .refine((data) => data.newPassword === data.confirmNewPassword, {
-        message: "Passwords do not match",
-        path: ["confirmNewPassword"],
-    });
+const formSchema = z.object({
+    email: z.string().email("Invalid email address"),
+});
 
-export function ResetPasswordForm() {
+export function RequestPasswordForm() {
     const router = useRouter();
-    const params = useSearchParams();
-    const token = params.get("token");
-    const [showNewPassword, setShowNewPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            newPassword: "",
-            confirmNewPassword: "",
+            email: "",
         },
     });
 
-    const onSubmit = async ({ newPassword }: z.infer<typeof formSchema>) => {
+    const [isEmailSent, setIsEmailSent] = useState(false);
+
+    const onSubmit = async ({ email }: z.infer<typeof formSchema>) => {
         try {
-            await authClient.resetPassword(
-                { newPassword, token: token as string },
-                {
-                    onSuccess: async () => {
-                        router.push("/");
-                    },
-                    onError: (ctx) => {
-                        toast.error(ctx.error.message);
-                    },
-                }
-            );
+            const { data, error } = await authClient.requestPasswordReset({
+                email,
+                redirectTo: "/reset-password",
+            });
+
+            if (data?.status) {
+                toast.success("An email has been sent to you.");
+                setIsEmailSent(true);
+                router.refresh();
+            }
+
+            if (error) {
+                toast.error(error.message);
+                setIsEmailSent(false);
+            }
         } catch {
             toast.error("Something went wrong");
         }
     };
 
     return (
-        <Card className="w-full max-w-md">
-            <CardHeader>
-                <CardTitle>Reset your password</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="flex flex-col gap-6"
-                    id="reset-password"
-                >
-                    <FieldGroup>
-                        <Controller
-                            name="newPassword"
-                            control={form.control}
-                            render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid} className="gap-1">
-                                    <FieldLabel>New password</FieldLabel>
-                                    <div className="relative">
-                                        <Input
-                                            {...field}
-                                            autoComplete="off"
-                                            type={showNewPassword ? "text" : "password"}
-                                            aria-invalid={fieldState.invalid}
-                                            className="pr-10"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowNewPassword(!showNewPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                                        >
-                                            {showNewPassword ? (
-                                                <EyeOffIcon className="h-4 w-4" />
-                                            ) : (
-                                                <EyeIcon className="h-4 w-4" />
+        <>
+            {isEmailSent ? (
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle>Check your email</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex w-full p-6">
+                            A password reset link has been sent to your email.
+                        </div>
+                        <Button
+                            onClick={() => router.push("/sign-in")}
+                            className="cursor-pointer"
+                        >
+                            Back to sign in
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle>Enter your email</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="flex flex-col gap-6"
+                            id="reset-password"
+                        >
+                            <FieldGroup>
+                                <Controller
+                                    name="email"
+                                    control={form.control}
+                                    render={({ field, fieldState }) => (
+                                        <Field data-invalid={fieldState.invalid} className="gap-1">
+                                            <FieldLabel>Email</FieldLabel>
+                                            <Input
+                                                {...field}
+                                                autoComplete="off"
+                                                type="email"
+                                                aria-invalid={fieldState.invalid}
+                                            />
+                                            {fieldState.invalid && (
+                                                <FieldError errors={[fieldState.error]} />
                                             )}
-                                        </button>
-                                    </div>
-                                    {fieldState.invalid && (
-                                        <FieldError errors={[fieldState.error]} />
+                                        </Field>
                                     )}
-                                </Field>
-                            )}
-                        />
+                                />
+                            </FieldGroup>
 
-                        <Controller
-                            name="confirmNewPassword"
-                            control={form.control}
-                            render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid} className="gap-1">
-                                    <FieldLabel>Confirm new password</FieldLabel>
-                                    <div className="relative">
-                                        <Input
-                                            {...field}
-                                            autoComplete="off"
-                                            type={showConfirmPassword ? "text" : "password"}
-                                            aria-invalid={fieldState.invalid}
-                                            className="pr-10"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                                        >
-                                            {showConfirmPassword ? (
-                                                <EyeOffIcon className="h-4 w-4" />
-                                            ) : (
-                                                <EyeIcon className="h-4 w-4" />
-                                            )}
-                                        </button>
-                                    </div>
-                                    {fieldState.invalid && (
-                                        <FieldError errors={[fieldState.error]} />
-                                    )}
-                                </Field>
-                            )}
-                        />
-                    </FieldGroup>
-
-                    <Button
-                        type="submit"
-                        className="cursor-pointer max-w-40 self-end"
-                        disabled={form.formState.isSubmitting}
-                        form="reset-password"
-                    >
-                        {form.formState.isSubmitting ? (
-                            <Spinner className="size-6" />
-                        ) : (
-                            "Reset password"
-                        )}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
+                            <Button
+                                type="submit"
+                                className="cursor-pointer max-w-40 self-end"
+                                disabled={form.formState.isSubmitting}
+                                form="reset-password"
+                            >
+                                {form.formState.isSubmitting ? (
+                                    <Spinner className="size-6" />
+                                ) : (
+                                    "Send request"
+                                )}
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            )}
+        </>
     );
 }
