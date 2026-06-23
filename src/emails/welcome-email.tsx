@@ -24,7 +24,7 @@ export const WelcomeEmail = ({
         <Tailwind>
             <Body className="bg-white font-sans">
                 <Preview>Welcome to {appName}!</Preview>
-                <Container className="mx-auto py-5 pb-12 px-4 max-w-150">
+                <Container className="mx-auto py-5 pb-12 px-4 max-w-[600px]">
                     <Section className="mb-6">
                         <table className="w-full">
                             <tbody>
@@ -34,7 +34,14 @@ export const WelcomeEmail = ({
                                         <tbody>
                                         <tr>
                                             <td className="text-center">
-                                                <div style={{ display: 'inline-block', background: 'linear-gradient(135deg, #5F51E8 0%, #7C6CF0 100%)', padding: '12px 24px', borderRadius: '8px' }}>
+                                                <div
+                                                    style={{
+                                                        display: "inline-block",
+                                                        background: "linear-gradient(135deg, #5F51E8 0%, #7C6CF0 100%)",
+                                                        padding: "12px 24px",
+                                                        borderRadius: "8px",
+                                                    }}
+                                                >
                                                     <Text className="text-[22px] font-bold text-white m-0 tracking-wide">
                                                         {appName}
                                                     </Text>
@@ -86,6 +93,14 @@ export const WelcomeEmail = ({
 
                     <Text className="text-[#8898aa] text-[12px] text-center">
                         © {new Date().getFullYear()} {appName}. All rights reserved.
+                    </Text>
+
+                    {/* Unsubscribe Link */}
+                    <Text className="text-[#8898aa] text-[12px] text-center mt-2">
+                        <a href="{{unsubscribe_url}}" className="text-[#8898aa] underline">
+                            Unsubscribe
+                        </a>{" "}
+                        from future notifications
                     </Text>
                 </Container>
             </Body>
