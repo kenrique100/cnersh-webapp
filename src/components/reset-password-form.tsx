@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
+import { useState } from "react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const formSchema = z
     .object({
@@ -26,6 +28,8 @@ export function ResetPasswordForm() {
     const router = useRouter();
     const params = useSearchParams();
     const token = params.get("token");
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -71,12 +75,26 @@ export function ResetPasswordForm() {
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid} className="gap-1">
                                     <FieldLabel>New password</FieldLabel>
-                                    <Input
-                                        {...field}
-                                        autoComplete="off"
-                                        type="password"
-                                        aria-invalid={fieldState.invalid}
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            {...field}
+                                            autoComplete="off"
+                                            type={showNewPassword ? "text" : "password"}
+                                            aria-invalid={fieldState.invalid}
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                        >
+                                            {showNewPassword ? (
+                                                <EyeOffIcon className="h-4 w-4" />
+                                            ) : (
+                                                <EyeIcon className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError errors={[fieldState.error]} />
                                     )}
@@ -90,12 +108,26 @@ export function ResetPasswordForm() {
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid} className="gap-1">
                                     <FieldLabel>Confirm new password</FieldLabel>
-                                    <Input
-                                        {...field}
-                                        autoComplete="off"
-                                        type="password"
-                                        aria-invalid={fieldState.invalid}
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            {...field}
+                                            autoComplete="off"
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            aria-invalid={fieldState.invalid}
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                        >
+                                            {showConfirmPassword ? (
+                                                <EyeOffIcon className="h-4 w-4" />
+                                            ) : (
+                                                <EyeIcon className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError errors={[fieldState.error]} />
                                     )}
