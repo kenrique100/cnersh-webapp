@@ -129,6 +129,7 @@ model File {
   mimeType  String
   size      Int
   url       String?
+  storageKey String?  @unique
   data      String?
   type      FileType
   userId    String

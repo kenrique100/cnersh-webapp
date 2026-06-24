@@ -4,7 +4,6 @@ import { performBasicMalwareCheck, validateMimeType } from "@/lib/file-validatio
 import { sanitizeFilename } from "@/lib/sanitize-filename";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { withIdempotency } from "@/middleware/idempotency";
-import { uploadFileToVercelBlob } from "@/lib/vercel-blob-client";
 import { db } from "@/lib/db";
 import type { FileType } from "@/generated/prisma";
 import { pdf } from "pdf-page-counter";
@@ -126,14 +125,43 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // --- BUNNY STORAGE SERVER-TO-SERVER ORCHESTRATION ---
   let uploadedUrl: string;
+  let computedStorageKey: string;
+
   try {
-    const blob = await uploadFileToVercelBlob(file, { access: "private" });
-    uploadedUrl = blob.url;
+    const storageZone = process.env.BUNNY_STORAGE_ZONE;
+    const storagePassword = process.env.BUNNY_STORAGE_PASSWORD;
+    const storageApiUrl = process.env.BUNNY_STORAGE_API_URL;
+    const pullZoneUrl = process.env.BUNNY_PULL_ZONE_URL;
+
+    const relativeFolder = `cnersh-assets/${resolveFileType(file.type)}s`;
+    computedStorageKey = `${relativeFolder}/${Date.now()}-${sanitizedFilename}`;
+
+    const requestEndpoint = `https://${storageApiUrl}/${storageZone}/${computedStorageKey}`;
+
+    // Fix TS2769 by wrapping the Buffer in a native Uint8Array
+    const bunnyApiResponse = await fetch(requestEndpoint, {
+      method: "PUT",
+      headers: {
+        AccessKey: storagePassword!,
+        "Content-Type": "application/octet-stream",
+      },
+      body: new Uint8Array(fileBuffer),
+    });
+
+    if (!bunnyApiResponse.ok) {
+      console.error(`[upload] Bunny API Error Status: ${bunnyApiResponse.status}`);
+      return NextResponse.json({ error: "Storage engine rejected the binary upload" }, { status: 502 });
+    }
+
+    uploadedUrl = `${pullZoneUrl}/${computedStorageKey}`;
+
   } catch (err) {
-    console.error("[upload] Vercel Blob upload failed:", err);
+    console.error("[upload] Bunny Storage pipeline failed:", err);
     return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
   }
+  // --- END BUNNY ENGINE TRANSACTION BLOCK ---
 
   try {
     const stored = await db.file.create({
@@ -143,6 +171,7 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         size: file.size,
         data: null,
         url: uploadedUrl,
+        storageKey: computedStorageKey,
         type: resolveFileType(file.type),
         userId: session.user.id,
       },
