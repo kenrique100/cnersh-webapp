@@ -13,140 +13,125 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost:5432/cnersh_ci' }}
-  BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'ci-placeholder-secret-do-not-use-in-prod' }}
-  BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL || 'http://localhost:3000' }}
-  NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' }}
-  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'ci-placeholder' }}
-  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || 'ci-placeholder' }}
-  RESEND_API_KEY: ${{ secrets.RESEND_API_KEY || '' }}
-  NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || '' }}
-  REDIS_URL: ${{ secrets.REDIS_URL || '' }}
-  CRON_SECRET: ${{ secrets.CRON_SECRET || 'ci-placeholder' }}
-  UPLOADTHING_TOKEN: ${{ secrets.UPLOADTHING_TOKEN || '' }}
 
 jobs:
-  # ────────────────────────────────────────────────────────────────────────
-  lint:
-    name: Lint & Type Check
+  # STAGE 1: VERIFICATION
+  verify:
+    name: Quality & Testing
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: cnersh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/cnersh_ci
+      BETTER_AUTH_SECRET: test-secret-for-ci
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+
     steps:
-      - name: Checkout
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Initialize Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Cache TypeScript Compilation State
+        uses: actions/cache@v4
+        with:
+          path: .tsbuildinfo
+          key: ${{ runner.os }}-tsconfig-${{ hashFiles('**/tsconfig.json', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-tsconfig-
+
+      - name: Install Project Dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
+      - name: Synchronize Prisma Engine
         run: npx prisma generate
 
-      - name: Run ESLint
+      - name: Run Database Migrations (test DB)
+        run: npx prisma migrate deploy
+
+      - name: Run Code Linters
         run: npm run lint
 
-      - name: Run TypeScript type check
-        run: npx tsc --noEmit
+      - name: Verify TypeScript Compilation
+        run: npx tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo
 
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Run Jest tests
+      - name: Execute Unit & Integration Tests
         run: npm test -- --ci --coverage
 
-      - name: Upload coverage report
+      - name: Archive Code Coverage Metrics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
-          retention-days: 7
+          retention-days: 5
 
-  build:
-    name: Build
+  # STAGE 2: PRODUCTION DEPLOYMENT
+  deploy:
+    name: Production Deployment
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [verify]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    environment:
+      name: production
+      url: ${{ steps.deploy_execution.outputs.deployment-url }}
+
     steps:
-      - name: Checkout
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Initialize Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Build Next.js app
-        run: npm run build
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || '' }}
-
-      - name: Upload build output
-        uses: actions/upload-artifact@v4
-        with:
-          name: nextjs-build
-          path: |
-            .next/
-            !.next/cache
-          retention-days: 3
-
-  deploy:
-    name: Deploy to Vercel (production)
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.deployment-url }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Pull Vercel environment information
+      - name: Fetch Remote Environment Context
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Build project artifacts
+      - name: Build Production Artifacts (with Vercel Remote Cache)
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Deploy to Vercel
-        id: deploy
+      - name: Apply Database Migrations (Production)
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+
+      - name: Deploy to Vercel (Production)
+        id: deploy_execution
         run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
-          echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
+          DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "deployment-url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
