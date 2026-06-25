@@ -3,9 +3,10 @@ import {
     sanitizeText,
     escapeHtml,
     sanitizeUrl,
-    sanitizeFilename,
     sanitizeObject,
 } from '../sanitize';
+
+import { sanitizeFilename } from '../sanitize-filename';
 
 describe('sanitizeHtml', () => {
     it('should allow safe HTML tags', () => {
@@ -30,7 +31,7 @@ describe('sanitizeHtml', () => {
 
     it('should handle empty input', () => {
         expect(sanitizeHtml('')).toBe('');
-        expect(sanitizeHtml(null as any)).toBe('');
+        expect(sanitizeHtml(null as unknown as string)).toBe('');
     });
 });
 

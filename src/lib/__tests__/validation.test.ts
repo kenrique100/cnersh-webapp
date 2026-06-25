@@ -4,7 +4,6 @@ import {
     nameSchema,
     urlSchema,
     textContentSchema,
-    shortTextSchema,
     validateInput,
 } from '../validation';
 

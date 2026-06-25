@@ -14,6 +14,11 @@ import {
 } from "../reaction-icons";
 
 describe("ReactionIcons", () => {
+    // Clears React 18 Scheduler MessageChannel handles after execution
+    afterEach(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     it("renders emoji-based icons", () => {
         const { getByText } = render(
             <div>

@@ -3,29 +3,29 @@ export interface RateLimitConfig {
     maxRequests: number;
 }
 
-export const RATE_LIMITS = {
-    auth: {
+export const RATE_LIMITS = Object.freeze({
+    auth: Object.freeze({
         windowMs: 15 * 60 * 1000,
         maxRequests: 5,
-    },
-    api: {
+    }),
+    api: Object.freeze({
         windowMs: 15 * 60 * 1000,
         maxRequests: 100,
-    },
-    trending: {
+    }),
+    trending: Object.freeze({
         windowMs: 60 * 1000,
         maxRequests: 60,
-    },
-    fileUpload: {
+    }),
+    fileUpload: Object.freeze({
         windowMs: 60 * 60 * 1000,
         maxRequests: 10,
-    },
-    reportSubmission: {
+    }),
+    reportSubmission: Object.freeze({
         windowMs: 60 * 60 * 1000,
         maxRequests: 5,
-    },
-    formSubmission: {
+    }),
+    formSubmission: Object.freeze({
         windowMs: 60 * 60 * 1000,
         maxRequests: 20,
-    },
-} as const;
+    }),
+});

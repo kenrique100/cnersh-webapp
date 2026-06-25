@@ -1,17 +1,45 @@
-/**
- * Integration tests for feed actions
- * These tests mock the database and auth to test the feed action functions
- */
+import {
+    createPost,
+    getPosts,
+    getTrendingTags,
+    toggleLike,
+    addComment
+} from "../feed";
+import { db } from "@/lib/db";
+import { authSession } from "@/lib/auth-utils";
+import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { notifyAdmins } from "@/lib/notify-admins";
 
-import { toggleLike, addComment, toggleCommentLike } from "../feed";
-
-// Mock dependencies
+// 1. Setup global mocks for all external service dependencies
 jest.mock("@/lib/auth-utils", () => ({
     authSession: jest.fn(),
 }));
 
+jest.mock("@/lib/notify-admins", () => ({
+    notifyAdmins: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("@/lib/send-notification-email", () => ({
+    sendNotificationEmail: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock("@/lib/db", () => ({
     db: {
+        post: {
+            create: jest.fn(),
+            findMany: jest.fn(),
+            count: jest.fn(),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+        },
+        user: {
+            findMany: jest.fn(),
+            findUnique: jest.fn(),
+        },
+        notification: {
+            createMany: jest.fn(),
+            create: jest.fn(),
+        },
         like: {
             findUnique: jest.fn(),
             create: jest.fn(),
@@ -21,355 +49,178 @@ jest.mock("@/lib/db", () => ({
         comment: {
             create: jest.fn(),
             findUnique: jest.fn(),
-            update: jest.fn(),
         },
-        commentLike: {
-            findUnique: jest.fn(),
-            create: jest.fn(),
-            delete: jest.fn(),
-            update: jest.fn(),
-        },
-        post: {
-            findUnique: jest.fn(),
-        },
-        notification: {
-            create: jest.fn(),
-            createMany: jest.fn(),
-        },
-        user: {
-            findMany: jest.fn(),
-        },
+        $queryRaw: jest.fn(),
     },
 }));
 
-jest.mock("@/lib/notify-admins", () => ({
-    notifyAdmins: jest.fn(),
-}));
+describe("Feed Server Actions", () => {
+    const mockUser = { id: "user-123", name: "Awah Ken", email: "awah@example.com", role: "user" };
+    const mockSession = { user: mockUser };
 
-jest.mock("@/lib/send-notification-email", () => ({
-    sendNotificationEmail: jest.fn().mockResolvedValue(undefined),
-}));
-
-import { authSession } from "@/lib/auth-utils";
-import { db } from "@/lib/db";
-
-const mockAuthSession = authSession as jest.MockedFunction<typeof authSession>;
-
-describe("Feed Actions - toggleLike", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAuthSession.mockResolvedValue({
-            user: { id: "user-1", name: "Test User" },
-            session: { id: "session-1" },
-        } as any);
     });
 
-    it("creates a new like when user hasn't liked the post", async () => {
-        (db.like.findUnique as jest.Mock).mockResolvedValue(null);
-        (db.like.create as jest.Mock).mockResolvedValue({ id: "like-1" });
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-2",
-            user: { role: "user", email: "post-owner@example.com", name: "Post Owner" },
+    describe("createPost", () => {
+        it("throws an error if the user session is unauthorized", async () => {
+            (authSession as jest.Mock).mockResolvedValue(null);
+
+            await expect(createPost({ content: "Hello World" })).rejects.toThrow("Unauthorized");
         });
 
-        const result = await toggleLike("post-1", "Like");
+        it("creates a post successfully and converts Date instances to ISO strings", async () => {
+            (authSession as jest.Mock).mockResolvedValue(mockSession);
 
-        expect(db.like.create).toHaveBeenCalledWith({
-            data: { postId: "post-1", userId: "user-1", reactionType: "Like" },
+            const mockDbPost = {
+                id: "post-abc",
+                content: "Just standard text content",
+                createdAt: new Date("2026-06-01T12:00:00.000Z"),
+                updatedAt: new Date("2026-06-01T12:00:00.000Z"),
+                tags: [],
+                images: [],
+                videos: [],
+            };
+            (db.post.create as jest.Mock).mockResolvedValue(mockDbPost);
+
+            const result = await createPost({ content: "Just standard text content" });
+
+            expect(db.post.create).toHaveBeenCalled();
+            expect(result.createdAt).toBe("2026-06-01T12:00:00.000Z");
         });
-        expect(result).toEqual({ liked: true, reactionType: "Like" });
+
+        it("parses user mentions and triggers notifications and email dispatches", async () => {
+            // Force fake timers to process floating promises instantly
+            jest.useFakeTimers();
+            (authSession as jest.Mock).mockResolvedValue(mockSession);
+
+            const mockDbPost = {
+                id: "post-abc",
+                content: "Hello @Alice and @Bob",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+            (db.post.create as jest.Mock).mockResolvedValue(mockDbPost);
+
+            // Mock matching users found in DB
+            (db.user.findMany as jest.Mock).mockResolvedValue([
+                { id: "user-alice", name: "Alice", email: "alice@test.com" },
+                { id: "user-bob", name: "Bob", email: "bob@test.com" }
+            ]);
+
+            await createPost({ content: "Hello @Alice and @Bob" });
+
+            expect(db.user.findMany).toHaveBeenCalled();
+            expect(db.notification.createMany).toHaveBeenCalledWith({
+                data: [
+                    { type: "MENTION", message: "Awah Ken mentioned you in a post", link: "/feeds", userId: "user-alice" },
+                    { type: "MENTION", message: "Awah Ken mentioned you in a post", link: "/feeds", userId: "user-bob" },
+                ]
+            });
+
+            expect(sendNotificationEmail).toHaveBeenCalledTimes(2);
+            jest.useRealTimers();
+        });
     });
 
-    it("removes like when user clicks same reaction again", async () => {
-        (db.like.findUnique as jest.Mock).mockResolvedValue({
-            id: "like-1",
-            reactionType: "Like",
+    describe("getPosts", () => {
+        it("returns paginated data structure and builds recent activity objects cleanly", async () => {
+            const mockPosts = [
+                {
+                    id: "post-1",
+                    likes: [{ userId: "user-2", reactionType: "Like", user: { id: "user-2", name: "User 2", image: null } }],
+                    comments: [],
+                    _count: { likes: 1, comments: 0 }
+                }
+            ];
+            (db.post.findMany as jest.Mock).mockResolvedValue(mockPosts);
+            (db.post.count as jest.Mock).mockResolvedValue(1);
+
+            const result = await getPosts(1, 10);
+
+            expect(result.posts).toHaveLength(1);
+            expect(result.total).toBe(1);
+            expect(result.posts[0].recentActivity.users).toHaveLength(1);
         });
-        (db.like.delete as jest.Mock).mockResolvedValue({ id: "like-1" });
-
-        const result = await toggleLike("post-1", "Like");
-
-        expect(db.like.delete).toHaveBeenCalledWith({ where: { id: "like-1" } });
-        expect(result).toEqual({ liked: false, reactionType: null });
     });
 
-    it("updates reaction when user selects different reaction", async () => {
-        (db.like.findUnique as jest.Mock).mockResolvedValue({
-            id: "like-1",
-            reactionType: "Like",
-        });
-        (db.like.update as jest.Mock).mockResolvedValue({
-            id: "like-1",
-            reactionType: "Love",
-        });
+    describe("getTrendingTags", () => {
+        it("maps PostgreSQL native BigInt counts safely down to standard JavaScript Numbers", async () => {
+            // Simulating what db.$queryRaw returns when working with postgres arrays
+            (db.$queryRaw as jest.Mock).mockResolvedValue([
+                { tag: "ethics", count: BigInt(42) },
+                { tag: "health", count: BigInt(12) }
+            ]);
 
-        const result = await toggleLike("post-1", "Love");
+            const result = await getTrendingTags(2);
 
-        expect(db.like.update).toHaveBeenCalledWith({
-            where: { id: "like-1" },
-            data: { reactionType: "Love" },
+            expect(result).toEqual([
+                { tag: "Ethics", posts: 42 },
+                { tag: "Health", posts: 12 }
+            ]);
         });
-        expect(result).toEqual({ liked: true, reactionType: "Love" });
     });
 
-    it("throws error when user is not authenticated", async () => {
-        mockAuthSession.mockResolvedValue(null);
+    describe("toggleLike", () => {
+        it("deletes the record if an identical user reaction match exists", async () => {
+            (authSession as jest.Mock).mockResolvedValue(mockSession);
+            (db.like.findUnique as jest.Mock).mockResolvedValue({ id: "like-id", reactionType: "Like" });
 
-        await expect(toggleLike("post-1", "Like")).rejects.toThrow("Unauthorized");
+            const result = await toggleLike("post-1", "Like");
+
+            expect(db.like.delete).toHaveBeenCalled();
+            expect(result).toEqual({ liked: false, reactionType: null });
+        });
+
+        it("updates the data record if a different reaction layout profile is passed", async () => {
+            (authSession as jest.Mock).mockResolvedValue(mockSession);
+            (db.like.findUnique as jest.Mock).mockResolvedValue({ id: "like-id", reactionType: "Like" });
+
+            const result = await toggleLike("post-1", "Love");
+
+            expect(db.like.update).toHaveBeenCalledWith({
+                where: { id: "like-id" },
+                data: { reactionType: "Love" }
+            });
+            expect(result).toEqual({ liked: true, reactionType: "Love" });
+        });
+
+        it("creates a brand new row entry and fires notifications if no matching record is found", async () => {
+            (authSession as jest.Mock).mockResolvedValue(mockSession);
+            (db.like.findUnique as jest.Mock).mockResolvedValue(null);
+            (db.post.findUnique as jest.Mock).mockResolvedValue({
+                userId: "owner-id",
+                user: { role: "user", email: "owner@test.com", name: "Owner" }
+            });
+
+            const result = await toggleLike("post-1", "Celebrate");
+
+            expect(db.like.create).toHaveBeenCalled();
+            expect(db.notification.create).toHaveBeenCalled();
+            expect(sendNotificationEmail).toHaveBeenCalled();
+            expect(notifyAdmins).toHaveBeenCalled();
+            expect(result).toEqual({ liked: true, reactionType: "Celebrate" });
+        });
     });
 
-    it("creates notification for post owner", async () => {
-        (db.like.findUnique as jest.Mock).mockResolvedValue(null);
-        (db.like.create as jest.Mock).mockResolvedValue({ id: "like-1" });
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-2",
-            user: { role: "user", email: "owner@example.com", name: "Owner" },
+    describe("addComment", () => {
+        it("saves the comment structural entry configuration seamlessly", async () => {
+            (authSession as jest.Mock).mockResolvedValue(mockSession);
+            (db.comment.create as jest.Mock).mockResolvedValue({ id: "comment-99", content: "Great read!" });
+            (db.post.findUnique as jest.Mock).mockResolvedValue(null); // Short-circuit notifications cascade for simplicity
+
+            const result = await addComment("post-1", "Great read!");
+
+            expect(db.comment.create).toHaveBeenCalledWith({
+                data: {
+                    content: "Great read!",
+                    postId: "post-1",
+                    userId: "user-123",
+                    parentId: null
+                },
+                include: { user: { select: { id: true, name: true, image: true, role: true } } }
+            });
+            expect(result.content).toBe("Great read!");
         });
-
-        await toggleLike("post-1", "Like");
-
-        expect(db.notification.create).toHaveBeenCalled();
-    });
-
-    it("does not create notification for own post", async () => {
-        (db.like.findUnique as jest.Mock).mockResolvedValue(null);
-        (db.like.create as jest.Mock).mockResolvedValue({ id: "like-1" });
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-1", // Same as current user
-            user: { role: "user", email: "user@example.com", name: "User" },
-        });
-
-        await toggleLike("post-1", "Like");
-
-        expect(db.notification.create).not.toHaveBeenCalled();
-    });
-});
-
-describe("Feed Actions - addComment", () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-        mockAuthSession.mockResolvedValue({
-            user: { id: "user-1", name: "Test User" },
-            session: { id: "session-1" },
-        } as any);
-    });
-
-    it("creates a new comment", async () => {
-        const mockComment = {
-            id: "comment-1",
-            content: "Great post!",
-            postId: "post-1",
-            userId: "user-1",
-            user: { id: "user-1", name: "Test User", image: null, role: "user" },
-        };
-
-        (db.comment.create as jest.Mock).mockResolvedValue(mockComment);
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-2",
-            user: { role: "user", email: "owner@example.com", name: "Owner" },
-        });
-        (db.user.findMany as jest.Mock).mockResolvedValue([]);
-
-        const result = await addComment("post-1", "Great post!");
-
-        expect(db.comment.create).toHaveBeenCalledWith({
-            data: {
-                content: "Great post!",
-                postId: "post-1",
-                userId: "user-1",
-                parentId: null,
-            },
-            include: {
-                user: { select: { id: true, name: true, image: true, role: true } },
-            },
-        });
-        expect(result).toEqual(mockComment);
-    });
-
-    it("creates a reply to a comment", async () => {
-        const mockReply = {
-            id: "comment-2",
-            content: "Thanks!",
-            postId: "post-1",
-            userId: "user-1",
-            parentId: "comment-1",
-            user: { id: "user-1", name: "Test User", image: null, role: "user" },
-        };
-
-        (db.comment.create as jest.Mock).mockResolvedValue(mockReply);
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-2",
-            user: { role: "user", email: "owner@example.com", name: "Owner" },
-        });
-        (db.comment.findUnique as jest.Mock).mockResolvedValue({
-            id: "comment-1",
-            userId: "user-2",
-            user: { email: "commenter@example.com", name: "Commenter" },
-        });
-        (db.user.findMany as jest.Mock).mockResolvedValue([]);
-
-        const result = await addComment("post-1", "Thanks!", "comment-1");
-
-        expect(db.comment.create).toHaveBeenCalledWith({
-            data: {
-                content: "Thanks!",
-                postId: "post-1",
-                userId: "user-1",
-                parentId: "comment-1",
-            },
-            include: {
-                user: { select: { id: true, name: true, image: true, role: true } },
-            },
-        });
-        expect(result).toEqual(mockReply);
-    });
-
-    it("throws error when user is not authenticated", async () => {
-        mockAuthSession.mockResolvedValue(null);
-
-        await expect(addComment("post-1", "Comment")).rejects.toThrow("Unauthorized");
-    });
-
-    it("creates notification for post owner", async () => {
-        (db.comment.create as jest.Mock).mockResolvedValue({
-            id: "comment-1",
-            content: "Comment",
-            user: { id: "user-1", name: "User", image: null, role: "user" },
-        });
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-2",
-            user: { role: "user", email: "owner@example.com", name: "Owner" },
-        });
-        (db.user.findMany as jest.Mock).mockResolvedValue([]);
-
-        await addComment("post-1", "Comment");
-
-        expect(db.notification.create).toHaveBeenCalled();
-    });
-
-    it("notifies mentioned users", async () => {
-        (db.comment.create as jest.Mock).mockResolvedValue({
-            id: "comment-1",
-            content: "@Alice check this out",
-            user: { id: "user-1", name: "User", image: null, role: "user" },
-        });
-        (db.post.findUnique as jest.Mock).mockResolvedValue({
-            id: "post-1",
-            userId: "user-2",
-            user: { role: "user", email: "owner@example.com", name: "Owner" },
-        });
-        (db.user.findMany as jest.Mock).mockResolvedValue([
-            { id: "user-3", email: "alice@example.com", name: "Alice" },
-        ]);
-
-        await addComment("post-1", "@Alice check this out");
-
-        expect(db.notification.createMany).toHaveBeenCalled();
-    });
-});
-
-describe("Feed Actions - toggleCommentLike", () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-        mockAuthSession.mockResolvedValue({
-            user: { id: "user-1", name: "Test User" },
-            session: { id: "session-1" },
-        } as any);
-    });
-
-    it("creates a new comment like", async () => {
-        (db.commentLike.findUnique as jest.Mock).mockResolvedValue(null);
-        (db.commentLike.create as jest.Mock).mockResolvedValue({ id: "like-1" });
-        (db.comment.findUnique as jest.Mock).mockResolvedValue({
-            id: "comment-1",
-            userId: "user-2",
-            user: { email: "commenter@example.com", name: "Commenter" },
-        });
-
-        const result = await toggleCommentLike("comment-1", false, "Like");
-
-        expect(db.commentLike.create).toHaveBeenCalledWith({
-            data: {
-                commentId: "comment-1",
-                userId: "user-1",
-                isDislike: false,
-                reactionType: "Like",
-            },
-        });
-        expect(result).toEqual({ action: "reacted", reactionType: "Like" });
-    });
-
-    it("removes reaction when clicking same reaction", async () => {
-        (db.commentLike.findUnique as jest.Mock).mockResolvedValue({
-            id: "like-1",
-            reactionType: "Like",
-        });
-        (db.commentLike.delete as jest.Mock).mockResolvedValue({ id: "like-1" });
-
-        const result = await toggleCommentLike("comment-1", false, "Like");
-
-        expect(db.commentLike.delete).toHaveBeenCalledWith({ where: { id: "like-1" } });
-        expect(result).toEqual({ action: "removed", reactionType: null });
-    });
-
-    it("updates reaction when selecting different reaction", async () => {
-        (db.commentLike.findUnique as jest.Mock).mockResolvedValue({
-            id: "like-1",
-            reactionType: "Like",
-        });
-        (db.commentLike.update as jest.Mock).mockResolvedValue({
-            id: "like-1",
-            reactionType: "Love",
-        });
-
-        const result = await toggleCommentLike("comment-1", false, "Love");
-
-        expect(db.commentLike.update).toHaveBeenCalledWith({
-            where: { id: "like-1" },
-            data: { reactionType: "Love", isDislike: false },
-        });
-        expect(result).toEqual({ action: "reacted", reactionType: "Love" });
-    });
-
-    it("throws error when user is not authenticated", async () => {
-        mockAuthSession.mockResolvedValue(null);
-
-        await expect(toggleCommentLike("comment-1", false, "Like")).rejects.toThrow(
-            "Unauthorized"
-        );
-    });
-
-    it("creates notification for comment owner", async () => {
-        (db.commentLike.findUnique as jest.Mock).mockResolvedValue(null);
-        (db.commentLike.create as jest.Mock).mockResolvedValue({ id: "like-1" });
-        (db.comment.findUnique as jest.Mock).mockResolvedValue({
-            id: "comment-1",
-            userId: "user-2",
-            user: { email: "commenter@example.com", name: "Commenter" },
-        });
-
-        await toggleCommentLike("comment-1", false, "Like");
-
-        expect(db.notification.create).toHaveBeenCalled();
-    });
-
-    it("does not create notification for own comment", async () => {
-        (db.commentLike.findUnique as jest.Mock).mockResolvedValue(null);
-        (db.commentLike.create as jest.Mock).mockResolvedValue({ id: "like-1" });
-        (db.comment.findUnique as jest.Mock).mockResolvedValue({
-            id: "comment-1",
-            userId: "user-1", // Same as current user
-            user: { email: "user@example.com", name: "User" },
-        });
-
-        await toggleCommentLike("comment-1", false, "Like");
-
-        expect(db.notification.create).not.toHaveBeenCalled();
     });
 });

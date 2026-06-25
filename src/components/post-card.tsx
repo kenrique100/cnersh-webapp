@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReactionIcon, REACTION_ICONS, type ReactionType } from "@/components/reaction-icons";
 
-// ─── Utility ────────────────────────────────────────────────────────────────
 
 /** Get uppercase initials from a name, e.g. "John Doe" → "JD" */
 export function getInitials(name: string | null | undefined): string {
@@ -105,8 +104,6 @@ export function renderPostContent(content: string): React.ReactNode {
     return hasSpecial ? result : content;
 }
 
-// ─── PostCard Container ─────────────────────────────────────────────────────
-
 interface PostCardProps {
     children: React.ReactNode;
 }
@@ -119,8 +116,6 @@ export function PostCard({ children }: PostCardProps) {
         </Card>
     );
 }
-
-// ─── Post Context Bar ───────────────────────────────────────────────────────
 
 interface ActivityUser {
     id: string;
@@ -174,8 +169,6 @@ export function PostContextBar({ users, likeCount, commentCount }: PostContextBa
     );
 }
 
-// ─── Post Header ────────────────────────────────────────────────────────────
-
 interface PostHeaderProps {
     userName: string | null;
     userImage: string | null;
@@ -220,8 +213,6 @@ export function PostHeader({ userName, userImage, userProfession, createdAt, act
     );
 }
 
-// ─── Post Text Content ──────────────────────────────────────────────────────
-
 const SEE_MORE_THRESHOLD = 300;
 
 interface PostTextContentProps {
@@ -260,8 +251,6 @@ export function PostTextContent({ content, customRender }: PostTextContentProps)
     );
 }
 
-// ─── Post Tags ──────────────────────────────────────────────────────────────
-
 interface PostTagsProps {
     tags?: string[];
 }
@@ -282,8 +271,6 @@ export function PostTags({ tags }: PostTagsProps) {
         </div>
     );
 }
-
-// ─── Post Media Content ─────────────────────────────────────────────────────
 
 interface PostMediaContentProps {
     image?: string | null;
@@ -364,8 +351,6 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
     );
 }
 
-// ─── Reaction definitions — must stay in sync with reactions-picker.tsx ──────
-
 export const REACTIONS = [
     { label: "Like"       as const, color: "#0A66C2" },
     { label: "Celebrate"  as const, color: "#57C27D" },
@@ -397,8 +382,6 @@ export function getReactionEmoji(label: string): JSX.Element {
 export function getReactionBg(_label?: string): string {
     return "";
 }
-
-// ─── Post Engagement Summary ────────────────────────────────────────────────
 
 interface ReactionUser {
     userId: string;
@@ -487,7 +470,9 @@ export function PostEngagementSummary({
                             </span>
                         ))}
                     </span>
-                        <span className="text-sm font-medium">{likeCount}</span>
+                        <span className="text-sm font-medium">
+                            {firstReactor ? reactionLabel : likeCount}
+                        </span>
                     </button>
                 )}
             </div>
@@ -516,7 +501,6 @@ export function PostEngagementSummary({
         </div>
     );
 }
-// ─── Comment Reaction Summary ───────────────────────────────────────────────
 
     interface CommentReactionSummaryProps {
         reactionTypes: string[];
@@ -556,8 +540,6 @@ export function PostEngagementSummary({
         );
     }
 
-// ─── Post Action Bar ────────────────────────────────────────────────────────
-
     interface PostActionBarProps {
         children: React.ReactNode;
     }
@@ -570,8 +552,6 @@ export function PostEngagementSummary({
             </div>
         );
     }
-
-// ─── Comments Section Wrapper ───────────────────────────────────────────────
 
     interface PostCommentsSectionProps {
         children: React.ReactNode;

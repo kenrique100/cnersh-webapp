@@ -1,16 +1,27 @@
-import { NextResponse } from 'next/server';
-import { del } from '@vercel/blob';
+import { NextResponse } from "next/server";
+import { deleteFileFromBunny, storageKeyFromUrl } from "@/lib/bunny-storage-client";
 
 export async function DELETE(request: Request) {
     try {
-        const { url } = await request.json();
-        if (!url) {
-            return NextResponse.json({ error: 'Missing url' }, { status: 400 });
+        const body = await request.json() as { url?: string; storageKey?: string };
+
+        let key: string | null = body.storageKey ?? null;
+
+        if (!key && body.url) {
+            key = storageKeyFromUrl(body.url);
         }
-        await del(url);
+
+        if (!key) {
+            return NextResponse.json(
+                { error: "Provide either a url or storageKey" },
+                { status: 400 }
+            );
+        }
+
+        await deleteFileFromBunny(key);
         return NextResponse.json({ success: true });
     } catch (err) {
-        console.error('Blob deletion failed:', err);
-        return NextResponse.json({ error: 'Failed to delete blob' }, { status: 500 });
+        console.error("[delete-blob] deletion failed:", err);
+        return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
     }
 }

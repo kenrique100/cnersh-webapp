@@ -1,0 +1,309 @@
+import {
+    getFileUrl,
+    isFileId,
+    resolveFileSrc,
+    validateFileSizeClient,
+    MAX_FILE_SIZES,
+    MAX_DOCUMENT_PAGES,
+    ALLOWED_DOCUMENT_TYPES,
+    getFileMetadata,
+    deleteFile,
+    listUserFiles,
+} from '../file-utils';
+
+import { db } from '@/lib/db';
+import { deleteFileFromBunny } from '@/lib/bunny-storage-client';
+
+jest.mock('@/lib/db', () => ({
+    db: {
+        file: {
+            findUnique: jest.fn(),
+            delete: jest.fn(),
+            findMany: jest.fn(),
+            count: jest.fn(),
+        },
+    },
+}));
+
+jest.mock('@/lib/bunny-storage-client', () => ({
+    deleteFileFromBunny: jest.fn(),
+}));
+
+const mockedDb = db as jest.Mocked<typeof db>;
+const mockedDeleteFileFromBunny = deleteFileFromBunny as jest.MockedFunction<
+    typeof deleteFileFromBunny
+>;
+
+const VALID_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+describe('constants', () => {
+    it('MAX_DOCUMENT_PAGES is 4', () => {
+        expect(MAX_DOCUMENT_PAGES).toBe(4);
+    });
+
+    it('ALLOWED_DOCUMENT_TYPES contains pdf and docx', () => {
+        expect(ALLOWED_DOCUMENT_TYPES).toContain('application/pdf');
+        expect(ALLOWED_DOCUMENT_TYPES).toContain(
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        );
+    });
+
+    it('MAX_FILE_SIZES has correct values in bytes', () => {
+        expect(MAX_FILE_SIZES.avatar).toBe(8 * 1024 * 1024);
+        expect(MAX_FILE_SIZES.image).toBe(16 * 1024 * 1024);
+        expect(MAX_FILE_SIZES.video).toBe(64 * 1024 * 1024);
+        expect(MAX_FILE_SIZES.audio).toBe(8 * 1024 * 1024);
+        expect(MAX_FILE_SIZES.document).toBe(16 * 1024 * 1024);
+        expect(MAX_FILE_SIZES.protocol).toBe(64 * 1024 * 1024);
+    });
+});
+
+describe('getFileUrl', () => {
+    it('returns the correct API path for a file ID', () => {
+        expect(getFileUrl(VALID_UUID)).toBe(`/api/files/${VALID_UUID}`);
+    });
+});
+
+describe('isFileId', () => {
+    it('returns true for a valid UUID v4', () => {
+        expect(isFileId(VALID_UUID)).toBe(true);
+    });
+
+    it('returns true for uppercase UUID', () => {
+        expect(isFileId(VALID_UUID.toUpperCase())).toBe(true);
+    });
+
+    it('returns false for a short string', () => {
+        expect(isFileId('abc123')).toBe(false);
+    });
+
+    it('returns false for an empty string', () => {
+        expect(isFileId('')).toBe(false);
+    });
+
+    it('returns false for a URL', () => {
+        expect(isFileId('https://example.com/image.jpg')).toBe(false);
+    });
+});
+
+describe('resolveFileSrc', () => {
+    it('returns null for null input', () => {
+        expect(resolveFileSrc(null)).toBeNull();
+    });
+
+    it('returns null for undefined input', () => {
+        expect(resolveFileSrc(undefined)).toBeNull();
+    });
+
+    it('returns null for empty string', () => {
+        expect(resolveFileSrc('')).toBeNull();
+    });
+
+    it('passes through data: URLs unchanged', () => {
+        const url = 'data:image/png;base64,abc==';
+        expect(resolveFileSrc(url)).toBe(url);
+    });
+
+    it('passes through http URLs unchanged', () => {
+        const url = 'https://cdn.example.com/photo.jpg';
+        expect(resolveFileSrc(url)).toBe(url);
+    });
+
+    it('passes through /api/ paths unchanged', () => {
+        const url = '/api/files/some-id';
+        expect(resolveFileSrc(url)).toBe(url);
+    });
+
+    it('converts a UUID value to an API path', () => {
+        expect(resolveFileSrc(VALID_UUID)).toBe(`/api/files/${VALID_UUID}`);
+    });
+
+    it('returns the value as-is when it is not a UUID and not a known prefix', () => {
+        expect(resolveFileSrc('some-random-string')).toBe('some-random-string');
+    });
+});
+
+describe('validateFileSizeClient', () => {
+    const makeFile = (sizeBytes: number): File =>
+        Object.defineProperty(new File([], 'test.jpg'), 'size', { value: sizeBytes });
+
+    it('returns valid: true when file is within limit', () => {
+        const file = makeFile(1024 * 1024);
+        expect(validateFileSizeClient(file, 'image')).toEqual({ valid: true });
+    });
+
+    it('returns valid: false with error message when file exceeds limit', () => {
+        const file = makeFile(MAX_FILE_SIZES.avatar + 1);
+        const result = validateFileSizeClient(file, 'avatar');
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('8 MB');
+    });
+
+    it('accepts a file exactly at the limit', () => {
+        const file = makeFile(MAX_FILE_SIZES.document);
+        expect(validateFileSizeClient(file, 'document')).toEqual({ valid: true });
+    });
+
+    it('error message names the category', () => {
+        const file = makeFile(MAX_FILE_SIZES.video + 1);
+        const result = validateFileSizeClient(file, 'video');
+        expect(result.error).toContain('video');
+    });
+});
+
+describe('getFileMetadata — integration', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('returns null when file is not found', async () => {
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+        const result = await getFileMetadata('nonexistent-id');
+
+        expect(result).toBeNull();
+    });
+
+    it('falls back to API path when url is null', async () => {
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
+            id: VALID_UUID,
+            filename: 'test.pdf',
+            mimeType: 'application/pdf',
+            size: 1024,
+            type: 'document',
+            url: null,
+            createdAt: new Date(),
+        });
+
+        const result = await getFileMetadata(VALID_UUID);
+
+        expect(result?.url).toBe(`/api/files/${VALID_UUID}`);
+    });
+
+    it('uses stored url when present', async () => {
+        const storedUrl = 'https://cdn.b-cdn.net/cnersh-assets/documents/file.pdf';
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
+            id: VALID_UUID,
+            filename: 'test.pdf',
+            mimeType: 'application/pdf',
+            size: 1024,
+            type: 'document',
+            url: storedUrl,
+            createdAt: new Date(),
+        });
+
+        const result = await getFileMetadata(VALID_UUID);
+
+        expect(result?.url).toBe(storedUrl);
+    });
+});
+
+describe('deleteFile — integration', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('calls deleteFileFromBunny when storageKey exists and no inline data', async () => {
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
+            storageKey: 'cnersh-assets/images/photo.jpg',
+            data: null,
+        });
+        (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
+
+        await deleteFile(VALID_UUID);
+
+        expect(mockedDeleteFileFromBunny).toHaveBeenCalledWith(
+            'cnersh-assets/images/photo.jpg'
+        );
+        expect(mockedDb.file.delete).toHaveBeenCalledWith({
+            where: { id: VALID_UUID },
+        });
+    });
+
+    it('skips CDN deletion when file has inline data', async () => {
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
+            storageKey: 'cnersh-assets/images/photo.jpg',
+            data: 'base64data==',
+        });
+        (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
+
+        await deleteFile(VALID_UUID);
+
+        expect(mockedDeleteFileFromBunny).not.toHaveBeenCalled();
+        expect(mockedDb.file.delete).toHaveBeenCalled();
+    });
+
+    it('still deletes DB record even when CDN deletion throws', async () => {
+        // Suppress expected console.error output for this test run
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
+            storageKey: 'cnersh-assets/images/photo.jpg',
+            data: null,
+        });
+        mockedDeleteFileFromBunny.mockRejectedValueOnce(new Error('CDN error'));
+        (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
+
+        await expect(deleteFile(VALID_UUID)).resolves.toBeUndefined();
+
+        expect(mockedDb.file.delete).toHaveBeenCalled();
+
+        // Assert that the error was caught and logged gracefully
+        expect(consoleSpy).toHaveBeenCalledWith(
+            "[file-utils] BunnyCDN deletion failed:",
+            expect.any(Error)
+        );
+
+        // Restore console to original behavior
+        consoleSpy.mockRestore();
+    });
+});
+
+describe('listUserFiles — integration', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('returns files and total count', async () => {
+        const fakeFile = {
+            id: VALID_UUID,
+            filename: 'photo.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+            type: 'image',
+            url: 'https://cdn.b-cdn.net/photo.jpg',
+            createdAt: new Date(),
+        };
+        (mockedDb.file.findMany as jest.Mock).mockResolvedValueOnce([fakeFile]);
+        (mockedDb.file.count as jest.Mock).mockResolvedValueOnce(1);
+
+        const result = await listUserFiles('user-id-123');
+
+        expect(result.total).toBe(1);
+        expect(result.files[0].url).toBe(fakeFile.url);
+    });
+
+    it('filters by file type when provided', async () => {
+        (mockedDb.file.findMany as jest.Mock).mockResolvedValueOnce([]);
+        (mockedDb.file.count as jest.Mock).mockResolvedValueOnce(0);
+
+        await listUserFiles('user-id-123', { type: 'document' });
+
+        expect(mockedDb.file.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({ type: 'document' }),
+            })
+        );
+    });
+
+    it('applies pagination correctly', async () => {
+        (mockedDb.file.findMany as jest.Mock).mockResolvedValueOnce([]);
+        (mockedDb.file.count as jest.Mock).mockResolvedValueOnce(0);
+
+        await listUserFiles('user-id-123', { page: 3, perPage: 5 });
+
+        expect(mockedDb.file.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ skip: 10, take: 5 })
+        );
+    });
+});

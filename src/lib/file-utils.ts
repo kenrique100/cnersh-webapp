@@ -1,12 +1,12 @@
-import { db } from '@/lib/db';
-import { del } from '@vercel/blob';
-import type { FileType } from '@/generated/prisma';
+import { db } from "@/lib/db";
+import { deleteFileFromBunny } from "@/lib/bunny-storage-client";
+import type { FileType } from "@/generated/prisma";
 
 export const MAX_DOCUMENT_PAGES = 4;
 
 export const ALLOWED_DOCUMENT_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
 export const MAX_FILE_SIZES = {
@@ -19,12 +19,12 @@ export const MAX_FILE_SIZES = {
 } as const;
 
 export const UT_MAX_SIZES = {
-  avatar:   '8MB',
-  image:    '16MB',
-  video:    '64MB',
-  audio:    '8MB',
-  document: '16MB',
-  protocol: '64MB',
+  avatar:   "8MB",
+  image:    "16MB",
+  video:    "64MB",
+  audio:    "8MB",
+  document: "16MB",
+  protocol: "64MB",
 } as const;
 
 export function getFileUrl(fileId: string): string {
@@ -37,7 +37,7 @@ export function isFileId(value: string): boolean {
 
 export function resolveFileSrc(value: string | null | undefined): string | null {
   if (!value) return null;
-  if (value.startsWith('data:') || value.startsWith('http') || value.startsWith('/api/'))
+  if (value.startsWith("data:") || value.startsWith("http") || value.startsWith("/api/"))
     return value;
   if (isFileId(value)) return getFileUrl(value);
   return value;
@@ -45,14 +45,14 @@ export function resolveFileSrc(value: string | null | undefined): string | null 
 
 export async function getFileMetadata(fileId: string) {
   const file = await db.file.findUnique({
-    where: { id: fileId },
+    where:  { id: fileId },
     select: {
-      id: true,
-      filename: true,
-      mimeType: true,
-      size: true,
-      type: true,
-      url: true,
+      id:        true,
+      filename:  true,
+      mimeType:  true,
+      size:      true,
+      type:      true,
+      url:       true,
       createdAt: true,
     },
   });
@@ -62,15 +62,15 @@ export async function getFileMetadata(fileId: string) {
 
 export async function deleteFile(fileId: string): Promise<void> {
   const file = await db.file.findUnique({
-    where: { id: fileId },
-    select: { url: true, data: true },
+    where:  { id: fileId },
+    select: { storageKey: true, data: true },
   });
 
-  if (file?.url && !file.data) {
+  if (file?.storageKey && !file.data) {
     try {
-      await del(file.url);
+      await deleteFileFromBunny(file.storageKey);
     } catch (err) {
-      console.error('Vercel Blob deletion failed:', err);
+      console.error("[file-utils] BunnyCDN deletion failed:", err);
     }
   }
 
@@ -83,31 +83,36 @@ export async function listUserFiles(
 ) {
   const { type, page = 1, perPage = 20 } = options;
   const where = { userId, ...(type ? { type } : {}) };
+
   const [files, total] = await Promise.all([
     db.file.findMany({
       where,
       select: {
-        id: true,
-        filename: true,
-        mimeType: true,
-        size: true,
-        type: true,
-        url: true,
+        id:        true,
+        filename:  true,
+        mimeType:  true,
+        size:      true,
+        type:      true,
+        url:       true,
         createdAt: true,
       },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * perPage,
-      take: perPage,
+      orderBy: { createdAt: "desc" },
+      skip:    (page - 1) * perPage,
+      take:    perPage,
     }),
     db.file.count({ where }),
   ]);
+
   return {
     files: files.map((f) => ({ ...f, url: f.url ?? getFileUrl(f.id) })),
     total,
   };
 }
 
-export function validateFileSizeClient(file: File, category: keyof typeof MAX_FILE_SIZES) {
+export function validateFileSizeClient(
+    file: File,
+    category: keyof typeof MAX_FILE_SIZES
+) {
   const limit = MAX_FILE_SIZES[category];
   if (file.size > limit) {
     const limitMB = (limit / (1024 * 1024)).toFixed(0);
