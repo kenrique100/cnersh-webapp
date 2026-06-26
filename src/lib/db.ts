@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // Validation for UploadThing token on server boot
 export const uploadthingEnvSchema = z.object({
-    UPLOADTHING_SECRET: z.string().min(1, "UPLOADTHING_SECRET is required"),
+    UPLOADTHING_TOKEN: z.string().min(1, "UPLOADTHING_TOKEN is required"),
 });
 
 if (typeof window === "undefined") {

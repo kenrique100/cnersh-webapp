@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
 
-    // Accept a storageKey (UploadThing file key) directly
     const storageKey = searchParams.get("storageKey")?.trim();
 
     if (!storageKey) {
@@ -14,7 +13,6 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    // Look up the file in the database by its storageKey
     const file = await db.file.findUnique({
         where: { storageKey },
         select: { url: true },
@@ -24,6 +22,5 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    // Redirect to the CDN URL (now UploadThing's ufsUrl)
     return NextResponse.redirect(file.url, { status: 302 });
 }

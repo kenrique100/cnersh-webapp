@@ -126,7 +126,6 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Upload to UploadThing – fixed TS error by wrapping Buffer in Uint8Array
   let uploadResult;
   try {
     const uploadFile = new File(
