@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * Nightly health-check cron job (runs at 00:00 UTC every day).
- * Instrumented with Sentry Cron Monitoring (MCP – Monitor Check-in Protocol)
- * so Sentry records a check-in for each execution and alerts on missed / failed runs.
- *
- * Vercel automatically calls this endpoint on the schedule defined in vercel.json
- * and injects the Authorization header with the CRON_SECRET value.
- */
 export async function GET(request: Request) {
     // Reject requests that are not coming from Vercel's cron scheduler.
     const authHeader = request.headers.get('authorization');
