@@ -3,6 +3,29 @@ export interface BunnyUploadResult {
     storageKey: string;
 }
 
+export function sanitizeStorageKey(input: string): string | null {
+    const key = input.trim();
+    if (!key) return null;
+    if (key.includes("\\")) return null;
+    if (/[\u0000-\u001F\u007F]/.test(key)) return null;
+
+    const normalized = key.replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
+    if (!normalized) return null;
+
+    const segments = normalized.split("/");
+    if (segments.some((s) => s.length === 0 || s === "." || s === "..")) return null;
+
+    return segments.join("/");
+}
+
+function buildBunnyStorageUrl(apiUrl: string, zone: string, storageKey: string): string {
+    const base = new URL(`https://${apiUrl}/`);
+    const encodedPath = [zone, ...storageKey.split("/")]
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+    return new URL(encodedPath, base).toString();
+}
+
 export async function uploadFileToBunny(
     fileBuffer: Buffer,
     filename: string,
@@ -13,8 +36,12 @@ export async function uploadFileToBunny(
     const apiUrl = process.env.BUNNY_STORAGE_API_URL!;
     const pullUrl = process.env.BUNNY_PULL_ZONE_URL!;
 
-    const storageKey = `${folder}/${Date.now()}-${filename}`;
-    const endpoint = `https://${apiUrl}/${zone}/${storageKey}`;
+    const unsafeStorageKey = `${folder}/${Date.now()}-${filename}`;
+    const storageKey = sanitizeStorageKey(unsafeStorageKey);
+    if (!storageKey) {
+        throw new Error("Invalid storage key");
+    }
+    const endpoint = buildBunnyStorageUrl(apiUrl, zone, storageKey);
 
     const response = await fetch(endpoint, {
         method: "PUT",
@@ -40,7 +67,11 @@ export async function deleteFileFromBunny(storageKey: string): Promise<void> {
     const password = process.env.BUNNY_STORAGE_PASSWORD!;
     const apiUrl = process.env.BUNNY_STORAGE_API_URL!;
 
-    const endpoint = `https://${apiUrl}/${zone}/${storageKey}`;
+    const safeStorageKey = sanitizeStorageKey(storageKey);
+    if (!safeStorageKey) {
+        throw new Error("Invalid storage key");
+    }
+    const endpoint = buildBunnyStorageUrl(apiUrl, zone, safeStorageKey);
 
     const response = await fetch(endpoint, {
         method: "DELETE",
@@ -55,16 +86,18 @@ export async function deleteFileFromBunny(storageKey: string): Promise<void> {
 }
 
 export function storageKeyFromUrl(url: string): string | null {
-    const pullUrl = process.env.BUNNY_PULL_ZONE_URL ?? "";
-    const base = pullUrl.endsWith("/") ? pullUrl : pullUrl + "/";
-
-    if (url.startsWith(base)) {
-        return url.slice(base.length);
-    }
+    const pullUrl = process.env.BUNNY_PULL_ZONE_URL;
+    if (!pullUrl) return null;
 
     try {
-        const { pathname } = new URL(url);
-        return pathname.startsWith("/") ? pathname.slice(1) : pathname;
+        const pull = new URL(pullUrl.endsWith("/") ? pullUrl : pullUrl + "/");
+        const candidate = new URL(url);
+
+        if (candidate.origin !== pull.origin) return null;
+        if (!candidate.pathname.startsWith(pull.pathname)) return null;
+
+        const rawKey = candidate.pathname.slice(pull.pathname.length);
+        return sanitizeStorageKey(rawKey);
     } catch {
         return null;
     }
