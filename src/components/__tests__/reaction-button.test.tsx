@@ -105,7 +105,7 @@ describe("ReactionButton", () => {
         });
 
         it("is keyboard accessible", async () => {
-            const user = userEvent.setup();
+            const _user = userEvent.setup();
             render(<ReactionButton reaction={mockReaction} onClick={mockOnClick} />);
             const button = screen.getByRole("button");
 

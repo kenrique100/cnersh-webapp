@@ -73,6 +73,7 @@ export default function FeedRightSidebar({ trendingTags = [], userActivity = [],
   React.useEffect(() => {
     // If the server already provided tags, use them directly
     if (trendingTags.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayTags(trendingTags);
       setTagsLoading(false);
       return;
@@ -81,19 +82,19 @@ export default function FeedRightSidebar({ trendingTags = [], userActivity = [],
     // Fallback: fetch client-side in case server-side data was empty
     let cancelled = false;
     fetch("/api/trending-tags?limit=8")
-      .then((res) => {
-        if (!res.ok) throw new Error("Non-OK response");
-        return res.json() as Promise<TrendingTag[]>;
-      })
-      .then((data) => {
-        if (!cancelled) setDisplayTags(data);
-      })
-      .catch(() => {
-        // silently ignore — we'll show the empty state
-      })
-      .finally(() => {
-        if (!cancelled) setTagsLoading(false);
-      });
+        .then((res) => {
+          if (!res.ok) throw new Error("Non-OK response");
+          return res.json() as Promise<TrendingTag[]>;
+        })
+        .then((data) => {
+          if (!cancelled) setDisplayTags(data);
+        })
+        .catch(() => {
+          // silently ignore — we'll show the empty state
+        })
+        .finally(() => {
+          if (!cancelled) setTagsLoading(false);
+        });
 
     return () => {
       cancelled = true;

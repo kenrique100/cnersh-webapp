@@ -12,12 +12,9 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ children, role }: DashboardShellProps) {
     const isMobile = useIsMobile();
-    const [collapsed, setCollapsed] = React.useState(false);
-
-    // Auto-collapse on mobile
-    React.useEffect(() => {
-        setCollapsed(isMobile);
-    }, [isMobile]);
+    const [userCollapsed, setUserCollapsed] = React.useState(false);
+    // Force collapsed on mobile, otherwise use user preference
+    const collapsed = isMobile ? true : userCollapsed;
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)]">
@@ -26,7 +23,7 @@ export default function DashboardShell({ children, role }: DashboardShellProps) 
                 <DashboardSidebar
                     role={role}
                     collapsed={collapsed}
-                    onToggle={() => setCollapsed(!collapsed)}
+                    onToggle={() => setUserCollapsed((prev) => !prev)}
                 />
             </div>
 

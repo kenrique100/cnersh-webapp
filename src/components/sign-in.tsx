@@ -69,7 +69,8 @@ export function SignInForm() {
                     },
                 }
             );
-        } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_error) {
             toast.error("An unexpected error occurred.");
         } finally {
             form.reset();

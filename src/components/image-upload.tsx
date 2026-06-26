@@ -219,6 +219,7 @@ export default function ImageUpload({
                 </p>
                 <div className="flex justify-center bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-hidden">
                     <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} circularCrop>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img ref={cropImageRef} src={cropSrc} alt="Crop preview" onLoad={onImageLoad} className="max-h-[320px] max-w-full object-contain" />
                     </ReactCrop>
                 </div>

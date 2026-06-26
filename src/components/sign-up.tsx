@@ -118,6 +118,7 @@ export function SignUpForm() {
         mode: "onChange",
     });
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const watchPassword = form.watch("password");
 
     useEffect(() => {

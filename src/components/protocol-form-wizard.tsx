@@ -354,11 +354,13 @@ export default function ProtocolFormWizard() {
 
     const totalSteps = STEP_LABELS.length;
 
+// Inside useEffect for loading draft
     React.useEffect(() => {
         try {
             const saved = localStorage.getItem(AUTOSAVE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setForm((prev) => ({ ...prev, ...parsed }));
                 setDraftLoaded(true);
             }

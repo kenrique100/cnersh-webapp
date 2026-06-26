@@ -1110,7 +1110,6 @@ export default function FeedClient({
                                                         const userLiked = !!userCommentReaction;
                                                         const userCommentReactionType = userCommentReaction?.reactionType;
                                                         const userCommentReactionEmoji = userCommentReactionType ? getReactionEmoji(userCommentReactionType) : null;
-                                                        const isLongComment = comment.content.length > COMMENT_COLLAPSE_THRESHOLD;
                                                         return (
                                                             <div key={comment.id} className="space-y-1">
                                                                 <div className="flex gap-2.5">

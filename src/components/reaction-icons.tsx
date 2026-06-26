@@ -66,16 +66,16 @@ export interface ReactionIconProps {
 }
 
 export function ReactionIcon({ type, size = 24, className = "", style }: ReactionIconProps) {
-    const IconComponent = REACTION_ICONS[type];
+    const IconComponent = React.useMemo(() => REACTION_ICONS[type], [type]);
+
     if (!IconComponent) {
-        if (process.env.NODE_ENV === "development") {
-            console.warn(`Unknown reaction type: "${type}"`);
-        }
-        return null;
+        // Fallback for safety without breaking the UI
+        return <span style={style} className={className}>❓</span>;
     }
+
     return (
-        <span style={style} className="inline-flex shrink-0">
-            <IconComponent size={size} className={className} />
+        <span style={style} className={`inline-flex shrink-0 ${className}`}>
+            <IconComponent size={size} />
         </span>
     );
 }

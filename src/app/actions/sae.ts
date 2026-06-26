@@ -4,7 +4,6 @@ import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { SAEEventType } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
-import { sendNotificationEmail } from "@/lib/send-notification-email";
 
 const SAE_REPORT_WINDOW_HOURS = 24;
 
@@ -84,7 +83,7 @@ export async function reportSAE(data: {
     try {
         await notifyAdmins({
             type: "SYSTEM",
-            message: `🚨 SAE reported for protocol "${project.title}" (${data.eventType.replace(/_/g, " ")})${isLate ? " — LATE SUBMISSION" : ""}`,
+            message: `SAE reported for protocol "${project.title}" (${data.eventType.replace(/_/g, " ")})${isLate ? " — LATE SUBMISSION" : ""}`,
             link: `/admin/protocol-review`,
             excludeUserId: session.user.id,
         });
@@ -97,7 +96,7 @@ export async function reportSAE(data: {
         try {
             await notifyAdmins({
                 type: "SYSTEM",
-                message: `🔴 URGENT: ${data.eventType} event reported for protocol "${project.title}". Immediate action required.`,
+                message: `URGENT: ${data.eventType} event reported for protocol "${project.title}". Immediate action required.`,
                 link: `/admin/protocol-review`,
                 excludeUserId: session.user.id,
             });

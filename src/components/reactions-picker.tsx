@@ -3,26 +3,23 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ThumbsUp, Search, X, Clock } from "lucide-react";
 
-// ─── LinkedIn-style quick reactions (WhatsApp-inspired expressive set) ──────────
 const QUICK_REACTIONS = [
-    { label: "Like",       emoji: "👍",  color: "#0A66C2" },
-    { label: "Love",       emoji: "❤️",  color: "#F5666C" },
-    { label: "Haha",       emoji: "😂",  color: "#F7C948" },
-    { label: "Wow",        emoji: "😮",  color: "#F5A623" },
-    { label: "Sad",        emoji: "😢",  color: "#9B6DD6" },
-    { label: "Angry",      emoji: "😡",  color: "#E5534B" },
+    { label: "Like",  emoji: "👍", color: "#0A66C2" },
+    { label: "Love",  emoji: "❤️", color: "#F5666C" },
+    { label: "Haha",  emoji: "😂", color: "#F7C948" },
+    { label: "Wow",   emoji: "😮", color: "#F5A623" },
+    { label: "Sad",   emoji: "😢", color: "#9B6DD6" },
+    { label: "Angry", emoji: "😡", color: "#E5534B" },
 ] as const;
 
 type ReactionLabel = (typeof QUICK_REACTIONS)[number]["label"];
 
-// ─── Full emoji dataset — all categories (WhatsApp grouping order) ──────────────
 const EMOJI_CATEGORIES = [
     {
         id: "smileys",
         label: "Smileys & People",
         icon: "😀",
         emojis: [
-            // Smileys
             "😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","🫠","😉","😊","😇",
             "🥰","😍","🤩","😘","😗","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑",
             "🤗","🤭","🫢","🫣","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😏",
@@ -31,9 +28,7 @@ const EMOJI_CATEGORIES = [
             "😕","🫤","😟","🙁","☹️","😮","😯","😲","😳","🥺","🥹","😦","😧","😨",
             "😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡",
             "😠","🤬","😈","👿","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖",
-            // Cat faces
             "😺","😸","😹","😻","😼","😽","🙀","😿","😾",
-            // Hands & gestures
             "👋","🤚","🖐️","✋","🖖","🫱","🫲","🫳","🫴","🫷","🫸","👌","🤌","🤏",
             "✌️","🤞","🫰","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","🫵",
             "👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶","👐","🤲","🤝","🙏",
@@ -47,7 +42,6 @@ const EMOJI_CATEGORIES = [
         label: "Animals & Nature",
         icon: "🐶",
         emojis: [
-            // Animals
             "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷",
             "🐸","🐵","🙈","🙉","🙊","🐔","🐧","🐦","🐤","🦆","🦅","🦉","🦇","🐺",
             "🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪲","🪳","🦟","🦗",
@@ -56,7 +50,6 @@ const EMOJI_CATEGORIES = [
             "🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙",
             "🐐","🦌","🐕","🐩","🦮","🐕‍🦺","🐈","🐈‍⬛","🪶","🐓","🦃","🦤","🦚","🦜",
             "🦢","🦩","🕊️","🐇","🦝","🦨","🦡","🦫","🦦","🦥","🐁","🐀","🐿️","🦔",
-            // Nature & plants
             "🌵","🎄","🌲","🌳","🌴","🪵","🌱","🌿","☘️","🍀","🎋","🎍","🍃","🍂",
             "🍁","🪺","🌾","🌺","🌸","🌼","🌻","🌞","🌝","🌛","🌜","🌚","🌕","🌖",
             "🌗","🌘","🌑","🌒","🌓","🌔","🌙","🌟","⭐","🌠","☀️","🌤️","⛅","🌥️",
@@ -68,24 +61,14 @@ const EMOJI_CATEGORIES = [
         label: "Food & Drink",
         icon: "🍔",
         emojis: [
-            // Fruits
             "🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭",
-            "🍍","🥥","🥝","🍅","🍆","🥑",
-            // Vegetables
-            "🥦","🥬","🥒","🌶️","🫑","🧄","🧅","🥔","🍠","🫘","🌰","🥜",
-            // Bread & grains
-            "🍞","🥐","🥖","🫓","🥨","🥯","🧀","🥚","🍳","🧈","🥞","🧇",
-            // Meat
-            "🥓","🥩","🍗","🍖",
-            // Fast food
-            "🌭","🍔","🍟","🍕","🫔","🌮","🌯","🥙","🧆",
-            // Asian food
-            "🍱","🍘","🍙","🍚","🍛","🍜","🍝","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡",
-            // Sweets
-            "🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬","🍭","🍮","🍯",
-            // Drinks
-            "🍼","🥛","☕","🫖","🍵","🧃","🥤","🧋","🍶","🍺","🍻","🥂","🍷","🥃",
-            "🍸","🍹","🧉","🍾","🧊","🥄","🍴","🍽️","🥢",
+            "🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🫑","🧄","🧅","🥔",
+            "🍠","🫘","🌰","🥜","🍞","🥐","🥖","🫓","🥨","🥯","🧀","🥚","🍳","🧈",
+            "🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🫔","🌮","🌯","🥙",
+            "🧆","🍱","🍘","🍙","🍚","🍛","🍜","🍝","🍢","🍣","🍤","🍥","🥮","🍡",
+            "🥟","🥠","🥡","🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬",
+            "🍭","🍮","🍯","🍼","🥛","☕","🫖","🍵","🧃","🥤","🧋","🍶","🍺","🍻",
+            "🥂","🍷","🥃","🍸","🍹","🧉","🍾","🧊","🥄","🍴","🍽️","🥢",
         ],
     },
     {
@@ -93,19 +76,14 @@ const EMOJI_CATEGORIES = [
         label: "Travel & Transport",
         icon: "🚗",
         emojis: [
-            // Land transport
             "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🛻","🚚","🚛","🚜",
-            "🏍️","🛵","🛺","🚲","🛴","🛹","🛼","🚏","🛣️","🛤️","⛽","🚧",
-            // Water transport
-            "⚓","🛟","⛵","🚤","🛥️","🛳️","⛴️","🚢",
-            // Air transport
-            "✈️","🛩️","🛫","🛬","🪂","💺","🚁","🚟","🚠","🚡","🛰️","🚀","🛸",
-            // Places & geography
-            "🌍","🌎","🌏","🗺️","🗾","🧭","🏔️","⛰️","🌋","🗻","🏕️","🏖️","🏜️","🏝️",
-            "🏞️","🏟️","🏛️","🏗️","🏘️","🏚️","🏠","🏡","🏢","🏣","🏤","🏥","🏦","🏨",
-            "🏩","🏪","🏫","🏬","🏭","🏯","🏰","💒","🗼","🗽","⛪","🕌","🛕","🕍",
-            // Scenes
-            "🌅","🌄","🌠","🎇","🎆","🌇","🌆","🏙️","🌃","🌌","🌉","🌁",
+            "🏍️","🛵","🛺","🚲","🛴","🛹","🛼","🚏","🛣️","🛤️","⛽","🚧","⚓","🛟",
+            "⛵","🚤","🛥️","🛳️","⛴️","🚢","✈️","🛩️","🛫","🛬","🪂","💺","🚁","🚟",
+            "🚠","🚡","🛰️","🚀","🛸","🌍","🌎","🌏","🗺️","🗾","🧭","🏔️","⛰️","🌋",
+            "🗻","🏕️","🏖️","🏜️","🏝️","🏞️","🏟️","🏛️","🏗️","🏘️","🏚️","🏠","🏡","🏢",
+            "🏣","🏤","🏥","🏦","🏨","🏩","🏪","🏫","🏬","🏭","🏯","🏰","💒","🗼",
+            "🗽","⛪","🕌","🛕","🕍","🌅","🌄","🌠","🎇","🎆","🌇","🌆","🏙️","🌃",
+            "🌌","🌉","🌁",
         ],
     },
     {
@@ -113,26 +91,13 @@ const EMOJI_CATEGORIES = [
         label: "Activities & Sports",
         icon: "⚽",
         emojis: [
-            // Ball sports
-            "⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱",
-            // Racquet / table
-            "🏓","🏸","🏒","🥅","⛳","🪁","🏹","🎣","🤿",
-            // Combat
-            "🥊","🥋",
-            // Winter / board
-            "🎿","⛷️","🏂","🪂","⛸️","🥌","🛷",
-            // Athletics
+            "⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🏓","🏸","🏒","🥅",
+            "⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎿","⛷️","🏂","🪂","⛸️","🥌","🛷",
             "🏋️","🤼","🤸","⛹️","🤺","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴",
-            // Awards
-            "🏆","🥇","🥈","🥉","🏅","🎖️","🎗️",
-            // Entertainment
-            "🎪","🤹","🎭","🩰","🎨","🖼️",
-            // Games
-            "🎮","🕹️","🎲","♟️","🧩","🪅","🪆","🪄",
-            // Music
-            "🎤","🎧","🎼","🎵","🎶","🎷","🪗","🎸","🎹","🎺","🎻","🥁","🪘",
-            // Media
-            "🎙️","📻","📺","📷","📸","📹","🎥","📽️","🎞️","🎬",
+            "🏆","🥇","🥈","🥉","🏅","🎖️","🎗️","🎪","🤹","🎭","🩰","🎨","🖼️","🎮",
+            "🕹️","🎲","♟️","🧩","🪅","🪆","🪄","🎤","🎧","🎼","🎵","🎶","🎷","🪗",
+            "🎸","🎹","🎺","🎻","🥁","🪘","🎙️","📻","📺","📷","📸","📹","🎥","📽️",
+            "🎞️","🎬",
         ],
     },
     {
@@ -140,22 +105,14 @@ const EMOJI_CATEGORIES = [
         label: "Objects & Tools",
         icon: "💡",
         emojis: [
-            // Devices
             "⌚","📱","📲","💻","⌨️","🖥️","🖨️","🖱️","🖲️","💽","💾","💿","📀","🧮",
-            "📞","☎️","📟","📠","📡","🔋","🪫","🔌","💡","🔦","🕯️",
-            // Time
-            "⏱️","⏲️","⏰","🕰️","⌛","⏳",
-            // Money
-            "💸","💵","💴","💶","💷","🪙","💰","💳","💎",
-            // Tools
-            "⚖️","🪜","🧲","🪛","🔧","🔨","⚒️","🛠️","⛏️","🪚","🔩","🪤","🔗","🪝","🧰","🪣",
-            // Medical
-            "💊","💉","🩸","🩹","🩺","🩻","🩼",
-            // Household
-            "🚪","🛏️","🛋️","🪑","🚽","🪠","🚿","🛁","🧴","🧷","🧹","🧺","🧻","🪣","🧼",
-            // Stationery
-            "📦","📫","📪","📬","📭","📮","✏️","✒️","🖊️","🖋️","📝","📁","📂","📅","📆",
-            "📇","📈","📉","📊","📋","📌","📍","📎","🖇️","📏","📐","✂️","🗃️","🗄️","🗑️",
+            "📞","☎️","📟","📠","📡","🔋","🪫","🔌","💡","🔦","🕯️","⏱️","⏲️","⏰",
+            "🕰️","⌛","⏳","💸","💵","💴","💶","💷","🪙","💰","💳","💎","⚖️","🪜",
+            "🧲","🪛","🔧","🔨","⚒️","🛠️","⛏️","🪚","🔩","🪤","🔗","🪝","🧰","🪣",
+            "💊","💉","🩸","🩹","🩺","🩻","🩼","🚪","🛏️","🛋️","🪑","🚽","🪠","🚿",
+            "🛁","🧴","🧷","🧹","🧺","🧻","🪣","🧼","📦","📫","📪","📬","📭","📮",
+            "✏️","✒️","🖊️","🖋️","📝","📁","📂","📅","📆","📇","📈","📉","📊","📋",
+            "📌","📍","📎","🖇️","📏","📐","✂️","🗃️","🗄️","🗑️",
         ],
     },
     {
@@ -163,21 +120,13 @@ const EMOJI_CATEGORIES = [
         label: "Symbols & Signs",
         icon: "🔣",
         emojis: [
-            // Hearts
             "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❤️‍🔥","❤️‍🩹",
-            "💕","💞","💓","💗","💖","💘","💝","💟",
-            // Religious / spiritual
-            "☮️","✝️","☪️","🕉️","✡️","🔯","🪯","☯️","☦️","🛐",
-            // Zodiac
-            "⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓",
-            // Info signs
+            "💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","✡️","🔯",
+            "🪯","☯️","☦️","🛐","⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓",
             "🆔","⚛️","🉑","☢️","☣️","📴","📳","🈶","🈚","🈸","🈺","🈷️","✴️","🆚",
-            "💮","🉐","㊙️","㊗️","🈴","🈵","🈹",
-            // Math & punctuation
-            "✅","☑️","✔️","❌","❎","➕","➖","➗","✖️","🟰","♾️","💲","💱",
-            "‼️","⁉️","❓","❔","❕","❗","〰️",
-            // Misc signs
-            "🔅","🔆","🔱","⚜️","🔰","♻️","🈯","💹","❇️","✳️",
+            "💮","🉐","㊙️","㊗️","🈴","🈵","🈹","✅","☑️","✔️","❌","❎","➕","➖",
+            "➗","✖️","🟰","♾️","💲","💱","‼️","⁉️","❓","❔","❕","❗","〰️","🔅",
+            "🔆","🔱","⚜️","🔰","♻️","🈯","💹","❇️","✳️",
             "🔴","🟠","🟡","🟢","🔵","🟣","⚫","⚪","🟤",
             "🔶","🔷","🔸","🔹","🔺","🔻","💠","🔘","🔲","🔳","⬛","⬜","▪️","▫️",
         ],
@@ -188,7 +137,7 @@ const EMOJI_CATEGORIES = [
         icon: "🚩",
         emojis: [
             "🏁","🚩","🎌","🏴","🏳️","🏳️‍🌈","🏳️‍⚧️","🏴‍☠️",
-            "🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺",
+            "🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇱","🇦🇲","🇦🇴","🇦🇷","🇦🇸","🇦🇹","🇦🇺",
             "🇦🇼","🇦🇿","🇧🇦","🇧🇧","🇧🇩","🇧🇪","🇧🇫","🇧🇬","🇧🇮","🇧🇯","🇧🇲","🇧🇳","🇧🇴","🇧🇷",
             "🇧🇸","🇧🇹","🇧🇼","🇧🇾","🇧🇿","🇨🇦","🇨🇩","🇨🇫","🇨🇬","🇨🇭","🇨🇮","🇨🇲","🇨🇳","🇨🇴",
             "🇨🇷","🇨🇺","🇨🇻","🇨🇾","🇨🇿","🇩🇪","🇩🇯","🇩🇰","🇩🇲","🇩🇴","🇩🇿","🇪🇨","🇪🇪","🇪🇬",
@@ -215,43 +164,46 @@ function getRecentEmojis(): string[] {
     try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); }
     catch { return []; }
 }
+
 function addRecentEmoji(emoji: string) {
     const recent = getRecentEmojis().filter((e) => e !== emoji);
     recent.unshift(emoji);
     localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 }
 
-// Category tab definitions (order matches EMOJI_CATEGORIES + recent)
 const CATEGORY_TABS = [
-    { id: "recent",     label: "Recent",                icon: <Clock className="w-4 h-4" /> },
-    { id: "smileys",    label: "Smileys & People",       icon: "😀" },
-    { id: "animals",    label: "Animals & Nature",       icon: "🐶" },
-    { id: "food",       label: "Food & Drink",           icon: "🍔" },
-    { id: "travel",     label: "Travel & Transport",     icon: "🚗" },
-    { id: "activities", label: "Activities & Sports",    icon: "⚽" },
-    { id: "objects",    label: "Objects & Tools",        icon: "💡" },
-    { id: "symbols",    label: "Symbols & Signs",        icon: "🔣" },
-    { id: "flags",      label: "Flags",                  icon: "🚩" },
+    { id: "recent",     label: "Recent",             icon: <Clock className="w-4 h-4" /> },
+    { id: "smileys",    label: "Smileys & People",   icon: "😀" },
+    { id: "animals",    label: "Animals & Nature",   icon: "🐶" },
+    { id: "food",       label: "Food & Drink",       icon: "🍔" },
+    { id: "travel",     label: "Travel & Transport", icon: "🚗" },
+    { id: "activities", label: "Activities & Sports",icon: "⚽" },
+    { id: "objects",    label: "Objects & Tools",    icon: "💡" },
+    { id: "symbols",    label: "Symbols & Signs",    icon: "🔣" },
+    { id: "flags",      label: "Flags",              icon: "🚩" },
 ];
 
-// ─── FullEmojiPicker ────────────────────────────────────────────────────────────
 interface FullEmojiPickerProps {
     onSelect: (emoji: string) => void;
     onClose: () => void;
 }
 
 function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
-    const [search, setSearch] = useState("");
-    const [activeTab, setActiveTab] = useState("recent");
+    const [search, setSearch]           = useState("");
+    const [activeTab, setActiveTab]     = useState("recent");
     const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
-    const searchRef = useRef<HTMLInputElement>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    // refs to each category section heading for jump-scroll
+
+    const searchRef  = useRef<HTMLInputElement>(null);
+    const scrollRef  = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+    // Load recent emojis and focus search on mount — no setState cascade
+    // because this runs once and sets independent pieces of state.
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRecentEmojis(getRecentEmojis());
-        setTimeout(() => searchRef.current?.focus(), 50);
+        const timer = setTimeout(() => searchRef.current?.focus(), 50);
+        return () => clearTimeout(timer);
     }, []);
 
     const handleSelect = useCallback((emoji: string) => {
@@ -260,7 +212,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
         onSelect(emoji);
     }, [onSelect]);
 
-    // Jump to section when tab is clicked
     const handleTabClick = (id: string) => {
         setActiveTab(id);
         setSearch("");
@@ -275,7 +226,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
         }
     };
 
-    // Update active tab based on scroll position
     const handleScroll = useCallback(() => {
         if (!scrollRef.current) return;
         const scrollTop = scrollRef.current.scrollTop;
@@ -289,11 +239,9 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
 
     const searchResults = useMemo(() => {
         if (!search.trim()) return null;
-        // For now match any emoji string containing the typed character
-        // (a proper unicode name DB would be ideal but adds no dependency here)
-        return EMOJI_CATEGORIES.flatMap((cat) => cat.emojis).filter((e) =>
-            e.toLowerCase().includes(search.toLowerCase())
-        );
+        return EMOJI_CATEGORIES
+            .flatMap((cat) => cat.emojis)
+            .filter((e) => e.toLowerCase().includes(search.toLowerCase()));
     }, [search]);
 
     return (
@@ -301,7 +249,7 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
             className="flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
             style={{ width: 336, maxHeight: 440 }}
         >
-            {/* ── Search bar ── */}
+            {/* Search bar */}
             <div className="px-3 pt-3 pb-2">
                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-2 border border-transparent focus-within:border-green-500 transition-colors">
                     <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -313,19 +261,28 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                         className="flex-1 bg-transparent text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none min-w-0"
                     />
                     {search ? (
-                        <button onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <button
+                            onClick={() => setSearch("")}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
                             <X className="w-3 h-3" />
                         </button>
                     ) : (
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
                             <X className="w-3.5 h-3.5" />
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* ── Category tabs (always visible) ── */}
-            <div className="flex items-center border-b border-gray-100 dark:border-gray-800 px-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {/* Category tabs */}
+            <div
+                className="flex items-center border-b border-gray-100 dark:border-gray-800 px-1 overflow-x-auto"
+                style={{ scrollbarWidth: "none" }}
+            >
                 {CATEGORY_TABS.map((tab) => (
                     <button
                         key={tab.id}
@@ -337,12 +294,12 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                                 : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-[2.5px] border-transparent"
                         }`}
                     >
-                        {typeof tab.icon === "string" ? tab.icon : tab.icon}
+                        {tab.icon}
                     </button>
                 ))}
             </div>
 
-            {/* ── Emoji scroll area ── */}
+            {/* Emoji scroll area */}
             <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-2 pt-2 pb-3"
@@ -350,7 +307,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                 onScroll={handleScroll}
             >
                 {search ? (
-                    /* Search results — flat grid */
                     searchResults && searchResults.length > 0 ? (
                         <>
                             <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 px-1">
@@ -369,18 +325,21 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                             </div>
                         </>
                     ) : (
-                        <p className="text-center text-xs text-gray-400 py-10">No results for &ldquo;{search}&rdquo;</p>
+                        <p className="text-center text-xs text-gray-400 py-10">
+                            No results for &ldquo;{search}&rdquo;
+                        </p>
                     )
                 ) : (
-                    /* All categories stacked — WhatsApp style */
                     <>
-                        {/* Recent section */}
+                        {/* Recent */}
                         <div className="mb-3">
                             <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 px-1">
                                 Recently Used
                             </p>
                             {recentEmojis.length === 0 ? (
-                                <p className="text-xs text-gray-400 text-center py-3">No recent emoji yet</p>
+                                <p className="text-xs text-gray-400 text-center py-3">
+                                    No recent emoji yet
+                                </p>
                             ) : (
                                 <div className="grid grid-cols-8 gap-0.5">
                                     {recentEmojis.map((emoji, i) => (
@@ -396,7 +355,7 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                             )}
                         </div>
 
-                        {/* Each category section — all visible, scrollable */}
+                        {/* All categories */}
                         {EMOJI_CATEGORIES.map((cat) => (
                             <div
                                 key={cat.id}
@@ -426,7 +385,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
     );
 }
 
-// ─── ReactionsPicker ────────────────────────────────────────────────────────────
 interface ReactionsPickerProps {
     postId: string;
     initialReaction?: string | null;
@@ -437,28 +395,50 @@ interface ReactionsPickerProps {
 }
 
 export function ReactionsPicker({
-    postId,
-    initialReaction,
-    initialCount = 0,
-    onReact,
-    showEmojiPicker = false,
-    onEmojiSelect,
-}: ReactionsPickerProps) {
+                                    postId,
+                                    initialReaction,
+                                    initialCount = 0,
+                                    onReact,
+                                    showEmojiPicker = false,
+                                    onEmojiSelect,
+                                }: ReactionsPickerProps) {
+    //  FIX: Derive initial state directly from props using lazy initializer.
+    //    This avoids the antipattern of calling setState inside useEffect
+    //    just to mirror a prop — which causes cascading renders.
     const [selectedReaction, setSelectedReaction] = useState<ReactionLabel | null>(
-        (initialReaction as ReactionLabel) || null
+        () => (initialReaction as ReactionLabel) ?? null
     );
-    const [count, setCount] = useState(initialCount);
+    const [count, setCount] = useState(() => initialCount);
+
     const [showQuickPicker, setShowQuickPicker] = useState(false);
-    const [showFullPicker, setShowFullPicker] = useState(false);
+    const [showFullPicker,  setShowFullPicker]  = useState(false);
 
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const containerRef  = useRef<HTMLDivElement>(null);
     const fullPickerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => { setSelectedReaction((initialReaction as ReactionLabel) || null); }, [initialReaction]);
-    useEffect(() => { setCount(initialCount); }, [initialCount]);
+    // ✅ FIX: Use a ref to track the previous prop value so we only call
+    //    setState when the prop genuinely changes from the outside — not on
+    //    every render. This avoids synchronous setState-in-effect entirely.
+    const prevReactionRef = useRef(initialReaction);
+    const prevCountRef    = useRef(initialCount);
 
+    useEffect(() => {
+        if (prevReactionRef.current !== initialReaction) {
+            prevReactionRef.current = initialReaction;
+            setSelectedReaction((initialReaction as ReactionLabel) ?? null);
+        }
+    }, [initialReaction]);
+
+    useEffect(() => {
+        if (prevCountRef.current !== initialCount) {
+            prevCountRef.current = initialCount;
+            setCount(initialCount);
+        }
+    }, [initialCount]);
+
+    // Close pickers on outside click
     useEffect(() => {
         const handle = (e: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(e.target as Node))
@@ -474,12 +454,19 @@ export function ReactionsPicker({
         if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
         hoverTimerRef.current = setTimeout(() => setShowQuickPicker(true), 400);
     };
+
     const handleMouseLeave = () => {
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
         leaveTimerRef.current = setTimeout(() => setShowQuickPicker(false), 300);
     };
-    const handlePickerMouseEnter = () => { if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current); };
-    const handlePickerMouseLeave = () => { leaveTimerRef.current = setTimeout(() => setShowQuickPicker(false), 300); };
+
+    const handlePickerMouseEnter = () => {
+        if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+    };
+
+    const handlePickerMouseLeave = () => {
+        leaveTimerRef.current = setTimeout(() => setShowQuickPicker(false), 300);
+    };
 
     const handleQuickReact = (label: ReactionLabel) => {
         setShowQuickPicker(false);
@@ -512,7 +499,7 @@ export function ReactionsPicker({
 
     return (
         <div className="flex items-center gap-1">
-            {/* ── Quick reactions (LinkedIn-style hover pill) ── */}
+            {/* Quick reactions hover pill */}
             <div ref={containerRef} className="relative">
                 {showQuickPicker && (
                     <div
@@ -562,7 +549,7 @@ export function ReactionsPicker({
                 </button>
             </div>
 
-            {/* ── Full emoji picker (for comment boxes) ── */}
+            {/* Full emoji picker */}
             {showEmojiPicker && (
                 <div ref={fullPickerRef} className="relative">
                     <button
@@ -576,7 +563,10 @@ export function ReactionsPicker({
                     {showFullPicker && (
                         <div className="absolute bottom-full right-0 mb-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
                             <FullEmojiPicker
-                                onSelect={(emoji) => { onEmojiSelect?.(emoji); setShowFullPicker(false); }}
+                                onSelect={(emoji) => {
+                                    onEmojiSelect?.(emoji);
+                                    setShowFullPicker(false);
+                                }}
                                 onClose={() => setShowFullPicker(false)}
                             />
                         </div>

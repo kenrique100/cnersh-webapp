@@ -379,6 +379,7 @@ export function getReactionEmoji(label: string): JSX.Element {
     return <ReactionIcon type={validLabel} size={14} />;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getReactionBg(_label?: string): string {
     return "";
 }

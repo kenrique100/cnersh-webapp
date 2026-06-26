@@ -4,8 +4,6 @@ import React from "react";
 import { ExternalLinkIcon, GlobeIcon } from "lucide-react";
 import { getCtaLabel } from "@/components/cta-link-button";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
 interface PreviewData {
     title: string;
     description: string;
@@ -22,8 +20,6 @@ interface LinkPreviewCardProps {
     hasMedia?: boolean;
     className?: string;
 }
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getDomain(url: string): string {
     try {
@@ -42,15 +38,12 @@ function isSafeUrl(url: string): boolean {
     }
 }
 
-// ─── Custom Hook: Fetch OG Metadata ────────────────────────────────────────
-
 function useLinkPreview(url: string) {
     const [preview, setPreview] = React.useState<PreviewData | null>(null);
-    const [loading, setLoading] = React.useState(true);
+    const [loading, setLoading] = React.useState(true); // start loading true
 
     React.useEffect(() => {
         let cancelled = false;
-        setLoading(true);
 
         async function fetchPreview() {
             try {
@@ -73,8 +66,6 @@ function useLinkPreview(url: string) {
     return { preview, loading };
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
-
 /**
  * Reusable link preview card for posts.
  *
@@ -83,11 +74,11 @@ function useLinkPreview(url: string) {
  * - **No OG metadata** → fallback card with domain and default icon.
  */
 export default function LinkPreviewCard({
-    url,
-    linkType,
-    hasMedia = false,
-    className = "",
-}: LinkPreviewCardProps) {
+                                            url,
+                                            linkType,
+                                            hasMedia = false,
+                                            className = "",
+                                        }: LinkPreviewCardProps) {
     const { preview, loading } = useLinkPreview(url);
     const [imageError, setImageError] = React.useState(false);
 
