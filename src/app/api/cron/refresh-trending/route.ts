@@ -5,15 +5,7 @@ import { db } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * Refreshes the trending tags materialized view every 2 minutes.
- * Instrumented with Sentry Cron Monitoring for reliability tracking.
- *
- * Vercel automatically calls this endpoint on the schedule defined in vercel.json
- * and injects the Authorization header with the CRON_SECRET value.
- */
 export async function GET(request: NextRequest) {
-    // Reject unauthorized requests
     const authHeader = request.headers.get('authorization');
     if (
         process.env.CRON_SECRET &&
@@ -28,7 +20,6 @@ export async function GET(request: NextRequest) {
             const startTime = Date.now();
 
             try {
-                // Refresh the materialized view concurrently
                 await db.$executeRaw`
                     REFRESH MATERIALIZED VIEW CONCURRENTLY mv_trending_tags;
                 `;
@@ -49,9 +40,7 @@ export async function GET(request: NextRequest) {
 
                 Sentry.captureException(error, {
                     tags: { cron: 'refresh-trending' },
-                    extra: {
-                        durationMs: elapsed,
-                    },
+                    extra: { durationMs: elapsed },
                 });
 
                 Sentry.logger.error('[cron:refresh-trending] Failed', {
@@ -72,8 +61,8 @@ export async function GET(request: NextRequest) {
         },
         {
             schedule: { type: 'crontab', value: '*/2 * * * *' },
-            checkinMargin: 1,   // 1-minute grace period (since it runs every 2 minutes)
-            maxRuntime: 1,      // 1 minute max runtime
+            checkinMargin: 1,
+            maxRuntime: 1,
             timezone: 'UTC',
         },
     );
