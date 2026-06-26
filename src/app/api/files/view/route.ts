@@ -24,6 +24,19 @@ function guessMimeType(key: string): string {
     return MIME_MAP[ext] ?? "application/octet-stream";
 }
 
+function normalizeStorageKey(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    if (trimmed.includes("\\") || /[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+    if (!/^[A-Za-z0-9._/-]+$/.test(trimmed)) return null;
+
+    const parts = trimmed.split("/").filter(Boolean);
+    if (parts.length === 0) return null;
+    if (parts.some((p) => p === "." || p === "..")) return null;
+
+    return parts.join("/");
+}
+
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
 
@@ -43,6 +56,11 @@ export async function GET(request: NextRequest) {
         );
     }
 
+    const normalizedStorageKey = normalizeStorageKey(storageKey);
+    if (!normalizedStorageKey) {
+        return NextResponse.json({ error: "Invalid storageKey" }, { status: 400 });
+    }
+
     const zone     = process.env.BUNNY_STORAGE_ZONE!;
     const password = process.env.BUNNY_STORAGE_PASSWORD!;
     const apiUrl   = process.env.BUNNY_STORAGE_API_URL!;
@@ -51,7 +69,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Storage not configured" }, { status: 500 });
     }
 
-    const endpoint = `https://${apiUrl}/${zone}/${storageKey}`;
+    const encodedKeyPath = normalizedStorageKey
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+    const endpoint = `https://${apiUrl}/${zone}/${encodedKeyPath}`;
 
     try {
         const upstream = await fetch(endpoint, {
@@ -63,7 +85,7 @@ export async function GET(request: NextRequest) {
         }
 
         const contentType =
-            upstream.headers.get("Content-Type") ?? guessMimeType(storageKey);
+            upstream.headers.get("Content-Type") ?? guessMimeType(normalizedStorageKey);
 
         return new NextResponse(upstream.body, {
             headers: {
