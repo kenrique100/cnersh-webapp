@@ -18,6 +18,8 @@ import {
 
 async function deleteBlobUrl(url: string) {
     try {
+        const pullZoneUrl = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL ?? "";
+        if (!pullZoneUrl || !url.startsWith(pullZoneUrl)) return;
         await fetch("/api/delete-blob", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },

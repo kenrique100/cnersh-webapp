@@ -1,14 +1,15 @@
 import { TopicUser } from "./types";
 
-const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
-
 export async function deleteBlobUrl(url: string) {
     try {
+        const pullZoneUrl = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL ?? "";
+        if (!pullZoneUrl) return;
+
         const parsed = new URL(url);
-        if (
-            parsed.hostname !== VERCEL_BLOB_HOSTNAME &&
-            !parsed.hostname.endsWith("." + VERCEL_BLOB_HOSTNAME)
-        ) return;
+        const pullZoneParsed = new URL(pullZoneUrl);
+
+        if (parsed.hostname !== pullZoneParsed.hostname) return;
+
         await fetch("/api/delete-blob", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },

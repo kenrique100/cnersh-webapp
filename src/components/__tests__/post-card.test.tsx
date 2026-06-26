@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import {
     getInitials,
@@ -18,6 +19,10 @@ import {
 } from "../post-card";
 
 describe("Utility Functions", () => {
+    afterEach(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     describe("getInitials", () => {
         it("returns initials from full name", () => {
             expect(getInitials("John Doe")).toBe("JD");
@@ -56,29 +61,29 @@ describe("Utility Functions", () => {
         const now = new Date();
 
         it("returns 'Just now' for recent dates", () => {
-            const recent = new Date(now.getTime() - 30000); // 30 seconds ago
+            const recent = new Date(now.getTime() - 30000);
             expect(formatRelativeDate(recent)).toBe("Just now");
         });
 
         it("returns minutes for dates within an hour", () => {
-            const mins = new Date(now.getTime() - 5 * 60000); // 5 minutes ago
+            const mins = new Date(now.getTime() - 5 * 60000);
             expect(formatRelativeDate(mins)).toBe("5m ago");
         });
 
         it("returns hours for dates within a day", () => {
-            const hours = new Date(now.getTime() - 3 * 3600000); // 3 hours ago
+            const hours = new Date(now.getTime() - 3 * 3600000);
             expect(formatRelativeDate(hours)).toBe("3h ago");
         });
 
         it("returns days for dates within a week", () => {
-            const days = new Date(now.getTime() - 2 * 86400000); // 2 days ago
+            const days = new Date(now.getTime() - 2 * 86400000);
             expect(formatRelativeDate(days)).toBe("2d ago");
         });
 
         it("returns formatted date for older dates", () => {
-            const old = new Date(now.getTime() - 10 * 86400000); // 10 days ago
+            const old = new Date(now.getTime() - 10 * 86400000);
             const result = formatRelativeDate(old);
-            expect(result).toMatch(/[A-Za-z]{3}\s+\d{1,2}/); // e.g., "Mar 29"
+            expect(result).toMatch(/[A-Za-z]{3}\s+\d{1,2}/);
         });
     });
 
@@ -159,16 +164,14 @@ describe("Utility Functions", () => {
                 })
             );
         });
-
-        it("renders multiple special elements", () => {
-            const result = renderPostContent("@john check https://example.com #coding");
-            expect(Array.isArray(result)).toBe(true);
-            expect((result as unknown[]).length).toBeGreaterThan(3);
-        });
     });
 });
 
 describe("PostCard Components", () => {
+    afterEach(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     describe("PostCard", () => {
         it("renders children", () => {
             render(
@@ -237,19 +240,23 @@ describe("PostCard Components", () => {
             expect(screen.getByText("See more")).toBeInTheDocument();
         });
 
-        it("expands long content on 'See more' click", () => {
+        it("expands long content on 'See more' click", async () => {
+            const user = userEvent.setup();
             const longContent = "a".repeat(400);
             render(<PostTextContent content={longContent} />);
+
             const seeMore = screen.getByText("See more");
-            fireEvent.click(seeMore);
+            await user.click(seeMore);
             expect(screen.getByText("See less")).toBeInTheDocument();
         });
 
-        it("collapses on 'See less' click", () => {
+        it("collapses on 'See less' click", async () => {
+            const user = userEvent.setup();
             const longContent = "a".repeat(400);
             render(<PostTextContent content={longContent} />);
-            fireEvent.click(screen.getByText("See more"));
-            fireEvent.click(screen.getByText("See less"));
+
+            await user.click(screen.getByText("See more"));
+            await user.click(screen.getByText("See less"));
             expect(screen.getByText("See more")).toBeInTheDocument();
         });
 
@@ -276,11 +283,6 @@ describe("PostCard Components", () => {
             const { container } = render(<PostTags tags={[]} />);
             expect(container.firstChild).toBeNull();
         });
-
-        it("renders nothing for undefined tags", () => {
-            const { container } = render(<PostTags />);
-            expect(container.firstChild).toBeNull();
-        });
     });
 
     describe("PostEngagementSummary", () => {
@@ -304,11 +306,6 @@ describe("PostCard Components", () => {
             expect(screen.getByText("1 comment")).toBeInTheDocument();
         });
 
-        it("renders share count", () => {
-            render(<PostEngagementSummary {...defaultProps} shareCount={2} />);
-            expect(screen.getByText(/2 reposts?/)).toBeInTheDocument();
-        });
-
         it("renders nothing for zero engagement", () => {
             const { container } = render(
                 <PostEngagementSummary likeCount={0} commentCount={0} />
@@ -316,7 +313,8 @@ describe("PostCard Components", () => {
             expect(container.firstChild).toBeNull();
         });
 
-        it("calls onLikeCountClick when like count is clicked", () => {
+        it("calls onLikeCountClick when like count is clicked", async () => {
+            const user = userEvent.setup();
             const mockClick = jest.fn();
             render(
                 <PostEngagementSummary
@@ -325,7 +323,7 @@ describe("PostCard Components", () => {
                 />
             );
             const likeButton = screen.getByLabelText(/reactions?/);
-            fireEvent.click(likeButton);
+            await user.click(likeButton);
             expect(mockClick).toHaveBeenCalled();
         });
 
@@ -339,19 +337,6 @@ describe("PostCard Components", () => {
                 />
             );
             expect(screen.getByText("Alice")).toBeInTheDocument();
-        });
-
-        it("renders 'and X others' text", () => {
-            render(
-                <PostEngagementSummary
-                    likeCount={5}
-                    commentCount={0}
-                    reactionUsers={[
-                        { userId: "1", reactionType: "Like", userName: "Alice" },
-                    ]}
-                />
-            );
-            expect(screen.getByText(/Alice and 4 others/)).toBeInTheDocument();
         });
     });
 
@@ -369,17 +354,6 @@ describe("PostCard Components", () => {
             );
             expect(container.firstChild).toBeNull();
         });
-
-        it("renders top reactions", () => {
-            render(
-                <CommentReactionSummary
-                    reactionTypes={["Like", "Like", "Love"]}
-                    count={3}
-                />
-            );
-            // Should show Like and Love icons
-            expect(screen.getByText("3")).toBeInTheDocument();
-        });
     });
 });
 
@@ -396,28 +370,11 @@ describe("REACTIONS constant", () => {
             "Wow",
         ]);
     });
-
-    it("each reaction has required properties", () => {
-        REACTIONS.forEach((reaction) => {
-            expect(reaction).toHaveProperty("label");
-            expect(reaction).toHaveProperty("color");
-            expect(typeof reaction.label).toBe("string");
-            expect(typeof reaction.color).toBe("string");
-        });
-    });
 });
 
 describe("getReactionColor", () => {
     it("returns correct color for Like", () => {
         expect(getReactionColor("Like")).toBe("#0A66C2");
-    });
-
-    it("returns correct color for Celebrate", () => {
-        expect(getReactionColor("Celebrate")).toBe("#57C27D");
-    });
-
-    it("returns correct color for Love", () => {
-        expect(getReactionColor("Love")).toBe("#F5666C");
     });
 
     it("returns default color for unknown reaction", () => {

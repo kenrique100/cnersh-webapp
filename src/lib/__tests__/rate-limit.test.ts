@@ -52,11 +52,10 @@ describe("RATE_LIMITS relationships", () => {
 describe("RATE_LIMITS immutability", () => {
     it("should not allow mutation in strict mode", () => {
         const original = RATE_LIMITS.auth.maxRequests;
-        try {
-            (RATE_LIMITS.auth as any).maxRequests = 999;
-        } catch {
-            // Expected in strict mode
-        }
+        // Object.freeze causes assignment to throw in strict mode
+        expect(() => {
+            (RATE_LIMITS.auth as Record<string, unknown>).maxRequests = 999;
+        }).toThrow();
         expect(RATE_LIMITS.auth.maxRequests).toBe(original);
     });
 });

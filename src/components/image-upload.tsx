@@ -64,7 +64,8 @@ async function deleteStoredFile(url: string): Promise<void> {
             await fetch(`/api/files/${dbMatch[1]}`, { method: "DELETE" });
             return;
         }
-        if (url.includes("vercel-storage.com") || url.includes("blob.vercel")) {
+        const pullZoneUrl = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL ?? "";
+        if (pullZoneUrl && url.startsWith(pullZoneUrl)) {
             await fetch("/api/delete-blob", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },

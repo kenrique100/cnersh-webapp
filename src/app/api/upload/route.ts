@@ -7,6 +7,7 @@ import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
 import type { FileType } from "@/generated/prisma";
 import { pdf } from "pdf-page-counter";
+import { uploadFileToBunny } from "@/lib/bunny-storage-client";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -20,7 +21,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   "image/": ["image/jpeg", "image/png", "image/gif", "image/webp"],
   "video/": ["video/mp4", "video/webm", "video/ogg"],
   "audio/": ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"],
-  "doc":    [
+  "doc": [
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -50,6 +51,13 @@ function resolveFileType(mimeType: string): FileType {
   return "document";
 }
 
+function resolveBunnyFolder(mimeType: string): string {
+  if (mimeType.startsWith("image/")) return "cnersh-assets/images";
+  if (mimeType.startsWith("video/")) return "cnersh-assets/videos";
+  if (mimeType.startsWith("audio/")) return "cnersh-assets/audios";
+  return "cnersh-assets/documents";
+}
+
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   const session = await authSession();
   if (!session) {
@@ -73,9 +81,9 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  const category = getCategory(file.type);
+  const category     = getCategory(file.type);
   const allowedTypes = ALLOWED_TYPES[category];
-  const maxSize = MAX_SIZES[category];
+  const maxSize      = MAX_SIZES[category];
 
   if (!allowedTypes.includes(file.type)) {
     return NextResponse.json(
@@ -125,74 +133,52 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // --- BUNNY STORAGE SERVER-TO-SERVER ORCHESTRATION ---
   let uploadedUrl: string;
   let computedStorageKey: string;
 
   try {
-    const storageZone = process.env.BUNNY_STORAGE_ZONE;
-    const storagePassword = process.env.BUNNY_STORAGE_PASSWORD;
-    const storageApiUrl = process.env.BUNNY_STORAGE_API_URL;
-    const pullZoneUrl = process.env.BUNNY_PULL_ZONE_URL;
-
-    const relativeFolder = `cnersh-assets/${resolveFileType(file.type)}s`;
-    computedStorageKey = `${relativeFolder}/${Date.now()}-${sanitizedFilename}`;
-
-    const requestEndpoint = `https://${storageApiUrl}/${storageZone}/${computedStorageKey}`;
-
-    // Fix TS2769 by wrapping the Buffer in a native Uint8Array
-    const bunnyApiResponse = await fetch(requestEndpoint, {
-      method: "PUT",
-      headers: {
-        AccessKey: storagePassword!,
-        "Content-Type": "application/octet-stream",
-      },
-      body: new Uint8Array(fileBuffer),
-    });
-
-    if (!bunnyApiResponse.ok) {
-      console.error(`[upload] Bunny API Error Status: ${bunnyApiResponse.status}`);
-      return NextResponse.json({ error: "Storage engine rejected the binary upload" }, { status: 502 });
-    }
-
-    uploadedUrl = `${pullZoneUrl}/${computedStorageKey}`;
-
+    const result = await uploadFileToBunny(
+        fileBuffer,
+        sanitizedFilename,
+        resolveBunnyFolder(file.type)
+    );
+    uploadedUrl        = result.url;
+    computedStorageKey = result.storageKey;
   } catch (err) {
-    console.error("[upload] Bunny Storage pipeline failed:", err);
+    console.error("[upload] BunnyCDN upload failed:", err);
     return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
   }
-  // --- END BUNNY ENGINE TRANSACTION BLOCK ---
 
   try {
     const stored = await db.file.create({
       data: {
-        filename: sanitizedFilename,
-        mimeType: file.type,
-        size: file.size,
-        data: null,
-        url: uploadedUrl,
+        filename:   sanitizedFilename,
+        mimeType:   file.type,
+        size:       file.size,
+        data:       null,
+        url:        uploadedUrl,
         storageKey: computedStorageKey,
-        type: resolveFileType(file.type),
-        userId: session.user.id,
+        type:       resolveFileType(file.type),
+        userId:     session.user.id,
       },
       select: {
-        id: true,
-        filename: true,
-        mimeType: true,
-        size: true,
-        type: true,
+        id:        true,
+        filename:  true,
+        mimeType:  true,
+        size:      true,
+        type:      true,
         createdAt: true,
-        url: true,
+        url:       true,
       },
     });
 
     return NextResponse.json({
-      fileId: stored.id,
-      url: stored.url,
-      name: stored.filename,
-      type: stored.mimeType,
-      size: stored.size,
-      category: stored.type,
+      fileId:    stored.id,
+      url:       stored.url,
+      name:      stored.filename,
+      type:      stored.mimeType,
+      size:      stored.size,
+      category:  stored.type,
       createdAt: stored.createdAt,
     });
   } catch (err) {
@@ -210,7 +196,7 @@ const rateLimitedHandler = withRateLimit(uploadHandler, RATE_LIMITS.fileUpload, 
 });
 
 const idempotentHandler = withIdempotency(rateLimitedHandler, {
-  lockTtlSeconds: 60,
+  lockTtlSeconds:     60,
   responseTtlSeconds: 86_400,
 });
 

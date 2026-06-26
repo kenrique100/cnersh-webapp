@@ -9,9 +9,13 @@ export const passwordSchema = z.string().min(10).max(128)
 export const nameSchema = z.string().min(2).max(100).regex(/^[a-zA-Z\s'-]+$/).trim();
 export const urlSchema = z.string().url().max(2048).refine(u => /^https?:\/\//.test(u), "HTTP/HTTPS only");
 export const textContentSchema = z.string().min(1).max(10000).trim();
-export const shortTextSchema = z.string().min(1).max(255).trim();
 
-export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown) {
+export function validateInput<T>(
+    schema: z.ZodSchema<T>,
+    data: unknown
+): { success: true; data: T } | { success: false; errors: string[] } {
     const res = schema.safeParse(data);
-    return res.success ? { success: true, data: res.data } : { success: false, errors: res.error.issues.map(e => e.message) };
+    return res.success
+        ? { success: true, data: res.data }
+        : { success: false, errors: res.error.issues.map((e) => e.message) };
 }

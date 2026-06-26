@@ -2,11 +2,9 @@ import type { Config } from 'jest';
 import nextJest from 'next/jest.js';
 
 const createJestConfig = nextJest({
-  // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
   dir: './',
 });
 
-// Add any custom config to be passed to Jest
 const config: Config = {
   coverageProvider: 'v8',
   testEnvironment: 'jsdom',
@@ -19,11 +17,17 @@ const config: Config = {
     '^isomorphic-dompurify$': '<rootDir>/src/__mocks__/isomorphic-dompurify.ts',
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(isomorphic-dompurify|@exodus/bytes|html-encoding-sniffer|jsdom|nwsapi|whatwg-url)/)',
+    '/node_modules/(?!(isomorphic-dompurify|@exodus/bytes|html-encoding-sniffer|jsdom|parse5|nwsapi|whatwg-url|better-auth)/)',
   ],
   testMatch: [
-    '**/__tests__/**/*.[jt]s?(x)',
-    '**/?(*.)+(spec|test).[jt]s?(x)',
+    '<rootDir>/src/**/__tests__/**/*.[jt]s?(x)',
+    '<rootDir>/src/**/?(*.)+(spec|test).[jt]s?(x)',
+  ],
+  testPathIgnorePatterns: [
+    '<rootDir>/.next/',
+    '<rootDir>/node_modules/',
+    '<rootDir>/e2e/',
+    '<rootDir>/tests/',
   ],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
@@ -41,5 +45,4 @@ const config: Config = {
   },
 };
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 export default createJestConfig(config);
