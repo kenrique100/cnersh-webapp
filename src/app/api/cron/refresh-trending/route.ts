@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         },
         {
             schedule: { type: 'crontab', value: '*/2 * * * *' },
-            checkinMargin: 1,   // 1 minute grace period (since it runs every 2 minutes)
+            checkinMargin: 1,   // 1-minute grace period (since it runs every 2 minutes)
             maxRuntime: 1,      // 1 minute max runtime
             timezone: 'UTC',
         },

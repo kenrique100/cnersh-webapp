@@ -5,9 +5,9 @@ import { sanitizeFilename } from "@/lib/sanitize-filename";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
+import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
 import { pdf } from "pdf-page-counter";
-import { uploadFileToBunny } from "@/lib/bunny-storage-client";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -49,13 +49,6 @@ function resolveFileType(mimeType: string): FileType {
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
   return "document";
-}
-
-function resolveBunnyFolder(mimeType: string): string {
-  if (mimeType.startsWith("image/")) return "cnersh-assets/images";
-  if (mimeType.startsWith("video/")) return "cnersh-assets/videos";
-  if (mimeType.startsWith("audio/")) return "cnersh-assets/audios";
-  return "cnersh-assets/documents";
 }
 
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
@@ -133,21 +126,26 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  let uploadedUrl: string;
-  let computedStorageKey: string;
-
+  // Upload to UploadThing – fixed TS error by wrapping Buffer in Uint8Array
+  let uploadResult;
   try {
-    const result = await uploadFileToBunny(
-        fileBuffer,
+    const uploadFile = new File(
+        [new Uint8Array(fileBuffer)],
         sanitizedFilename,
-        resolveBunnyFolder(file.type)
+        { type: file.type }
     );
-    uploadedUrl        = result.url;
-    computedStorageKey = result.storageKey;
+    uploadResult = await utapi.uploadFiles(uploadFile);
   } catch (err) {
-    console.error("[upload] BunnyCDN upload failed:", err);
+    console.error("[upload] UploadThing upload failed:", err);
     return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
   }
+
+  if (uploadResult.error) {
+    console.error("[upload] UploadThing error:", uploadResult.error);
+    return NextResponse.json({ error: "Upload service error" }, { status: 502 });
+  }
+
+  const { key, ufsUrl } = uploadResult.data;
 
   try {
     const stored = await db.file.create({
@@ -156,8 +154,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         mimeType:   file.type,
         size:       file.size,
         data:       null,
-        url:        uploadedUrl,
-        storageKey: computedStorageKey,
+        url:        ufsUrl,
+        storageKey: key,
         type:       resolveFileType(file.type),
         userId:     session.user.id,
       },
