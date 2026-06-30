@@ -32,16 +32,15 @@ const formSchema = z
         path: ["confirmNewPassword"],
     });
 
-// Password strength calculator
-const calculatePasswordStrength = (password: string): { score: number; label: string; color: string } => {
+const calculatePasswordStrength = (
+    password: string
+): { score: number; label: string; color: string } => {
     let score = 0;
     if (!password) return { score: 0, label: "Too weak", color: "bg-gray-300" };
 
-    // Length check
     if (password.length >= 10) score += 25;
     if (password.length >= 12) score += 15;
 
-    // Complexity checks
     if (/[a-z]/.test(password)) score += 15;
     if (/[A-Z]/.test(password)) score += 15;
     if (/[0-9]/.test(password)) score += 15;
@@ -68,7 +67,11 @@ export function ChangePasswordForm() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: "Too weak", color: "bg-gray-300" });
+    const [passwordStrength, setPasswordStrength] = useState({
+        score: 0,
+        label: "Too weak",
+        color: "bg-gray-300",
+    });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -87,10 +90,15 @@ export function ChangePasswordForm() {
                     currentPassword: data.currentPassword,
                 },
                 {
-                    onSuccess: async () => {
+                    // Removed 'async' — none of these calls need to be awaited
+                    onSuccess: () => {
                         toast.success("Your password has been changed successfully");
                         form.reset();
-                        setPasswordStrength({ score: 0, label: "Too weak", color: "bg-gray-300" });
+                        setPasswordStrength({
+                            score: 0,
+                            label: "Too weak",
+                            color: "bg-gray-300",
+                        });
                     },
                     onError: (ctx) => {
                         toast.error(ctx.error.message);
@@ -117,7 +125,10 @@ export function ChangePasswordForm() {
                         />
                     </div>
                     <div className="text-center">
-                        <CardTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                        <CardTitle
+                            role="heading"
+                            className="text-2xl font-semibold text-gray-900 dark:text-gray-100"
+                        >
                             Change Password
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
@@ -152,7 +163,9 @@ export function ChangePasswordForm() {
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                            onClick={() =>
+                                                setShowCurrentPassword(!showCurrentPassword)
+                                            }
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                                         >
                                             {showCurrentPassword ? (
@@ -189,7 +202,9 @@ export function ChangePasswordForm() {
                                             className="h-11 text-sm px-4 pr-10 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900 w-full"
                                             onChange={(e) => {
                                                 field.onChange(e);
-                                                setPasswordStrength(calculatePasswordStrength(e.target.value));
+                                                setPasswordStrength(
+                                                    calculatePasswordStrength(e.target.value)
+                                                );
                                             }}
                                         />
                                         <button
@@ -207,16 +222,25 @@ export function ChangePasswordForm() {
                                     {field.value && (
                                         <div className="space-y-2 mt-2">
                                             <div className="flex items-center gap-2">
-                                                <Progress value={passwordStrength.score} className="h-2 flex-1" />
-                                                <span className={`text-xs font-medium min-w-[60px] ${
-                                                    passwordStrength.score >= 75 ? 'text-green-600' :
-                                                        passwordStrength.score >= 50 ? 'text-yellow-600' : 'text-red-600'
-                                                }`}>
+                                                <Progress
+                                                    value={passwordStrength.score}
+                                                    className="h-2 flex-1"
+                                                />
+                                                <span
+                                                    className={`text-xs font-medium min-w-[60px] ${
+                                                        passwordStrength.score >= 75
+                                                            ? "text-green-600"
+                                                            : passwordStrength.score >= 50
+                                                                ? "text-yellow-600"
+                                                                : "text-red-600"
+                                                    }`}
+                                                >
                                                     {passwordStrength.label}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                Use 10+ characters with uppercase, lowercase, numbers, and symbols
+                                                Use 10+ characters with uppercase, lowercase, numbers,
+                                                and symbols
                                             </p>
                                         </div>
                                     )}
@@ -236,7 +260,8 @@ export function ChangePasswordForm() {
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid} className="gap-1.5">
                                     <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Confirm New Password <span className="text-red-500">*</span>
+                                        Confirm New Password{" "}
+                                        <span className="text-red-500">*</span>
                                     </FieldLabel>
                                     <div className="relative">
                                         <Input
@@ -249,7 +274,9 @@ export function ChangePasswordForm() {
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            onClick={() =>
+                                                setShowConfirmPassword(!showConfirmPassword)
+                                            }
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                                         >
                                             {showConfirmPassword ? (
@@ -272,6 +299,7 @@ export function ChangePasswordForm() {
 
                     <Button
                         type="submit"
+                        data-testid="submit-button"
                         disabled={form.formState.isSubmitting}
                         className="w-full h-11 text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-700 mt-2"
                     >
