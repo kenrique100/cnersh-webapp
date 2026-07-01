@@ -34,11 +34,17 @@ jest.mock('@/components/ui/table', () => ({
     TableCell: (p: React.TdHTMLAttributes<HTMLTableCellElement>) => <td {...p} />,
 }));
 
-// Mock dropdown (no require, no any)
+// Mock dropdown
 jest.mock('@/components/ui/dropdown-menu', () => {
-    const ReactNS = React; // use imported React (factory isn't hoisted)
+    const ReactNS = React;
     type Ctx = { open: boolean; setOpen: React.Dispatch<React.SetStateAction<boolean>> };
     const Ctx = ReactNS.createContext<Ctx | null>(null);
+
+    // Props we expect the trigger's child to have (e.g., Button)
+    type TriggerChildProps = {
+        onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+        [key: string]: unknown;
+    };
 
     const DropdownMenu: React.FC<React.PropsWithChildren> = ({ children }) => {
         const [open, setOpen] = ReactNS.useState(false);
@@ -49,10 +55,10 @@ jest.mock('@/components/ui/dropdown-menu', () => {
         React.PropsWithChildren<{ asChild?: boolean }>
     > = ({ children }) => {
         const ctx = ReactNS.useContext(Ctx)!;
-        const child = ReactNS.Children.only(children) as React.ReactElement;
+        const child = ReactNS.Children.only(children) as React.ReactElement<TriggerChildProps>;
         return ReactNS.cloneElement(child, {
             ...child.props,
-            onClick: (e: React.MouseEvent) => {
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
                 child.props.onClick?.(e);
                 ctx.setOpen((v) => !v);
             },
@@ -174,7 +180,6 @@ describe('DataTable', () => {
 
         expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
         expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        // Exact match to avoid matching "Email Verified"
         expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
         expect(screen.getByRole('columnheader', { name: 'Email Verified' })).toBeInTheDocument();
         expect(screen.getByRole('columnheader', { name: 'Banned' })).toBeInTheDocument();
