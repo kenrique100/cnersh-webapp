@@ -49,11 +49,14 @@ jest.mock('@/components/ui/dropdown-menu', () => {
         React.PropsWithChildren<{ asChild?: boolean }>
     > = ({ children }) => {
         const ctx = ReactNS.useContext(Ctx)!;
-        const child = ReactNS.Children.only(children) as React.ReactElement;
+        const child = ReactNS.Children.only(children) as React.ReactElement<
+            React.ComponentPropsWithoutRef<'button'>
+        >;
+        const childProps = child.props;
         return ReactNS.cloneElement(child, {
-            ...child.props,
+            ...childProps,
             onClick: (e: React.MouseEvent) => {
-                child.props.onClick?.(e);
+                childProps.onClick?.(e);
                 ctx.setOpen((v) => !v);
             },
         });
