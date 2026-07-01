@@ -22,7 +22,6 @@ env:
   NODE_VERSION: "24"
 
 jobs:
-  # STAGE 1: VERIFICATION
   verify:
     name: Quality & Testing
     runs-on: ubuntu-latest
@@ -93,7 +92,6 @@ jobs:
           retention-days: 5
           if-no-files-found: warn
 
-  # STAGE 2: PRODUCTION DEPLOYMENT
   deploy:
     name: Production Deployment
     runs-on: ubuntu-latest
@@ -126,7 +124,6 @@ jobs:
       - name: Build Production Artifacts (with Vercel Remote Cache)
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
-          # Vercel / platform
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -152,6 +149,14 @@ jobs:
         run: |
           DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "deployment-url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_ENV
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Alias to Custom Domain (ensures www.cameroon-national-ethics-com.net is used)
+        run: |
+          vercel alias set ${{ env.DEPLOY_URL }} www.cameroon-national-ethics-com.net --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
