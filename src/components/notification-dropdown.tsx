@@ -29,21 +29,32 @@ export default function NotificationDropdown({ count: initialCount = 0 }: Notifi
 
     const router = useRouter();
 
-    const fetchNotifications = async () => {
-        setLoading(true);
-        try {
-            const data = await getNotifications(1, 10);
-            setNotifications(data.notifications || []);
-            setUnreadCount(data.unreadCount || 0);
-        } catch (error) {
-            console.error('Failed to load notifications', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (open) fetchNotifications();
+        if (!open) return;
+
+        let cancelled = false;
+
+        const loadNotifications = async () => {
+            setLoading(true);
+            try {
+                const data = await getNotifications(1, 10);
+                if (cancelled) return;
+                setNotifications(data.notifications || []);
+                setUnreadCount(data.unreadCount || 0);
+            } catch (error) {
+                console.error('Failed to load notifications', error);
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        void loadNotifications();
+
+        return () => {
+            cancelled = true;
+        };
     }, [open]);
 
     const handleMarkAllRead = async () => {
