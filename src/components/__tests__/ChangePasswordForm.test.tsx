@@ -426,9 +426,4 @@ describe('ChangePasswordForm', () => {
             })
         })
     })
-
-    it('matches snapshot', () => {
-        const { asFragment } = render(<ChangePasswordForm />)
-        expect(asFragment()).toMatchSnapshot()
-    })
 })

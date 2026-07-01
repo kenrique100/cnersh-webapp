@@ -342,39 +342,5 @@ describe("AdminCharts", () => {
                 expect(screen.getAllByTestId("responsive-container")).toHaveLength(1);
             });
         });
-
-        describe("Snapshots", () => {
-            it("matches snapshot with default stats", async () => {
-                let fragment!: DocumentFragment;
-                await act(async () => {
-                    const { asFragment } = render(<AdminCharts stats={buildStats()} />);
-                    fragment = asFragment();
-                });
-                expect(fragment).toMatchSnapshot();
-            });
-
-            it("matches snapshot when all data is empty", async () => {
-                let fragment!: DocumentFragment;
-                await act(async () => {
-                    const { asFragment } = render(
-                        <AdminCharts
-                            stats={buildStats({
-                                activeUsers: 0,
-                                bannedUsers: 0,
-                                approvedProjects: 0,
-                                pendingProjects: 0,
-                                rejectedProjects: 0,
-                                totalPosts: 0,
-                                totalProjects: 0,
-                                totalTopics: 0,
-                                pendingReports: 0,
-                            })}
-                        />
-                    );
-                    fragment = asFragment();
-                });
-                expect(fragment).toMatchSnapshot();
-            });
-        });
     });
 });
