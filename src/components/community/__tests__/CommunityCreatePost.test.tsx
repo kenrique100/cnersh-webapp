@@ -10,11 +10,6 @@ interface SelectProps {
     onValueChange?: (value: string) => void;
 }
 
-interface SelectTriggerProps {
-    children?: React.ReactNode;
-    className?: string;
-}
-
 interface SelectValueProps {
     placeholder?: string;
 }
@@ -36,7 +31,6 @@ jest.mock("@/components/ui/textarea", () => ({
     Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
 }));
 
-// ---------- Option B: Select mock using real <select> (options must be text-only) ----------
 jest.mock("@/components/ui/select", () => ({
     Select: ({ children, value, onValueChange }: SelectProps) => (
         <select
@@ -47,11 +41,9 @@ jest.mock("@/components/ui/select", () => ({
             {children}
         </select>
     ),
-    // Don't render a div inside the <select>; return null for the trigger
     SelectTrigger: () => null,
     SelectValue: ({ placeholder }: SelectValueProps) => <>{placeholder}</>,
     SelectContent: ({ children }: SelectContentProps) => <>{children}</>,
-    // Render options as text-only to avoid invalid nested tags inside <select>
     SelectItem: ({ value }: SelectItemProps) => <option value={value}>{value}</option>,
 }));
 
@@ -90,7 +82,7 @@ describe("CommunityCreatePost (stateful wrapper + userEvent)", () => {
         jest.clearAllMocks();
     });
 
-    it("hides Announcements category for non‑admin users", () => {
+    it("hides Announcements category for non-admin users", () => {
         render(<CommunityCreatePost {...defaultProps} />);
         const combobox = screen.getByRole("combobox");
         expect(combobox).toBeInTheDocument();
@@ -102,19 +94,20 @@ describe("CommunityCreatePost (stateful wrapper + userEvent)", () => {
         expect(screen.getByText("Announcements")).toBeInTheDocument();
     });
 
+    // FIX L106: Replace 'any[]' with proper type
     it("updates state and calls setNewTopic updater when user types (userEvent.type + wrapper)", async () => {
-        const setCalls: any[] = [];
+        type TopicState = typeof defaultProps.newTopic;
+        const setCalls: (TopicState | ((prev: TopicState) => TopicState))[] = [];
 
         const Wrapper: React.FC = () => {
             const [topic, setTopic] = React.useState(defaultProps.newTopic);
 
-            // Wrap setTopic so we can record the updater/value while still applying it to state
-            const wrappedSetTopic: React.Dispatch<React.SetStateAction<typeof topic>> = (updater) => {
+            const wrappedSetTopic: React.Dispatch<React.SetStateAction<TopicState>> = (updater) => {
                 setCalls.push(updater);
                 if (typeof updater === "function") {
-                    setTopic((prev) => (updater as (prev: typeof topic) => typeof topic)(prev));
+                    setTopic((prev) => (updater as (prev: TopicState) => TopicState)(prev));
                 } else {
-                    setTopic(updater as typeof topic);
+                    setTopic(updater);
                 }
             };
 
@@ -126,14 +119,11 @@ describe("CommunityCreatePost (stateful wrapper + userEvent)", () => {
         const input = screen.getByPlaceholderText("new-channel");
         const user = userEvent.setup();
 
-        // Simulate real typing
         await user.clear(input);
         await user.type(input, "My New Channel");
 
-        // Input value should reflect what's typed (controlled through wrapper state)
         expect((input as HTMLInputElement).value).toBe("My New Channel");
 
-        // The last recorded updater should, when applied to a previous state, produce the expected title
         expect(setCalls.length).toBeGreaterThan(0);
         const lastUpdater = setCalls[setCalls.length - 1];
         const previousState = { ...defaultProps.newTopic, title: "old" };
