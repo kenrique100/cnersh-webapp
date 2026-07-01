@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 
 jest.mock('next/image', () => ({
     __esModule: true,
-    default: ({ alt }: { alt: string }) => <img alt={alt} />,
+    default: function MockImage({ alt }: { alt: string }) {
+        // eslint-disable-next-line @next/next/no-img-element
+        return <img alt={alt} />;
+    },
 }))
 
 const mockToastSuccess = jest.fn()
@@ -56,12 +59,6 @@ const setup = () => {
     }
 }
 
-// react-hook-form fires its subject-based re-renders asynchronously even
-// when the calling code is synchronous. userEvent v14 already wraps each
-// of its own actions in act(), so the mock implementations below resolve
-// IMMEDIATELY (no setTimeout) — letting userEvent's own act() boundary
-// cover the resulting state updates. waitFor() is used afterwards for any
-// assertion that depends on the promise chain settling.
 const createSuccessMock = () => {
     mockChangePassword.mockImplementation(
         (

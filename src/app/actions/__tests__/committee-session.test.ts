@@ -14,8 +14,6 @@ jest.mock('@/lib/db', () => ({
         auditLog: {},
     },
 }));
-
-
 import { authSession as _authSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
 
@@ -24,8 +22,6 @@ import {
     getCommitteeSessions,
     updateSessionStatus,
 } from '@/app/actions/session';
-
-// ── Typed mock references ─────────────────────────────────────────────
 
 const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
 
@@ -41,8 +37,6 @@ interface MockDb {
 }
 
 const mockedDb = _db as unknown as MockDb;
-
-// ── Helpers ───────────────────────────────────────────────────────────
 
 function syncDb(): void {
     const live = _db as unknown as MockDb;
@@ -131,8 +125,6 @@ function buildCommitteeSession(overrides: Partial<{
     };
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────
-
 beforeEach(() => {
     jest.clearAllMocks();
 
@@ -145,8 +137,6 @@ beforeEach(() => {
 
     syncDb();
 });
-
-// ── createCommitteeSession ────────────────────────────────────────────
 
 describe('createCommitteeSession', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -200,8 +190,8 @@ describe('createCommitteeSession', () => {
         mockAdmin('admin');
 
         mockedDb.reviewAssignment.groupBy = jest.fn().mockResolvedValue([
-            { projectId: 'proj-a', _count: { _all: 1 } }, // only 1 review — excluded
-            { projectId: 'proj-b', _count: { _all: 2 } }, // 2 reviews — included
+            { projectId: 'proj-a', _count: { _all: 1 } },
+            { projectId: 'proj-b', _count: { _all: 2 } },
         ]);
         mockedDb.committeeSession.create = jest
             .fn()
@@ -309,8 +299,12 @@ describe('createCommitteeSession', () => {
         mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
         syncDb();
 
-        const { venue: _omit, ...withoutVenue } = BASE_SESSION_INPUT;
-        await createCommitteeSession(withoutVenue);
+        const sessionInputWithoutVenue = {
+            sessionType: BASE_SESSION_INPUT.sessionType,
+            sessionDate: BASE_SESSION_INPUT.sessionDate,
+            notes: BASE_SESSION_INPUT.notes,
+        };
+        await createCommitteeSession(sessionInputWithoutVenue);
 
         expect(mockedDb.committeeSession.create).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -356,8 +350,6 @@ describe('createCommitteeSession', () => {
         );
     });
 });
-
-// ── getCommitteeSessions ──────────────────────────────────────────────
 
 describe('getCommitteeSessions', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -448,8 +440,6 @@ describe('getCommitteeSessions', () => {
         expect(result).toHaveLength(1);
     });
 });
-
-// ── updateSessionStatus ───────────────────────────────────────────────
 
 describe('updateSessionStatus', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -552,8 +542,6 @@ describe('updateSessionStatus', () => {
         const callArg = mockedDb.committeeSession.update.mock.calls[0][0];
         expect(callArg.data).not.toHaveProperty('quorumMet');
     });
-
-    // ── CANCELLED branch ──────────────────────────────────────────────
 
     describe('when status is CANCELLED', () => {
         it('writes a SESSION_CANCELLED audit log', async () => {

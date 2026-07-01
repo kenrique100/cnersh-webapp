@@ -130,10 +130,6 @@ async function fillValidForm(
     return { eventType, eventDate, description };
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Tests
-// ─────────────────────────────────────────────────────────────────────────
-
 describe("SAEReportClient", () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -237,10 +233,6 @@ describe("SAEReportClient", () => {
         });
     });
 
-    // -------------------------------------------------------------------
-    // Urgent banner
-    // -------------------------------------------------------------------
-
     describe("urgent event type banner", () => {
         it("shows the urgent banner when LIFE_THREATENING is selected", async () => {
             const user = userEvent.setup();
@@ -316,9 +308,6 @@ describe("SAEReportClient", () => {
         });
     });
 
-    // -------------------------------------------------------------------
-    // Validation
-    // -------------------------------------------------------------------
 
     describe("form validation", () => {
         it("shows error when event type is not selected", () => {
@@ -397,10 +386,6 @@ describe("SAEReportClient", () => {
             );
         });
     });
-
-    // -------------------------------------------------------------------
-    // Successful submission
-    // -------------------------------------------------------------------
 
     describe("successful submission", () => {
         it("submits with all fields filled (on-time report)", async () => {
@@ -570,10 +555,6 @@ describe("SAEReportClient", () => {
         });
     });
 
-    // -------------------------------------------------------------------
-    // Error handling
-    // -------------------------------------------------------------------
-
     describe("submission error handling", () => {
         it("shows the error message when reportSAE rejects with an Error instance", async () => {
             (reportSAE as jest.Mock).mockRejectedValue(
@@ -650,10 +631,6 @@ describe("SAEReportClient", () => {
         });
     });
 
-    // -------------------------------------------------------------------
-    // Loading / submitting state
-    // -------------------------------------------------------------------
-
     describe("submitting state", () => {
         it("disables the submit button and shows 'Submitting...' while in-flight", async () => {
             (reportSAE as jest.Mock).mockImplementation(
@@ -690,10 +667,6 @@ describe("SAEReportClient", () => {
         });
     });
 
-    // -------------------------------------------------------------------
-    // Navigation
-    // -------------------------------------------------------------------
-
     describe("navigation", () => {
         it("calls router.back() when Cancel is clicked", async () => {
             const user = userEvent.setup();
@@ -714,10 +687,6 @@ describe("SAEReportClient", () => {
             expect(reportSAE).not.toHaveBeenCalled();
         });
     });
-
-    // -------------------------------------------------------------------
-    // Field interactions
-    // -------------------------------------------------------------------
 
     describe("field interactions", () => {
         it("updates the description field as the user types", async () => {

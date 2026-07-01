@@ -17,13 +17,20 @@ jest.mock("@/lib/db", () => ({
         },
     },
 }));
-// Make redirect throw so the function stops after redirect
 jest.mock("next/navigation", () => ({
     redirect: jest.fn(() => {
         throw new Error("NEXT_REDIRECT");
     }),
 }));
-jest.mock("../pages-client", () => () => <div>Mock AdminPagesClient</div>);
+
+// Fix L26: Component definition is missing display name
+jest.mock("../pages-client", () => {
+    function MockAdminPagesClient() {
+        return <div>Mock AdminPagesClient</div>;
+    }
+    MockAdminPagesClient.displayName = "MockAdminPagesClient";
+    return MockAdminPagesClient;
+});
 
 const mockSession = { user: { id: "user-1" } };
 

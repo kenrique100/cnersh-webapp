@@ -19,7 +19,7 @@ permissions:
   checks: write
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
 
 jobs:
   # STAGE 1: VERIFICATION
@@ -91,6 +91,7 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 5
+          if-no-files-found: warn
 
   # STAGE 2: PRODUCTION DEPLOYMENT
   deploy:

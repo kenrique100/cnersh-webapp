@@ -44,8 +44,6 @@ interface MockDb {
 
 const mockedDb = _db as unknown as MockDb;
 
-// ── Helpers ───────────────────────────────────────────────────────────
-
 function syncDb(): void {
     const live = _db as unknown as MockDb;
     live.project = mockedDb.project;

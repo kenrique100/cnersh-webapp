@@ -3,8 +3,8 @@ import DashboardPage from "../page";
 import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
 import { getUserDashboardData } from "@/app/actions/dashboard";
+import React from "react";
 
-// ── Mock dependencies ──────────────────────────────────────────────
 jest.mock("@/lib/auth-utils", () => ({
     authIsRequired: jest.fn(),
 }));
@@ -15,20 +15,34 @@ jest.mock("@/app/actions/dashboard", () => ({
     getUserDashboardData: jest.fn(),
 }));
 
+type MockComponentProps = {
+    children?: React.ReactNode;
+    className?: string;
+};
+
 jest.mock("@/components/ui/card", () => ({
-    Card: ({ children, className }: any) => <div className={className}>{children}</div>,
-    CardContent: ({ children }: any) => <div>{children}</div>,
-    CardHeader: ({ children }: any) => <div>{children}</div>,
-    CardTitle: ({ children }: any) => <div>{children}</div>,
+    Card: ({ children, className }: MockComponentProps) => (
+        <div className={className}>{children}</div>
+    ),
+    CardContent: ({ children }: MockComponentProps) => <div>{children}</div>,
+    CardHeader: ({ children }: MockComponentProps) => <div>{children}</div>,
+    CardTitle: ({ children }: MockComponentProps) => <div>{children}</div>,
 }));
 
+type AvatarImageProps = {
+    src?: string;
+    alt?: string;
+};
+
 jest.mock("@/components/ui/avatar", () => ({
-    Avatar: ({ children }: any) => <div data-testid="avatar">{children}</div>,
-    AvatarFallback: ({ children }: any) => (
+    Avatar: ({ children }: MockComponentProps) => (
+        <div data-testid="avatar">{children}</div>
+    ),
+    AvatarFallback: ({ children }: MockComponentProps) => (
         <div data-testid="avatar-fallback">{children}</div>
     ),
-    // ✅ Fix: render src only when truthy to match component behaviour
-    AvatarImage: ({ src, alt }: any) => (
+    AvatarImage: ({ src, alt }: AvatarImageProps) => (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
             {...(src ? { src } : {})}
             alt={alt}
@@ -37,14 +51,21 @@ jest.mock("@/components/ui/avatar", () => ({
     ),
 }));
 
+type LinkProps = {
+    children: React.ReactNode;
+    href: string;
+} & React.AnchorHTMLAttributes<HTMLAnchorElement>;
+
 jest.mock("next/link", () => {
-    return function MockLink({ children, href, ...rest }: any) {
+    function MockLink({ children, href, ...rest }: LinkProps) {
         return (
             <a href={href} {...rest}>
                 {children}
             </a>
         );
-    };
+    }
+    MockLink.displayName = "MockLink";
+    return MockLink;
 });
 
 jest.mock("lucide-react", () => ({
@@ -59,7 +80,6 @@ jest.mock("lucide-react", () => ({
     ActivityIcon: () => <div data-testid="icon-activity" />,
 }));
 
-// ── Test data ──────────────────────────────────────────────────────
 const mockUser = {
     id: "user-1",
     name: "Test User",
@@ -79,13 +99,13 @@ const mockDashboardData = {
             id: "post1",
             content:
                 "This is a recent post with more than 80 characters to test truncation, yes indeed more than eighty characters.",
-            createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 min ago
+            createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
             _count: { likes: 2, comments: 1 },
         },
         {
             id: "post2",
             content: "Short post",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2h ago
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
             _count: { likes: 0, comments: 0 },
         },
     ],
@@ -94,13 +114,13 @@ const mockDashboardData = {
             id: "proj1",
             title: "A project title",
             status: "PENDING_REVIEW",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2d ago
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
         },
         {
             id: "proj2",
             title: "Another project",
             status: "APPROVED",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), // 5d ago
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
         },
     ],
     recentCommunityTopics: [
@@ -110,20 +130,13 @@ const mockDashboardData = {
             category: "General",
             user: { name: "John Doe" },
             _count: { replies: 3 },
-            createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30m ago
+            createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
         },
     ],
 };
 
-// ── Helpers ────────────────────────────────────────────────────────
-
-/**
- * Returns the Quick Actions section container.
- * The section is identified by its heading "Quick Actions".
- */
 function getQuickActionsSection() {
     const heading = screen.getByText("Quick Actions");
-    // The heading's parent div wraps the grid of action cards
     return heading.parentElement as HTMLElement;
 }
 
@@ -134,8 +147,6 @@ describe("DashboardPage", () => {
         (updateProfile as jest.Mock).mockResolvedValue(mockUser);
         (getUserDashboardData as jest.Mock).mockResolvedValue(mockDashboardData);
     });
-
-    // ── Profile Header ─────────────────────────────────────────────
 
     it("renders the profile header with user data", async () => {
         const page = await DashboardPage();
@@ -154,10 +165,11 @@ describe("DashboardPage", () => {
     it("links Edit Profile to /update-profile", async () => {
         const page = await DashboardPage();
         render(page);
-        expect(screen.getByText("Edit Profile")).toHaveAttribute("href", "/update-profile");
+        expect(screen.getByText("Edit Profile")).toHaveAttribute(
+            "href",
+            "/update-profile"
+        );
     });
-
-    // ── Stat Cards ─────────────────────────────────────────────────
 
     it("renders stat cards with correct values", async () => {
         const page = await DashboardPage();
@@ -170,16 +182,11 @@ describe("DashboardPage", () => {
         expect(screen.getByText("Approved Protocols")).toBeInTheDocument();
         expect(screen.getByText("3")).toBeInTheDocument();
 
-        // ✅ Fix: use getAllByText because "Notifications" appears in both
-        //    the stat card label AND the Quick Actions card label
         const notifLabels = screen.getAllByText("Notifications");
         expect(notifLabels.length).toBeGreaterThanOrEqual(1);
 
-        // The stat value "1" is unique
         expect(screen.getByText("1")).toBeInTheDocument();
     });
-
-    // ── Recent Activity ────────────────────────────────────────────
 
     it("renders recent posts with truncation, time ago, and metadata", async () => {
         const page = await DashboardPage();
@@ -225,8 +232,6 @@ describe("DashboardPage", () => {
         expect(projectLink).toHaveAttribute("href", "/protocols/proj1");
     });
 
-    // ── Community Updates ──────────────────────────────────────────
-
     it("renders community topics with metadata", async () => {
         const page = await DashboardPage();
         render(page);
@@ -246,29 +251,29 @@ describe("DashboardPage", () => {
         expect(topicLink).toHaveAttribute("href", "/community");
     });
 
-    // ── Quick Actions ──────────────────────────────────────────────
-
     it("renders all quick action cards with correct labels and links", async () => {
         const page = await DashboardPage();
         render(page);
 
-        // ✅ Fix: scope queries inside the Quick Actions section to avoid
-        //    ambiguity with stat card labels (e.g., "Notifications")
         const section = getQuickActionsSection();
 
         const feedsLabel = within(section).getByText("Feeds");
         expect(feedsLabel.closest("a")).toHaveAttribute("href", "/feeds");
 
         const submitLabel = within(section).getByText("Submit Protocol");
-        expect(submitLabel.closest("a")).toHaveAttribute("href", "/protocols/submit");
+        expect(submitLabel.closest("a")).toHaveAttribute(
+            "href",
+            "/protocols/submit"
+        );
 
         const protocolsLabel = within(section).getByText("My Protocols");
         expect(protocolsLabel.closest("a")).toHaveAttribute("href", "/protocols");
 
-        // ✅ Fix: scope to Quick Actions section — avoids the duplicate
-        //    "Notifications" text in the stat card
         const notifLabel = within(section).getByText("Notifications");
-        expect(notifLabel.closest("a")).toHaveAttribute("href", "/notifications");
+        expect(notifLabel.closest("a")).toHaveAttribute(
+            "href",
+            "/notifications"
+        );
     });
 
     it("renders quick action subtitles", async () => {
@@ -282,17 +287,16 @@ describe("DashboardPage", () => {
         expect(within(section).getByText("Stay updated")).toBeInTheDocument();
     });
 
-    // ── Section Headers & Navigation ───────────────────────────────
-
     it("renders section navigation links", async () => {
         const page = await DashboardPage();
         render(page);
 
-        // "View all" links for Recent Activity and Community Updates
         const viewAllLinks = screen.getAllByText(/View all/i);
         expect(viewAllLinks).toHaveLength(2);
 
-        const hrefs = viewAllLinks.map((el) => el.closest("a")?.getAttribute("href"));
+        const hrefs = viewAllLinks.map((el) =>
+            el.closest("a")?.getAttribute("href")
+        );
         expect(hrefs).toContain("/feeds");
         expect(hrefs).toContain("/community");
     });
@@ -305,8 +309,6 @@ describe("DashboardPage", () => {
         expect(screen.getByText("Community Updates")).toBeInTheDocument();
         expect(screen.getByText("Quick Actions")).toBeInTheDocument();
     });
-
-    // ── Empty States ───────────────────────────────────────────────
 
     it("shows empty state when no posts and no community topics", async () => {
         (getUserDashboardData as jest.Mock).mockResolvedValue({
@@ -332,7 +334,6 @@ describe("DashboardPage", () => {
             screen.getByText("No community discussions yet.")
         ).toBeInTheDocument();
 
-        // Stat values should all be 0
         expect(screen.getAllByText("0")).toHaveLength(4);
     });
 
@@ -345,14 +346,11 @@ describe("DashboardPage", () => {
         const page = await DashboardPage();
         const { container } = render(page);
 
-        // The border-t divider is only rendered when recentProjects.length > 0
         const dividers = container.querySelectorAll(
             ".border-t.border-gray-100"
         );
         expect(dividers).toHaveLength(0);
     });
-
-    // ── Edge Cases ─────────────────────────────────────────────────
 
     it("handles missing user gracefully (null user)", async () => {
         (updateProfile as jest.Mock).mockResolvedValue(null);
@@ -360,9 +358,7 @@ describe("DashboardPage", () => {
         const page = await DashboardPage();
         render(page);
 
-        // Falls back to "Welcome" heading
         expect(screen.getByText("Welcome")).toBeInTheDocument();
-        // Avatar fallback is "U" (no name, no email)
         expect(screen.getByTestId("avatar-fallback")).toHaveTextContent("U");
     });
 
@@ -375,7 +371,6 @@ describe("DashboardPage", () => {
         const page = await DashboardPage();
         render(page);
 
-        // ✅ Fix: when src is undefined, our mock renders no src attribute
         const avatarImage = screen.getByTestId("avatar-image");
         expect(avatarImage).not.toHaveAttribute("src");
         expect(screen.getByTestId("avatar-fallback")).toHaveTextContent("TU");
@@ -390,7 +385,6 @@ describe("DashboardPage", () => {
         const page = await DashboardPage();
         render(page);
 
-        // name is falsy → falls back to email slice: "test@example.com" → "TE"
         expect(screen.getByTestId("avatar-fallback")).toHaveTextContent("TE");
     });
 
@@ -403,7 +397,6 @@ describe("DashboardPage", () => {
         const page = await DashboardPage();
         render(page);
 
-        // "ABC".slice(0,2) → "AB"
         expect(screen.getByTestId("avatar-fallback")).toHaveTextContent("AB");
     });
 
@@ -421,7 +414,6 @@ describe("DashboardPage", () => {
         const page = await DashboardPage();
         render(page);
 
-        // All stats fall back to 0 via `?? 0`
         expect(screen.getAllByText("0")).toHaveLength(4);
     });
 });

@@ -24,8 +24,6 @@ import {
     getProjectEvaluationReports,
 } from '@/app/actions/evaluation';
 
-// ── Typed mock references ─────────────────────────────────────────────
-
 const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
 
 type MockTable = Record<string, jest.Mock>;
@@ -39,8 +37,6 @@ interface MockDb {
 }
 
 const mockedDb = _db as unknown as MockDb;
-
-// ── Helpers ───────────────────────────────────────────────────────────
 
 function syncDb(): void {
     const live = _db as unknown as MockDb;
@@ -84,7 +80,6 @@ function mockSession(userId = 'reviewer-1', name = 'Reviewer One'): void {
     } as Awaited<ReturnType<typeof authSession>>);
 }
 
-/** Minimal ACTIVE assignment with no existing report */
 function buildAssignment(overrides: Partial<{
     id: string;
     reviewerId: string;
@@ -104,7 +99,6 @@ function buildAssignment(overrides: Partial<{
     };
 }
 
-/** All seven required numeric scores + a recommendation */
 const VALID_SCORES = {
     socialValue: 4,
     scientificValidity: 3,
@@ -115,8 +109,6 @@ const VALID_SCORES = {
     collaborativePartnership: 4,
     recommendation: 'FAVORABLE' as const,
 };
-
-// ── Setup ─────────────────────────────────────────────────────────────
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -129,8 +121,6 @@ beforeEach(() => {
 
     syncDb();
 });
-
-// ── saveEvaluationDraft ───────────────────────────────────────────────
 
 describe('saveEvaluationDraft', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -282,8 +272,6 @@ describe('saveEvaluationDraft', () => {
     });
 });
 
-// ── submitEvaluationReport ────────────────────────────────────────────
-
 describe('submitEvaluationReport', () => {
     it('throws Unauthorized if not authenticated', async () => {
         mockedAuthSession.mockResolvedValue(null);
@@ -339,7 +327,6 @@ describe('submitEvaluationReport', () => {
         );
     });
 
-    // Required-criteria validation
     const REQUIRED_CRITERIA = [
         'socialValue',
         'scientificValidity',
@@ -358,7 +345,10 @@ describe('submitEvaluationReport', () => {
                 .mockResolvedValue(buildAssignment());
             syncDb();
 
-            const incomplete = { ...VALID_SCORES, [criterion]: undefined };
+            // Fix L376: Remove unused `_omit` — build the object without the key directly
+            const incomplete = Object.fromEntries(
+                Object.entries(VALID_SCORES).filter(([k]) => k !== criterion)
+            );
 
             await expect(submitEvaluationReport('assign-1', incomplete)).rejects.toThrow(
                 `Score for "${criterion}" is required`
@@ -373,7 +363,10 @@ describe('submitEvaluationReport', () => {
             .mockResolvedValue(buildAssignment());
         syncDb();
 
-        const { recommendation: _omit, ...withoutRecommendation } = VALID_SCORES;
+        // Fix L376: Remove unused `_omit` — build the object without recommendation directly
+        const withoutRecommendation = Object.fromEntries(
+            Object.entries(VALID_SCORES).filter(([k]) => k !== 'recommendation')
+        );
 
         await expect(
             submitEvaluationReport('assign-1', withoutRecommendation)
@@ -393,7 +386,7 @@ describe('submitEvaluationReport', () => {
             submittedAt,
         });
         mockedDb.reviewAssignment.update = jest.fn().mockResolvedValue({});
-        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(1); // < 2
+        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(1);
         mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
         syncDb();
 
@@ -478,7 +471,7 @@ describe('submitEvaluationReport', () => {
             submittedAt: new Date(),
         });
         mockedDb.reviewAssignment.update = jest.fn().mockResolvedValue({});
-        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(1); // only 1
+        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(1);
         mockedDb.project.update = jest.fn();
         mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
         syncDb();
@@ -499,7 +492,7 @@ describe('submitEvaluationReport', () => {
             submittedAt: new Date(),
         });
         mockedDb.reviewAssignment.update = jest.fn().mockResolvedValue({});
-        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(2); // exactly 2
+        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(2);
         mockedDb.project.update = jest.fn().mockResolvedValue({});
         mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
         syncDb();
@@ -534,7 +527,7 @@ describe('submitEvaluationReport', () => {
             submittedAt: new Date(),
         });
         mockedDb.reviewAssignment.update = jest.fn().mockResolvedValue({});
-        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(3); // > 2
+        mockedDb.reviewAssignment.count = jest.fn().mockResolvedValue(3);
         mockedDb.project.update = jest.fn().mockResolvedValue({});
         mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
         syncDb();
@@ -606,8 +599,6 @@ describe('submitEvaluationReport', () => {
         );
     });
 });
-
-// ── getMyEvaluationReport ─────────────────────────────────────────────
 
 describe('getMyEvaluationReport', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -690,8 +681,6 @@ describe('getMyEvaluationReport', () => {
         );
     });
 });
-
-// ── getProjectEvaluationReports ───────────────────────────────────────
 
 describe('getProjectEvaluationReports', () => {
     it('throws Unauthorized if not authenticated', async () => {

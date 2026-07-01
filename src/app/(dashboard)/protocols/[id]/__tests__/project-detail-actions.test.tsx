@@ -26,26 +26,31 @@ jest.mock("@/app/actions/project", () => ({
     forwardProjectToFeed: jest.fn(),
 }));
 
+// FIX: Filter out 'unoptimized' prop to prevent DOM warning
 jest.mock("next/image", () => {
-    return function MockImage({
-                                  src,
-                                  alt,
-                                  unoptimized: _unoptimized,
-                                  ...rest
-                              }: {
+    function MockImage({
+                           src,
+                           alt,
+                           ...rest
+                       }: {
         src: string;
         alt: string;
-        unoptimized?: boolean;
         [key: string]: unknown;
     }) {
-        return <img src={src} alt={alt} {...rest} />;
-    };
+        // Remove 'unoptimized' to avoid "Received `true` for a non-boolean attribute" warning
+        const { unoptimized: _unused, ...htmlAttrs } = rest;
+
+        // eslint-disable-next-line @next/next/no-img-element
+        return <img src={src} alt={alt} {...htmlAttrs} />;
+    }
+    MockImage.displayName = "MockImage";
+    return MockImage;
 });
 
 jest.mock("@/components/image-upload", () => {
-    return function MockImageUpload({
-                                        onChange,
-                                    }: {
+    function MockImageUpload({
+                                 onChange,
+                             }: {
         variant?: string;
         onChange?: (url: string | null) => void;
     }) {
@@ -58,7 +63,9 @@ jest.mock("@/components/image-upload", () => {
                 Simulate Image Select
             </button>
         );
-    };
+    }
+    MockImageUpload.displayName = "MockImageUpload";
+    return MockImageUpload;
 });
 
 const mockRouter = { refresh: jest.fn(), push: jest.fn() };

@@ -1,7 +1,5 @@
-import type { authSession } from '@/lib/auth-utils';
-import type { db as DbType } from '@/lib/db';
 
-// ── Mocks ─────────────────────────────────────────────────────────────
+import type { authSession } from '@/lib/auth-utils';
 
 jest.mock('@/lib/auth-utils', () => ({
     authSession: jest.fn(),
@@ -19,17 +17,11 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-// ── Typed references ──────────────────────────────────────────────────
-
 import { authSession as _authSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
 
 const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
 
-/**
- * Each Prisma table is replaced with a plain Record of jest.Mock functions
- * in beforeEach, so we type the whole db as unknown first, then cast.
- */
 type MockTable = Record<string, jest.Mock>;
 
 interface MockDb {
@@ -44,8 +36,6 @@ interface MockDb {
 
 const mockedDb = _db as unknown as MockDb;
 
-// ── Imports under test (must come after jest.mock calls) ──────────────
-
 import {
     updateProfile,
     getUserActivity,
@@ -53,13 +43,6 @@ import {
     getAdminDashboardData,
 } from '@/app/actions/dashboard';
 
-// ── Session helper ────────────────────────────────────────────────────
-
-/**
- * Provides the minimal shape that better-auth's getSession() returns.
- * Uses `as` cast so the test stays resilient to future additionalFields
- * additions in auth.ts without needing to update every test.
- */
 function mockSession(userId = 'user-1', name = 'Test User'): void {
     mockedAuthSession.mockResolvedValue({
         session: {
@@ -93,13 +76,9 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
     } as Awaited<ReturnType<typeof authSession>>);
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────
-
 beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset every table to a fresh plain object so tests can attach
-    // jest.fn() properties without hitting Prisma's read-only types.
     mockedDb.user = {};
     mockedDb.post = {};
     mockedDb.project = {};
@@ -108,7 +87,6 @@ beforeEach(() => {
     mockedDb.auditLog = {};
     mockedDb.report = {};
 
-    // Keep the live reference in sync so action modules see the reset tables.
     ((_db as unknown) as MockDb).user = mockedDb.user;
     ((_db as unknown) as MockDb).post = mockedDb.post;
     ((_db as unknown) as MockDb).project = mockedDb.project;
@@ -117,8 +95,6 @@ beforeEach(() => {
     ((_db as unknown) as MockDb).auditLog = mockedDb.auditLog;
     ((_db as unknown) as MockDb).report = mockedDb.report;
 });
-
-// ── updateProfile ─────────────────────────────────────────────────────
 
 describe('updateProfile', () => {
     it('returns user profile when authenticated', async () => {
@@ -163,8 +139,6 @@ describe('updateProfile', () => {
     });
 });
 
-// ── getUserActivity ───────────────────────────────────────────────────
-
 describe('getUserActivity', () => {
     it('returns posts and projects with counts', async () => {
         mockSession('user-1');
@@ -199,7 +173,6 @@ describe('getUserActivity', () => {
         expect(result.totalProjects).toBe(1);
         expect(result.posts).toHaveLength(1);
         expect(result.projects).toHaveLength(1);
-        // Dates are serialised to ISO strings
         expect(typeof result.posts[0].createdAt).toBe('string');
         expect(typeof result.projects[0].createdAt).toBe('string');
     });
@@ -247,8 +220,6 @@ describe('getUserActivity', () => {
     });
 });
 
-// ── getUserDashboardData ──────────────────────────────────────────────
-
 describe('getUserDashboardData', () => {
     it('returns null if not authenticated', async () => {
         mockedAuthSession.mockResolvedValue(null);
@@ -290,8 +261,6 @@ describe('getUserDashboardData', () => {
         consoleErrorSpy.mockRestore();
     });
 });
-
-// ── getAdminDashboardData ─────────────────────────────────────────────
 
 describe('getAdminDashboardData', () => {
     it('returns null if not authenticated', async () => {
