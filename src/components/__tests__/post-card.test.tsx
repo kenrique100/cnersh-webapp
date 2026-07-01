@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import {
@@ -20,7 +20,10 @@ import {
 
 describe("Utility Functions", () => {
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     describe("getInitials", () => {
@@ -169,7 +172,10 @@ describe("Utility Functions", () => {
 
 describe("PostCard Components", () => {
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     describe("PostCard", () => {

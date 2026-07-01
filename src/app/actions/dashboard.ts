@@ -210,3 +210,101 @@ export async function getAdminDashboardData() {
         return null;
     }
 }
+
+/**
+ * Returns the current user's profile fields.
+ * Returns null when not authenticated.
+ */
+export async function updateProfile() {
+    const session = await authSession();
+    if (!session) return null;
+
+    try {
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: {
+                email: true,
+                name: true,
+                image: true,
+                role: true,
+                profession: true,
+                title: true,
+            },
+        });
+
+        return user ?? null;
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        return null;
+    }
+}
+
+/**
+ * Returns paginated posts and projects for the current user,
+ * plus their total counts.
+ * Throws "Unauthorized" when not authenticated.
+ */
+export async function getUserActivity(page = 1, limit = 10) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    try {
+        const userId = session.user.id;
+        const skip = (page - 1) * limit;
+
+        const [posts, projects, totalPosts, totalProjects] = await Promise.all([
+            db.post.findMany({
+                where: { userId, deleted: false },
+                select: {
+                    id: true,
+                    content: true,
+                    image: true,
+                    createdAt: true,
+                    _count: { select: { comments: true, likes: true } },
+                },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: limit,
+            }),
+            db.project.findMany({
+                where: { userId, deleted: false },
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    status: true,
+                    category: true,
+                    location: true,
+                    feedback: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: limit,
+            }),
+            db.post.count({ where: { userId, deleted: false } }),
+            db.project.count({ where: { userId, deleted: false } }),
+        ]);
+
+        return {
+            posts: posts.map((p) => ({
+                ...p,
+                createdAt: p.createdAt.toISOString(),
+            })),
+            projects: projects.map((p) => ({
+                ...p,
+                createdAt: p.createdAt.toISOString(),
+            })),
+            totalPosts,
+            totalProjects,
+        };
+    } catch (error) {
+        console.error("Error fetching user activity:", error);
+        return {
+            posts: [],
+            projects: [],
+            totalPosts: 0,
+            totalProjects: 0,
+        };
+    }
+}

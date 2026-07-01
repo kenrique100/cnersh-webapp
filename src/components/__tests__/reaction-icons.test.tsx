@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, cleanup, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import {
     LikeIcon,
@@ -14,9 +14,11 @@ import {
 } from "../reaction-icons";
 
 describe("ReactionIcons", () => {
-    // Clears React 18 Scheduler MessageChannel handles after execution
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     it("renders emoji-based icons", () => {

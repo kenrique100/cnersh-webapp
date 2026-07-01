@@ -1,18 +1,19 @@
+import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
+import { TextEncoder, TextDecoder } from 'util';
 
 if (!globalThis.structuredClone) {
-    globalThis.structuredClone = (obj: unknown) => JSON.parse(JSON.stringify(obj));
+    globalThis.structuredClone = <T>(obj: T): T =>
+        JSON.parse(JSON.stringify(obj)) as T;
 }
 
-import { TextEncoder, TextDecoder } from 'util';
-import { ReadableStream } from 'stream/web';
-import { MessageChannel, MessagePort } from 'worker_threads';
+Object.assign(global, { TextDecoder, TextEncoder });
 
-Object.assign(global, {
-    TextDecoder,
-    TextEncoder,
-    ReadableStream,
-    MessageChannel,
-    MessagePort,
+// Set globally once — never needs repeating in individual test files
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+afterEach(() => {
+    // cleanup() handles unmounting — RTL already calls this automatically
+    // when using @testing-library/react, but explicit is fine too
+    cleanup();
 });
-
-import '@testing-library/jest-dom';

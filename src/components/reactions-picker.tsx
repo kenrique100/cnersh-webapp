@@ -1,3 +1,4 @@
+// reactions-picker.tsx
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -161,8 +162,12 @@ const MAX_RECENT = 32;
 
 function getRecentEmojis(): string[] {
     if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); }
-    catch { return []; }
+    try {
+        const stored = localStorage.getItem(RECENT_KEY);
+        return JSON.parse(stored ?? "[]") as string[];
+    } catch {
+        return [];
+    }
 }
 
 function addRecentEmoji(emoji: string) {
@@ -172,15 +177,15 @@ function addRecentEmoji(emoji: string) {
 }
 
 const CATEGORY_TABS = [
-    { id: "recent",     label: "Recent",             icon: <Clock className="w-4 h-4" /> },
-    { id: "smileys",    label: "Smileys & People",   icon: "😀" },
-    { id: "animals",    label: "Animals & Nature",   icon: "🐶" },
-    { id: "food",       label: "Food & Drink",       icon: "🍔" },
-    { id: "travel",     label: "Travel & Transport", icon: "🚗" },
-    { id: "activities", label: "Activities & Sports",icon: "⚽" },
-    { id: "objects",    label: "Objects & Tools",    icon: "💡" },
-    { id: "symbols",    label: "Symbols & Signs",    icon: "🔣" },
-    { id: "flags",      label: "Flags",              icon: "🚩" },
+    { id: "recent",     label: "Recent",              icon: <Clock className="w-4 h-4" /> },
+    { id: "smileys",    label: "Smileys & People",    icon: "😀" },
+    { id: "animals",    label: "Animals & Nature",    icon: "🐶" },
+    { id: "food",       label: "Food & Drink",        icon: "🍔" },
+    { id: "travel",     label: "Travel & Transport",  icon: "🚗" },
+    { id: "activities", label: "Activities & Sports", icon: "⚽" },
+    { id: "objects",    label: "Objects & Tools",     icon: "💡" },
+    { id: "symbols",    label: "Symbols & Signs",     icon: "🔣" },
+    { id: "flags",      label: "Flags",               icon: "🚩" },
 ];
 
 interface FullEmojiPickerProps {
@@ -189,28 +194,30 @@ interface FullEmojiPickerProps {
 }
 
 function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
-    const [search, setSearch]           = useState("");
-    const [activeTab, setActiveTab]     = useState("recent");
+    const [search, setSearch]             = useState("");
+    const [activeTab, setActiveTab]       = useState("recent");
     const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
 
-    const searchRef  = useRef<HTMLInputElement>(null);
-    const scrollRef  = useRef<HTMLDivElement>(null);
+    const searchRef   = useRef<HTMLInputElement>(null);
+    const scrollRef   = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-    // Load recent emojis and focus search on mount — no setState cascade
-    // because this runs once and sets independent pieces of state.
+    // Load recents once on mount and focus the search input after a tick
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRecentEmojis(getRecentEmojis());
+        const loaded = getRecentEmojis();
+        setRecentEmojis(loaded);
         const timer = setTimeout(() => searchRef.current?.focus(), 50);
         return () => clearTimeout(timer);
     }, []);
 
-    const handleSelect = useCallback((emoji: string) => {
-        addRecentEmoji(emoji);
-        setRecentEmojis(getRecentEmojis());
-        onSelect(emoji);
-    }, [onSelect]);
+    const handleSelect = useCallback(
+        (emoji: string) => {
+            addRecentEmoji(emoji);
+            setRecentEmojis(getRecentEmojis());
+            onSelect(emoji);
+        },
+        [onSelect],
+    );
 
     const handleTabClick = (id: string) => {
         setActiveTab(id);
@@ -226,6 +233,9 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
         }
     };
 
+    // Derive the active tab from scroll position without calling setState
+    // synchronously — we schedule the update after the browser paints via
+    // requestAnimationFrame so React never sees it mid-render.
     const handleScroll = useCallback(() => {
         if (!scrollRef.current) return;
         const scrollTop = scrollRef.current.scrollTop;
@@ -234,7 +244,11 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
             const el = sectionRefs.current[cat.id];
             if (el && el.offsetTop - 20 <= scrollTop) current = cat.id;
         }
-        setActiveTab(current);
+        // Schedule the state update outside the scroll-event synchronous call
+        // stack so React can batch it safely without triggering cascading renders.
+        requestAnimationFrame(() => {
+            setActiveTab(current);
+        });
     }, []);
 
     const searchResults = useMemo(() => {
@@ -402,11 +416,13 @@ export function ReactionsPicker({
                                     showEmojiPicker = false,
                                     onEmojiSelect,
                                 }: ReactionsPickerProps) {
-    //  FIX: Derive initial state directly from props using lazy initializer.
-    //    This avoids the antipattern of calling setState inside useEffect
-    //    just to mirror a prop — which causes cascading renders.
+    // Keep a ref to track what value was used to initialise each piece of state
+    // so we can detect genuine prop changes without calling setState in a render.
+    const prevReactionRef = useRef(initialReaction);
+    const prevCountRef    = useRef(initialCount);
+
     const [selectedReaction, setSelectedReaction] = useState<ReactionLabel | null>(
-        () => (initialReaction as ReactionLabel) ?? null
+        () => (initialReaction as ReactionLabel) ?? null,
     );
     const [count, setCount] = useState(() => initialCount);
 
@@ -418,33 +434,36 @@ export function ReactionsPicker({
     const containerRef  = useRef<HTMLDivElement>(null);
     const fullPickerRef = useRef<HTMLDivElement>(null);
 
-    // ✅ FIX: Use a ref to track the previous prop value so we only call
-    //    setState when the prop genuinely changes from the outside — not on
-    //    every render. This avoids synchronous setState-in-effect entirely.
-    const prevReactionRef = useRef(initialReaction);
-    const prevCountRef    = useRef(initialCount);
-
+    // Sync reaction prop — schedule via useEffect so it never fires synchronously
+    // during the parent's render cycle, avoiding cascading-render warnings.
     useEffect(() => {
-        if (prevReactionRef.current !== initialReaction) {
-            prevReactionRef.current = initialReaction;
-            setSelectedReaction((initialReaction as ReactionLabel) ?? null);
-        }
+        if (prevReactionRef.current === initialReaction) return;
+        prevReactionRef.current = initialReaction;
+        setSelectedReaction((initialReaction as ReactionLabel) ?? null);
     }, [initialReaction]);
 
+    // Sync count prop the same way
     useEffect(() => {
-        if (prevCountRef.current !== initialCount) {
-            prevCountRef.current = initialCount;
-            setCount(initialCount);
-        }
+        if (prevCountRef.current === initialCount) return;
+        prevCountRef.current = initialCount;
+        setCount(initialCount);
     }, [initialCount]);
 
     // Close pickers on outside click
     useEffect(() => {
         const handle = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node))
+            if (
+                containerRef.current &&
+                !containerRef.current.contains(e.target as Node)
+            ) {
                 setShowQuickPicker(false);
-            if (fullPickerRef.current && !fullPickerRef.current.contains(e.target as Node))
+            }
+            if (
+                fullPickerRef.current &&
+                !fullPickerRef.current.contains(e.target as Node)
+            ) {
                 setShowFullPicker(false);
+            }
         };
         document.addEventListener("mousedown", handle);
         return () => document.removeEventListener("mousedown", handle);
@@ -483,7 +502,8 @@ export function ReactionsPicker({
 
     const handleMainClick = () => {
         if (showQuickPicker) return;
-        const reactionType: ReactionLabel = (selectedReaction as ReactionLabel) || "Like";
+        const reactionType: ReactionLabel =
+            (selectedReaction as ReactionLabel) || "Like";
         if (selectedReaction) {
             setSelectedReaction(null);
             setCount((c) => Math.max(0, c - 1));

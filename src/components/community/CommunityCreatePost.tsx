@@ -31,7 +31,7 @@ import { NewTopicState } from "./types";
 import { CATEGORIES, CATEGORY_COLORS } from "./constants";
 import { deleteBlobUrl } from "./utils";
 
-interface CommunityCreatePostProps {
+export interface CommunityCreatePostProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     newTopic: NewTopicState;
@@ -46,18 +46,18 @@ interface CommunityCreatePostProps {
 }
 
 export function CommunityCreatePost({
-    open,
-    onOpenChange,
-    newTopic,
-    setNewTopic,
-    isAdmin,
-    topicUploading,
-    onCreateTopic,
-    onFileUpload,
-    topicImageRef,
-    topicVideoRef,
-    topicDocRef,
-}: CommunityCreatePostProps) {
+                                        open,
+                                        onOpenChange,
+                                        newTopic,
+                                        setNewTopic,
+                                        isAdmin,
+                                        topicUploading,
+                                        onCreateTopic,
+                                        onFileUpload,
+                                        topicImageRef,
+                                        topicVideoRef,
+                                        topicDocRef,
+                                    }: CommunityCreatePostProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white max-h-[90vh] overflow-y-auto">
@@ -93,6 +93,7 @@ export function CommunityCreatePost({
                             />
                         </div>
                     </div>
+
                     <div>
                         <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
                             Category
@@ -127,6 +128,7 @@ export function CommunityCreatePost({
                             </SelectContent>
                         </Select>
                     </div>
+
                     <div>
                         <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
                             Description
@@ -143,6 +145,7 @@ export function CommunityCreatePost({
                             className="bg-gray-50 dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 min-h-[80px]"
                         />
                     </div>
+
                     {/* Optional Media/Link - Only for Announcements */}
                     {newTopic.category === "Announcements" && (
                         <>
@@ -183,7 +186,10 @@ export function CommunityCreatePost({
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img src={url} alt={`Uploaded image ${i + 1}`} className="h-16 w-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700" />
                                                 <button
-                                                    onClick={() => { deleteBlobUrl(url); setNewTopic((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) })); }}
+                                                    onClick={() => {
+                                                        void deleteBlobUrl(url);
+                                                        setNewTopic((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }));
+                                                    }}
                                                     className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <XIcon className="h-3 w-3" />
@@ -193,6 +199,7 @@ export function CommunityCreatePost({
                                     </div>
                                 )}
                             </div>
+
                             {/* Video Upload */}
                             <div>
                                 <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
@@ -229,7 +236,13 @@ export function CommunityCreatePost({
                                             <div key={i} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1 text-xs text-gray-700 dark:text-gray-300">
                                                 <VideoIcon className="h-3.5 w-3.5 text-gray-400" />
                                                 <span className="truncate max-w-[120px]">Video {i + 1}</span>
-                                                <button onClick={() => { deleteBlobUrl(url); setNewTopic((p) => ({ ...p, videos: p.videos.filter((_, idx) => idx !== i) })); }} className="text-red-500 hover:text-red-600">
+                                                <button
+                                                    onClick={() => {
+                                                        void deleteBlobUrl(url);
+                                                        setNewTopic((p) => ({ ...p, videos: p.videos.filter((_, idx) => idx !== i) }));
+                                                    }}
+                                                    className="text-red-500 hover:text-red-600"
+                                                >
                                                     <XIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -237,6 +250,7 @@ export function CommunityCreatePost({
                                     </div>
                                 )}
                             </div>
+
                             {/* Document Upload */}
                             <div>
                                 <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
@@ -273,7 +287,13 @@ export function CommunityCreatePost({
                                             <div key={i} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1 text-xs text-gray-700 dark:text-gray-300">
                                                 <FileTextIcon className="h-3.5 w-3.5 text-gray-400" />
                                                 <span className="truncate max-w-[120px]">Document {i + 1}</span>
-                                                <button onClick={() => { deleteBlobUrl(url); setNewTopic((p) => ({ ...p, documents: p.documents.filter((_, idx) => idx !== i) })); }} className="text-red-500 hover:text-red-600">
+                                                <button
+                                                    onClick={() => {
+                                                        void deleteBlobUrl(url);
+                                                        setNewTopic((p) => ({ ...p, documents: p.documents.filter((_, idx) => idx !== i) }));
+                                                    }}
+                                                    className="text-red-500 hover:text-red-600"
+                                                >
                                                     <XIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -281,6 +301,7 @@ export function CommunityCreatePost({
                                     </div>
                                 )}
                             </div>
+
                             {/* Link URL */}
                             <div>
                                 <label className="text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1.5 block">
@@ -298,6 +319,7 @@ export function CommunityCreatePost({
                             </div>
                         </>
                     )}
+
                     <Button
                         onClick={onCreateTopic}
                         className={`w-full text-white ${newTopic.category === "Announcements" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-indigo-500 hover:bg-indigo-600"}`}

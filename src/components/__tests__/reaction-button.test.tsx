@@ -1,24 +1,31 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { ReactionButton, ReactionPicker } from "../reaction-button";
+
+// Prevent style injection from leaving extra DOM in tests
+beforeEach(() => {
+    const existing = document.getElementById('reaction-animations');
+    if (existing) existing.remove();
+});
 
 describe("ReactionButton", () => {
     const mockReaction = {
         label: "Like",
         color: "#0A66C2",
     };
-
     const mockOnClick = jest.fn();
 
     beforeEach(() => {
         mockOnClick.mockClear();
     });
 
-    // Clean up micro/macro task queues between iterations
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     describe("Rendering", () => {
@@ -81,8 +88,9 @@ describe("ReactionButton", () => {
             });
 
             jest.useRealTimers();
-            // Critical macro-task flush right after swapping back to real timers
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            await act(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 0));
+            });
         });
 
         it("handles multiple rapid clicks", async () => {
@@ -164,7 +172,10 @@ describe("ReactionPicker", () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     describe("Rendering", () => {
