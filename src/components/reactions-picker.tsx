@@ -196,16 +196,14 @@ interface FullEmojiPickerProps {
 function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
     const [search, setSearch]             = useState("");
     const [activeTab, setActiveTab]       = useState("recent");
-    const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
+    const [recentEmojis, setRecentEmojis] = useState<string[]>(() => getRecentEmojis());
 
     const searchRef   = useRef<HTMLInputElement>(null);
     const scrollRef   = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-    // Load recents once on mount and focus the search input after a tick
+    // Focus the search input after mount.
     useEffect(() => {
-        const loaded = getRecentEmojis();
-        setRecentEmojis(loaded);
         const timer = setTimeout(() => searchRef.current?.focus(), 50);
         return () => clearTimeout(timer);
     }, []);
