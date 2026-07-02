@@ -96,6 +96,7 @@ jest.mock("@/components/ui/select", () => {
         return <>{children}</>;
     }
     function SelectTrigger(_props: { children?: React.ReactNode; className?: string }) {
+        void _props;   // <-- ESLint fix
         return null;
     }
     function SelectValue(_props: { placeholder?: string }) {

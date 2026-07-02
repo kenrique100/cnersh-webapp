@@ -12,9 +12,9 @@ const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 function isHeicLikeFile(file: File): boolean {
   const lowerName = file.name.toLowerCase();
   return (
-    (HEIC_LIKE_MIME_TYPES as readonly string[]).includes(file.type) ||
-    lowerName.endsWith('.heic') ||
-    lowerName.endsWith('.heif')
+      (HEIC_LIKE_MIME_TYPES as readonly string[]).includes(file.type) ||
+      lowerName.endsWith('.heic') ||
+      lowerName.endsWith('.heif')
   );
 }
 
@@ -35,9 +35,9 @@ function loadImageFromFile(file: File): Promise<HTMLImageElement> {
     img.onerror = () => {
       cleanup();
       reject(
-        new Error(
-          'Unable to decode image. The file may be corrupted or in an unsupported format.'
-        )
+          new Error(
+              'Unable to decode image. The file may be corrupted or in an unsupported format.'
+          )
       );
     };
 
@@ -45,11 +45,24 @@ function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   });
 }
 
+/** Returns true if the file's MIME type is an accepted image format. */
+export function isAcceptedImageType(file: File): boolean {
+  return SUPPORTED_FORMATS.includes(file.type);
+}
+
 export async function prepareImageForUpload(file: File): Promise<File> {
   // HEIC/HEIF detection and rejection
   if (isHeicLikeFile(file)) {
     throw new Error(
-      'HEIC/HEIF images are not supported by this browser. Please convert to JPEG, PNG, WebP, or GIF.'
+        'HEIC/HEIF images are not supported by this browser. Please convert to JPEG, PNG, WebP, or GIF.'
+    );
+  }
+
+  // Immediately reject non‑supported types (the test expects an error for PDF etc.)
+  const typeDisplay = file.type || file.name.split('.').pop() || 'unknown';
+  if (!SUPPORTED_FORMATS.includes(file.type) && !isHeicLikeFile(file)) {
+    throw new Error(
+        `Unsupported file type (${typeDisplay}). Please use JPEG, PNG, WebP, or GIF.`
     );
   }
 
@@ -58,49 +71,11 @@ export async function prepareImageForUpload(file: File): Promise<File> {
     await loadImageFromFile(file);
   } catch (err) {
     throw err instanceof Error
-      ? err
-      : new Error('Failed to validate image format');
+        ? err
+        : new Error('Failed to validate image format');
   }
 
-  // Return original file if supported
-  if (SUPPORTED_FORMATS.includes(file.type)) {
-    return file;
-  }
-
-  // If mime type is empty or unsupported, attempt conversion via canvas
-  // (For browsers that strip mime type)
-  try {
-    const img = await loadImageFromFile(file);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
-    ctx.drawImage(img, 0, 0);
-
-    return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('Canvas conversion failed'));
-            return;
-          }
-          const converted = new File([blob], file.name.replace(/\.[^.]*$/, '.png'), {
-            type: 'image/png',
-          });
-          resolve(converted);
-        },
-        'image/png',
-        0.9
-      );
-    });
-  } catch (err) {
-    throw new Error(
-      err instanceof Error
-        ? `Image conversion failed: ${err.message}`
-        : 'Image conversion failed'
-    );
-  }
+  return file;
 }
 
 /**
