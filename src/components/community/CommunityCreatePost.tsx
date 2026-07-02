@@ -26,6 +26,7 @@ import {
     FileTextIcon,
     LinkIcon,
     XIcon,
+    AlertCircle,
 } from "lucide-react";
 import { NewTopicState } from "./types";
 import { CATEGORIES, CATEGORY_COLORS } from "./constants";
@@ -46,18 +47,32 @@ export interface CommunityCreatePostProps {
 }
 
 export function CommunityCreatePost({
-                                        open,
-                                        onOpenChange,
-                                        newTopic,
-                                        setNewTopic,
-                                        isAdmin,
-                                        topicUploading,
-                                        onCreateTopic,
-                                        onFileUpload,
-                                        topicImageRef,
-                                        topicVideoRef,
-                                        topicDocRef,
-                                    }: CommunityCreatePostProps) {
+    open,
+    onOpenChange,
+    newTopic,
+    setNewTopic,
+    isAdmin,
+    topicUploading,
+    onCreateTopic,
+    onFileUpload,
+    topicImageRef,
+    topicVideoRef,
+    topicDocRef,
+}: CommunityCreatePostProps) {
+    const [documentError, setDocumentError] = React.useState<string | null>(null);
+
+    const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        setDocumentError(null);
+        if (files) {
+            for (const file of Array.from(files)) {
+                // PDF validation is handled in the onFileUpload callback
+                await onFileUpload(file, "document");
+            }
+        }
+        e.target.value = "";
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white max-h-[90vh] overflow-y-auto">
@@ -262,15 +277,7 @@ export function CommunityCreatePost({
                                     accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
                                     multiple
                                     className="hidden"
-                                    onChange={async (e) => {
-                                        const files = e.target.files;
-                                        if (files) {
-                                            for (const file of Array.from(files)) {
-                                                await onFileUpload(file, "document");
-                                            }
-                                        }
-                                        e.target.value = "";
-                                    }}
+                                    onChange={handleDocumentUpload}
                                 />
                                 <button
                                     type="button"
@@ -281,6 +288,12 @@ export function CommunityCreatePost({
                                     <UploadIcon className="h-4 w-4 text-gray-400 shrink-0" />
                                     <span>{topicUploading ? "Uploading..." : "Upload documents"}</span>
                                 </button>
+                                {documentError && (
+                                    <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 dark:bg-red-950 rounded-md border border-red-200 dark:border-red-800">
+                                        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                        <p className="text-sm text-red-700 dark:text-red-300">{documentError}</p>
+                                    </div>
+                                )}
                                 {newTopic.documents.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         {newTopic.documents.map((url, i) => (
