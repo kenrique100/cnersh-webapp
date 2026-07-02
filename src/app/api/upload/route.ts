@@ -115,11 +115,24 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // PDF Page Count Validation (1-4 pages required)
   if (file.type === "application/pdf") {
     try {
       const pdfDoc = await pdf(fileBuffer);
-      if (pdfDoc.numpages > 4) {
-        return NextResponse.json({ error: "PDF exceeds 4 pages" }, { status: 400 });
+      const pageCount = pdfDoc.numpages;
+
+      if (pageCount === 0) {
+        return NextResponse.json(
+          { error: "PDF is empty (0 pages). Please upload a PDF with at least 1 page." },
+          { status: 400 }
+        );
+      }
+
+      if (pageCount > 4) {
+        return NextResponse.json(
+          { error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.` },
+          { status: 400 }
+        );
       }
     } catch {
       return NextResponse.json({ error: "Invalid or corrupted PDF file" }, { status: 400 });

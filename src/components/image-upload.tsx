@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ImageIcon, UploadCloud, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import ReactCrop from "react-image-crop";
+import { createPreviewBlobUrl, revokePreviewBlobUrl, prepareImageForUpload } from "@/lib/client-image-upload";
 
 export type ImageUploadVariant = "feed" | "profile";
 
@@ -15,20 +16,28 @@ interface ImageUploadProps {
 }
 
 export default function ImageUpload({
-                                        variant = "feed",
-                                        defaultUrl = null,
-                                        onChange,
-                                    }: ImageUploadProps) {
-    // Initialize from defaultUrl. Tests render with defaultUrl at mount, they don't rely on runtime prop-sync,
-    // so keeping this as initial state avoids an unconditional setState inside useEffect.
+    variant = "feed",
+    defaultUrl = null,
+    onChange,
+}: ImageUploadProps) {
     const [imageUrl, setImageUrl] = React.useState<string | null>(() => defaultUrl ?? null);
     const [isUploading, setIsUploading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [showCrop, setShowCrop] = React.useState(false);
     const [lastFile, setLastFile] = React.useState<File | null>(null);
     const [isDragActive, setIsDragActive] = React.useState(false);
+    const [previewBlobUrl, setPreviewBlobUrl] = React.useState<string | null>(null);
 
     const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+    // Cleanup blob URL on unmount or when changing preview
+    React.useEffect(() => {
+        return () => {
+            if (previewBlobUrl && !previewBlobUrl.startsWith('blob:')) {
+                revokePreviewBlobUrl(previewBlobUrl);
+            }
+        };
+    }, [previewBlobUrl]);
 
     const openFilePicker = () => inputRef.current?.click();
 
@@ -41,6 +50,12 @@ export default function ImageUpload({
             return;
         }
 
+        // Create and display preview immediately
+        const blobUrl = createPreviewBlobUrl(file);
+        setPreviewBlobUrl(blobUrl);
+        setImageUrl(blobUrl);
+
+        // Start upload in background
         void uploadFile(file);
     };
 
@@ -51,13 +66,14 @@ export default function ImageUpload({
         setError(null);
 
         try {
-            const formData = new FormData();
-            if (typeof fileOrDataUrl === "string") {
-                // tests don't assert the body, just that a POST happened — include the data payload
-                formData.append("data", fileOrDataUrl);
-            } else {
-                formData.append("file", fileOrDataUrl);
+            // Prepare image (validate format, convert if needed)
+            let fileToUpload: File = fileOrDataUrl instanceof File ? fileOrDataUrl : new File([fileOrDataUrl], "image.png", { type: "image/png" });
+            if (fileToUpload instanceof File && fileToUpload.type.startsWith('image/')) {
+                fileToUpload = await prepareImageForUpload(fileToUpload);
             }
+
+            const formData = new FormData();
+            formData.append("file", fileToUpload);
 
             const res = await fetch("/api/upload", {
                 method: "POST",
@@ -70,13 +86,21 @@ export default function ImageUpload({
                 throw new Error(json?.error || "Upload failed");
             }
 
+            // Successfully uploaded - revoke preview blob URL and use server URL
+            if (previewBlobUrl) {
+                revokePreviewBlobUrl(previewBlobUrl);
+                setPreviewBlobUrl(null);
+            }
+
             setImageUrl(json.url);
             onChange?.(json.url);
             toast?.success?.("Image uploaded successfully");
             setShowCrop(false);
-        } catch {
-            // don't create an unused variable; just set the error
-            setError("Upload failed");
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : "Upload failed";
+            setError(errorMsg);
+            toast.error(errorMsg);
+            // Keep preview visible on error so user can retry
         } finally {
             setIsUploading(false);
         }
@@ -99,6 +123,13 @@ export default function ImageUpload({
 
     const handleRetry = async () => {
         if (lastFile) {
+            // Create new preview
+            const blobUrl = createPreviewBlobUrl(lastFile);
+            if (previewBlobUrl) {
+                revokePreviewBlobUrl(previewBlobUrl);
+            }
+            setPreviewBlobUrl(blobUrl);
+            setImageUrl(blobUrl);
             await uploadFile(lastFile);
         }
     };
@@ -111,6 +142,10 @@ export default function ImageUpload({
     };
 
     const handleRemove = () => {
+        if (previewBlobUrl) {
+            revokePreviewBlobUrl(previewBlobUrl);
+            setPreviewBlobUrl(null);
+        }
         setImageUrl(null);
         onChange?.(null);
     };
@@ -197,7 +232,7 @@ export default function ImageUpload({
                     ) : error ? (
                         <div>
                             <AlertCircle />
-                            <span>Upload failed</span>
+                            <span>{error}</span>
                             <div>
                                 <button onClick={handleRetry}>Retry</button>
                             </div>
