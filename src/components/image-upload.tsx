@@ -5,7 +5,11 @@ import Image from "next/image";
 import { ImageIcon, UploadCloud, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import ReactCrop from "react-image-crop";
-import { createPreviewBlobUrl, revokePreviewBlobUrl, prepareImageForUpload } from "@/lib/client-image-upload";
+import {
+    createPreviewBlobUrl,
+    revokePreviewBlobUrl,
+    prepareImageForUpload,
+} from "@/lib/client-image-upload";
 
 export type ImageUploadVariant = "feed" | "profile";
 
@@ -16,11 +20,14 @@ interface ImageUploadProps {
 }
 
 export default function ImageUpload({
-    variant = "feed",
-    defaultUrl = null,
-    onChange,
-}: ImageUploadProps) {
-    const [imageUrl, setImageUrl] = React.useState<string | null>(() => defaultUrl ?? null);
+                                        variant = "feed",
+                                        defaultUrl = null,
+                                        onChange,
+                                    }: ImageUploadProps) {
+    // Only set after a SUCCESSFUL upload (or from defaultUrl)
+    const [imageUrl, setImageUrl] = React.useState<string | null>(
+        () => defaultUrl ?? null
+    );
     const [isUploading, setIsUploading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [showCrop, setShowCrop] = React.useState(false);
@@ -30,10 +37,9 @@ export default function ImageUpload({
 
     const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-    // Cleanup blob URL on unmount or when changing preview
     React.useEffect(() => {
         return () => {
-            if (previewBlobUrl && !previewBlobUrl.startsWith('blob:')) {
+            if (previewBlobUrl) {
                 revokePreviewBlobUrl(previewBlobUrl);
             }
         };
@@ -50,12 +56,13 @@ export default function ImageUpload({
             return;
         }
 
-        // Create and display preview immediately
+        // Create blob preview but do NOT set imageUrl yet —
+        // imageUrl controls which top-level branch renders.
+        // We stay in the dropzone branch so uploading/error UI is visible.
         const blobUrl = createPreviewBlobUrl(file);
+        if (previewBlobUrl) revokePreviewBlobUrl(previewBlobUrl);
         setPreviewBlobUrl(blobUrl);
-        setImageUrl(blobUrl);
 
-        // Start upload in background
         void uploadFile(file);
     };
 
@@ -66,9 +73,12 @@ export default function ImageUpload({
         setError(null);
 
         try {
-            // Prepare image (validate format, convert if needed)
-            let fileToUpload: File = fileOrDataUrl instanceof File ? fileOrDataUrl : new File([fileOrDataUrl], "image.png", { type: "image/png" });
-            if (fileToUpload instanceof File && fileToUpload.type.startsWith('image/')) {
+            let fileToUpload: File =
+                fileOrDataUrl instanceof File
+                    ? fileOrDataUrl
+                    : new File([fileOrDataUrl], "image.png", { type: "image/png" });
+
+            if (fileToUpload.type.startsWith("image/")) {
                 fileToUpload = await prepareImageForUpload(fileToUpload);
             }
 
@@ -86,7 +96,7 @@ export default function ImageUpload({
                 throw new Error(json?.error || "Upload failed");
             }
 
-            // Successfully uploaded - revoke preview blob URL and use server URL
+            // Success — now switch to image-preview branch
             if (previewBlobUrl) {
                 revokePreviewBlobUrl(previewBlobUrl);
                 setPreviewBlobUrl(null);
@@ -94,13 +104,14 @@ export default function ImageUpload({
 
             setImageUrl(json.url);
             onChange?.(json.url);
-            toast?.success?.("Image uploaded successfully");
+            toast.success("Image uploaded successfully");
             setShowCrop(false);
         } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : "Upload failed";
+            const errorMsg =
+                err instanceof Error ? err.message : "Upload failed";
             setError(errorMsg);
             toast.error(errorMsg);
-            // Keep preview visible on error so user can retry
+            // Stay in dropzone branch so error UI is visible
         } finally {
             setIsUploading(false);
         }
@@ -122,16 +133,12 @@ export default function ImageUpload({
     };
 
     const handleRetry = async () => {
-        if (lastFile) {
-            // Create new preview
-            const blobUrl = createPreviewBlobUrl(lastFile);
-            if (previewBlobUrl) {
-                revokePreviewBlobUrl(previewBlobUrl);
-            }
-            setPreviewBlobUrl(blobUrl);
-            setImageUrl(blobUrl);
-            await uploadFile(lastFile);
-        }
+        if (!lastFile) return;
+
+        const blobUrl = createPreviewBlobUrl(lastFile);
+        if (previewBlobUrl) revokePreviewBlobUrl(previewBlobUrl);
+        setPreviewBlobUrl(blobUrl);
+        await uploadFile(lastFile);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,20 +157,21 @@ export default function ImageUpload({
         onChange?.(null);
     };
 
-    return (
-        <div className="relative">
-            <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleInputChange}
-                className="sr-only"
-                data-testid="image-file-input"
-            />
+    // ─── render ────────────────────────────────────────────────────────────────
 
-            {imageUrl ? (
+    // Branch 1: successful upload / defaultUrl → show preview + remove button
+    if (imageUrl && !isUploading && !error) {
+        return (
+            <div className="relative">
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleInputChange}
+                    className="sr-only"
+                    data-testid="image-file-input"
+                />
                 <div>
-                    {/* Use Next/Image to satisfy the lint rule and keep tests stable (mocked in tests) */}
                     <Image
                         src={imageUrl}
                         alt="Uploaded image preview"
@@ -172,23 +180,39 @@ export default function ImageUpload({
                         unoptimized
                     />
                     <div>
-                        <button aria-label="Remove uploaded image" onClick={handleRemove}>
+                        <button
+                            aria-label="Remove uploaded image"
+                            onClick={handleRemove}
+                        >
                             Remove
                         </button>
                     </div>
                 </div>
-            ) : showCrop ? (
+            </div>
+        );
+    }
+
+    // Branch 2: profile crop UI
+    if (showCrop) {
+        return (
+            <div className="relative">
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleInputChange}
+                    className="sr-only"
+                    data-testid="image-file-input"
+                />
                 <div>
                     <p>Crop your profile picture</p>
-
-                    {/* Provide the required onChange prop to satisfy TypeScript for react-image-crop */}
                     <ReactCrop onChange={() => {}}>
-                        {/* react-image-crop is mocked in tests and will render a wrapper */}
                         <div />
                     </ReactCrop>
-
                     <div>
-                        <button onClick={handleApplyAndUpload}>Apply &amp; Upload</button>
+                        <button onClick={handleApplyAndUpload}>
+                            Apply &amp; Upload
+                        </button>
                         <button
                             onClick={() => {
                                 setShowCrop(false);
@@ -199,57 +223,81 @@ export default function ImageUpload({
                         </button>
                     </div>
                 </div>
-            ) : (
-                <div
-                    role="button"
-                    tabIndex={0}
-                    data-testid="image-dropzone"
-                    aria-busy={isUploading}
-                    className="w-full rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-2 transition-colors"
-                    onClick={openFilePicker}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openFilePicker();
-                        }
-                    }}
-                    onDragOver={(e) => {
+            </div>
+        );
+    }
+
+    // Branch 3: dropzone (idle / uploading / error / drag-active)
+    return (
+        <div className="relative">
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleInputChange}
+                className="sr-only"
+                data-testid="image-file-input"
+            />
+            <div
+                role="button"
+                tabIndex={0}
+                data-testid="image-dropzone"
+                aria-busy={isUploading}
+                className="w-full rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-2 transition-colors"
+                onClick={openFilePicker}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setIsDragActive(true);
-                    }}
-                    onDragLeave={() => setIsDragActive(false)}
-                    onDrop={(e) => {
-                        e.preventDefault();
-                        setIsDragActive(false);
-                        const f = e.dataTransfer?.files?.[0];
-                        if (f) handleSelectedFile(f);
-                    }}
-                >
-                    {isUploading ? (
+                        openFilePicker();
+                    }
+                }}
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragActive(true);
+                }}
+                onDragLeave={() => setIsDragActive(false)}
+                onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragActive(false);
+                    const f = e.dataTransfer?.files?.[0];
+                    if (f) handleSelectedFile(f);
+                }}
+            >
+                {isUploading ? (
+                    <div>
+                        <p>Uploading…</p>
+                    </div>
+                ) : error ? (
+                    <div>
+                        <AlertCircle data-testid="icon-AlertCircle" />
+                        <span>{error}</span>
                         <div>
-                            <p>Uploading…</p>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleRetry();
+                                }}
+                            >
+                                Retry
+                            </button>
                         </div>
-                    ) : error ? (
-                        <div>
-                            <AlertCircle />
-                            <span>{error}</span>
-                            <div>
-                                <button onClick={handleRetry}>Retry</button>
-                            </div>
-                        </div>
-                    ) : isDragActive ? (
-                        <div>
-                            <UploadCloud />
-                            <span>Drop image here</span>
-                        </div>
-                    ) : (
-                        <div>
-                            <ImageIcon />
-                            <span>{variant === "profile" ? "Upload profile picture" : "Drop or click to upload an image"}</span>
-                        </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                ) : isDragActive ? (
+                    <div>
+                        <UploadCloud data-testid="icon-UploadCloud" />
+                        <span>Drop image here</span>
+                    </div>
+                ) : (
+                    <div>
+                        <ImageIcon data-testid="icon-Image" />
+                        <span>
+                            {variant === "profile"
+                                ? "Upload profile picture"
+                                : "Drop or click to upload an image"}
+                        </span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

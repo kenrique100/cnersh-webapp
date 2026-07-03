@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import ImageUpload from "@/components/image-upload";
 
 const mockFetch = jest.fn();
-// avoid 'any' by casting via unknown -> typeof fetch
 (global as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
 
 const mockToastSuccess = jest.fn();
@@ -19,12 +18,11 @@ jest.mock("sonner", () => ({
 jest.mock("@/lib/client-image-upload", () => ({
     ACCEPTED_IMAGE_MIME_TYPES: ["image/jpeg", "image/png", "image/webp"],
     prepareImageForUpload: jest.fn(async (file: File) => file),
+    createPreviewBlobUrl: jest.fn(() => "blob:mock-preview-url"),
+    revokePreviewBlobUrl: jest.fn(),
 }));
 
 jest.mock("next/image", () => {
-    // Tests expect an element with the alt attr, so mock next/image to render a plain <img>.
-    // Disable the next.js lint rule for this mock file line.
-    // eslint-disable-next-line @next/next/no-img-element
     const NextImage = ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />;
     NextImage.displayName = "NextImage";
     return { __esModule: true, default: NextImage };
@@ -68,7 +66,6 @@ function makeFile(name = "test.jpg", type = "image/jpeg", size = 1024) {
     return new File([blob], name, { type });
 }
 
-// Wrap in act so React processes all synchronous state updates triggered by the change event
 async function selectFile(file: File) {
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [file], configurable: true });
@@ -231,7 +228,6 @@ describe("ImageUpload", () => {
                     setTimeout(() => this.onload?.({ target: { result: this.result } }), 0);
                 }
             }
-            // assign the mock FileReader in a typed-safe way (no ts-ignore)
             (global as unknown as { FileReader: typeof FileReader }).FileReader = MockFileReader as unknown as typeof FileReader;
             return () => {
                 (global as unknown as { FileReader: typeof FileReader }).FileReader = originalFileReader;
