@@ -4,14 +4,20 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+function extractUploadThingKey(url: string): string | null {
+    const match = url.match(/\/f\/([^/?]+)/);
+    return match ? match[1] : null;
+}
+
 async function deleteBlobUrl(url: string) {
     try {
-        const pullZoneUrl = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL ?? "";
-        if (!pullZoneUrl || !url.startsWith(pullZoneUrl)) return;
+        if (!url.includes(".ufs.sh/") && !url.includes(".utfs.io/")) return;
+        const storageKey = extractUploadThingKey(url);
+        if (!storageKey) return;
         await fetch("/api/delete-blob", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url }),
+            body: JSON.stringify({ url, storageKey }),
         });
     } catch {
         // Best-effort deletion; do not surface errors to the user
