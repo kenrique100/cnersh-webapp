@@ -220,7 +220,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            toast.error("Video must be less than 5MB");
+            toast.error("Video must be less than 65MB");
             return;
         }
 
@@ -277,7 +277,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
                     <>
                         <VideoIcon className="h-8 w-8 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a video</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 5MB</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 64MB</span>
                     </>
                 )}
             </button>
@@ -756,8 +756,8 @@ export default function FeedClient({
             case "facebook":
                 url = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
                 break;
-            case "twitter":
-                url = `https://twitter.com/intent/tweet?text=${shareText}&url=${encodedUrl}`;
+            case "x":
+                url = `https://x.com/intent/tweet?text=${shareText}&url=${encodedUrl}`;
                 break;
             case "instagram":
                 navigator.clipboard.writeText(shareUrl);
@@ -1321,7 +1321,7 @@ export default function FeedClient({
                             <>
                                 <button onClick={() => handleShareTo("whatsapp", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-950 transition-colors"><div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white text-lg font-bold">W</div><span className="text-sm font-medium">WhatsApp</span></button>
                                 <button onClick={() => handleShareTo("facebook", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"><div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold">f</div><span className="text-sm font-medium">Facebook</span></button>
-                                <button onClick={() => handleShareTo("twitter", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-lg font-bold">𝕏</div><span className="text-sm font-medium">X (Twitter)</span></button>
+                                <button onClick={() => handleShareTo("x", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-lg font-bold">𝕏</div><span className="text-sm font-medium">X (Twitter)</span></button>
                                 <button onClick={() => handleShareTo("instagram", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors"><div className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">I</div><span className="text-sm font-medium">Instagram</span></button>
                                 <button onClick={() => handleShareTo("copy", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors col-span-2"><div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white"><ShareIcon className="h-5 w-5" /></div><span className="text-sm font-medium">Copy Link</span></button>
                             </>

@@ -66,7 +66,7 @@ export const sendOTPEmail = async ({
 
         // Validate environment configuration
         if (!process.env.RESEND_API_KEY) {
-            console.error("❌ RESEND_API_KEY is not configured. Please add it to your .env file.");
+            console.error("RESEND_API_KEY is not configured. Please add it to your .env file.");
             throw new Error("Email service not configured. Please contact support.");
         }
 
@@ -86,14 +86,14 @@ export const sendOTPEmail = async ({
         });
 
         if (response.error) {
-            console.error("❌ Resend API error:", response.error);
+            console.error("Resend API error:", response.error);
             throw new Error(`Failed to send OTP email: ${response.error.message}`);
         }
 
-        console.log(`✅ OTP email sent successfully to ${to}. Email ID: ${response.data?.id}`);
+        console.log(`OTP email sent successfully to ${to}. Email ID: ${response.data?.id}`);
         return response;
     } catch (error) {
-        console.error("❌ Error in sendOTPEmail:", error);
+        console.error("Error in sendOTPEmail:", error);
 
         // Log detailed error for debugging
         if (error instanceof Error) {
@@ -126,7 +126,7 @@ export function storeOTP(email: string, otpCode: string, expiresInMinutes: numbe
         attempts: 0
     });
 
-    console.log(`🔐 OTP stored for ${email}, expires at ${expiresAt.toISOString()}`);
+    console.log(`OTP stored for ${email}, expires at ${expiresAt.toISOString()}`);
 }
 
 /**
@@ -160,7 +160,7 @@ export function verifyOTP(email: string, otpCode: string): { valid: boolean; mes
 
     // Success - remove OTP
     otpStore.delete(email.toLowerCase());
-    console.log(`✅ OTP verified successfully for ${email}`);
+    console.log(`OTP verified successfully for ${email}`);
     return { valid: true, message: 'OTP verified successfully' };
 }
 
@@ -179,7 +179,7 @@ export function clearExpiredOTPs(): void {
     }
 
     if (cleared > 0) {
-        console.log(`🧹 Cleared ${cleared} expired OTP(s)`);
+        console.log(`Cleared ${cleared} expired OTP(s)`);
     }
 }
 

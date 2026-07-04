@@ -278,11 +278,9 @@ describe('VideoUploadInput (via FeedClient)', () => {
 
     it('shows video upload idle state', async () => {
         const { user } = setup();
-
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         expect(screen.getByText(/drop or click to upload a video/i)).toBeInTheDocument();
-        expect(screen.getByText(/videos up to 5mb/i)).toBeInTheDocument();
+        expect(screen.getByText(/videos up to 64mb/i)).toBeInTheDocument();
     });
 
     it('shows error toast for non-video file', async () => {
@@ -307,22 +305,15 @@ describe('VideoUploadInput (via FeedClient)', () => {
 
     it('shows error toast for oversized video', async () => {
         const { user } = setup();
-
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
-        const largeContent = 'x'.repeat(6 * 1024 * 1024);
+        // Create a file that is > 64 MB
+        const largeContent = 'x'.repeat(65 * 1024 * 1024); // 65 MB
         const file = new File([largeContent], 'big.mp4', { type: 'video/mp4' });
-
-        Object.defineProperty(input, 'files', {
-            value: [file],
-            configurable: true,
-        });
-
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
         fireEvent.change(input);
-
         await waitFor(() => {
-            expect(mockToastError).toHaveBeenCalledWith('Video must be less than 5MB');
+            expect(mockToastError).toHaveBeenCalledWith('Video must be less than 65MB');
         });
     });
 
@@ -1464,14 +1455,14 @@ describe('FeedClient', () => {
             windowOpenSpy.mockRestore();
         });
 
-        it('opens Twitter share URL', async () => {
+        it('opens X share URL', async () => {
             const windowOpenSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
             const { user } = setup();
             await user.click(screen.getByRole('button', { name: /repost/i }));
             await waitFor(() => expect(screen.getByText('X (Twitter)')).toBeInTheDocument());
             await user.click(screen.getByText('X (Twitter)'));
             expect(windowOpenSpy).toHaveBeenCalledWith(
-                expect.stringContaining('twitter.com'), '_blank', 'noopener,noreferrer'
+                expect.stringContaining('x.com'), '_blank', 'noopener,noreferrer'
             );
             windowOpenSpy.mockRestore();
         });

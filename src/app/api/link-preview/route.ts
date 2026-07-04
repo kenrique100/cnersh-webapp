@@ -1,57 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { assertSafeUrl } from "@/lib/ssrf-guard";
+import { parseHtmlMetadata } from "@/lib/extract-metadata";
+import { getCachedPreview, setCachedPreview, type CachedPreview } from "@/lib/cache";
+import { sanitizeText } from "@/lib/sanitize";
 
+// SSRF guard needs node:dns / node:net — not available on the edge runtime.
+export const runtime = "nodejs";
 export const maxDuration = 10;
 
-export async function GET(req: NextRequest) {
-    const url = req.nextUrl.searchParams.get("url");
-    if (!url) {
-        return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
-    }
+const MAX_REDIRECTS = 5;
+const MAX_BYTES = 100 * 1024; // 100KB — enough for meta tags even on bloated pages
+const FETCH_TIMEOUT_MS = 6000;
+const USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-    // Validate URL format
-    let parsedUrl: URL;
-    try {
-        parsedUrl = new URL(url);
-        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-            return NextResponse.json({ error: "Invalid URL protocol" }, { status: 400 });
-        }
-    } catch {
-        return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
-    }
+function fallback(domain: string): CachedPreview {
+    return {
+        title: domain,
+        description: "",
+        image: `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+        domain,
+    };
+}
 
-    try {
+/**
+ * Fetches a URL manually following redirects, re-validating each hop against
+ * the SSRF guard (a redirect to an internal address is the classic bypass
+ * for a naive "check the URL once" implementation).
+ */
+async function safeFetchHtml(startUrl: string): Promise<{ html: string; finalUrl: string } | null> {
+    let currentUrl = startUrl;
+
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+        const validated = await assertSafeUrl(currentUrl);
+
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000);
+        const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-        const response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-                "User-Agent": "Mozilla/5.0 (compatible; LinkPreview/1.0)",
-                Accept: "text/html",
-            },
-        });
-        clearTimeout(timeout);
-
-        if (!response.ok) {
-            return NextResponse.json(
-                { title: parsedUrl.hostname, description: "", image: "", domain: parsedUrl.hostname },
-                { status: 200 }
-            );
+        let response: Response;
+        try {
+            response = await fetch(validated.href, {
+                signal: controller.signal,
+                redirect: "manual",
+                headers: {
+                    "User-Agent": USER_AGENT,
+                    Accept: "text/html,application/xhtml+xml",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+            });
+        } finally {
+            clearTimeout(timeout);
         }
+
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+            const location = response.headers.get("location");
+            if (!location) return null;
+            currentUrl = new URL(location, validated.href).href;
+            continue; // loop re-validates the new URL against the SSRF guard
+        }
+
+        if (!response.ok) return null;
 
         const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("text/html")) {
-            return NextResponse.json(
-                { title: parsedUrl.hostname, description: "", image: "", domain: parsedUrl.hostname },
-                { status: 200 }
-            );
-        }
+        if (!contentType.includes("text/html")) return null;
 
-        // Read only the first 50KB to extract meta tags
         const reader = response.body?.getReader();
         let html = "";
         const decoder = new TextDecoder();
-        const MAX_BYTES = 50 * 1024;
         let bytesRead = 0;
 
         if (reader) {
@@ -61,58 +77,69 @@ export async function GET(req: NextRequest) {
                 html += decoder.decode(value, { stream: true });
                 bytesRead += value.length;
             }
-            reader.cancel().catch(() => { /* stream cleanup */ });
+            html += decoder.decode();
+            reader.cancel().catch(() => {});
         }
 
-        const title = extractMeta(html, "og:title") || extractMeta(html, "twitter:title") || extractTitle(html) || parsedUrl.hostname;
-        const description = extractMeta(html, "og:description") || extractMeta(html, "twitter:description") || extractMetaName(html, "description") || "";
-        let image = extractMeta(html, "og:image") || extractMeta(html, "twitter:image") || "";
-
-        // Resolve relative image URLs
-        if (image && !image.startsWith("http")) {
-            try {
-                image = new URL(image, url).href;
-            } catch {
-                image = "";
-            }
-        }
-
-        const domain = parsedUrl.hostname.replace("www.", "");
-
-        return NextResponse.json(
-            { title: title.slice(0, 200), description: description.slice(0, 300), image, domain },
-            {
-                status: 200,
-                headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" },
-            }
-        );
-    } catch {
-        return NextResponse.json(
-            { title: parsedUrl.hostname, description: "", image: "", domain: parsedUrl.hostname },
-            { status: 200 }
-        );
+        return { html, finalUrl: validated.href };
     }
+
+    return null; // too many redirects
 }
 
-function extractMeta(html: string, property: string): string {
-    const regex = new RegExp(
-        `<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']*)["']|<meta[^>]*content=["']([^"']*)["'][^>]*property=["']${property}["']`,
-        "i"
-    );
-    const match = html.match(regex);
-    return match?.[1] || match?.[2] || "";
+async function handler(req: NextRequest): Promise<NextResponse> {
+    const url = req.nextUrl.searchParams.get("url");
+    if (!url) {
+        return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+    }
+
+    let parsedUrl: URL;
+    try {
+        parsedUrl = new URL(url);
+    } catch {
+        return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    }
+    const domain = parsedUrl.hostname.replace(/^www\./, "");
+
+    // Reject before touching cache/network if it's not http(s) or resolves internally.
+    try {
+        await assertSafeUrl(url);
+    } catch {
+        return NextResponse.json({ error: "URL not allowed" }, { status: 400 });
+    }
+
+    const cached = await getCachedPreview(url);
+    if (cached) {
+        return NextResponse.json(cached, {
+            status: 200,
+            headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400", "X-Cache": "HIT" },
+        });
+    }
+
+    let result: CachedPreview;
+    try {
+        const fetched = await safeFetchHtml(url);
+        if (!fetched) {
+            result = fallback(domain);
+        } else {
+            const meta = parseHtmlMetadata(fetched.html, fetched.finalUrl);
+            result = {
+                title: sanitizeText(meta.title) || domain,
+                description: sanitizeText(meta.description),
+                image: meta.image || fallback(domain).image,
+                domain,
+            };
+        }
+    } catch {
+        result = fallback(domain);
+    }
+
+    await setCachedPreview(url, result);
+
+    return NextResponse.json(result, {
+        status: 200,
+        headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400", "X-Cache": "MISS" },
+    });
 }
 
-function extractMetaName(html: string, name: string): string {
-    const regex = new RegExp(
-        `<meta[^>]*name=["']${name}["'][^>]*content=["']([^"']*)["']|<meta[^>]*content=["']([^"']*)["'][^>]*name=["']${name}["']`,
-        "i"
-    );
-    const match = html.match(regex);
-    return match?.[1] || match?.[2] || "";
-}
-
-function extractTitle(html: string): string {
-    const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    return match?.[1]?.trim() || "";
-}
+export const GET = withRateLimit(handler, RATE_LIMITS.linkPreview, { keyPrefix: "link-preview" });

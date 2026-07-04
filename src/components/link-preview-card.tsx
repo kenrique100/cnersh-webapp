@@ -3,6 +3,7 @@
 import React from "react";
 import { ExternalLinkIcon, GlobeIcon } from "lucide-react";
 import { getCtaLabel } from "@/components/cta-link-button";
+import { sanitizeUrl } from "@/lib/sanitize";
 
 interface PreviewData {
     title: string;
@@ -29,25 +30,31 @@ function getDomain(url: string): string {
     }
 }
 
-function isSafeUrl(url: string): boolean {
-    try {
-        const parsed = new URL(url);
-        return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-        return false;
-    }
-}
-
-function useLinkPreview(url: string) {
+function useLinkPreview(safeUrl: string | null) {
     const [preview, setPreview] = React.useState<PreviewData | null>(null);
-    const [loading, setLoading] = React.useState(true); // start loading true
+    const [loading, setLoading] = React.useState(!!safeUrl);
 
     React.useEffect(() => {
+        if (!safeUrl) {
+            // Defer setState to avoid synchronous call in effect
+            Promise.resolve().then(() => setLoading(false));
+            return;
+        }
+
+        // Narrow safeUrl to string for the rest of the effect
+        const url = safeUrl;
         let cancelled = false;
+
+        // Defer loading state to avoid synchronous call
+        Promise.resolve().then(() => {
+            if (!cancelled) setLoading(true);
+        });
 
         async function fetchPreview() {
             try {
-                const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+                const res = await fetch(
+                    `/api/link-preview?url=${encodeURIComponent(url)}`
+                );
                 if (res.ok) {
                     const data = await res.json();
                     if (!cancelled) setPreview(data);
@@ -60,32 +67,29 @@ function useLinkPreview(url: string) {
         }
 
         fetchPreview();
-        return () => { cancelled = true; };
-    }, [url]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [safeUrl]);
 
     return { preview, loading };
 }
 
-/**
- * Reusable link preview card for posts.
- *
- * - **No user media** → large banner image (og:image) at top, title, description, domain, and CTA button.
- * - **Has user media** → compact card without banner image: title, description, domain, and CTA button.
- * - **No OG metadata** → fallback card with domain and default icon.
- */
 export default function LinkPreviewCard({
                                             url,
                                             linkType,
                                             hasMedia = false,
                                             className = "",
                                         }: LinkPreviewCardProps) {
-    const { preview, loading } = useLinkPreview(url);
+    const safeUrl = React.useMemo(() => sanitizeUrl(url), [url]);
+    const { preview, loading } = useLinkPreview(safeUrl);
     const [imageError, setImageError] = React.useState(false);
 
     const domain = React.useMemo(() => getDomain(url), [url]);
     const ctaLabel = getCtaLabel(linkType);
 
-    if (!isSafeUrl(url)) return null;
+    if (!safeUrl) return null;
 
     const title = preview?.title || domain;
     const description = preview?.description || "";
@@ -93,13 +97,12 @@ export default function LinkPreviewCard({
     const displayDomain = preview?.domain || domain;
     const showBannerImage = !hasMedia && image && !imageError;
 
-    // Skeleton while loading
     if (loading) {
         return (
-            <div className={`rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden animate-pulse ${className}`}>
-                {!hasMedia && (
-                    <div className="w-full h-[200px] bg-gray-200 dark:bg-gray-800" />
-                )}
+            <div
+                className={`rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden animate-pulse ${className}`}
+            >
+                {!hasMedia && <div className="w-full h-[200px] bg-gray-200 dark:bg-gray-800" />}
                 <div className="p-4 space-y-2">
                     <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4" />
                     <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-full" />
@@ -111,46 +114,42 @@ export default function LinkPreviewCard({
 
     return (
         <a
-            href={url}
+            href={safeUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={`block rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 hover:shadow-md transition-all group overflow-hidden ${className}`}
         >
-            {/* Large banner image — only when user has NOT uploaded media */}
             {showBannerImage && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                     src={image}
                     alt={title}
+                    referrerPolicy="no-referrer"
                     className="w-full h-[200px] sm:h-[250px] object-cover bg-gray-100 dark:bg-gray-800"
                     onError={() => setImageError(true)}
                 />
             )}
 
-            {/* Card body */}
             <div className="p-3 sm:p-4">
-                {/* Title */}
                 <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 leading-snug">
                     {title}
                 </p>
 
-                {/* Description */}
                 {description && (
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 leading-relaxed">
                         {description}
                     </p>
                 )}
 
-                {/* Footer: domain + CTA button */}
                 <div className="flex items-center justify-between gap-2 mt-3">
                     <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 min-w-0">
                         <GlobeIcon className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{displayDomain}</span>
                     </div>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-600 text-white group-hover:bg-blue-700 dark:bg-blue-500 dark:group-hover:bg-blue-600 transition-colors whitespace-nowrap shrink-0">
-                        {ctaLabel}
+            {ctaLabel}
                         <ExternalLinkIcon className="h-3 w-3" />
-                    </span>
+          </span>
                 </div>
             </div>
         </a>
