@@ -5,12 +5,12 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { ThumbsUp, Search, X, Clock } from "lucide-react";
 
 const QUICK_REACTIONS = [
-    { label: "Like",  emoji: "👍", color: "#0A66C2" },
-    { label: "Love",  emoji: "❤️", color: "#F5666C" },
-    { label: "Haha",  emoji: "😂", color: "#F7C948" },
-    { label: "Wow",   emoji: "😮", color: "#F5A623" },
-    { label: "Sad",   emoji: "😢", color: "#9B6DD6" },
-    { label: "Angry", emoji: "😡", color: "#E5534B" },
+    { label: "Like",  emoji: "👍", color: "#5B9BD5" },
+    { label: "Love",  emoji: "❤️", color: "#D97756" },
+    { label: "Haha",  emoji: "😂", color: "#D9A954" },
+    { label: "Wow",   emoji: "😮", color: "#E3B155" },
+    { label: "Sad",   emoji: "😢", color: "#9B8AC9" },
+    { label: "Angry", emoji: "😡", color: "#C25B52" },
 ] as const;
 
 type ReactionLabel = (typeof QUICK_REACTIONS)[number]["label"];
