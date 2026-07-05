@@ -19,6 +19,7 @@ import {
     SupportIcon,
     WowIcon,
     REACTION_ICONS,
+    REACTION_COLORS,
 } from "@/components/reaction-icons";
 
 beforeAll(() => {
@@ -46,52 +47,79 @@ function getEmojiGridButtons(): HTMLElement[] {
 
 describe("ReactionIcon and individual icon components", () => {
     describe("individual icon exports", () => {
-        it("LikeIcon renders thumbs up emoji with aria-label", () => {
+        // These icons now render as an accessible <svg role="img" aria-label="...">
+        // with a colored circle behind a white glyph, rather than a plain emoji span.
+
+        it("LikeIcon renders an accessible svg icon", () => {
             render(<LikeIcon />);
-            expect(screen.getByRole("img", { name: "Like" })).toHaveTextContent("👍");
+            const icon = screen.getByRole("img", { name: "Like" });
+            expect(icon.tagName.toLowerCase()).toBe("svg");
         });
 
-        it("CelebrateIcon renders party emoji", () => {
+        it("CelebrateIcon renders an accessible svg icon", () => {
             render(<CelebrateIcon />);
-            expect(screen.getByRole("img", { name: "Celebrate" })).toHaveTextContent("🎉");
+            expect(screen.getByRole("img", { name: "Celebrate" })).toBeInTheDocument();
         });
 
-        it("LoveIcon renders heart emoji", () => {
+        it("LoveIcon renders an accessible svg icon", () => {
             render(<LoveIcon />);
-            expect(screen.getByRole("img", { name: "Love" })).toHaveTextContent("❤️");
+            expect(screen.getByRole("img", { name: "Love" })).toBeInTheDocument();
         });
 
-        it("InsightfulIcon renders lightbulb emoji", () => {
+        it("InsightfulIcon renders an accessible svg icon", () => {
             render(<InsightfulIcon />);
-            expect(screen.getByRole("img", { name: "Insightful" })).toHaveTextContent("💡");
+            expect(screen.getByRole("img", { name: "Insightful" })).toBeInTheDocument();
         });
 
-        it("FunnyIcon renders laughing emoji", () => {
+        it("FunnyIcon renders an accessible svg icon", () => {
             render(<FunnyIcon />);
-            expect(screen.getByRole("img", { name: "Funny" })).toHaveTextContent("😂");
+            expect(screen.getByRole("img", { name: "Funny" })).toBeInTheDocument();
         });
 
-        it("SupportIcon renders handshake emoji", () => {
+        it("SupportIcon renders an accessible svg icon", () => {
             render(<SupportIcon />);
-            expect(screen.getByRole("img", { name: "Support" })).toHaveTextContent("🤝");
+            expect(screen.getByRole("img", { name: "Support" })).toBeInTheDocument();
         });
 
-        it("WowIcon renders surprised emoji", () => {
+        it("WowIcon renders an accessible svg icon", () => {
             render(<WowIcon />);
-            expect(screen.getByRole("img", { name: "Wow" })).toHaveTextContent("😮");
+            expect(screen.getByRole("img", { name: "Wow" })).toBeInTheDocument();
         });
 
-        it("applies custom size to font-size style", () => {
+        it("each icon's background circle uses its designated muted color", () => {
+            render(
+                <div>
+                    <LikeIcon />
+                    <CelebrateIcon />
+                    <LoveIcon />
+                    <InsightfulIcon />
+                    <FunnyIcon />
+                    <SupportIcon />
+                    <WowIcon />
+                </div>,
+            );
+            (Object.keys(REACTION_ICONS) as (keyof typeof REACTION_ICONS)[]).forEach((type) => {
+                const icon = screen.getByRole("img", { name: type });
+                const bgCircle = icon.querySelector("circle");
+                expect(bgCircle).toHaveAttribute("fill", REACTION_COLORS[type]);
+            });
+        });
+
+        it("applies custom size to the svg width/height", () => {
             render(<LikeIcon size={40} />);
-            expect(screen.getByRole("img", { name: "Like" })).toHaveStyle({ fontSize: "40px" });
+            const icon = screen.getByRole("img", { name: "Like" });
+            expect(icon).toHaveAttribute("width", "40");
+            expect(icon).toHaveAttribute("height", "40");
         });
 
         it("defaults to size 24 when not specified", () => {
             render(<LoveIcon />);
-            expect(screen.getByRole("img", { name: "Love" })).toHaveStyle({ fontSize: "24px" });
+            const icon = screen.getByRole("img", { name: "Love" });
+            expect(icon).toHaveAttribute("width", "24");
+            expect(icon).toHaveAttribute("height", "24");
         });
 
-        it("applies custom className", () => {
+        it("applies custom className to the svg element", () => {
             render(<WowIcon className="custom-icon" />);
             expect(screen.getByRole("img", { name: "Wow" })).toHaveClass("custom-icon");
         });
@@ -115,9 +143,9 @@ describe("ReactionIcon and individual icon components", () => {
             expect(screen.getByRole("img", { name: "Funny" })).toBeInTheDocument();
         });
 
-        it("passes size down to the underlying icon", () => {
+        it("passes size down to the underlying svg icon", () => {
             render(<ReactionIcon type="Love" size={32} />);
-            expect(screen.getByRole("img", { name: "Love" })).toHaveStyle({ fontSize: "32px" });
+            expect(screen.getByRole("img", { name: "Love" })).toHaveAttribute("width", "32");
         });
 
         it("applies className to wrapper span", () => {
