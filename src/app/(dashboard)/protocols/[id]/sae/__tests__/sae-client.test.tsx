@@ -729,9 +729,18 @@ describe("SAEReportClient", () => {
 
             const dateInput = getEventDateInput();
             expect(dateInput).toHaveAttribute("max");
-            // max should be a valid ISO-like "YYYY-MM-DDTHH:mm" string in the past or present
+
+            // The max attribute is a "YYYY-MM-DDTHH:mm" LOCAL wall-clock string
+            // (datetime-local has no timezone concept). Interpreting it via
+            // `new Date(maxValue)` parses it as local time, which should land
+            // at-or-before the actual current moment. A small tolerance guards
+            // against sub-second timing between render() and this assertion,
+            // and against minute-level truncation in the max value itself.
             const maxValue = dateInput.getAttribute("max")!;
-            expect(new Date(maxValue).getTime()).toBeLessThanOrEqual(Date.now());
+            const toleranceMs = 5000;
+            expect(new Date(maxValue).getTime()).toBeLessThanOrEqual(
+                Date.now() + toleranceMs
+            );
         });
 
         it("updates the selected event type", async () => {
