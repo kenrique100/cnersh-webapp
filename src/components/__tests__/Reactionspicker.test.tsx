@@ -15,9 +15,9 @@ import {
     CelebrateIcon,
     LoveIcon,
     InsightfulIcon,
+    CuriousIcon,
     FunnyIcon,
     SupportIcon,
-    WowIcon,
     REACTION_ICONS,
     REACTION_COLORS,
 } from "@/components/reaction-icons";
@@ -47,7 +47,7 @@ function getEmojiGridButtons(): HTMLElement[] {
 
 describe("ReactionIcon and individual icon components", () => {
     describe("individual icon exports", () => {
-        // These icons now render as an accessible <svg role="img" aria-label="...">
+        // These icons render as an accessible <svg role="img" aria-label="...">
         // with a colored circle behind a white glyph, rather than a plain emoji span.
 
         it("LikeIcon renders an accessible svg icon", () => {
@@ -71,6 +71,11 @@ describe("ReactionIcon and individual icon components", () => {
             expect(screen.getByRole("img", { name: "Insightful" })).toBeInTheDocument();
         });
 
+        it("CuriousIcon renders an accessible svg icon", () => {
+            render(<CuriousIcon />);
+            expect(screen.getByRole("img", { name: "Curious" })).toBeInTheDocument();
+        });
+
         it("FunnyIcon renders an accessible svg icon", () => {
             render(<FunnyIcon />);
             expect(screen.getByRole("img", { name: "Funny" })).toBeInTheDocument();
@@ -81,21 +86,16 @@ describe("ReactionIcon and individual icon components", () => {
             expect(screen.getByRole("img", { name: "Support" })).toBeInTheDocument();
         });
 
-        it("WowIcon renders an accessible svg icon", () => {
-            render(<WowIcon />);
-            expect(screen.getByRole("img", { name: "Wow" })).toBeInTheDocument();
-        });
-
-        it("each icon's background circle uses its designated muted color", () => {
+        it("each icon's background circle uses its designated color", () => {
             render(
                 <div>
                     <LikeIcon />
                     <CelebrateIcon />
                     <LoveIcon />
                     <InsightfulIcon />
+                    <CuriousIcon />
                     <FunnyIcon />
                     <SupportIcon />
-                    <WowIcon />
                 </div>,
             );
             (Object.keys(REACTION_ICONS) as (keyof typeof REACTION_ICONS)[]).forEach((type) => {
@@ -120,15 +120,15 @@ describe("ReactionIcon and individual icon components", () => {
         });
 
         it("applies custom className to the svg element", () => {
-            render(<WowIcon className="custom-icon" />);
-            expect(screen.getByRole("img", { name: "Wow" })).toHaveClass("custom-icon");
+            render(<CuriousIcon className="custom-icon" />);
+            expect(screen.getByRole("img", { name: "Curious" })).toHaveClass("custom-icon");
         });
     });
 
     describe("REACTION_ICONS map", () => {
         it("contains an entry for every ReactionType", () => {
             expect(Object.keys(REACTION_ICONS)).toEqual([
-                "Like", "Celebrate", "Love", "Insightful", "Funny", "Support", "Wow",
+                "Like", "Celebrate", "Love", "Insightful", "Curious", "Funny", "Support",
             ]);
         });
 
@@ -333,6 +333,22 @@ describe("ReactionsPicker", () => {
 
             act(() => { jest.advanceTimersByTime(500); });
             expect(screen.getByTitle("Like")).toBeInTheDocument();
+            jest.useRealTimers();
+        });
+
+        it("selecting the Curious reaction calls onReact", () => {
+            jest.useFakeTimers();
+            const onReact = jest.fn();
+            render(<ReactionsPicker postId="p1" onReact={onReact} />);
+            const btn = screen.getByRole("button", { name: /like/i });
+
+            act(() => {
+                fireEvent.mouseEnter(btn);
+                jest.advanceTimersByTime(400);
+            });
+
+            act(() => { fireEvent.click(screen.getByTitle("Curious")); });
+            expect(onReact).toHaveBeenCalledWith("p1", "Curious");
             jest.useRealTimers();
         });
     });

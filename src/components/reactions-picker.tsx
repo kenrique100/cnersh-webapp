@@ -3,17 +3,20 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ThumbsUp, Search, X, Clock } from "lucide-react";
+import { ReactionIcon, ReactionType, REACTION_COLORS } from "./reaction-icons";
 
-const QUICK_REACTIONS = [
-    { label: "Like",  emoji: "👍", color: "#5B9BD5" },
-    { label: "Love",  emoji: "❤️", color: "#D97756" },
-    { label: "Haha",  emoji: "😂", color: "#D9A954" },
-    { label: "Wow",   emoji: "😮", color: "#E3B155" },
-    { label: "Sad",   emoji: "😢", color: "#9B8AC9" },
-    { label: "Angry", emoji: "😡", color: "#C25B52" },
-] as const;
+// LinkedIn's actual reaction set, in LinkedIn's actual order.
+const QUICK_REACTIONS: { label: ReactionType; tooltip: string }[] = [
+    { label: "Like",       tooltip: "Like" },
+    { label: "Celebrate",  tooltip: "Celebrate" },
+    { label: "Support",    tooltip: "Support" },
+    { label: "Love",       tooltip: "Love" },
+    { label: "Insightful", tooltip: "Insightful" },
+    { label: "Curious",    tooltip: "Curious" },
+    { label: "Funny",      tooltip: "Funny" },
+];
 
-type ReactionLabel = (typeof QUICK_REACTIONS)[number]["label"];
+type ReactionLabel = ReactionType;
 
 const EMOJI_CATEGORIES = [
     {
@@ -202,7 +205,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
     const scrollRef   = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-    // Focus the search input after mount.
     useEffect(() => {
         const timer = setTimeout(() => searchRef.current?.focus(), 50);
         return () => clearTimeout(timer);
@@ -231,9 +233,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
         }
     };
 
-    // Derive the active tab from scroll position without calling setState
-    // synchronously — we schedule the update after the browser paints via
-    // requestAnimationFrame so React never sees it mid-render.
     const handleScroll = useCallback(() => {
         if (!scrollRef.current) return;
         const scrollTop = scrollRef.current.scrollTop;
@@ -242,8 +241,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
             const el = sectionRefs.current[cat.id];
             if (el && el.offsetTop - 20 <= scrollTop) current = cat.id;
         }
-        // Schedule the state update outside the scroll-event synchronous call
-        // stack so React can batch it safely without triggering cascading renders.
         requestAnimationFrame(() => {
             setActiveTab(current);
         });
@@ -261,7 +258,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
             className="flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
             style={{ width: 336, maxHeight: 440 }}
         >
-            {/* Search bar */}
             <div className="px-3 pt-3 pb-2">
                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-2 border border-transparent focus-within:border-green-500 transition-colors">
                     <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -290,7 +286,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                 </div>
             </div>
 
-            {/* Category tabs */}
             <div
                 className="flex items-center border-b border-gray-100 dark:border-gray-800 px-1 overflow-x-auto"
                 style={{ scrollbarWidth: "none" }}
@@ -311,7 +306,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                 ))}
             </div>
 
-            {/* Emoji scroll area */}
             <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-2 pt-2 pb-3"
@@ -343,7 +337,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                     )
                 ) : (
                     <>
-                        {/* Recent */}
                         <div className="mb-3">
                             <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 px-1">
                                 Recently Used
@@ -367,7 +360,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                             )}
                         </div>
 
-                        {/* All categories */}
                         {EMOJI_CATEGORIES.map((cat) => (
                             <div
                                 key={cat.id}
@@ -414,8 +406,6 @@ export function ReactionsPicker({
                                     showEmojiPicker = false,
                                     onEmojiSelect,
                                 }: ReactionsPickerProps) {
-    // Keep a ref to track what value was used to initialise each piece of state
-    // so we can detect genuine prop changes without calling setState in a render.
     const prevReactionRef = useRef(initialReaction);
     const prevCountRef    = useRef(initialCount);
 
@@ -432,22 +422,18 @@ export function ReactionsPicker({
     const containerRef  = useRef<HTMLDivElement>(null);
     const fullPickerRef = useRef<HTMLDivElement>(null);
 
-    // Sync reaction prop — schedule via useEffect so it never fires synchronously
-    // during the parent's render cycle, avoiding cascading-render warnings.
     useEffect(() => {
         if (prevReactionRef.current === initialReaction) return;
         prevReactionRef.current = initialReaction;
         setSelectedReaction((initialReaction as ReactionLabel) ?? null);
     }, [initialReaction]);
 
-    // Sync count prop the same way
     useEffect(() => {
         if (prevCountRef.current === initialCount) return;
         prevCountRef.current = initialCount;
         setCount(initialCount);
     }, [initialCount]);
 
-    // Close pickers on outside click
     useEffect(() => {
         const handle = (e: MouseEvent) => {
             if (
@@ -512,7 +498,6 @@ export function ReactionsPicker({
         onReact?.(postId, reactionType);
     };
 
-    const activeReaction = QUICK_REACTIONS.find((r) => r.label === selectedReaction);
     const isActive = !!selectedReaction;
 
     return (
@@ -531,12 +516,16 @@ export function ReactionsPicker({
                                 key={r.label}
                                 type="button"
                                 onClick={() => handleQuickReact(r.label)}
-                                className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-200 hover:scale-150 hover:-translate-y-2 cursor-pointer"
-                                title={r.label}
+                                className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 transition-transform duration-200 hover:scale-125 hover:-translate-y-2 cursor-pointer"
+                                title={r.tooltip}
                             >
-                                <span className="text-2xl drop-shadow select-none">{r.emoji}</span>
+                                {/* No extra background/border here — the icon itself
+                                    already renders its own colored circle, so we only
+                                    scale/lift on hover instead of layering another
+                                    circular chip behind it. */}
+                                <ReactionIcon type={r.label} size={34} className="drop-shadow select-none" />
                                 <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[10px] px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold shadow">
-                                    {r.label}
+                                    {r.tooltip}
                                 </span>
                             </button>
                         ))}
@@ -553,21 +542,21 @@ export function ReactionsPicker({
                             ? "hover:bg-blue-50 dark:hover:bg-blue-950"
                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                     }`}
-                    style={isActive && activeReaction ? { color: activeReaction.color } : undefined}
+                    style={isActive ? { color: REACTION_COLORS[selectedReaction as ReactionType] } : undefined}
                 >
-                    {isActive && activeReaction ? (
-                        <span className="text-base leading-none select-none">{activeReaction.emoji}</span>
+                    {isActive ? (
+                        <ReactionIcon type={selectedReaction as ReactionType} size={20} />
                     ) : (
                         <ThumbsUp className="h-4 w-4" />
                     )}
                     <span className="hidden sm:inline">
-                        {isActive && activeReaction ? activeReaction.label : "Like"}
+                        {isActive ? selectedReaction : "Like"}
                     </span>
                     {count > 0 && <span className="ml-0.5 tabular-nums">{count}</span>}
                 </button>
             </div>
 
-            {/* Full emoji picker */}
+            {/* Full emoji picker (separate from reactions — this is for comment/message emoji) */}
             {showEmojiPicker && (
                 <div ref={fullPickerRef} className="relative">
                     <button

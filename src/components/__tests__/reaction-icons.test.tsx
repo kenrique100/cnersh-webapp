@@ -6,9 +6,9 @@ import {
     CelebrateIcon,
     LoveIcon,
     InsightfulIcon,
+    CuriousIcon,
     FunnyIcon,
     SupportIcon,
-    WowIcon,
     ReactionIcon,
     REACTION_ICONS,
     REACTION_COLORS,
@@ -29,13 +29,13 @@ describe("ReactionIcons", () => {
                 <CelebrateIcon />
                 <LoveIcon />
                 <InsightfulIcon />
+                <CuriousIcon />
                 <FunnyIcon />
                 <SupportIcon />
-                <WowIcon />
             </div>
         );
 
-        (["Like", "Celebrate", "Love", "Insightful", "Funny", "Support", "Wow"] as const).forEach(
+        (["Like", "Celebrate", "Love", "Insightful", "Curious", "Funny", "Support"] as const).forEach(
             (label) => {
                 const icon = getByRole("img", { name: label });
                 expect(icon.tagName.toLowerCase()).toBe("svg");
@@ -43,16 +43,16 @@ describe("ReactionIcons", () => {
         );
     });
 
-    it("fills each icon's background circle with its designated muted color", () => {
+    it("fills each icon's background circle with its designated color", () => {
         const { getByRole } = render(
             <div>
                 <LikeIcon />
                 <CelebrateIcon />
                 <LoveIcon />
                 <InsightfulIcon />
+                <CuriousIcon />
                 <FunnyIcon />
                 <SupportIcon />
-                <WowIcon />
             </div>
         );
 
@@ -78,8 +78,8 @@ describe("ReactionIcons", () => {
     });
 
     it("applies custom className to the svg element", () => {
-        const { getByRole } = render(<WowIcon className="test-class" />);
-        expect(getByRole("img", { name: "Wow" })).toHaveClass("test-class");
+        const { getByRole } = render(<CuriousIcon className="test-class" />);
+        expect(getByRole("img", { name: "Curious" })).toHaveClass("test-class");
     });
 
     it("renders all reaction types through the ReactionIcon wrapper", () => {
@@ -89,13 +89,13 @@ describe("ReactionIcons", () => {
                 <ReactionIcon type="Celebrate" />
                 <ReactionIcon type="Love" />
                 <ReactionIcon type="Insightful" />
+                <ReactionIcon type="Curious" />
                 <ReactionIcon type="Funny" />
                 <ReactionIcon type="Support" />
-                <ReactionIcon type="Wow" />
             </div>
         );
 
-        (["Like", "Celebrate", "Love", "Insightful", "Funny", "Support", "Wow"] as const).forEach(
+        (["Like", "Celebrate", "Love", "Insightful", "Curious", "Funny", "Support"] as const).forEach(
             (label) => {
                 expect(getByRole("img", { name: label })).toBeInTheDocument();
             }
@@ -125,9 +125,9 @@ describe("ReactionIcons", () => {
         expect(REACTION_ICONS).toHaveProperty("Celebrate");
         expect(REACTION_ICONS).toHaveProperty("Love");
         expect(REACTION_ICONS).toHaveProperty("Insightful");
+        expect(REACTION_ICONS).toHaveProperty("Curious");
         expect(REACTION_ICONS).toHaveProperty("Funny");
         expect(REACTION_ICONS).toHaveProperty("Support");
-        expect(REACTION_ICONS).toHaveProperty("Wow");
     });
 
     it("maps each ReactionType to its matching icon component", () => {
@@ -135,8 +135,8 @@ describe("ReactionIcons", () => {
         expect(REACTION_ICONS.Celebrate).toBe(CelebrateIcon);
         expect(REACTION_ICONS.Love).toBe(LoveIcon);
         expect(REACTION_ICONS.Insightful).toBe(InsightfulIcon);
+        expect(REACTION_ICONS.Curious).toBe(CuriousIcon);
         expect(REACTION_ICONS.Funny).toBe(FunnyIcon);
         expect(REACTION_ICONS.Support).toBe(SupportIcon);
-        expect(REACTION_ICONS.Wow).toBe(WowIcon);
     });
 });
