@@ -4,7 +4,7 @@ import React, {JSX} from "react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ReactionIcon, REACTION_ICONS, type ReactionType } from "@/components/reaction-icons";
+import { ReactionIcon, REACTION_ICONS, REACTION_COLORS, type ReactionType } from "@/components/reaction-icons";
 
 
 /** Get uppercase initials from a name, e.g. "John Doe" → "JD" */
@@ -156,9 +156,18 @@ export function PostContextBar({ users, likeCount, commentCount }: PostContextBa
         <div className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
             <div className="flex -space-x-2">
                 {users.slice(0, 3).map((user) => (
-                    <Avatar key={user.id} className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0">
-                        <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-                        <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">
+                    <Avatar
+                        key={user.id}
+                        className="h-5 w-5 border-2 border-white dark:border-gray-950 ring-0 p-[1px]"
+                    >
+                        <div className="relative h-full w-full overflow-hidden rounded-full">
+                            <AvatarImage
+                                src={user.image || undefined}
+                                alt={user.name || ""}
+                                className="scale-[2] object-cover"
+                            />
+                        </div>
+                        <AvatarFallback className="text-[8px] bg-gray-200 dark:bg-gray-700 font-medium">
                             {getInitials(user.name)}
                         </AvatarFallback>
                     </Avatar>
@@ -186,8 +195,14 @@ export function PostHeader({ userName, userImage, userProfession, createdAt, act
         <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-0">
             <div className="flex items-start justify-between gap-1">
                 <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700">
-                        <AvatarImage src={userImage || undefined} alt={userName || ""} />
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-gray-200 dark:border-gray-700 p-[3px]">
+                        <div className="relative h-full w-full overflow-hidden rounded-full">
+                            <AvatarImage
+                                src={userImage || undefined}
+                                alt={userName || ""}
+                                className="scale-[2] object-cover"
+                            />
+                        </div>
                         <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
                             {initials}
                         </AvatarFallback>
@@ -351,15 +366,19 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
     );
 }
 
-export const REACTIONS = [
-    { label: "Like"       as const, color: "#0A66C2" },
-    { label: "Celebrate"  as const, color: "#57C27D" },
-    { label: "Support"    as const, color: "#9B6DD6" },
-    { label: "Love"       as const, color: "#F5666C" },
-    { label: "Insightful" as const, color: "#F5A623" },
-    { label: "Funny"      as const, color: "#7FD1F6" },
-    { label: "Wow"        as const, color: "#F59E0B" },
-] as const;
+/**
+ * Single source of truth for the reaction set — derived directly from
+ * reaction-icons.tsx's REACTION_ICONS / REACTION_COLORS, instead of a
+ * hand-maintained duplicate list. This guarantees REACTIONS can never
+ * drift out of sync with the icon set again (e.g. the old "Wow" label
+ * silently breaking once reaction-icons.tsx switched to "Curious").
+ */
+export const REACTIONS: { label: ReactionType; color: string }[] = (
+    Object.keys(REACTION_ICONS) as ReactionType[]
+).map((label) => ({
+    label,
+    color: REACTION_COLORS[label],
+}));
 
 export function getReactionIcon(label: string): typeof ReactionIcon | null {
     const validLabel = label as ReactionType;
@@ -367,7 +386,7 @@ export function getReactionIcon(label: string): typeof ReactionIcon | null {
 }
 
 export function getReactionColor(label: string): string {
-    return REACTIONS.find((r) => r.label === label)?.color || "#0A66C2";
+    return REACTIONS.find((r) => r.label === label)?.color || REACTION_COLORS.Like;
 }
 
 // Backward compatibility
@@ -402,14 +421,14 @@ interface PostEngagementSummaryProps {
 
 /** Shows total reactions with emoji icons, first reactor name, comment count, and repost/share count */
 export function PostEngagementSummary({
-    likeCount,
-    commentCount,
-    shareCount = 0,
-    reactionTypes,
-    reactionUsers,
-    onLikeCountClick,
-    onCommentCountClick,
-}: PostEngagementSummaryProps) {
+                                          likeCount,
+                                          commentCount,
+                                          shareCount = 0,
+                                          reactionTypes,
+                                          reactionUsers,
+                                          onLikeCountClick,
+                                          onCommentCountClick,
+                                      }: PostEngagementSummaryProps) {
     if (likeCount === 0 && commentCount === 0 && shareCount === 0) return null;
 
     // Get top 3 unique reaction types for the icon display
@@ -503,66 +522,66 @@ export function PostEngagementSummary({
     );
 }
 
-    interface CommentReactionSummaryProps {
-        reactionTypes: string[];
-        count: number;
-    }
+interface CommentReactionSummaryProps {
+    reactionTypes: string[];
+    count: number;
+}
 
-    /** Small inline reaction summary for comments — overlapping emoji circles + count */
-    export function CommentReactionSummary({reactionTypes, count}: CommentReactionSummaryProps) {
-        if (count === 0) return null;
+/** Small inline reaction summary for comments — overlapping emoji circles + count */
+export function CommentReactionSummary({reactionTypes, count}: CommentReactionSummaryProps) {
+    if (count === 0) return null;
 
-        const topReactions: string[] = [];
-        if (reactionTypes.length > 0) {
-            const counts = new Map<string, number>();
-            for (const rt of reactionTypes) {
-                counts.set(rt, (counts.get(rt) || 0) + 1);
-            }
-            const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-            for (const [label] of sorted.slice(0, 3)) {
-                topReactions.push(label);
-            }
+    const topReactions: string[] = [];
+    if (reactionTypes.length > 0) {
+        const counts = new Map<string, number>();
+        for (const rt of reactionTypes) {
+            counts.set(rt, (counts.get(rt) || 0) + 1);
         }
+        const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+        for (const [label] of sorted.slice(0, 3)) {
+            topReactions.push(label);
+        }
+    }
 
-        return (
-            <span className="inline-flex items-center gap-0.5 ml-1">
-            <span className="flex items-center">
-                {(topReactions.length > 0 ? topReactions : ["Like"]).map((label, idx) => (
-                    <ReactionIcon
-                        key={label}
-                        type={label as ReactionType}
-                        size={16}
-                        style={{marginLeft: idx > 0 ? -3 : 0, zIndex: 3 - idx} as React.CSSProperties}
-                    />
-                ))}
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">{count}</span>
+    return (
+        <span className="inline-flex items-center gap-0.5 ml-1">
+        <span className="flex items-center">
+            {(topReactions.length > 0 ? topReactions : ["Like"]).map((label, idx) => (
+                <ReactionIcon
+                    key={label}
+                    type={label as ReactionType}
+                    size={16}
+                    style={{marginLeft: idx > 0 ? -3 : 0, zIndex: 3 - idx} as React.CSSProperties}
+                />
+            ))}
         </span>
-        );
-    }
+        <span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">{count}</span>
+    </span>
+    );
+}
 
-    interface PostActionBarProps {
-        children: React.ReactNode;
-    }
+interface PostActionBarProps {
+    children: React.ReactNode;
+}
 
-    /** Row of action buttons (Like, Comment, Share, etc.) */
-    export function PostActionBar({children}: PostActionBarProps) {
-        return (
-            <div className="border-t border-gray-100 dark:border-gray-800 px-1 sm:px-2 py-1">
-                <div className="flex items-center justify-between sm:justify-around">{children}</div>
-            </div>
-        );
-    }
+/** Row of action buttons (Like, Comment, Share, etc.) */
+export function PostActionBar({children}: PostActionBarProps) {
+    return (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-1 sm:px-2 py-1">
+            <div className="flex items-center justify-between sm:justify-around">{children}</div>
+        </div>
+    );
+}
 
-    interface PostCommentsSectionProps {
-        children: React.ReactNode;
-    }
+interface PostCommentsSectionProps {
+    children: React.ReactNode;
+}
 
-    /** Wrapper for the comments section below a post */
-    export function PostCommentsSection({children}: PostCommentsSectionProps) {
-        return (
-            <div className="border-t border-gray-100 dark:border-gray-800 px-2 sm:px-4 py-3 space-y-3">
-                {children}
-            </div>
-        );
-    }
+/** Wrapper for the comments section below a post */
+export function PostCommentsSection({children}: PostCommentsSectionProps) {
+    return (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-2 sm:px-4 py-3 space-y-3">
+            {children}
+        </div>
+    );
+}

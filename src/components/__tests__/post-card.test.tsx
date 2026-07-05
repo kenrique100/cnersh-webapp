@@ -17,6 +17,7 @@ import {
     REACTIONS,
     getReactionColor,
 } from "../post-card";
+import { REACTION_COLORS } from "../reaction-icons";
 
 describe("Utility Functions", () => {
     afterEach(async () => {
@@ -364,26 +365,29 @@ describe("PostCard Components", () => {
 });
 
 describe("REACTIONS constant", () => {
+    // REACTIONS is now derived directly from reaction-icons.tsx's
+    // REACTION_ICONS map, so its labels/order always mirror that file —
+    // "Wow" no longer exists there, it was replaced with "Curious".
     it("contains all reaction types", () => {
         expect(REACTIONS).toHaveLength(7);
         expect(REACTIONS.map((r) => r.label)).toEqual([
             "Like",
             "Celebrate",
-            "Support",
             "Love",
             "Insightful",
+            "Curious",
             "Funny",
-            "Wow",
+            "Support",
         ]);
     });
 });
 
 describe("getReactionColor", () => {
     it("returns correct color for Like", () => {
-        expect(getReactionColor("Like")).toBe("#0A66C2");
+        expect(getReactionColor("Like")).toBe(REACTION_COLORS.Like);
     });
 
     it("returns default color for unknown reaction", () => {
-        expect(getReactionColor("Unknown")).toBe("#0A66C2");
+        expect(getReactionColor("Unknown")).toBe(REACTION_COLORS.Like);
     });
 });
