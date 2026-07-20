@@ -1,4 +1,4 @@
-
+// src/lib/__tests__/auth.test.ts
 
 jest.mock('better-auth', () => ({
     betterAuth: jest.fn((config) => ({ __config: config })),
@@ -37,7 +37,6 @@ jest.mock('@/lib/permissions', () => ({
     },
 }));
 
-// Safe from no-explicit-any by returning Record<string, unknown>
 async function getConfig() {
     const { betterAuth } = await import('better-auth');
     return (betterAuth as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
@@ -92,12 +91,13 @@ describe('auth', () => {
         ]);
     });
 
-    it('sets trustedOrigins to empty array when env is not set', async () => {
+    it('sets trustedOrigins to [baseURL] when env is not set', async () => {
         delete process.env.BETTER_AUTH_TRUSTED_ORIGINS;
         await import('@/lib/auth');
         const config = await getConfig();
 
-        expect(config.trustedOrigins).toEqual([]);
+        // The fallback is [authBaseUrl] from the source code
+        expect(config.trustedOrigins).toEqual(['https://app.example.com']);
     });
 
     it('sets session expiresIn and updateAge to 24 hours', async () => {

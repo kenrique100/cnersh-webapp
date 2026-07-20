@@ -493,7 +493,7 @@ export default function FeedClient({
                         const existingIdx = p.likes.findIndex((l) => l.userId === currentUserId);
                         const newLikes = existingIdx >= 0
                             ? p.likes.map((l) => l.userId === currentUserId ? { ...l, reactionType: result.reactionType! } : l)
-                            : [...p.likes, { userId: currentUserId, reactionType: result.reactionType!, userName: currentUserName }];
+                            : [...p.likes, { userId: currentUserId, reactionType: result.reactionType!, userName: currentUserName ?? null }];
                         return {
                             ...p,
                             _count: {
@@ -569,8 +569,8 @@ export default function FeedClient({
                 images: editingPostImages,
                 videos: editingPostVideos,
                 tags: editingPostTags,
-                linkUrl: editingPostLinkUrl.trim() || null,
-                linkType: editingPostLinkUrl.trim() ? editingPostLinkType : null,
+                linkUrl: editingPostLinkUrl.trim() || undefined,
+                linkType: editingPostLinkUrl.trim() ? editingPostLinkType : undefined,
             });
             setPosts((prev) =>
                 prev.map((p) =>
@@ -813,7 +813,7 @@ export default function FeedClient({
                 <CardContent className="p-3 sm:p-4">
                     <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border border-gray-200 dark:border-gray-700">
-                            <AvatarImage src={currentUserImage || undefined} alt={currentUserName || ""} />
+                            <AvatarImage src={currentUserImage ?? undefined} alt={currentUserName || ""} />
                             <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
                                 {currentUserInitials}
                             </AvatarFallback>
@@ -839,7 +839,7 @@ export default function FeedClient({
                                                 className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                                             >
                                                 <Avatar className="h-7 w-7 shrink-0">
-                                                    <AvatarImage src={user.image || undefined} />
+                                                    <AvatarImage src={user.image ?? undefined} />
                                                     <AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback>
                                                 </Avatar>
                                                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
@@ -853,13 +853,13 @@ export default function FeedClient({
                                     {newPostImage && (
                                         <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-4px)]">
                                             <Image src={newPostImage} alt="Upload preview" width={300} height={200} className="w-full h-[120px] sm:h-[150px] object-cover" unoptimized />
-                                            <button type="button" onClick={() => { deleteBlobUrl(newPostImage); setNewPostImage(null); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove image"><XIcon className="h-3 w-3" /></button>
+                                            <button type="button" onClick={() => { if (newPostImage) void deleteBlobUrl(newPostImage); setNewPostImage(null); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove image"><XIcon className="h-3 w-3" /></button>
                                         </div>
                                     )}
                                     {newPostImages.map((img, idx) => (
                                         <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-4px)]">
                                             <Image src={img} alt={`Upload preview ${idx + 1}`} width={300} height={200} className="w-full h-[120px] sm:h-[150px] object-cover" unoptimized />
-                                            <button type="button" onClick={() => { deleteBlobUrl(img); setNewPostImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove image"><XIcon className="h-3 w-3" /></button>
+                                            <button type="button" onClick={() => { void deleteBlobUrl(img); setNewPostImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove image"><XIcon className="h-3 w-3" /></button>
                                         </div>
                                     ))}
                                 </div>
@@ -875,7 +875,7 @@ export default function FeedClient({
                                     {newPostVideos.map((vid, idx) => (
                                         <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                                             <video src={vid} controls className="w-full max-h-[150px] sm:max-h-[200px] object-contain bg-black" />
-                                            <button type="button" onClick={() => { deleteBlobUrl(vid); setNewPostVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove video"><XIcon className="h-4 w-4" /></button>
+                                            <button type="button" onClick={() => { void deleteBlobUrl(vid); setNewPostVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove video"><XIcon className="h-4 w-4" /></button>
                                         </div>
                                     ))}
                                 </div>
@@ -995,7 +995,7 @@ export default function FeedClient({
                                                         {editingPostImages.map((img, idx) => (
                                                             <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                                                                 <Image src={img} alt="" width={200} height={120} className="w-full h-[120px] object-cover" />
-                                                                <button type="button" onClick={() => { deleteBlobUrl(img); setEditingPostImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Remove image"><XIcon className="h-3 w-3" /></button>
+                                                                <button type="button" onClick={() => { void deleteBlobUrl(img); setEditingPostImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Remove image"><XIcon className="h-3 w-3" /></button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1005,7 +1005,7 @@ export default function FeedClient({
                                                         {editingPostVideos.map((vid, idx) => (
                                                             <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                                                                 <video src={vid} controls className="w-full max-h-[120px] sm:max-h-[150px] object-contain bg-black" />
-                                                                <button type="button" onClick={() => { deleteBlobUrl(vid); setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Remove video"><XIcon className="h-3 w-3" /></button>
+                                                                <button type="button" onClick={() => { void deleteBlobUrl(vid); setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Remove video"><XIcon className="h-3 w-3" /></button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1065,7 +1065,7 @@ export default function FeedClient({
                                     <PostMediaContent image={post.image} images={post.images} video={post.video} videos={post.videos} onImageClick={(idx) => openImageModal(post, idx)} />
                                 )}
                                 {editingPostId !== post.id && post.linkUrl && (
-                                    <div className="px-3 sm:px-4 py-2"><LinkPreviewCard url={post.linkUrl} linkType={post.linkType} hasMedia={postHasMedia(post)} /></div>
+                                    <div className="px-3 sm:px-4 py-2"><LinkPreviewCard url={post.linkUrl ?? undefined} linkType={post.linkType ?? undefined} hasMedia={postHasMedia(post)} /></div>
                                 )}
                                 <PostEngagementSummary
                                     likeCount={post._count.likes}
@@ -1077,8 +1077,7 @@ export default function FeedClient({
                                     onCommentCountClick={() => toggleComments(post.id)}
                                 />
                                 <PostActionBar>
-                                    <ReactionsPicker postId={post.id} initialReaction={userReaction || null} initialCount={post._count.likes} onReact={(pid, reaction) => handleLike(pid, reaction)} />
-                                    <button onClick={() => post.commentsEnabled !== false && toggleComments(post.id)} className={cn("flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center", post.commentsEnabled === false ? "text-gray-400 dark:text-gray-600 cursor-not-allowed" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800")} disabled={post.commentsEnabled === false} title={post.commentsEnabled === false ? "Comments are disabled for this post" : "Comment"}>
+                                    <ReactionsPicker postId={post.id} initialReaction={userReaction || null} initialCount={post._count.likes} onReact={(pid, reaction) => handleLike(pid, reaction ?? 'Like')} />                                    <button onClick={() => post.commentsEnabled !== false && toggleComments(post.id)} className={cn("flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center", post.commentsEnabled === false ? "text-gray-400 dark:text-gray-600 cursor-not-allowed" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800")} disabled={post.commentsEnabled === false} title={post.commentsEnabled === false ? "Comments are disabled for this post" : "Comment"}>
                                         {post.commentsEnabled === false ? <MessageCircleOffIcon className="h-4 w-4" /> : <MessageCircleIcon className="h-4 w-4" />}
                                         <span className="hidden sm:inline">Comment</span>
                                     </button>
@@ -1119,7 +1118,7 @@ export default function FeedClient({
                                                         return (
                                                             <div key={comment.id} className="space-y-1">
                                                                 <div className="flex gap-2.5">
-                                                                    <Avatar className="h-8 w-8 shrink-0 mt-0.5"><AvatarImage src={comment.user.image || undefined} /><AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{commentInitials}</AvatarFallback></Avatar>
+                                                                    <Avatar className="h-8 w-8 shrink-0 mt-0.5"><AvatarImage src={comment.user.image ?? undefined} /><AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{commentInitials}</AvatarFallback></Avatar>
                                                                     <div className="flex-1 min-w-0">
                                                                         <div className="relative bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
                                                                             <div className="flex items-center gap-2 flex-wrap">
@@ -1182,7 +1181,7 @@ export default function FeedClient({
                                                                                     const rUserReactionEmoji = rUserReactionType ? getReactionEmoji(rUserReactionType) : null;
                                                                                     return (
                                                                                         <div key={reply.id} className="flex gap-2 mb-2">
-                                                                                            <Avatar className="h-6 w-6 shrink-0 mt-0.5"><AvatarImage src={reply.user.image || undefined} /><AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback></Avatar>
+                                                                                            <Avatar className="h-6 w-6 shrink-0 mt-0.5"><AvatarImage src={reply.user.image ?? undefined} /><AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback></Avatar>
                                                                                             <div className="flex-1 min-w-0">
                                                                                                 <div className="relative bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5 border border-gray-100 dark:border-gray-800">
                                                                                                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -1269,7 +1268,7 @@ export default function FeedClient({
                                                     <div className="absolute z-50 left-0 right-0 bottom-full mb-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                                         {mentionResults.map((user) => (
                                                             <button key={user.id} type="button" onClick={() => insertMention(user.name || "User", post.id)} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                <Avatar className="h-6 w-6 shrink-0"><AvatarImage src={user.image || undefined} /><AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback></Avatar>
+                                                                <Avatar className="h-6 w-6 shrink-0"><AvatarImage src={user.image ?? undefined} /><AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{(user.name || "U")[0]}</AvatarFallback></Avatar>
                                                                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
                                                             </button>
                                                         ))}
@@ -1368,7 +1367,7 @@ export default function FeedClient({
                             likersList.map((user) => (
                                 <div key={user.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <div className="relative">
-                                        <Avatar className="h-9 w-9"><AvatarImage src={user.image || undefined} /><AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{getInitials(user.name)}</AvatarFallback></Avatar>
+                                        <Avatar className="h-9 w-9"><AvatarImage src={user.image ?? undefined} /><AvatarFallback className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{getInitials(user.name)}</AvatarFallback></Avatar>
                                         <span className={`absolute -bottom-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full ${getReactionBg(user.reactionType)} text-[8px] border border-white dark:border-gray-950`} title={user.reactionType}>{getReactionEmoji(user.reactionType)}</span>
                                     </div>
                                     <div className="flex-1 min-w-0"><p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.name || "Anonymous"}</p><p className="text-xs text-gray-500 capitalize">{user.reactionType}</p></div>
@@ -1401,7 +1400,7 @@ export default function FeedClient({
                                 <div className="w-full md:w-[280px] lg:w-[320px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-y-auto max-h-[35vh] sm:max-h-[40vh] md:max-h-none">
                                     <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                                         <div className="flex items-center gap-3">
-                                            <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700"><AvatarImage src={imageModalPost.user.image || undefined} alt={imageModalPost.user.name || ""} /><AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">{getInitials(imageModalPost.user.name)}</AvatarFallback></Avatar>
+                                            <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700"><AvatarImage src={imageModalPost.user.image ?? undefined} alt={imageModalPost.user.name || ""} /><AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">{getInitials(imageModalPost.user.name)}</AvatarFallback></Avatar>
                                             <div><p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{imageModalPost.user.name || "Anonymous"}</p><p className="text-xs text-gray-500 dark:text-gray-400">{imageModalPost.user.profession || "Community Member"}</p><p className="text-xs text-gray-400 dark:text-gray-500">{formatDate(imageModalPost.createdAt)}</p></div>
                                         </div>
                                     </div>
@@ -1414,7 +1413,7 @@ export default function FeedClient({
                                         </div>
                                     )}
                                     {imageModalPost.linkUrl && (
-                                        <div className="p-4 border-b border-gray-100 dark:border-gray-800"><LinkPreviewCard url={imageModalPost.linkUrl} linkType={imageModalPost.linkType} hasMedia={postHasMedia(imageModalPost)} /></div>
+                                        <div className="p-4 border-b border-gray-100 dark:border-gray-800"><LinkPreviewCard url={imageModalPost.linkUrl ?? undefined} linkType={imageModalPost.linkType ?? undefined} hasMedia={postHasMedia(imageModalPost)} /></div>
                                     )}
                                     <div className="p-4 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                                         {imageModalPost._count.likes > 0 && (<span className="flex items-center gap-1"><ThumbsUpIcon className="h-3.5 w-3.5 text-blue-600" />{imageModalPost._count.likes} {imageModalPost._count.likes === 1 ? "like" : "likes"}</span>)}

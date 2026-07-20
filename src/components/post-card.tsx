@@ -52,6 +52,39 @@ export function renderPostContent(content: string): React.ReactNode[] {
 interface PostCardProps { children: React.ReactNode; }
 export function PostCard({ children }: PostCardProps) { return <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow">{children}</Card>; }
 
+/* ---------------------------------------------------------------------- */
+/* PostContextBar — shown above a PostCard when there is recent activity  */
+/* (other users currently viewing / reacting / commenting on the post).   */
+/* This was previously imported by feed-client.tsx but never defined,     */
+/* which caused the "Export PostContextBar doesn't exist" build error.    */
+/* ---------------------------------------------------------------------- */
+interface PostContextBarUser { id: string; name: string | null; image: string | null; }
+interface PostContextBarProps { users: PostContextBarUser[]; likeCount: number; commentCount: number; }
+export function PostContextBar({ users, likeCount, commentCount }: PostContextBarProps) {
+  if (!users || users.length === 0) return null;
+  const names = users.slice(0, 2).map((u) => u.name || "Someone");
+  const label = names.length === 1
+      ? `${names[0]} is active on this post`
+      : `${names.join(" and ")} are active on this post`;
+  return (
+      <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5">
+        <div className="flex items-center -space-x-2">
+          {users.slice(0, 3).map((u) => (
+              <Avatar key={u.id} className="h-5 w-5 border-2 border-white dark:border-gray-950">
+                <AvatarImage src={u.image || undefined} alt={u.name || ""} />
+                <AvatarFallback className="text-[9px] bg-gray-300 dark:bg-gray-700">{getInitials(u.name)}</AvatarFallback>
+              </Avatar>
+          ))}
+        </div>
+        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+        {label}
+          {(likeCount > 0 || commentCount > 0) &&
+              ` · ${likeCount} reaction${likeCount !== 1 ? "s" : ""}, ${commentCount} comment${commentCount !== 1 ? "s" : ""}`}
+      </span>
+      </div>
+  );
+}
+
 interface PostHeaderProps { userName: string | null; userImage: string | null; userProfession?: string | null; createdAt: Date; actions?: React.ReactNode; }
 export function PostHeader({ userName, userImage, userProfession, createdAt, actions }: PostHeaderProps) { return <div className="px-3 sm:px-4 py-3 flex items-start justify-between gap-3"><div className="flex items-center gap-3 min-w-0"><Avatar className="h-11 w-11 border border-gray-200 dark:border-gray-700"><AvatarImage src={userImage || undefined} alt={userName || ""} /><AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">{getInitials(userName)}</AvatarFallback></Avatar><div className="min-w-0"><div className="flex items-center gap-2"><p className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{userName || "Anonymous"}</p></div><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userProfession || "Community Member"}</p><p className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeDate(createdAt)}</p></div></div>{actions}</div>; }
 
@@ -77,7 +110,7 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
 }
 
 export function getReactionColor(label: string): string { return isReactionType(label) ? REACTION_COLORS[label] : REACTION_COLORS.Like; }
-export function getReactionEmoji(label: string): JSX.Element { return isReactionType(label) ? <ReactionIcon type={label} size={14} /> : <span className="text-sm">👍</span>; }
+export function getReactionEmoji(label: string): React.JSX.Element { return isReactionType(label) ? <ReactionIcon type={label} size={14} /> : <span className="text-sm">👍</span>; }
 export function getReactionBg(_label?: string): string { return ""; }
 
 interface ReactionUser { userId: string; reactionType: string; userName?: string | null; }

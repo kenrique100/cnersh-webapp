@@ -1,3 +1,4 @@
+// src/components/__tests__/post-card.test.tsx
 import React from "react";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -131,42 +132,34 @@ describe("Utility Functions", () => {
     });
 
     describe("renderPostContent", () => {
+        // renderPostContent returns an array of React nodes,
+        // so we render them and check the rendered output.
         it("renders plain text", () => {
             const result = renderPostContent("Hello world");
-            expect(result).toEqual("Hello world");
+            const { container } = render(<div>{result}</div>);
+            expect(container.textContent).toBe("Hello world");
         });
 
         it("renders links as clickable", () => {
             const result = renderPostContent("Check https://example.com");
-            expect(result).toContainEqual(
-                expect.objectContaining({
-                    props: expect.objectContaining({
-                        href: "https://example.com",
-                    }),
-                })
-            );
+            render(<div>{result}</div>);
+            const link = screen.getByText("https://example.com");
+            expect(link.tagName).toBe("A");
+            expect(link).toHaveAttribute("href", "https://example.com");
         });
 
         it("renders @mentions with styling", () => {
             const result = renderPostContent("Hello @john");
-            expect(result).toContainEqual(
-                expect.objectContaining({
-                    props: expect.objectContaining({
-                        children: "@john",
-                    }),
-                })
-            );
+            render(<div>{result}</div>);
+            const mention = screen.getByText("@john");
+            expect(mention).toHaveClass("text-blue-600");
         });
 
         it("renders #hashtags with styling", () => {
             const result = renderPostContent("Great #coding");
-            expect(result).toContainEqual(
-                expect.objectContaining({
-                    props: expect.objectContaining({
-                        children: "#coding",
-                    }),
-                })
-            );
+            render(<div>{result}</div>);
+            const hashtag = screen.getByText("#coding");
+            expect(hashtag).toHaveClass("text-blue-600");
         });
     });
 });
@@ -365,20 +358,22 @@ describe("PostCard Components", () => {
 });
 
 describe("REACTIONS constant", () => {
-    // REACTIONS is now derived directly from reaction-icons.tsx's
-    // REACTION_ICONS map, so its labels/order always mirror that file —
-    // "Wow" no longer exists there, it was replaced with "Curious".
-    it("contains all reaction types", () => {
-        expect(REACTIONS).toHaveLength(7);
+    it("contains all 6 reaction types from REACTION_ORDER", () => {
+        expect(REACTIONS).toHaveLength(6);
         expect(REACTIONS.map((r) => r.label)).toEqual([
             "Like",
             "Celebrate",
+            "Support",
             "Love",
             "Insightful",
-            "Curious",
             "Funny",
-            "Support",
         ]);
+    });
+
+    it("each reaction has a valid color", () => {
+        REACTIONS.forEach((r) => {
+            expect(r.color).toBe(REACTION_COLORS[r.label]);
+        });
     });
 });
 

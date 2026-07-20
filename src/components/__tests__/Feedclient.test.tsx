@@ -307,13 +307,16 @@ describe('VideoUploadInput (via FeedClient)', () => {
         const { user } = setup();
         await user.click(screen.getByRole('button', { name: /video/i }));
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
-        // Create a file that is > 64 MB
-        const largeContent = 'x'.repeat(65 * 1024 * 1024); // 65 MB
-        const file = new File([largeContent], 'big.mp4', { type: 'video/mp4' });
-        Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+        // Simulate a large file without allocating memory
+        const file = new File([""], "big.mp4", { type: "video/mp4" });
+        Object.defineProperty(file, "size", { value: 65 * 1024 * 1024 }); // 65 MB
+        Object.defineProperty(input, "files", { value: [file], configurable: true });
+
         fireEvent.change(input);
+
         await waitFor(() => {
-            expect(mockToastError).toHaveBeenCalledWith('Video must be less than 65MB');
+            expect(mockToastError).toHaveBeenCalledWith("Video must be less than 65MB");
         });
     });
 
@@ -1591,8 +1594,16 @@ describe('FeedClient', () => {
             await openComments(user);
             const commentInput = screen.getByPlaceholderText(/write a comment/i);
             await user.type(commentInput, '@Alice');
-            await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
-            await user.click(screen.getByText('Alice'));
+
+            // Find the mention name inside the popover (the element is a span with specific classes)
+            const mentionOption = await screen.findByText((content, element) => {
+                return element?.tagName === "SPAN" &&
+                    element.className.includes("text-sm font-medium") &&
+                    content === "Alice";
+            });
+
+            await user.click(mentionOption);
+
             await waitFor(() => {
                 expect((commentInput as HTMLInputElement).value).toContain('@Alice');
             });

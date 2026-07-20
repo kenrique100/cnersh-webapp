@@ -1,7 +1,5 @@
 import type { authSession } from '@/lib/auth-utils';
 
-// ── Mocks (must be before any imports that use them) ──────────────────
-
 jest.mock('@/lib/auth-utils', () => ({
     authSession: jest.fn(),
 }));
@@ -16,8 +14,6 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-// ── Typed imports (after jest.mock calls) ─────────────────────────────
-
 import { authSession as _authSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
 
@@ -28,8 +24,6 @@ import {
     updateAARStatus,
     getAARApplication,
 } from '@/app/actions/aar';
-
-// ── Typed mock references ─────────────────────────────────────────────
 
 const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
 
@@ -48,8 +42,6 @@ interface MockDb {
 }
 
 const mockedDb = _db as unknown as MockDb;
-
-// ── Session helper ────────────────────────────────────────────────────
 
 /**
  * Satisfies the full better-auth session shape (including additionalFields
@@ -89,29 +81,22 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
     } as Awaited<ReturnType<typeof authSession>>);
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────
-
 beforeEach(() => {
     jest.clearAllMocks();
 
-    // Replace every table with a fresh plain object so individual tests
-    // can attach jest.fn() properties freely without read-only errors.
     mockedDb.project = {};
     mockedDb.aARApplication = {};
     mockedDb.user = {};
     mockedDb.notification = {};
     mockedDb.auditLog = {};
-
-    // Sync back to the live reference so the action modules see the reset.
     // This is the critical step that fixes "X is not a function".
+
     ((_db as unknown) as MockDb).project = mockedDb.project;
     ((_db as unknown) as MockDb).aARApplication = mockedDb.aARApplication;
     ((_db as unknown) as MockDb).user = mockedDb.user;
     ((_db as unknown) as MockDb).notification = mockedDb.notification;
     ((_db as unknown) as MockDb).auditLog = mockedDb.auditLog;
 });
-
-// ── startAARApplication ───────────────────────────────────────────────
 
 describe('startAARApplication', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -217,8 +202,6 @@ describe('startAARApplication', () => {
         expect(result.status).toBe('DRAFT');
     });
 });
-
-// ── submitAARApplication ──────────────────────────────────────────────
 
 describe('submitAARApplication', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -343,8 +326,6 @@ describe('submitAARApplication', () => {
     });
 });
 
-// ── confirmAARReceipt ─────────────────────────────────────────────────
-
 describe('confirmAARReceipt', () => {
     it('throws Unauthorized if not authenticated', async () => {
         mockedAuthSession.mockResolvedValue(null);
@@ -434,8 +415,6 @@ describe('confirmAARReceipt', () => {
         expect(result.success).toBe(true);
     });
 });
-
-// ── updateAARStatus ───────────────────────────────────────────────────
 
 describe('updateAARStatus', () => {
     it('throws Unauthorized if not authenticated', async () => {
@@ -554,8 +533,6 @@ describe('updateAARStatus', () => {
         );
     });
 });
-
-// ── getAARApplication ─────────────────────────────────────────────────
 
 describe('getAARApplication', () => {
     it('throws Unauthorized if not authenticated', async () => {

@@ -1,8 +1,10 @@
+// src/components/__tests__/reaction-button.test.tsx
 import React from "react";
 import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { ReactionButton, ReactionPicker } from "../reaction-button";
+import { type ReactionType } from "@/components/reaction-icons";   // <--- added
 
 // Prevent style injection from leaving extra DOM in tests
 beforeEach(() => {
@@ -11,7 +13,7 @@ beforeEach(() => {
 });
 
 describe("ReactionButton", () => {
-    const mockReaction = {
+    const mockReaction: { label: ReactionType; color: string } = {
         label: "Like",
         color: "#0A66C2",
     };
@@ -159,11 +161,12 @@ describe("ReactionButton", () => {
 });
 
 describe("ReactionPicker", () => {
-    const mockReactions = [
+    // Explicitly typed array fixes TS error
+    const mockReactions: { label: ReactionType; color?: string }[] = [
         { label: "Like", color: "#0A66C2" },
         { label: "Celebrate", color: "#57C27D" },
         { label: "Love", color: "#F5666C" },
-    ] as const;
+    ];
 
     const mockOnReaction = jest.fn();
 
@@ -251,7 +254,7 @@ describe("ReactionPicker", () => {
             expect(picker).toHaveClass("flex");
             expect(picker).toHaveClass("items-center");
             expect(picker).toHaveClass("bg-white");
-            expect(picker).toHaveClass("rounded-lg");
+            expect(picker).toHaveClass("rounded-2xl");   // corrected class name
             expect(picker).toHaveClass("shadow-lg");
         });
     });
@@ -266,7 +269,9 @@ describe("ReactionPicker", () => {
         });
 
         it("handles single reaction", () => {
-            const singleReaction = [{ label: "Like", color: "#0A66C2" }] as const;
+            const singleReaction: { label: ReactionType; color?: string }[] = [
+                { label: "Like", color: "#0A66C2" },
+            ];
             render(<ReactionPicker reactions={singleReaction} onReaction={mockOnReaction} />);
             const buttons = screen.getAllByRole("button");
             expect(buttons.length).toBe(1);

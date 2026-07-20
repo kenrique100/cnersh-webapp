@@ -87,7 +87,7 @@ export default function LinkPreviewCard({
     const [imageError, setImageError] = React.useState(false);
 
     const domain = React.useMemo(() => getDomain(url), [url]);
-    const ctaLabel = getCtaLabel(linkType);
+    const ctaLabel = getCtaLabel(linkType ?? undefined);
 
     if (!safeUrl) return null;
 
