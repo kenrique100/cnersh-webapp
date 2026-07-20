@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -64,11 +63,8 @@ const initialFormState: FormState = {
 };
 
 export default function ProtocolFormWizard() {
-  const router = useRouter();
-
   const [step, setStep] = React.useState(0);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submittedTrackingCode, setSubmittedTrackingCode] = React.useState<string | null>(null);
 
   // Load saved draft synchronously – no effect, no any index signature
   const [form, setForm] = React.useState<FormState>(() => {
@@ -156,7 +152,7 @@ export default function ProtocolFormWizard() {
     }
     setIsSubmitting(true);
     try {
-      const project = await submitProject({
+      await submitProject({
         title: form.protocolTitle,
         description: form.projectDescription,
         objectives: form.generalObjective,
@@ -167,7 +163,6 @@ export default function ProtocolFormWizard() {
         document: undefined,
         formData: JSON.parse(JSON.stringify(form)) as Record<string, unknown>,
       });
-      setSubmittedTrackingCode(project.trackingCode);
       clearDraft();
       toast.success("Protocol submitted successfully!");
     } catch (error) {

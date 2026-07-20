@@ -28,8 +28,6 @@ import {
 import { toast } from "sonner";
 import { markNotificationRead, markAllNotificationsRead } from "@/app/actions/notification";
 
-// Removed: import {config} from "zod";  <-- This was the source of the error
-
 interface NotificationData {
     id: string;
     type: string;

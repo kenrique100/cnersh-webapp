@@ -26,7 +26,6 @@ jest.mock("@/app/actions/project", () => ({
     forwardProjectToFeed: jest.fn(),
 }));
 
-// FIX: Filter out 'unoptimized' prop to prevent DOM warning
 jest.mock("next/image", () => {
     function MockImage({
                            src,
@@ -37,9 +36,8 @@ jest.mock("next/image", () => {
         alt: string;
         [key: string]: unknown;
     }) {
-        // Remove 'unoptimized' to avoid "Received `true` for a non-boolean attribute" warning
-        const { unoptimized: _unused, ...htmlAttrs } = rest;
-
+        const { unoptimized, ...htmlAttrs } = rest;
+        void unoptimized;
         // eslint-disable-next-line @next/next/no-img-element
         return <img src={src} alt={alt} {...htmlAttrs} />;
     }
@@ -389,14 +387,12 @@ describe("ProjectDetailActions", () => {
             ) as HTMLInputElement;
             const goodFile = makeFile("clip.mp4", "video/mp4", 1024 * 1024);
             fireEvent.change(fileInput, { target: { files: [goodFile] } });
-            // Wait for the upload request to be made
             await waitFor(() => {
                 expect(global.fetch).toHaveBeenCalledWith(
                     "/api/upload",
                     expect.objectContaining({ method: "POST" }),
                 );
             });
-            // Wait for the video element to appear after the state update
             await waitFor(() => {
                 expect(container.querySelector("video")).toBeInTheDocument();
             });

@@ -38,11 +38,15 @@ export function ReactionsPicker({
     const leaveTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Sync prop changes – the eslint rule is disabled because these updates are
+    // necessary to keep the picker in sync with the parent’s data.
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedReaction((initialReaction as ReactionType) ?? null);
     }, [initialReaction]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCount(initialCount);
     }, [initialCount]);
 

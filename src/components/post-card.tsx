@@ -111,7 +111,10 @@ export function PostMediaContent({ image, images, video, videos, onImageClick }:
 
 export function getReactionColor(label: string): string { return isReactionType(label) ? REACTION_COLORS[label] : REACTION_COLORS.Like; }
 export function getReactionEmoji(label: string): React.JSX.Element { return isReactionType(label) ? <ReactionIcon type={label} size={14} /> : <span className="text-sm">👍</span>; }
-export function getReactionBg(_label?: string): string { return ""; }
+export function getReactionBg(_label?: string): string {
+  void _label;
+  return "";
+}
 
 interface ReactionUser { userId: string; reactionType: string; userName?: string | null; }
 interface PostEngagementSummaryProps { likeCount: number; commentCount: number; shareCount?: number; reactionTypes?: string[]; reactionUsers?: ReactionUser[]; onLikeCountClick?: () => void; onCommentCountClick?: () => void; }

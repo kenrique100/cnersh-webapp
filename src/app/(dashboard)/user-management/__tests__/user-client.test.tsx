@@ -33,7 +33,6 @@ jest.mock("@/app/actions/admin", () => ({
     applyRoleChange: jest.fn(),
 }));
 
-// Mock DataTable to simplify — just render a div with usernames
 jest.mock("@/components/data-table", () => ({
     DataTable: ({ data }: { data: { id: string; name: string }[] }) => (
         <div data-testid="data-table">
@@ -46,7 +45,6 @@ jest.mock("@/components/data-table", () => ({
     ),
 }));
 
-// Dialog: render content only while `open` is true.
 jest.mock("@/components/ui/dialog", () => {
     const Dialog = ({
                         open,
@@ -70,8 +68,6 @@ jest.mock("@/components/ui/dialog", () => {
 });
 
 jest.mock("@/components/ui/field", () => {
-    // Use jest.requireActual to avoid the ESLint no-require-imports error
-    // while still getting a real, typed React reference inside the factory.
     const ReactActual =
         jest.requireActual<typeof import("react")>("react");
 
@@ -96,11 +92,9 @@ jest.mock("@/components/ui/field", () => {
 
         const mapped = ReactActual.Children.map(
             children,
-            // Type the child explicitly so .props is known
             (child: React.ReactNode) => {
                 if (!ReactActual.isValidElement(child)) return child;
 
-                // Cast to a generic element with the props we care about
                 const el = child as React.ReactElement<{
                     displayName?: string;
                     htmlFor?: string;
@@ -204,7 +198,7 @@ jest.mock("@/components/ui/select", () => {
     const Select = ({
                         children,
                         onValueChange,
-                        defaultValue = "",   // ← default to empty string, not undefined
+                        defaultValue = "",
                         value: controlledValue,
                         id,
                         name,
@@ -217,7 +211,6 @@ jest.mock("@/components/ui/select", () => {
             controlledValue ?? defaultValue,
         );
 
-        // Keep in sync when the parent drives the value prop.
         ReactActual.useEffect(() => {
             if (controlledValue !== undefined) {
                 setInternalValue(controlledValue);
@@ -329,19 +322,6 @@ const defaultProps = {
     },
 };
 
-/**
- * The real `password` field in the form starts life as an
- * `undefined` react-hook-form value and only becomes a string once the
- * user types into it. That flips the underlying <input> from
- * uncontrolled -> controlled (and back on reset), which React logs as a
- * console.error even though it has no effect on test correctness.
- *
- * We don't own that component here, so rather than let this known,
- * benign warning spam every test run (or silently swallow *all*
- * console.error calls, which would hide real bugs), we filter out only
- * this specific React warning and let everything else through/fail
- * loudly as normal.
- */
 let consoleErrorSpy: jest.SpyInstance;
 
 beforeAll(() => {
@@ -362,7 +342,6 @@ beforeAll(() => {
                 return;
             }
 
-            // eslint-disable-next-line no-console
             console.warn(message, ...args);
         });
 });
