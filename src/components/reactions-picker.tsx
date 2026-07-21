@@ -2,20 +2,20 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ThumbsUp, Search, X, Clock } from "lucide-react";
+import { ReactionIcon, type ReactionType } from "@/components/reaction-icons";
 
-// ─── LinkedIn-style quick reactions (WhatsApp-inspired expressive set) ──────────
-const QUICK_REACTIONS = [
-    { label: "Like",       emoji: "👍",  color: "#0A66C2" },
-    { label: "Love",       emoji: "❤️",  color: "#F5666C" },
-    { label: "Haha",       emoji: "😂",  color: "#F7C948" },
-    { label: "Wow",        emoji: "😮",  color: "#F5A623" },
-    { label: "Sad",        emoji: "😢",  color: "#9B6DD6" },
-    { label: "Angry",      emoji: "😡",  color: "#E5534B" },
-] as const;
+const QUICK_REACTIONS: { label: ReactionType; color: string }[] = [
+    { label: "Like",       color: "#0A66C2" },
+    { label: "Celebrate",  color: "#57C27D" },
+    { label: "Support",    color: "#9B6DD6" },
+    { label: "Love",       color: "#F5666C" },
+    { label: "Insightful", color: "#F5A623" },
+    { label: "Funny",      color: "#7FD1F6" },
+    { label: "Wow",        color: "#F59E0B" },
+];
 
-type ReactionLabel = (typeof QUICK_REACTIONS)[number]["label"];
+type ReactionLabel = ReactionType;
 
-// ─── Full emoji dataset — all categories (WhatsApp grouping order) ──────────────
 const EMOJI_CATEGORIES = [
     {
         id: "smileys",
@@ -243,15 +243,15 @@ interface FullEmojiPickerProps {
 function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
     const [search, setSearch] = useState("");
     const [activeTab, setActiveTab] = useState("recent");
-    const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
+    // Lazy initializer reads localStorage only on first render, avoids setState in effect
+    const [recentEmojis, setRecentEmojis] = useState<string[]>(() => getRecentEmojis());
     const searchRef = useRef<HTMLInputElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
-    // refs to each category section heading for jump-scroll
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     useEffect(() => {
-        setRecentEmojis(getRecentEmojis());
-        setTimeout(() => searchRef.current?.focus(), 50);
+        const t = setTimeout(() => searchRef.current?.focus(), 50);
+        return () => clearTimeout(t);
     }, []);
 
     const handleSelect = useCallback((emoji: string) => {
@@ -289,8 +289,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
 
     const searchResults = useMemo(() => {
         if (!search.trim()) return null;
-        // For now match any emoji string containing the typed character
-        // (a proper unicode name DB would be ideal but adds no dependency here)
         return EMOJI_CATEGORIES.flatMap((cat) => cat.emojis).filter((e) =>
             e.toLowerCase().includes(search.toLowerCase())
         );
@@ -350,7 +348,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                 onScroll={handleScroll}
             >
                 {search ? (
-                    /* Search results — flat grid */
                     searchResults && searchResults.length > 0 ? (
                         <>
                             <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 px-1">
@@ -372,7 +369,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                         <p className="text-center text-xs text-gray-400 py-10">No results for &ldquo;{search}&rdquo;</p>
                     )
                 ) : (
-                    /* All categories stacked — WhatsApp style */
                     <>
                         {/* Recent section */}
                         <div className="mb-3">
@@ -396,7 +392,6 @@ function FullEmojiPicker({ onSelect, onClose }: FullEmojiPickerProps) {
                             )}
                         </div>
 
-                        {/* Each category section — all visible, scrollable */}
                         {EMOJI_CATEGORIES.map((cat) => (
                             <div
                                 key={cat.id}
@@ -437,13 +432,13 @@ interface ReactionsPickerProps {
 }
 
 export function ReactionsPicker({
-    postId,
-    initialReaction,
-    initialCount = 0,
-    onReact,
-    showEmojiPicker = false,
-    onEmojiSelect,
-}: ReactionsPickerProps) {
+                                    postId,
+                                    initialReaction,
+                                    initialCount = 0,
+                                    onReact,
+                                    showEmojiPicker = false,
+                                    onEmojiSelect,
+                                }: ReactionsPickerProps) {
     const [selectedReaction, setSelectedReaction] = useState<ReactionLabel | null>(
         (initialReaction as ReactionLabel) || null
     );
@@ -456,8 +451,7 @@ export function ReactionsPicker({
     const containerRef = useRef<HTMLDivElement>(null);
     const fullPickerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => { setSelectedReaction((initialReaction as ReactionLabel) || null); }, [initialReaction]);
-    useEffect(() => { setCount(initialCount); }, [initialCount]);
+    // No effects to sync props → already initialized correctly
 
     useEffect(() => {
         const handle = (e: MouseEvent) => {
@@ -529,7 +523,9 @@ export function ReactionsPicker({
                                 className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-200 hover:scale-150 hover:-translate-y-2 cursor-pointer"
                                 title={r.label}
                             >
-                                <span className="text-2xl drop-shadow select-none">{r.emoji}</span>
+                                <span className="drop-shadow select-none">
+                                    <ReactionIcon type={r.label} size={28} />
+                                </span>
                                 <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[10px] px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold shadow">
                                     {r.label}
                                 </span>
@@ -551,7 +547,9 @@ export function ReactionsPicker({
                     style={isActive && activeReaction ? { color: activeReaction.color } : undefined}
                 >
                     {isActive && activeReaction ? (
-                        <span className="text-base leading-none select-none">{activeReaction.emoji}</span>
+                        <span className="leading-none select-none">
+                            <ReactionIcon type={activeReaction.label} size={18} />
+                        </span>
                     ) : (
                         <ThumbsUp className="h-4 w-4" />
                     )}

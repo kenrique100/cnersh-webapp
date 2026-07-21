@@ -9,12 +9,6 @@ const GOOGLE_TRANSLATE_DOMAINS = [
   "https://www.gstatic.com",
 ].join(" ");
 
-// Whitelisted Bunny Core Engine & Global Pull Zone Delivery Networks
-const BUNNY_DOMAINS = [
-  "https://storage.bunnycdn.com",
-  "https://*.b-cdn.net",
-].join(" ");
-
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
@@ -23,22 +17,21 @@ const nextConfig: NextConfig = {
     "jsdom",
     "html-encoding-sniffer",
     "isomorphic-dompurify",
-    "pdf-page-counter"
+    "pdf-page-counter",
   ],
-  images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
-      // Allows optimization hooks via next/image for Bunny hosted assets
-      { protocol: "https", hostname: "storage.bunnycdn.com", pathname: "/**" },
-      { protocol: "https", hostname: "*.b-cdn.net", pathname: "/**" },
-    ],
+ images: {
+   remotePatterns: [
+     { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
+     { protocol: "https", hostname: "utfs.io", pathname: "/**" },
+     { protocol: "https", hostname: "*.ufs.sh", pathname: "/**" },
+   ],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     minimumCacheTTL: 60,
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "4.5mb", // Standardizes Vercel maximum execution constraints
+      bodySizeLimit: "4.5mb",
     },
   },
   headers: async () => [
@@ -57,10 +50,10 @@ const nextConfig: NextConfig = {
             "default-src 'self'",
             `script-src 'self' 'unsafe-eval' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
             `style-src 'self' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
-            `img-src 'self' data: blob: https://lh3.googleusercontent.com https://fonts.gstatic.com https://static.licdn.com ${BUNNY_DOMAINS} ${GOOGLE_TRANSLATE_DOMAINS}`,
+            `img-src 'self' data: blob: https: ${GOOGLE_TRANSLATE_DOMAINS}`,
             `font-src 'self' data: https://fonts.gstatic.com ${GOOGLE_TRANSLATE_DOMAINS}`,
-            `connect-src 'self' https://api.resend.com ${BUNNY_DOMAINS} ${GOOGLE_TRANSLATE_DOMAINS} https://*.sentry.io https://sentry.io`,
-            `media-src 'self' data: blob: ${BUNNY_DOMAINS}`,
+            `connect-src 'self' https://api.resend.com https://utfs.io https://*.ufs.sh ${GOOGLE_TRANSLATE_DOMAINS} https://*.sentry.io https://sentry.io`,
+            `media-src 'self' data: blob: https://utfs.io https://*.ufs.sh`,
             `worker-src 'self' blob: ${GOOGLE_TRANSLATE_DOMAINS}`,
             `frame-src 'self' ${GOOGLE_TRANSLATE_DOMAINS}`,
             "object-src 'none'",

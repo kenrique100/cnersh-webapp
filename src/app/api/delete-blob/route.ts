@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
-import { deleteFileFromBunny, sanitizeStorageKey, storageKeyFromUrl } from "@/lib/bunny-storage-client";
+import { deleteUploadThingFile } from "@/lib/uploadthing";
 
 export async function DELETE(request: Request) {
     try {
         const body = await request.json() as { url?: string; storageKey?: string };
 
-        let key: string | null = body.storageKey ? sanitizeStorageKey(body.storageKey) : null;
-
+        // Use storageKey if provided, otherwise try to extract from URL
+        let key = body.storageKey || null;
         if (!key && body.url) {
-            key = storageKeyFromUrl(body.url);
+            // UploadThing keys are typically the last segment of the URL after /f/
+            const match = body.url.match(/\/f\/([^/?]+)/);
+            key = match ? match[1] : null;
         }
 
         if (!key) {
@@ -18,7 +20,7 @@ export async function DELETE(request: Request) {
             );
         }
 
-        await deleteFileFromBunny(key);
+        await deleteUploadThingFile(key);
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error("[delete-blob] deletion failed:", err);

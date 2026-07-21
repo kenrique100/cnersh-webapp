@@ -70,7 +70,7 @@ async function main() {
     const adapter = new PrismaPg(pool);
     const prisma = new PrismaClient({ adapter });
 
-    console.log("🌱 Seeding database...\n");
+    console.log("Seeding database...\n");
 
     // Check required env vars
     const required = [
@@ -102,7 +102,7 @@ async function main() {
         role: "admin",
     });
 
-    console.log("\n✅ Seeding complete!");
+    console.log("\nSeeding complete!");
 
     await prisma.$disconnect();
     await pool.end();

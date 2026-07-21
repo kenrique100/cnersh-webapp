@@ -7,15 +7,16 @@ import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
 import type { FileType } from "@/generated/prisma";
 import { pdf } from "pdf-page-counter";
-import { uploadFileToBunny } from "@/lib/bunny-storage-client";
+import { utapi } from "@/lib/uploadthing";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
-const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
-const MAX_VIDEO_SIZE    = 50 * 1024 * 1024;
-const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
-const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
+// Updated max sizes per your requirements
+const MAX_IMAGE_SIZE    = 15 * 1024 * 1024; // 15 MB
+const MAX_VIDEO_SIZE    = 50 * 1024 * 1024; // 50 MB
+const MAX_DOCUMENT_SIZE = 15 * 1024 * 1024; // 15 MB
+const MAX_AUDIO_SIZE    =  8 * 1024 * 1024; // 8 MB
 
 const ALLOWED_TYPES: Record<string, string[]> = {
   "image/": ["image/jpeg", "image/png", "image/gif", "image/webp"],
@@ -49,13 +50,6 @@ function resolveFileType(mimeType: string): FileType {
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
   return "document";
-}
-
-function resolveBunnyFolder(mimeType: string): string {
-  if (mimeType.startsWith("image/")) return "cnersh-assets/images";
-  if (mimeType.startsWith("video/")) return "cnersh-assets/videos";
-  if (mimeType.startsWith("audio/")) return "cnersh-assets/audios";
-  return "cnersh-assets/documents";
 }
 
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
@@ -133,19 +127,19 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  let uploadedUrl: string;
-  let computedStorageKey: string;
-
+  // Upload to UploadThing
+  let uploadedFile: { url: string; key: string };
   try {
-    const result = await uploadFileToBunny(
-        fileBuffer,
-        sanitizedFilename,
-        resolveBunnyFolder(file.type)
-    );
-    uploadedUrl        = result.url;
-    computedStorageKey = result.storageKey;
+    const result = await utapi.uploadFiles(file);
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    uploadedFile = {
+      url: result.data.ufsUrl,
+      key: result.data.key,
+    };
   } catch (err) {
-    console.error("[upload] BunnyCDN upload failed:", err);
+    console.error("[upload] UploadThing upload failed:", err);
     return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
   }
 
@@ -156,8 +150,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         mimeType:   file.type,
         size:       file.size,
         data:       null,
-        url:        uploadedUrl,
-        storageKey: computedStorageKey,
+        url:        uploadedFile.url,
+        storageKey: uploadedFile.key,
         type:       resolveFileType(file.type),
         userId:     session.user.id,
       },

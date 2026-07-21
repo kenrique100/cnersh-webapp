@@ -399,16 +399,19 @@ interface PostEngagementSummaryProps {
     onCommentCountClick?: () => void;
 }
 
+const REACTION_BADGE_SIZE = 24;
+const REACTION_BADGE_ICON_SIZE = 18;
+
 /** Shows total reactions with emoji icons, first reactor name, comment count, and repost/share count */
 export function PostEngagementSummary({
-    likeCount,
-    commentCount,
-    shareCount = 0,
-    reactionTypes,
-    reactionUsers,
-    onLikeCountClick,
-    onCommentCountClick,
-}: PostEngagementSummaryProps) {
+                                          likeCount,
+                                          commentCount,
+                                          shareCount = 0,
+                                          reactionTypes,
+                                          reactionUsers,
+                                          onLikeCountClick,
+                                          onCommentCountClick,
+                                      }: PostEngagementSummaryProps) {
     if (likeCount === 0 && commentCount === 0 && shareCount === 0) return null;
 
     // Get top 3 unique reaction types for the icon display
@@ -435,7 +438,6 @@ export function PostEngagementSummary({
             reactionLabel = (
                 <span className="truncate max-w-[200px]">
                     {firstReactor} and {othersCount} other{othersCount !== 1 ? "s" : ""}
-                    {/* Visually-hidden duplicate so getByText("name") finds an exact text match */}
                     <span className="sr-only">{firstReactor}</span>
                 </span>
             );
@@ -448,7 +450,7 @@ export function PostEngagementSummary({
                 {likeCount > 0 && (
                     <button
                         onClick={onLikeCountClick}
-                        className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors min-w-0"
+                        className="flex items-center gap-1.5 bg-transparent border-0 shadow-none p-0 appearance-none hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors min-w-0"
                         type="button"
                         aria-label={`${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`}
                     >
@@ -458,15 +460,15 @@ export function PostEngagementSummary({
                                 key={label}
                                 className="inline-flex items-center justify-center rounded-full ring-2 ring-white dark:ring-gray-950 shrink-0"
                                 style={{
-                                    width: 22,
-                                    height: 22,
+                                    width: REACTION_BADGE_SIZE,
+                                    height: REACTION_BADGE_SIZE,
                                     backgroundColor: getReactionColor(label),
-                                    marginLeft: idx > 0 ? -6 : 0,
+                                    marginLeft: idx > 0 ? -8 : 0,
                                     zIndex: 3 - idx,
                                     position: "relative",
                                 } as React.CSSProperties}
                             >
-                                <ReactionIcon type={label as ReactionType} size={12}/>
+                                <ReactionIcon type={label as ReactionType} size={REACTION_BADGE_ICON_SIZE}/>
                             </span>
                         ))}
                     </span>
@@ -502,29 +504,29 @@ export function PostEngagementSummary({
     );
 }
 
-    interface CommentReactionSummaryProps {
-        reactionTypes: string[];
-        count: number;
+interface CommentReactionSummaryProps {
+    reactionTypes: string[];
+    count: number;
+}
+
+/** Small inline reaction summary for comments — overlapping emoji circles + count */
+export function CommentReactionSummary({reactionTypes, count}: CommentReactionSummaryProps) {
+    if (count === 0) return null;
+
+    const topReactions: string[] = [];
+    if (reactionTypes.length > 0) {
+        const counts = new Map<string, number>();
+        for (const rt of reactionTypes) {
+            counts.set(rt, (counts.get(rt) || 0) + 1);
+        }
+        const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+        for (const [label] of sorted.slice(0, 3)) {
+            topReactions.push(label);
+        }
     }
 
-    /** Small inline reaction summary for comments — overlapping emoji circles + count */
-    export function CommentReactionSummary({reactionTypes, count}: CommentReactionSummaryProps) {
-        if (count === 0) return null;
-
-        const topReactions: string[] = [];
-        if (reactionTypes.length > 0) {
-            const counts = new Map<string, number>();
-            for (const rt of reactionTypes) {
-                counts.set(rt, (counts.get(rt) || 0) + 1);
-            }
-            const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-            for (const [label] of sorted.slice(0, 3)) {
-                topReactions.push(label);
-            }
-        }
-
-        return (
-            <span className="inline-flex items-center gap-0.5 ml-1">
+    return (
+        <span className="inline-flex items-center gap-0.5 ml-1">
             <span className="flex items-center">
                 {(topReactions.length > 0 ? topReactions : ["Like"]).map((label, idx) => (
                     <ReactionIcon
@@ -537,31 +539,29 @@ export function PostEngagementSummary({
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">{count}</span>
         </span>
-        );
-    }
+    );
+}
 
-    interface PostActionBarProps {
-        children: React.ReactNode;
-    }
+interface PostActionBarProps {
+    children: React.ReactNode;
+}
 
-    /** Row of action buttons (Like, Comment, Share, etc.) */
-    export function PostActionBar({children}: PostActionBarProps) {
-        return (
-            <div className="border-t border-gray-100 dark:border-gray-800 px-1 sm:px-2 py-1">
-                <div className="flex items-center justify-between sm:justify-around">{children}</div>
-            </div>
-        );
-    }
+export function PostActionBar({children}: PostActionBarProps) {
+    return (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-1 sm:px-2 py-1">
+            <div className="flex items-center justify-between sm:justify-around">{children}</div>
+        </div>
+    );
+}
 
-    interface PostCommentsSectionProps {
-        children: React.ReactNode;
-    }
+interface PostCommentsSectionProps {
+    children: React.ReactNode;
+}
 
-    /** Wrapper for the comments section below a post */
-    export function PostCommentsSection({children}: PostCommentsSectionProps) {
-        return (
-            <div className="border-t border-gray-100 dark:border-gray-800 px-2 sm:px-4 py-3 space-y-3">
-                {children}
-            </div>
-        );
-    }
+export function PostCommentsSection({children}: PostCommentsSectionProps) {
+    return (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-2 sm:px-4 py-3 space-y-3">
+            {children}
+        </div>
+    );
+}

@@ -8,8 +8,8 @@ import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-cr
 import "react-image-crop/dist/ReactCrop.css";
 import { ACCEPTED_IMAGE_MIME_TYPES, prepareImageForUpload } from "@/lib/client-image-upload";
 
-const PROFILE_IMAGE_QUALITY = 0.92;
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const PROFILE_IMAGE_QUALITY = 1.0;
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 interface ImageUploadProps {
     defaultUrl?: string | null;
@@ -52,26 +52,18 @@ async function getCroppedImageBlob(image: HTMLImageElement, crop: Crop): Promise
 
 function validateImageFile(file: File): string | null {
     if (file.size > MAX_FILE_SIZE_BYTES) {
-        return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 25 MB.`;
+        return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 15 MB.`;
     }
     return null;
 }
 
 async function deleteStoredFile(url: string): Promise<void> {
     try {
-        const dbMatch = url.match(/\/api\/files\/([0-9a-f-]{36})/i);
-        if (dbMatch) {
-            await fetch(`/api/files/${dbMatch[1]}`, { method: "DELETE" });
-            return;
-        }
-        const pullZoneUrl = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL ?? "";
-        if (pullZoneUrl && url.startsWith(pullZoneUrl)) {
-            await fetch("/api/delete-blob", {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url }),
-            });
-        }
+        await fetch("/api/delete-blob", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+        });
     } catch {
         // Best-effort
     }
@@ -276,7 +268,15 @@ export default function ImageUpload({
                     <>
                         <AlertCircle className="h-8 w-8 text-rose-500" />
                         <span className="text-sm text-rose-600 dark:text-rose-400 text-center">{uploadError}</span>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setUploadError(null); fileInputRef.current?.click(); }} className="mt-1 px-3 py-1 text-xs font-medium bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 rounded-md transition-colors">Retry</button>
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => { e.stopPropagation(); setUploadError(null); fileInputRef.current?.click(); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUploadError(null); fileInputRef.current?.click(); } }}
+                            className="mt-1 px-3 py-1 text-xs font-medium bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 rounded-md transition-colors cursor-pointer"
+                        >
+                            Retry
+                        </span>
                     </>
                 ) : isDragging ? (
                     <>
@@ -287,7 +287,7 @@ export default function ImageUpload({
                     <>
                         <ImageIcon className="h-8 w-8 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">{isProfile ? "Upload profile picture" : "Drop or click to upload an image"}</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">{isProfile ? "JPEG, PNG or WebP · max 25 MB · cropped to circle" : "JPEG, PNG, WebP or GIF · max 25 MB"}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{isProfile ? "JPEG, PNG or WebP · max 15 MB · cropped to circle" : "JPEG, PNG, WebP or GIF · max 15 MB"}</span>
                     </>
                 )}
             </button>

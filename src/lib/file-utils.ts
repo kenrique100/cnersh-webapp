@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { deleteFileFromBunny } from "@/lib/bunny-storage-client";
+import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
 
 export const MAX_DOCUMENT_PAGES = 4;
@@ -9,22 +9,24 @@ export const ALLOWED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
+// Updated max sizes (in bytes)
 export const MAX_FILE_SIZES = {
-  avatar:   8  * 1024 * 1024,
-  image:    16 * 1024 * 1024,
-  video:    64 * 1024 * 1024,
-  audio:    8  * 1024 * 1024,
-  document: 16 * 1024 * 1024,
-  protocol: 64 * 1024 * 1024,
+  avatar:   8  * 1024 * 1024,   // 8 MB
+  image:    15 * 1024 * 1024,   // 15 MB
+  video:    50 * 1024 * 1024,   // 50 MB
+  audio:    8  * 1024 * 1024,   // 8 MB
+  document: 15 * 1024 * 1024,   // 15 MB
+  protocol: 50 * 1024 * 1024,   // 50 MB
 } as const;
 
+// Corresponding UploadThing size strings
 export const UT_MAX_SIZES = {
   avatar:   "8MB",
-  image:    "16MB",
-  video:    "64MB",
+  image:    "15MB",
+  video:    "50MB",
   audio:    "8MB",
-  document: "16MB",
-  protocol: "64MB",
+  document: "15MB",
+  protocol: "50MB",
 } as const;
 
 export function getFileUrl(fileId: string): string {
@@ -66,11 +68,12 @@ export async function deleteFile(fileId: string): Promise<void> {
     select: { storageKey: true, data: true },
   });
 
+  // If the file was stored in UploadThing (has a storageKey and no data blob), delete it from UploadThing
   if (file?.storageKey && !file.data) {
     try {
-      await deleteFileFromBunny(file.storageKey);
+      await utapi.deleteFiles(file.storageKey);
     } catch (err) {
-      console.error("[file-utils] BunnyCDN deletion failed:", err);
+      console.error("[file-utils] UploadThing deletion failed:", err);
     }
   }
 
