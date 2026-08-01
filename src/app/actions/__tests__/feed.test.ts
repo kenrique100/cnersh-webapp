@@ -21,6 +21,7 @@ import { authSession } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { notifyAdmins } from '@/lib/notify-admins';
 import { sendNotificationEmail } from '@/lib/send-notification-email';
+import { enforceActionRateLimit } from '@/lib/action-rate-limit';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -70,6 +71,18 @@ jest.mock('@/lib/send-notification-email', () => ({
     sendNotificationEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/lib/action-rate-limit', () => ({
+    enforceActionRateLimit: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/lib/rate-limit', () => ({
+    RATE_LIMITS: {
+        postCreate: { windowMs: 60_000, maxRequests: 8 },
+        commentCreate: { windowMs: 60_000, maxRequests: 20 },
+        likeToggle: { windowMs: 60_000, maxRequests: 80 },
+    },
+}));
+
 // ── Typed mock references ────────────────────────────────────────────
 
 const mockedAuthSession = authSession as jest.MockedFunction<typeof authSession>;
@@ -77,6 +90,9 @@ const mockedDb = db as unknown as MockDb;
 const mockedNotifyAdmins = notifyAdmins as jest.MockedFunction<typeof notifyAdmins>;
 const mockedSendNotificationEmail = sendNotificationEmail as jest.MockedFunction<
     typeof sendNotificationEmail
+>;
+const mockedEnforceActionRateLimit = enforceActionRateLimit as jest.MockedFunction<
+    typeof enforceActionRateLimit
 >;
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -141,6 +157,7 @@ function mockUser(
 
 beforeEach(() => {
     jest.clearAllMocks();
+    mockedEnforceActionRateLimit.mockResolvedValue(undefined);
 
     // Re-assign each table to a fresh plain object so individual tests
     // can attach jest.fn() properties without TypeScript complaining about
