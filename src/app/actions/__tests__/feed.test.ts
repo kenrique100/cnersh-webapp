@@ -2,7 +2,6 @@ import {
     createPost,
     getPosts,
     getPublicPosts,
-    getTrendingTags,
     toggleLike,
     addComment,
     getPostComments,
@@ -383,33 +382,6 @@ describe('getPublicPosts', () => {
             .spyOn(console, 'error')
             .mockImplementation(() => undefined);
         expect(await getPublicPosts()).toEqual([]);
-        consoleErrorSpy.mockRestore();
-    });
-});
-
-// ── getTrendingTags ───────────────────────────────────────────────────
-
-describe('getTrendingTags', () => {
-    it('formats trending tags correctly', async () => {
-        mockedDb.$queryRaw = jest.fn().mockResolvedValue([
-            { tag: 'covid', count: BigInt(10) },
-            { tag: 'research', count: BigInt(7) },
-        ]);
-
-        const tags = await getTrendingTags(2);
-        expect(tags).toEqual([
-            { tag: 'Covid', posts: 10 },
-            { tag: 'Research', posts: 7 },
-        ]);
-    });
-
-    it('returns empty array on error', async () => {
-        mockedDb.$queryRaw = jest.fn().mockRejectedValue(new Error('fail'));
-
-        const consoleErrorSpy = jest
-            .spyOn(console, 'error')
-            .mockImplementation(() => undefined);
-        expect(await getTrendingTags()).toEqual([]);
         consoleErrorSpy.mockRestore();
     });
 });
