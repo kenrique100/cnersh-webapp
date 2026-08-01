@@ -40,6 +40,11 @@ export async function createTopic(data: {
             linkUrl: data.linkUrl || null,
             userId: session.user.id,
         },
+        include: {
+            user: { select: { id: true, name: true, image: true, role: true } },
+            _count: { select: { replies: true, likes: true } },
+            likes: { select: { userId: true, isDislike: true } },
+        },
     });
 
     // If it's an announcement, notify all users and send emails

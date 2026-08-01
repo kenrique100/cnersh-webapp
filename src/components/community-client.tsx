@@ -150,7 +150,7 @@ export default function CommunityClient({
             return;
         }
         try {
-            await createTopic({
+            const createdTopic = await createTopic({
                 title: newTopic.title,
                 content: newTopic.content,
                 category: newTopic.category,
@@ -161,10 +161,10 @@ export default function CommunityClient({
                 documents: newTopic.documents.length > 0 ? newTopic.documents : undefined,
                 linkUrl: newTopic.linkUrl || undefined,
             });
+            setTopics((prev) => [JSON.parse(JSON.stringify(createdTopic)), ...prev]);
             setShowCreate(false);
             setNewTopic({ title: "", content: "", category: "", image: "", images: [], video: "", videos: [], documents: [], linkUrl: "" });
             toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
-            router.refresh();
         } catch {
             toast.error("Failed to create channel");
         }
@@ -304,7 +304,6 @@ export default function CommunityClient({
                 setSelectedTopic(null);
             }
             toast.success("Channel deleted");
-            router.refresh();
         } catch {
             toast.error("Failed to delete channel");
         }

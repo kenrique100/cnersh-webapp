@@ -1,5 +1,5 @@
 import { authIsRequired } from "@/lib/auth-utils";
-import { getPosts, getTrendingTags, getUserActivity } from "@/app/actions/feed";
+import { getPosts, getUserActivity } from "@/app/actions/feed";
 import { db } from "@/lib/db";
 import FeedClient from "@/components/feed-client";
 import FeedLeftSidebar from "@/components/feed-left-sidebar";
@@ -12,22 +12,19 @@ export default async function FeedsPage() {
 
     let user: { role: string | null; name: string | null; image: string | null; email: string; gender: string | null } | null = null;
     let posts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
-    let trendingTags: Awaited<ReturnType<typeof getTrendingTags>> = [];
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
 
     try {
-        const [userData, postsResult, tags, activity] = await Promise.all([
+        const [userData, postsResult, activity] = await Promise.all([
             db.user.findUnique({
                 where: { id: session.user.id },
                 select: { role: true, name: true, image: true, email: true, gender: true },
             }),
             getPosts(1, 20),
-            getTrendingTags(5),
             getUserActivity(session.user.id, 8),
         ]);
         user = userData;
         posts = postsResult.posts;
-        trendingTags = tags;
         userActivity = activity;
     } catch (error) {
         console.error("Error fetching feeds page data:", error);
@@ -64,7 +61,7 @@ export default async function FeedsPage() {
 
                     {/* Right Sidebar - Trending/Suggestions (hidden on mobile/tablet) */}
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
-                        <FeedRightSidebar trendingTags={trendingTags} userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn />
+                        <FeedRightSidebar userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn />
                     </aside>
                 </div>
             </div>

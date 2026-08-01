@@ -188,6 +188,7 @@ model Comment {
   @@index([postId])
   @@index([userId])
   @@index([parentId])
+  @@index([postId, deleted, parentId, createdAt])
   @@map("comment")
 }
 
@@ -219,6 +220,7 @@ model Like {
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
+  @@index([postId, createdAt])
   @@map("like")
 }
 

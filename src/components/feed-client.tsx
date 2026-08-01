@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 function extractUploadThingKey(url: string): string | null {
@@ -292,7 +291,6 @@ export default function FeedClient({
                                        currentUserImage,
                                        isAdmin,
                                    }: FeedClientProps) {
-    const router = useRouter();
     const [posts, setPosts] = React.useState(initialPosts);
     const [newPostContent, setNewPostContent] = React.useState("");
     const [newPostImage, setNewPostImage] = React.useState<string | null>(null);
@@ -452,7 +450,7 @@ export default function FeedClient({
         if (!newPostContent.trim() && !newPostImage && !newPostVideo && newPostImages.length === 0 && newPostVideos.length === 0) return;
         setIsSubmitting(true);
         try {
-            await createPost({
+            const createdPost = await createPost({
                 content: newPostContent,
                 image: newPostImage || undefined,
                 video: newPostVideo || undefined,
@@ -473,8 +471,21 @@ export default function FeedClient({
             setShowLinkInput(false);
             setShowImageUpload(false);
             setShowVideoUpload(false);
+            setPosts((prev) => [
+                {
+                    ...createdPost,
+                    createdAt: new Date(createdPost.createdAt),
+                    updatedAt: new Date(createdPost.updatedAt),
+                    likes: [],
+                    recentActivity: {
+                        users: [],
+                        likeCount: 0,
+                        commentCount: 0,
+                    },
+                },
+                ...prev,
+            ]);
             toast.success("Post published successfully");
-            router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : "Failed to create post";
             toast.error(message === "Unauthorized" ? "Please sign in to create a post" : message);
