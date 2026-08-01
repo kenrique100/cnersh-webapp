@@ -35,8 +35,8 @@ describe("RATE_LIMITS relationships", () => {
         expect(RATE_LIMITS.fileUpload.windowMs).toBe(3_600_000);
     });
 
-    it("trending is more permissive than auth", () => {
-        expect(RATE_LIMITS.trending.maxRequests).toBeGreaterThan(RATE_LIMITS.auth.maxRequests);
+    it("authSignUp is stricter than authSignIn", () => {
+        expect(RATE_LIMITS.authSignUp.maxRequests).toBeLessThan(RATE_LIMITS.authSignIn.maxRequests);
     });
 
     it("all configs have windowMs and maxRequests", () => {

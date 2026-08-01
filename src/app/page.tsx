@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
-import { getPosts, getPublicPosts, getTrendingTags, getUserActivity } from "@/app/actions/feed";
+import { getPosts, getPublicPosts, getUserActivity } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
 import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
@@ -30,17 +30,13 @@ export default async function Home() {
     // For unauthenticated users, get public posts
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
 
-    // Fetch dynamic pages for navbar and trending tags
+    // Fetch dynamic pages for navbar
     let pages: Awaited<ReturnType<typeof getPages>> = [];
-    let trendingTags: Awaited<ReturnType<typeof getTrendingTags>> = [];
 
     try {
-        [pages, trendingTags] = await Promise.all([
-            getPages(),
-            getTrendingTags(5),
-        ]);
+        pages = await getPages();
     } catch (error) {
-        console.error("Error fetching pages or trending tags:", error);
+        console.error("Error fetching pages:", error);
     }
 
     // User activity for sidebar
@@ -176,7 +172,7 @@ export default async function Home() {
 
                     {/* Right Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
-                        <FeedRightSidebar trendingTags={trendingTags} userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn={!!session} />
+                        <FeedRightSidebar userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn={!!session} />
                     </aside>
                 </div>
 

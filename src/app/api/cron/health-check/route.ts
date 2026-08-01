@@ -22,12 +22,10 @@ export async function GET(request: Request) {
             const results: {
                 database: boolean;
                 sessionsCleaned: number;
-                viewExists: boolean;
                 errors: string[];
             } = {
                 database: false,
                 sessionsCleaned: 0,
-                viewExists: false,
                 errors: [],
             };
 
@@ -59,27 +57,6 @@ export async function GET(request: Request) {
                 });
             }
 
-            // 3. Check if materialized view exists
-            try {
-                const viewExists = await db.$queryRaw`
-                    SELECT EXISTS (
-                        SELECT 1 FROM pg_matviews 
-                        WHERE matviewname = 'mv_trending_tags'
-                    ) as exists;
-                `;
-                // @ts-expect-error - viewExists is a raw query result
-                results.viewExists = viewExists[0]?.exists || false;
-
-                if (!results.viewExists) {
-                    results.errors.push('Materialized view mv_trending_tags does not exist');
-                }
-            } catch (error) {
-                results.errors.push(`View check failed: ${error}`);
-                Sentry.captureException(error, {
-                    tags: { cron: 'health-check', check: 'view-check' },
-                });
-            }
-
             const elapsed = Date.now() - startTime;
 
             // Determine overall health status
@@ -89,7 +66,6 @@ export async function GET(request: Request) {
                 durationMs: elapsed,
                 healthy: isHealthy,
                 expiredSessionsRemoved: deletedCount,
-                viewExists: results.viewExists,
                 errors: results.errors,
             });
 
@@ -100,7 +76,6 @@ export async function GET(request: Request) {
                         errors: results.errors,
                         checks: {
                             database: results.database,
-                            viewExists: results.viewExists,
                         },
                     },
                 });
@@ -113,7 +88,6 @@ export async function GET(request: Request) {
                 checks: {
                     database: results.database,
                     sessionsCleaned: results.sessionsCleaned,
-                    viewExists: results.viewExists,
                 },
                 errors: results.errors,
             }, {

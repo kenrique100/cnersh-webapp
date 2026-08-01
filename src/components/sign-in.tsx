@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { authEmailClientSchema } from "@/lib/email-validation-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ import { useState } from "react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const formSchema = z.object({
-    email: z.string().min(1, "Email address is required").email("Please enter a valid email address"),
+    email: authEmailClientSchema,
     password: z.string().min(1, "Password is required"),
     rememberMe: z.boolean().optional(),
 });
