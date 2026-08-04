@@ -7,7 +7,7 @@ import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
 import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
-import { pdf } from "pdf-page-counter";
+import { PDFDocument } from "pdf-lib";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -118,20 +118,20 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   // PDF Page Count Validation (1-4 pages required)
   if (file.type === "application/pdf") {
     try {
-      const pdfDoc = await pdf(fileBuffer);
-      const pageCount = pdfDoc.numpages;
+      const pdfDoc = await PDFDocument.load(fileBuffer);
+      const pageCount = pdfDoc.getPageCount();
 
       if (pageCount === 0) {
         return NextResponse.json(
-          { error: "PDF is empty (0 pages). Please upload a PDF with at least 1 page." },
-          { status: 400 }
+            { error: "PDF is empty (0 pages). Please upload a PDF with at least 1 page." },
+            { status: 400 }
         );
       }
 
       if (pageCount > 4) {
         return NextResponse.json(
-          { error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.` },
-          { status: 400 }
+            { error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.` },
+            { status: 400 }
         );
       }
     } catch {
