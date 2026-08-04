@@ -43,7 +43,7 @@ describe('sendVerificationEmail', () => {
 
         await expect(
             sendVerificationEmail({ to: 'user@example.com', verificationUrl: 'https://app.example.com/verify', userName: 'Ada' }),
-        ).rejects.toThrow('Email service not configured. Please contact support.');
+        ).rejects.toThrow('RESEND_API_KEY environment variable is not set.');
 
         consoleError.mockRestore();
     });

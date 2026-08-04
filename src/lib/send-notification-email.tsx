@@ -6,7 +6,11 @@ const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
 let resend: Resend | null = null;
 function getResend() {
     if (!resend) {
-        resend = new Resend(process.env.RESEND_API_KEY);
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+            throw new Error("RESEND_API_KEY environment variable is not set.");
+        }
+        resend = new Resend(apiKey);
     }
     return resend;
 }

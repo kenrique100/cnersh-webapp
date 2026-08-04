@@ -44,15 +44,12 @@ async function sendWelcomeEmailIfNeeded(userId: string) {
             },
         });
 
-        // Guard against a missing/unverified user AND a null email.
-        // This narrows `user.email` from `string | null` to `string`
-        // for everything below, fixing the TS2345 errors.
         if (!user || !user.emailVerified || !user.email) return;
 
         const result = await db.user.updateMany({
             where: {
                 id: userId,
-                welcomeEmailSent: false, // only update if not sent
+                welcomeEmailSent: false,
             },
             data: { welcomeEmailSent: true },
         });
