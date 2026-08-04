@@ -504,16 +504,44 @@ describe('FeedClient', () => {
     // ── create post ─────────────────────────────────────────────────
     describe('create post', () => {
         it('enables Post button when content is typed', async () => {
-            const { user } = setup();
+            const { user } = setup({ initialPosts: [] });
             await user.type(screen.getByPlaceholderText(/share an update/i), 'New post');
-            expect(screen.getByRole('button', { name: /^post$/i })).not.toBeDisabled();
+            const postButton = screen.getByRole('button', { name: /^post$/i });
+            expect(postButton).toBeInTheDocument();
+            expect(postButton).not.toBeDisabled();
         });
 
         it('calls createPost with the typed content', async () => {
-            mockCreatePost.mockResolvedValueOnce(undefined);
-            const { user } = setup();
-            await user.type(screen.getByPlaceholderText(/share an update/i), 'My post');
+            mockCreatePost.mockResolvedValueOnce({
+                id: 'new-post-id',
+                content: 'My post',
+                image: null,
+                video: null,
+                images: [],
+                videos: [],
+                tags: [],
+                linkUrl: null,
+                linkType: null,
+                createdAt: new Date().toISOString(),
+                user: {
+                    id: 'user-1',
+                    name: 'Test User',
+                    image: null,
+                    role: 'user',
+                    profession: 'Tester',
+                },
+                _count: { comments: 0, likes: 0 },
+                likes: [],
+                recentActivity: { users: [], likeCount: 0, commentCount: 0 },
+                commentsEnabled: true,
+            });
+
+            const { user } = setup({ initialPosts: [] });
+            const textarea = screen.getByPlaceholderText(/share an update/i);
+            await user.type(textarea, 'My post');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
+
+            // Wait for the async action to complete
             await waitFor(() => {
                 expect(mockCreatePost).toHaveBeenCalledWith(
                     expect.objectContaining({ content: 'My post' })
@@ -522,10 +550,21 @@ describe('FeedClient', () => {
         });
 
         it('shows success toast and refreshes after posting', async () => {
-            mockCreatePost.mockResolvedValueOnce(undefined);
-            const { user } = setup();
-            await user.type(screen.getByPlaceholderText(/share an update/i), 'My post');
+            mockCreatePost.mockResolvedValueOnce({
+                id: 'new-post-id',
+                content: 'My post',
+                createdAt: new Date().toISOString(),
+                user: { id: 'user-1', name: 'Test User', image: null },
+                _count: { comments: 0, likes: 0 },
+                likes: [],
+                recentActivity: { users: [], likeCount: 0, commentCount: 0 },
+            });
+
+            const { user } = setup({ initialPosts: [] });
+            const textarea = screen.getByPlaceholderText(/share an update/i);
+            await user.type(textarea, 'My post');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
+
             await waitFor(() => {
                 expect(mockToastSuccess).toHaveBeenCalledWith('Post published successfully');
                 expect(mockRouterRefresh).toHaveBeenCalled();
@@ -553,12 +592,24 @@ describe('FeedClient', () => {
         });
 
         it('clears textarea after successful post', async () => {
-            mockCreatePost.mockResolvedValueOnce(undefined);
-            const { user } = setup();
+            mockCreatePost.mockResolvedValueOnce({
+                id: 'new-post-id',
+                content: 'My post',
+                createdAt: new Date().toISOString(),
+                user: { id: 'user-1', name: 'Test User', image: null },
+                _count: { comments: 0, likes: 0 },
+                likes: [],
+                recentActivity: { users: [], likeCount: 0, commentCount: 0 },
+            });
+
+            const { user } = setup({ initialPosts: [] });
             const textarea = screen.getByPlaceholderText(/share an update/i);
             await user.type(textarea, 'My post');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
-            await waitFor(() => expect(textarea).toHaveValue(''));
+            await waitFor(() => {
+                const updatedTextarea = screen.getByPlaceholderText(/share an update/i);
+                expect(updatedTextarea).toHaveValue('');
+            });
         });
 
         it('enables Post button when an image is uploaded (no text)', async () => {
@@ -600,12 +651,24 @@ describe('FeedClient', () => {
         });
 
         it('includes link URL in createPost when provided', async () => {
-            mockCreatePost.mockResolvedValueOnce(undefined);
-            const { user } = setup();
+            mockCreatePost.mockResolvedValueOnce({
+                id: 'new-post-id',
+                content: 'Post with link',
+                linkUrl: 'https://example.com',
+                createdAt: new Date().toISOString(),
+                user: { id: 'user-1', name: 'Test User', image: null },
+                _count: { comments: 0, likes: 0 },
+                likes: [],
+                recentActivity: { users: [], likeCount: 0, commentCount: 0 },
+            });
+
+            const { user } = setup({ initialPosts: [] });
             await user.click(screen.getByRole('button', { name: /link/i }));
-            await user.type(screen.getByPlaceholderText(/paste a link url/i), 'https://example.com');
+            const linkInput = screen.getByPlaceholderText(/paste a link url/i);
+            await user.type(linkInput, 'https://example.com');
             await user.type(screen.getByPlaceholderText(/share an update/i), 'Post with link');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
+
             await waitFor(() => {
                 expect(mockCreatePost).toHaveBeenCalledWith(
                     expect.objectContaining({ linkUrl: 'https://example.com' })
