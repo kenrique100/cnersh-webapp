@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 function extractUploadThingKey(url: string): string | null {
     const match = url.match(/\/f\/([^/?]+)/);
@@ -19,7 +20,6 @@ async function deleteBlobUrl(url: string) {
             body: JSON.stringify({ url, storageKey }),
         });
     } catch {
-        // Best-effort deletion; do not surface errors to the user
     }
 }
 
@@ -291,6 +291,8 @@ export default function FeedClient({
                                        currentUserImage,
                                        isAdmin,
                                    }: FeedClientProps) {
+    const router = useRouter();
+
     const [posts, setPosts] = React.useState(initialPosts);
     const [newPostContent, setNewPostContent] = React.useState("");
     const [newPostImage, setNewPostImage] = React.useState<string | null>(null);
@@ -486,6 +488,7 @@ export default function FeedClient({
                 ...prev,
             ]);
             toast.success("Post published successfully");
+            router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : "Failed to create post";
             toast.error(message === "Unauthorized" ? "Please sign in to create a post" : message);
