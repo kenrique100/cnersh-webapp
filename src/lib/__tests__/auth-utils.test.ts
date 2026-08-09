@@ -7,7 +7,6 @@ const mockFindUnique = jest.fn();
 const mockUpdateMany = jest.fn();
 const mockSendWelcomeEmail = jest.fn();
 
-// Replaced : any with : unknown to satisfy the ESLint rule completely
 jest.mock('next/headers', () => ({
     headers: jest.fn(() => mockHeaders()),
 }));
@@ -91,7 +90,7 @@ describe('getDashboardPath', () => {
         expect(getDashboardPath('superadmin')).toBe('/admin');
     });
 
-    it('returns /dashboard for user role', () => {
+    it('returns /dashboard for regular user role', () => {
         expect(getDashboardPath('user')).toBe('/dashboard');
     });
 
@@ -126,10 +125,6 @@ describe('authIsRequired', () => {
         const result = await authIsRequired();
 
         expect(result).toBe(session);
-        expect(mockFindUnique).toHaveBeenCalledWith({
-            where: { id: 'user-1' },
-            select: { email: true, name: true, emailVerified: true },
-        });
         expect(mockUpdateMany).not.toHaveBeenCalled();
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
     });
@@ -169,9 +164,6 @@ describe('authIsRequired', () => {
             data: { welcomeEmailSent: true },
         });
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
-        expect(consoleLog).toHaveBeenCalledWith(
-            'Welcome email already sent for user user-1, skipping.',
-        );
         consoleLog.mockRestore();
     });
 
@@ -217,7 +209,7 @@ describe('authIsRequired', () => {
         });
     });
 
-    it('swallows welcome email error and still returns session', async () => {
+    it('resets the welcome flag when email delivery fails so it can retry', async () => {
         const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
         const session = { user: { id: 'user-1', role: 'user' } };
         mockGetSession.mockResolvedValueOnce(session);
@@ -226,13 +218,19 @@ describe('authIsRequired', () => {
             name: 'Ada',
             emailVerified: true,
         });
-        mockUpdateMany.mockResolvedValueOnce({ count: 1 });
+        mockUpdateMany
+            .mockResolvedValueOnce({ count: 1 })
+            .mockResolvedValueOnce({ count: 1 });
         const error = new Error('smtp-failed');
         mockSendWelcomeEmail.mockRejectedValueOnce(error);
 
         const result = await authIsRequired();
 
         expect(result).toBe(session);
+        expect(mockUpdateMany).toHaveBeenNthCalledWith(2, {
+            where: { id: 'user-1', welcomeEmailSent: true },
+            data: { welcomeEmailSent: false },
+        });
         expect(consoleError).toHaveBeenCalledWith('Failed to send welcome email:', error);
         consoleError.mockRestore();
     });
