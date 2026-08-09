@@ -5,13 +5,12 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Health check endpoint
- * Checks application and database health
+ * Checks application and database health.
  */
 export async function GET() {
     const startTime = Date.now();
 
     try {
-        // Check database connectivity
         await db.$queryRaw`SELECT 1`;
 
         const responseTime = Date.now() - startTime;
@@ -31,6 +30,7 @@ export async function GET() {
         );
     } catch (error) {
         const responseTime = Date.now() - startTime;
+        console.error('[health] database check failed:', error);
 
         return NextResponse.json(
             {
@@ -39,7 +39,6 @@ export async function GET() {
                 checks: {
                     database: 'down',
                     responseTime: `${responseTime}ms`,
-                    error: error instanceof Error ? error.message : 'Unknown error',
                 },
                 uptime: process.uptime(),
             },
