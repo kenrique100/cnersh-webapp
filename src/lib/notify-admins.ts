@@ -35,9 +35,12 @@ export async function notifyAdmins(data: {
 
     // Send email notifications to admins (fire-and-forget, dispatched concurrently)
     const emailPromises = admins
-        .filter((a) => a.email)
+        // Type guard (`admin is typeof admin & { email: string }`) narrows
+        // `email` from `string | null` to `string` for everything below —
+        // this is what fixes the TS2345 error.
+        .filter((admin): admin is typeof admin & { email: string } => !!admin.email)
         .map((admin) => {
-            Sentry.startSpan(
+            return Sentry.startSpan(
                 {
                     name: "admin-notifications",
                     op: "queue.publish",
@@ -48,7 +51,6 @@ export async function notifyAdmins(data: {
                     },
                 },
                 () => {
-                    // Return the promise so we can track it
                     return sendNotificationEmail({
                         to: admin.email,
                         userName: admin.name || "Admin",
@@ -58,13 +60,6 @@ export async function notifyAdmins(data: {
                     }).catch((err) => console.error("Error sending admin email notification:", err));
                 }
             );
-            return sendNotificationEmail({
-                to: admin.email,
-                userName: admin.name || "Admin",
-                notificationMessage: data.message,
-                notificationType: data.type,
-                actionUrl: data.link,
-            }).catch((err) => console.error("Error sending admin email notification:", err));
         });
 
     // Dispatch concurrently without blocking the caller

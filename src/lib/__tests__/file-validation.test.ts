@@ -1,3 +1,4 @@
+// src/lib/__tests__/file-validation.test.ts
 import { performBasicMalwareCheck, validateMimeType } from '@/lib/file-validation';
 
 describe('performBasicMalwareCheck', () => {
@@ -52,10 +53,11 @@ describe('performBasicMalwareCheck', () => {
         expect(result).toEqual({ safe: false, error: 'File extension not permitted' });
     });
 
+    // --- Dangerous pattern tests now use a safe extension (.txt) ---
     it('returns safe: false when buffer contains <script> tag', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('<script src="evil.js">'),
-            'file.html',
+            'file.txt',   // safe extension so the pattern check runs
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });
@@ -63,7 +65,7 @@ describe('performBasicMalwareCheck', () => {
     it('returns safe: false when buffer contains javascript: pattern', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('href="javascript:alert(1)"'),
-            'file.svg',
+            'file.txt',
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });
@@ -71,7 +73,7 @@ describe('performBasicMalwareCheck', () => {
     it('returns safe: false when buffer contains vbscript: pattern', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('vbscript:MsgBox'),
-            'file.html',
+            'file.txt',
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });
@@ -79,7 +81,7 @@ describe('performBasicMalwareCheck', () => {
     it('returns safe: false when buffer contains on* event handler pattern', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('onerror=alert(1)'),
-            'file.svg',
+            'file.txt',
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });
@@ -87,7 +89,7 @@ describe('performBasicMalwareCheck', () => {
     it('returns safe: false when buffer contains <iframe', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('<iframe src="evil.com">'),
-            'file.html',
+            'file.txt',
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });
@@ -95,7 +97,7 @@ describe('performBasicMalwareCheck', () => {
     it('returns safe: false when buffer contains eval(', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('eval(atob("aGVsbG8="))'),
-            'file.js',
+            'file.txt',
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });
@@ -103,7 +105,7 @@ describe('performBasicMalwareCheck', () => {
     it('returns safe: false when buffer contains document.cookie', async () => {
         const result = await performBasicMalwareCheck(
             Buffer.from('document.cookie'),
-            'file.js',
+            'file.txt',
         );
         expect(result).toEqual({ safe: false, error: 'File contains potentially dangerous content' });
     });

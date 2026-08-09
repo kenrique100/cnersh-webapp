@@ -1,4 +1,3 @@
-// columns.tsx (updated)
 import { Button } from "@/components/ui/button";
 import { UserProps } from "@/hooks/use-user";
 import { Checkbox } from "@radix-ui/react-checkbox";

@@ -7,8 +7,8 @@ import AARClient from "./aar-client";
 export const dynamic = "force-dynamic";
 
 export default async function AARPage({
-    params,
-}: {
+                                          params,
+                                      }: {
     params: Promise<{ id: string }>;
 }) {
     const session = await authIsRequired();
@@ -46,7 +46,7 @@ export default async function AARPage({
     return (
         <AARClient
             projectId={id}
-            projectTitle={project.title}
+            projectTitle={project.title ?? "Untitled Protocol"}
             application={application}
         />
     );

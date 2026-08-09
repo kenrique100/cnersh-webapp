@@ -1,5 +1,4 @@
 // This file configures the initialization of Sentry on the client.
-// The added config here will be used whenever a users loads a page in their browser.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
@@ -13,15 +12,12 @@ Sentry.init({
     // Only enable debug in development
     debug: process.env.NODE_ENV === "development",
 
-    // Enable Session Replay for better debugging
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
 
     environment: process.env.NODE_ENV,
 
-    // tunnel: "/monitoring",
-
-    sendDefaultPii: true, // Add this if you need user PII
+    sendDefaultPii: true,
 
     integrations: [
         Sentry.replayIntegration(),
@@ -29,7 +25,8 @@ Sentry.init({
             colorScheme: "system",
             showName: false,
             isEmailRequired: true,
-            placement: "bottom-left",
+            // Position of the report bug icon on the web Ui
+            placement: "bottom-right",
             onSubmitSuccess: (feedback: { email?: string; message?: string }) => {
                 fetch("/api/sentry-feedback", {
                     method: "POST",

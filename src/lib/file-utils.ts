@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { deleteFileFromBunny } from "@/lib/bunny-storage-client";
+import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
 
 export const MAX_DOCUMENT_PAGES = 4;
@@ -63,14 +63,15 @@ export async function getFileMetadata(fileId: string) {
 export async function deleteFile(fileId: string): Promise<void> {
   const file = await db.file.findUnique({
     where:  { id: fileId },
-    select: { storageKey: true, data: true },
+    select: { storageKey: true },
   });
 
-  if (file?.storageKey && !file.data) {
+  if (file?.storageKey) {
     try {
-      await deleteFileFromBunny(file.storageKey);
+      await utapi.deleteFiles(file.storageKey);
     } catch (err) {
-      console.error("[file-utils] BunnyCDN deletion failed:", err);
+      console.error("[file-utils] UploadThing deletion failed:", err);
+      // Continue to delete the DB record even if remote deletion fails
     }
   }
 

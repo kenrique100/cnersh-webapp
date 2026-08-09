@@ -15,14 +15,8 @@
     "jsx": "react-jsx",
     "incremental": true,
     "typeRoots": ["./node_modules/@types", "./src/types"],
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": [
     "next-env.d.ts",

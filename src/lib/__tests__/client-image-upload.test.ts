@@ -30,7 +30,37 @@ describe('isAcceptedImageType', () => {
 });
 
 describe('prepareImageForUpload', () => {
+    // Restore globals after each test
+    const originalURL = global.URL;
+    const originalImage = global.Image;
+
+    afterEach(() => {
+        global.URL = originalURL;
+        global.Image = originalImage;
+    });
+
     it('returns the original file when it is an accepted type', async () => {
+        // Mock URL.createObjectURL (required by loadImageFromFile)
+        global.URL = {
+            ...originalURL,
+            createObjectURL: jest.fn(() => 'blob:mock'),
+            revokeObjectURL: jest.fn(),
+        } as unknown as typeof URL;
+
+        // Mock Image to trigger onload immediately
+        global.Image = class {
+            onload: (() => void) | null = null;
+            onerror: (() => void) | null = null;
+            private _src = '';
+
+            get src(): string { return this._src; }
+            set src(_url: string) {
+                this._src = _url;
+                // Simulate successful image load
+                setTimeout(() => this.onload?.(), 0);
+            }
+        } as unknown as typeof Image;
+
         const file = makeFile('photo.jpg', 'image/jpeg');
         const result = await prepareImageForUpload(file);
         expect(result).toBe(file);
@@ -46,34 +76,29 @@ describe('prepareImageForUpload', () => {
     it('throws browser unsupported error when HEIC conversion fails', async () => {
         const file = makeFile('photo.heic', 'image/heic');
 
-        // URL.createObjectURL not available in jsdom by default
-        global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-        global.URL.revokeObjectURL = jest.fn();
+        // URL mocks required for HEIC path
+        global.URL = {
+            ...originalURL,
+            createObjectURL: jest.fn(() => 'blob:mock'),
+            revokeObjectURL: jest.fn(),
+        } as unknown as typeof URL;
 
         // Simulate image load failure
-        const originalImage = global.Image;
         global.Image = class {
             onload: (() => void) | null = null;
             onerror: (() => void) | null = null;
             private _src = '';
 
-            get src(): string {
-                return this._src;
-            }
-
+            get src(): string { return this._src; }
             set src(_url: string) {
                 this._src = _url;
-                setTimeout(() => {
-                    this.onerror?.();
-                }, 0);
+                setTimeout(() => this.onerror?.(), 0);
             }
         } as unknown as typeof Image;
 
         await expect(prepareImageForUpload(file)).rejects.toThrow(
             'HEIC/HEIF images are not supported by this browser. Please convert to JPEG, PNG, WebP, or GIF.',
         );
-
-        global.Image = originalImage;
     });
 
     it('throws unsupported error for unknown type with empty mime', async () => {

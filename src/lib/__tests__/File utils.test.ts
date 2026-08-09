@@ -12,7 +12,7 @@ import {
 } from '../file-utils';
 
 import { db } from '@/lib/db';
-import { deleteFileFromBunny } from '@/lib/bunny-storage-client';
+import { utapi } from '@/lib/uploadthing';
 
 jest.mock('@/lib/db', () => ({
     db: {
@@ -25,14 +25,14 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-jest.mock('@/lib/bunny-storage-client', () => ({
-    deleteFileFromBunny: jest.fn(),
+jest.mock('@/lib/uploadthing', () => ({
+    utapi: {
+        deleteFiles: jest.fn(),
+    },
 }));
 
 const mockedDb = db as jest.Mocked<typeof db>;
-const mockedDeleteFileFromBunny = deleteFileFromBunny as jest.MockedFunction<
-    typeof deleteFileFromBunny
->;
+const mockedUtapi = utapi as jest.Mocked<typeof utapi>;
 
 const VALID_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
@@ -158,9 +158,7 @@ describe('getFileMetadata — integration', () => {
 
     it('returns null when file is not found', async () => {
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce(null);
-
         const result = await getFileMetadata('nonexistent-id');
-
         expect(result).toBeNull();
     });
 
@@ -174,14 +172,12 @@ describe('getFileMetadata — integration', () => {
             url: null,
             createdAt: new Date(),
         });
-
         const result = await getFileMetadata(VALID_UUID);
-
         expect(result?.url).toBe(`/api/files/${VALID_UUID}`);
     });
 
     it('uses stored url when present', async () => {
-        const storedUrl = 'https://cdn.b-cdn.net/cnersh-assets/documents/file.pdf';
+        const storedUrl = 'https://uploadthing.com/f/abc123';
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
             id: VALID_UUID,
             filename: 'test.pdf',
@@ -191,9 +187,7 @@ describe('getFileMetadata — integration', () => {
             url: storedUrl,
             createdAt: new Date(),
         });
-
         const result = await getFileMetadata(VALID_UUID);
-
         expect(result?.url).toBe(storedUrl);
     });
 });
@@ -203,58 +197,52 @@ describe('deleteFile — integration', () => {
         jest.clearAllMocks();
     });
 
-    it('calls deleteFileFromBunny when storageKey exists and no inline data', async () => {
+    it('calls utapi.deleteFiles when storageKey exists', async () => {
+        const storageKey = 'uploadthing-file-key-123';
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
-            storageKey: 'cnersh-assets/images/photo.jpg',
-            data: null,
+            storageKey,
         });
         (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
 
         await deleteFile(VALID_UUID);
 
-        expect(mockedDeleteFileFromBunny).toHaveBeenCalledWith(
-            'cnersh-assets/images/photo.jpg'
-        );
+        expect(mockedUtapi.deleteFiles).toHaveBeenCalledWith(storageKey);
         expect(mockedDb.file.delete).toHaveBeenCalledWith({
             where: { id: VALID_UUID },
         });
     });
 
-    it('skips CDN deletion when file has inline data', async () => {
+    it('skips UploadThing deletion when file has no storageKey', async () => {
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
-            storageKey: 'cnersh-assets/images/photo.jpg',
-            data: 'base64data==',
+            storageKey: null,
         });
         (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
 
         await deleteFile(VALID_UUID);
 
-        expect(mockedDeleteFileFromBunny).not.toHaveBeenCalled();
+        expect(mockedUtapi.deleteFiles).not.toHaveBeenCalled();
         expect(mockedDb.file.delete).toHaveBeenCalled();
     });
 
-    it('still deletes DB record even when CDN deletion throws', async () => {
-        // Suppress expected console.error output for this test run
+    it('still deletes DB record even when UploadThing deletion throws', async () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
+        const storageKey = 'some-key';
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
-            storageKey: 'cnersh-assets/images/photo.jpg',
-            data: null,
+            storageKey,
         });
-        mockedDeleteFileFromBunny.mockRejectedValueOnce(new Error('CDN error'));
+        mockedUtapi.deleteFiles.mockRejectedValueOnce(new Error('UploadThing error'));
         (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
 
         await expect(deleteFile(VALID_UUID)).resolves.toBeUndefined();
 
         expect(mockedDb.file.delete).toHaveBeenCalled();
 
-        // Assert that the error was caught and logged gracefully
         expect(consoleSpy).toHaveBeenCalledWith(
-            "[file-utils] BunnyCDN deletion failed:",
+            "[file-utils] UploadThing deletion failed:",
             expect.any(Error)
         );
 
-        // Restore console to original behavior
         consoleSpy.mockRestore();
     });
 });
@@ -271,7 +259,7 @@ describe('listUserFiles — integration', () => {
             mimeType: 'image/jpeg',
             size: 2048,
             type: 'image',
-            url: 'https://cdn.b-cdn.net/photo.jpg',
+            url: 'https://uploadthing.com/f/photo.jpg',
             createdAt: new Date(),
         };
         (mockedDb.file.findMany as jest.Mock).mockResolvedValueOnce([fakeFile]);

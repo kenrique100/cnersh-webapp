@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ExternalLinkIcon, GlobeIcon } from "lucide-react";
+import { sanitizeUrl } from "@/lib/sanitize";
 
 interface LinkPreviewProps {
     url: string;
@@ -26,13 +27,21 @@ function getDomain(url: string): string {
 export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
     const [preview, setPreview] = React.useState<PreviewData | null>(null);
     const [imageError, setImageError] = React.useState(false);
+    const safeUrl = React.useMemo(() => sanitizeUrl(url), [url]);
     const domain = React.useMemo(() => getDomain(url), [url]);
 
     React.useEffect(() => {
+        if (!safeUrl) return;
+
+        // Narrow safeUrl to string
+        const url = safeUrl;
         let cancelled = false;
+
         async function fetchPreview() {
             try {
-                const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+                const res = await fetch(
+                    `/api/link-preview?url=${encodeURIComponent(url)}`
+                );
                 if (res.ok) {
                     const data = await res.json();
                     if (!cancelled) setPreview(data);
@@ -41,9 +50,14 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
                 console.error("Link preview fetch error:", err);
             }
         }
+
         fetchPreview();
-        return () => { cancelled = true; };
-    }, [url]);
+        return () => {
+            cancelled = true;
+        };
+    }, [safeUrl]);
+
+    if (!safeUrl) return null;
 
     const title = preview?.title || domain;
     const description = preview?.description || "";
@@ -52,17 +66,17 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
 
     return (
         <a
-            href={url}
+            href={safeUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={`mt-2 block rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group overflow-hidden ${className}`}
         >
-            {/* Preview Image */}
             {image && !imageError && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                     src={image}
                     alt=""
+                    referrerPolicy="no-referrer"
                     className="w-full h-[160px] object-cover bg-gray-100 dark:bg-gray-800"
                     onError={() => setImageError(true)}
                 />

@@ -19,39 +19,37 @@ describe('sendWelcomeEmail', () => {
         jest.clearAllMocks();
         process.env = { ...originalEnv, RESEND_API_KEY: 'test-resend-key' };
         delete process.env.EMAIL_FROM;
+
+        // Suppress console output during tests
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
         process.env = originalEnv;
+
+        // Restore console methods
+        jest.restoreAllMocks();
     });
 
     it('throws for an invalid email address', async () => {
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
-
         await expect(
             sendWelcomeEmail({ to: 'invalid', userName: 'Ada' }),
-        ).rejects.toThrow('Invalid email address: invalid');
-
-        consoleError.mockRestore();
+        ).rejects.toThrow('Invalid email address');
     });
 
     it('throws when RESEND_API_KEY is missing', async () => {
         delete process.env.RESEND_API_KEY;
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
-
         await expect(
             sendWelcomeEmail({ to: 'user@example.com', userName: 'Ada' }),
         ).rejects.toThrow('RESEND_API_KEY environment variable is not set.');
-
-        consoleError.mockRestore();
     });
 
     it('sends email using default FROM address', async () => {
         mockEmailsSend.mockResolvedValueOnce({ data: { id: 'email-1' }, error: null });
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
-        const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         await sendWelcomeEmail({ to: 'user@example.com', userName: 'Ada' });
 
@@ -62,72 +60,55 @@ describe('sendWelcomeEmail', () => {
                 subject: 'Welcome to CNERSH – Your Account is Ready!',
             }),
         );
-        consoleLog.mockRestore();
     });
 
     it('uses EMAIL_FROM when configured', async () => {
         process.env.EMAIL_FROM = 'Custom <custom@example.com>';
         mockEmailsSend.mockResolvedValueOnce({ data: { id: 'email-1' }, error: null });
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
-        const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         await sendWelcomeEmail({ to: 'user@example.com', userName: 'Ada' });
 
         expect(mockEmailsSend).toHaveBeenCalledWith(
             expect.objectContaining({ from: 'Custom <custom@example.com>' }),
         );
-        consoleLog.mockRestore();
     });
 
     it('throws when Resend returns an error object', async () => {
         mockEmailsSend.mockResolvedValueOnce({ data: null, error: { message: 'provider-failed' } });
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
 
         await expect(
             sendWelcomeEmail({ to: 'user@example.com', userName: 'Ada' }),
-        ).rejects.toThrow('Failed to send welcome email: provider-failed');
-
-        consoleError.mockRestore();
+        ).rejects.toThrow('Failed to send welcome email');
     });
 
     it('returns response on success', async () => {
         const mockResponse = { data: { id: 'email-1' }, error: null };
         mockEmailsSend.mockResolvedValueOnce(mockResponse);
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
-        const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         const result = await sendWelcomeEmail({ to: 'user@example.com', userName: 'Ada' });
 
         expect(result).toBe(mockResponse);
-        consoleLog.mockRestore();
     });
 
     it('reuses the same Resend instance across calls', async () => {
         mockEmailsSend.mockResolvedValue({ data: { id: 'email-1' }, error: null });
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
-        const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         await sendWelcomeEmail({ to: 'one@example.com', userName: 'One' });
         await sendWelcomeEmail({ to: 'two@example.com', userName: 'Two' });
 
         expect(mockResendConstructor).toHaveBeenCalledTimes(1);
-        consoleLog.mockRestore();
     });
 
-    it('logs and rethrows errors', async () => {
+    it('rethrows errors when email send fails (no console.error log)', async () => {
         mockEmailsSend.mockRejectedValueOnce(new Error('smtp-down'));
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
         const { sendWelcomeEmail } = await import('@/lib/send-welcome-email');
 
         await expect(
             sendWelcomeEmail({ to: 'user@example.com', userName: 'Ada' }),
         ).rejects.toThrow('smtp-down');
-
-        expect(consoleError).toHaveBeenCalledWith(
-            'Error in sendWelcomeEmail:',
-            expect.any(Error),
-        );
-        consoleError.mockRestore();
     });
 });

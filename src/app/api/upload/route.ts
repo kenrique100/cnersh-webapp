@@ -5,15 +5,15 @@ import { sanitizeFilename } from "@/lib/sanitize-filename";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
+import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
-import { pdf } from "pdf-page-counter";
-import { uploadFileToBunny } from "@/lib/bunny-storage-client";
+import { PDFDocument } from "pdf-lib";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
 const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
-const MAX_VIDEO_SIZE    = 50 * 1024 * 1024;
+const MAX_VIDEO_SIZE    = 64 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
 
@@ -49,13 +49,6 @@ function resolveFileType(mimeType: string): FileType {
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
   return "document";
-}
-
-function resolveBunnyFolder(mimeType: string): string {
-  if (mimeType.startsWith("image/")) return "cnersh-assets/images";
-  if (mimeType.startsWith("video/")) return "cnersh-assets/videos";
-  if (mimeType.startsWith("audio/")) return "cnersh-assets/audios";
-  return "cnersh-assets/documents";
 }
 
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
@@ -122,32 +115,49 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // PDF Page Count Validation (1-4 pages required)
   if (file.type === "application/pdf") {
     try {
-      const pdfDoc = await pdf(fileBuffer);
-      if (pdfDoc.numpages > 4) {
-        return NextResponse.json({ error: "PDF exceeds 4 pages" }, { status: 400 });
+      const pdfDoc = await PDFDocument.load(fileBuffer);
+      const pageCount = pdfDoc.getPageCount();
+
+      if (pageCount === 0) {
+        return NextResponse.json(
+            { error: "PDF is empty (0 pages). Please upload a PDF with at least 1 page." },
+            { status: 400 }
+        );
+      }
+
+      if (pageCount > 4) {
+        return NextResponse.json(
+            { error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.` },
+            { status: 400 }
+        );
       }
     } catch {
       return NextResponse.json({ error: "Invalid or corrupted PDF file" }, { status: 400 });
     }
   }
 
-  let uploadedUrl: string;
-  let computedStorageKey: string;
-
+  let uploadResult;
   try {
-    const result = await uploadFileToBunny(
-        fileBuffer,
+    const uploadFile = new File(
+        [new Uint8Array(fileBuffer)],
         sanitizedFilename,
-        resolveBunnyFolder(file.type)
+        { type: file.type }
     );
-    uploadedUrl        = result.url;
-    computedStorageKey = result.storageKey;
+    uploadResult = await utapi.uploadFiles(uploadFile);
   } catch (err) {
-    console.error("[upload] BunnyCDN upload failed:", err);
+    console.error("[upload] UploadThing upload failed:", err);
     return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
   }
+
+  if (uploadResult.error) {
+    console.error("[upload] UploadThing error:", uploadResult.error);
+    return NextResponse.json({ error: "Upload service error" }, { status: 502 });
+  }
+
+  const { key, ufsUrl } = uploadResult.data;
 
   try {
     const stored = await db.file.create({
@@ -156,8 +166,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         mimeType:   file.type,
         size:       file.size,
         data:       null,
-        url:        uploadedUrl,
-        storageKey: computedStorageKey,
+        url:        ufsUrl,
+        storageKey: key,
         type:       resolveFileType(file.type),
         userId:     session.user.id,
       },
