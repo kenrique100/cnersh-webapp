@@ -34,7 +34,6 @@ export const authIsNotRequired = async () => {
 
 async function sendWelcomeEmailIfNeeded(userId: string) {
     try {
-        // 1. Fetch user details (no lock)
         const user = await db.user.findUnique({
             where: { id: userId },
             select: {
@@ -46,6 +45,7 @@ async function sendWelcomeEmailIfNeeded(userId: string) {
 
         if (!user || !user.emailVerified || !user.email) return;
 
+        // Claim the send atomically so concurrent requests do not send duplicates.
         const result = await db.user.updateMany({
             where: {
                 id: userId,
@@ -59,12 +59,23 @@ async function sendWelcomeEmailIfNeeded(userId: string) {
             return;
         }
 
-        await sendWelcomeEmail({
-            to: user.email,
-            userName: user.name || "User",
-        });
-
-        console.log(`Welcome email sent for user ${userId}`);
+        try {
+            await sendWelcomeEmail({
+                to: user.email,
+                userName: user.name || "User",
+            });
+            console.log(`Welcome email sent for user ${userId}`);
+        } catch (error) {
+            // Do not permanently consume the one-time flag when the provider fails.
+            // This allows the next authenticated request to retry the welcome email.
+            await db.user.updateMany({
+                where: { id: userId, welcomeEmailSent: true },
+                data: { welcomeEmailSent: false },
+            }).catch((resetError) => {
+                console.error("Failed to reset welcome email flag:", resetError);
+            });
+            throw error;
+        }
     } catch (error) {
         console.error("Failed to send welcome email:", error);
     }
