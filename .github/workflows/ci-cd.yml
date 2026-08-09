@@ -43,9 +43,13 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/cnersh_ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/cnersh_ci
       BETTER_AUTH_SECRET: test-secret-for-ci
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      GOOGLE_CLIENT_ID: ci-google-client-id
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      UPLOADTHING_TOKEN: ci-uploadthing-token
 
     steps:
       - name: Checkout Source Code
@@ -78,7 +82,7 @@ jobs:
         run: npm run lint
 
       - name: Verify TypeScript Compilation
-        run: npx tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo || true
+        run: npx tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo
 
       - name: Execute Unit & Integration Tests
         run: npm test -- --ci --coverage
@@ -131,6 +135,7 @@ jobs:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -143,6 +148,7 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
 
       - name: Deploy to Vercel (Production)
         id: deploy_execution
