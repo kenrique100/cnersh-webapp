@@ -151,7 +151,7 @@ describe('validateFileSizeClient', () => {
     });
 });
 
-describe('getFileMetadata — integration', () => {
+describe('getFileMetadata - integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
     });
@@ -192,7 +192,7 @@ describe('getFileMetadata — integration', () => {
     });
 });
 
-describe('deleteFile — integration', () => {
+describe('deleteFile - integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
     });
@@ -247,7 +247,7 @@ describe('deleteFile — integration', () => {
     });
 });
 
-describe('listUserFiles — integration', () => {
+describe('listUserFiles - integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
     });

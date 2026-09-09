@@ -449,7 +449,7 @@ describe('deleteBlobUrl (via image removal in create-post)', () => {
         // so deleteBlobUrl will no-op. To test the bunny path, we need a bunny URL.
         // We'll test via a post that has a bunny image and click its remove button.
         // Since the URL from ImageUpload mock is not a bunny URL, deleteBlobUrl
-        // silently returns — this covers the early-return branch.
+        // silently returns - this covers the early-return branch.
         expect(mockFetch).not.toHaveBeenCalledWith(
             '/api/delete-blob',
             expect.objectContaining({ method: 'DELETE' })
@@ -1579,7 +1579,7 @@ describe('FeedClient', () => {
             await user.click(screen.getByRole('button', { name: /send/i }));
             await waitFor(() => {
                 expect(clipboardSpy).toHaveBeenCalledWith(expect.stringContaining('post-1'));
-                expect(mockToastSuccess).toHaveBeenCalledWith('Link copied — share it anywhere!');
+                expect(mockToastSuccess).toHaveBeenCalledWith('Link copied - share it anywhere!');
             });
             clipboardSpy.mockRestore();
         });

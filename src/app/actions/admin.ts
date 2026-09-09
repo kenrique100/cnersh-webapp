@@ -3,6 +3,38 @@
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
+import {
+    canAssignRole,
+    canManageRole,
+    isAdminRole,
+    isRoleName,
+    type RoleName,
+} from "@/lib/permissions";
+import { sanitizeText } from "@/lib/sanitize";
+import { z } from "zod";
+
+const idSchema = z.string().trim().min(1).max(128);
+const paginationSchema = z.object({
+    page: z.number().int().min(1).max(1_000_000).catch(1),
+    limit: z.number().int().min(1).max(100).catch(20),
+});
+const reportSchema = z.object({
+    contentType: z.enum(["POST", "COMMENT", "TOPIC", "REPLY"]),
+    contentId: idSchema,
+    reason: z.string().trim().min(1).max(2_000).transform(sanitizeText),
+});
+const managedUserSchema = z.object({
+    name: z.string().trim().min(3).max(100).transform(sanitizeText),
+    email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
+    role: z.enum(["user", "admin", "superadmin"]),
+});
+const createManagedUserSchema = managedUserSchema.extend({
+    password: z.string().min(10).max(128),
+});
+
+function parsePagination(page: number, limit: number) {
+    return paginationSchema.parse({ page, limit });
+}
 
 /** Stats and recent activity for the User Management page */
 export async function getUserManagementData() {
@@ -40,6 +72,7 @@ export async function getUserManagementData() {
         db.user.count({ where: { ...userFilter, banned: true } }),
         db.user.count({ where: { ...userFilter, createdAt: { gte: thirtyDaysAgo } } }),
         db.auditLog.findMany({
+            where: isSuperAdmin ? {} : { userId: session.user.id },
             include: {
                 user: { select: { name: true, email: true } },
             },
@@ -155,19 +188,22 @@ export async function getAuditLogs(page: number = 1, limit: number = 20) {
         throw new Error("Forbidden");
     }
 
+    const pagination = parsePagination(page, limit);
+    const logFilter = user.role === "superadmin" ? {} : { userId: session.user.id };
     const [logs, total] = await Promise.all([
         db.auditLog.findMany({
+            where: logFilter,
             include: {
                 user: { select: { id: true, name: true, email: true } },
             },
             orderBy: { createdAt: "desc" },
-            skip: (page - 1) * limit,
-            take: limit,
+            skip: (pagination.page - 1) * pagination.limit,
+            take: pagination.limit,
         }),
-        db.auditLog.count(),
+        db.auditLog.count({ where: logFilter }),
     ]);
 
-    return { logs, total, pages: Math.ceil(total / limit) };
+    return { logs, total, pages: Math.ceil(total / pagination.limit) };
 }
 
 export async function getReports(page: number = 1, limit: number = 20) {
@@ -183,19 +219,20 @@ export async function getReports(page: number = 1, limit: number = 20) {
         throw new Error("Forbidden");
     }
 
+    const pagination = parsePagination(page, limit);
     const [reports, total] = await Promise.all([
         db.report.findMany({
             include: {
                 user: { select: { id: true, name: true, email: true, image: true } },
             },
             orderBy: { createdAt: "desc" },
-            skip: (page - 1) * limit,
-            take: limit,
+            skip: (pagination.page - 1) * pagination.limit,
+            take: pagination.limit,
         }),
         db.report.count(),
     ]);
 
-    return { reports, total, pages: Math.ceil(total / limit) };
+    return { reports, total, pages: Math.ceil(total / pagination.limit) };
 }
 
 export async function createReport(data: {
@@ -205,22 +242,24 @@ export async function createReport(data: {
 }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    const parsed = reportSchema.safeParse(data);
+    if (!parsed.success) throw new Error("Invalid report");
 
     const report = await db.report.create({
         data: {
-            reason: data.reason,
-            contentType: data.contentType,
-            contentId: data.contentId,
+            reason: parsed.data.reason,
+            contentType: parsed.data.contentType,
+            contentId: parsed.data.contentId,
             userId: session.user.id,
         },
     });
 
     // Notify admins about the new report
     try {
-        const contentLabel = data.contentType.toLowerCase().replace("_", " ");
+        const contentLabel = parsed.data.contentType.toLowerCase().replace("_", " ");
         await notifyAdmins({
             type: "SYSTEM",
-            message: `${session.user.name || "A user"} reported a ${contentLabel}: "${data.reason.substring(0, 80)}${data.reason.length > 80 ? "..." : ""}"`,
+            message: `${session.user.name || "A user"} reported a ${contentLabel}: "${parsed.data.reason.substring(0, 80)}${parsed.data.reason.length > 80 ? "..." : ""}"`,
             link: "/admin/reports",
             excludeUserId: session.user.id,
         });
@@ -240,7 +279,7 @@ async function requireAdmin() {
         select: { role: true },
     });
 
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
+    if (!isAdminRole(user?.role)) {
         throw new Error("Forbidden");
     }
 
@@ -252,17 +291,19 @@ export async function resolveReport(
     action: "REVIEWED" | "DISMISSED",
 ) {
     const session = await requireAdmin();
+    const safeReportId = idSchema.parse(reportId);
+    const safeAction = z.enum(["REVIEWED", "DISMISSED"]).parse(action);
 
     await db.report.update({
-        where: { id: reportId },
-        data: { status: action },
+        where: { id: safeReportId },
+        data: { status: safeAction },
     });
 
     await db.auditLog.create({
         data: {
             action: "RESOLVE_REPORT",
-            details: `Report resolved as ${action}`,
-            targetId: reportId,
+            details: `Report resolved as ${safeAction}`,
+            targetId: safeReportId,
             userId: session.user.id,
         },
     });
@@ -272,20 +313,28 @@ export async function resolveReport(
 
 export async function sendWarning(userId: string, message: string) {
     const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
+    const safeMessage = z.string().trim().min(1).max(2_000).transform(sanitizeText).parse(message);
+    const [actingUser, targetUser] = await Promise.all([
+        db.user.findUnique({ where: { id: session.user.id }, select: { role: true } }),
+        db.user.findUnique({ where: { id: targetId }, select: { role: true } }),
+    ]);
+    if (!targetUser) throw new Error("User not found");
+    if (!canManageRole(actingUser?.role, targetUser.role)) throw new Error("Forbidden");
 
     await db.notification.create({
         data: {
             type: "SYSTEM",
-            message,
-            userId,
+            message: safeMessage,
+            userId: targetId,
         },
     });
 
     await db.auditLog.create({
         data: {
             action: "SEND_WARNING",
-            details: `Warning sent: ${message}`,
-            targetId: userId,
+            details: `Warning sent: ${safeMessage}`,
+            targetId,
             userId: session.user.id,
         },
     });
@@ -295,6 +344,8 @@ export async function sendWarning(userId: string, message: string) {
 
 export async function banUserById(userId: string, reason: string) {
     const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
+    const safeReason = z.string().trim().min(1).max(1_000).transform(sanitizeText).parse(reason);
 
     const actingUser = await db.user.findUnique({
         where: { id: session.user.id },
@@ -302,32 +353,29 @@ export async function banUserById(userId: string, reason: string) {
     });
 
     const targetUser = await db.user.findUnique({
-        where: { id: userId },
+        where: { id: targetId },
         select: { role: true },
     });
 
     if (!targetUser) throw new Error("User not found");
 
-    // Regular admins can only ban regular users; super-admins can ban anyone
-    if (actingUser?.role !== "superadmin" && targetUser.role !== "user") {
-        throw new Error("Forbidden: Only super-admins can ban admin-level users");
-    }
+    if (!canManageRole(actingUser?.role, targetUser.role)) throw new Error("Forbidden");
 
     await db.user.update({
-        where: { id: userId },
-        data: { banned: true, banReason: reason },
+        where: { id: targetId },
+        data: { banned: true, banReason: safeReason },
     });
 
     // Invalidate all active Better Auth sessions for the banned user
     await db.session.deleteMany({
-        where: { userId },
+        where: { userId: targetId },
     });
 
     await db.auditLog.create({
         data: {
             action: "BAN_USER",
-            details: `User banned: ${reason}`,
-            targetId: userId,
+            details: `User banned: ${safeReason}`,
+            targetId,
             userId: session.user.id,
         },
     });
@@ -337,16 +385,21 @@ export async function banUserById(userId: string, reason: string) {
 
 export async function unbanUserById(userId: string) {
     const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
 
-    const targetUser = await db.user.findUnique({
-        where: { id: userId },
-        select: { name: true, email: true },
-    });
+    const [actingUser, targetUser] = await Promise.all([
+        db.user.findUnique({ where: { id: session.user.id }, select: { role: true } }),
+        db.user.findUnique({
+            where: { id: targetId },
+            select: { name: true, email: true, role: true },
+        }),
+    ]);
 
     if (!targetUser) throw new Error("User not found");
+    if (!canManageRole(actingUser?.role, targetUser.role)) throw new Error("Forbidden");
 
     await db.user.update({
-        where: { id: userId },
+        where: { id: targetId },
         data: { banned: false, banReason: null, banExpires: null },
     });
 
@@ -354,7 +407,7 @@ export async function unbanUserById(userId: string) {
         data: {
             action: "UNBAN_USER",
             details: `User unbanned`,
-            targetId: userId,
+            targetId,
             userId: session.user.id,
         },
     });
@@ -364,6 +417,7 @@ export async function unbanUserById(userId: string) {
 
 export async function activateUser(userId: string) {
     const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -375,7 +429,7 @@ export async function activateUser(userId: string) {
     }
 
     await db.user.update({
-        where: { id: userId },
+        where: { id: targetId },
         data: { pendingActivation: false, activationExpiresAt: null },
     });
 
@@ -383,7 +437,7 @@ export async function activateUser(userId: string) {
         data: {
             action: "ACTIVATE_USER",
             details: `User account activated`,
-            targetId: userId,
+            targetId,
             userId: session.user.id,
         },
     });
@@ -396,69 +450,68 @@ export async function deleteReportedContent(
     contentId: string,
 ) {
     const session = await requireAdmin();
+    const parsedType = z.enum(["POST", "COMMENT", "TOPIC", "REPLY"]).safeParse(contentType);
+    if (!parsedType.success) throw new Error(`Unknown content type: ${contentType}`);
+    const safeType = parsedType.data;
+    const targetId = idSchema.parse(contentId);
 
     const actingUser = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
     });
+    if (!actingUser) throw new Error("Forbidden");
 
-    // Perform permission check before attempting delete
-    if (contentType === "TOPIC") {
-        const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true, userId: true } });
-        if (topic && !topic.deleted && actingUser?.role !== "superadmin") {
-            const topicAuthor = await db.user.findUnique({ where: { id: topic.userId }, select: { role: true } });
-            if (topicAuthor?.role === "superadmin") {
-                throw new Error("Forbidden: Only super-admins can delete super-admin content");
-            }
-        }
+    let content: { deleted: boolean; user: { role: string | null } } | null;
+    switch (safeType) {
+        case "POST":
+            content = await db.post.findUnique({
+                where: { id: targetId },
+                select: { deleted: true, user: { select: { role: true } } },
+            });
+            break;
+        case "COMMENT":
+            content = await db.comment.findUnique({
+                where: { id: targetId },
+                select: { deleted: true, user: { select: { role: true } } },
+            });
+            break;
+        case "TOPIC":
+            content = await db.communityTopic.findUnique({
+                where: { id: targetId },
+                select: { deleted: true, user: { select: { role: true } } },
+            });
+            break;
+        case "REPLY":
+            content = await db.communityReply.findUnique({
+                where: { id: targetId },
+                select: { deleted: true, user: { select: { role: true } } },
+            });
+            break;
     }
 
-    try {
-        switch (contentType) {
-            case "POST": {
-                const post = await db.post.findUnique({ where: { id: contentId }, select: { deleted: true } });
-                if (!post || post.deleted) break;
-                await db.post.update({ where: { id: contentId }, data: { deleted: true } });
-                break;
-            }
-            case "COMMENT": {
-                const comment = await db.comment.findUnique({ where: { id: contentId }, select: { deleted: true } });
-                if (!comment || comment.deleted) break;
-                await db.comment.update({ where: { id: contentId }, data: { deleted: true } });
-                break;
-            }
-            case "TOPIC": {
-                const topic = await db.communityTopic.findUnique({ where: { id: contentId }, select: { deleted: true } });
-                if (!topic || topic.deleted) break;
-                await db.communityTopic.update({ where: { id: contentId }, data: { deleted: true } });
-                break;
-            }
-            case "REPLY": {
-                const reply = await db.communityReply.findUnique({ where: { id: contentId }, select: { deleted: true } });
-                if (!reply || reply.deleted) break;
-                await db.communityReply.update({ where: { id: contentId }, data: { deleted: true } });
-                break;
-            }
-            default:
-                throw new Error(`Unknown content type: ${contentType}`);
-        }
-    } catch (error) {
-        // Rethrow only known business logic errors; swallow unexpected not-found errors
-        if (error instanceof Error && (
-            error.message.startsWith("Forbidden") ||
-            error.message.startsWith("Unknown content type")
-        )) {
-            throw error;
-        }
-        // Content may have been deleted by its owner — still log and succeed
-        console.warn(`Content ${contentType}:${contentId} not found or already deleted, marking report reviewed`);
+    if (!content || content.deleted) throw new Error("Content not found");
+    if (!canManageRole(actingUser.role, content.user.role)) throw new Error("Forbidden");
+
+    switch (safeType) {
+        case "POST":
+            await db.post.update({ where: { id: targetId }, data: { deleted: true } });
+            break;
+        case "COMMENT":
+            await db.comment.update({ where: { id: targetId }, data: { deleted: true } });
+            break;
+        case "TOPIC":
+            await db.communityTopic.update({ where: { id: targetId }, data: { deleted: true } });
+            break;
+        case "REPLY":
+            await db.communityReply.update({ where: { id: targetId }, data: { deleted: true } });
+            break;
     }
 
     await db.auditLog.create({
         data: {
             action: "DELETE_CONTENT",
-            details: `Deleted ${contentType} with id ${contentId}`,
-            targetId: contentId,
+            details: `Deleted ${safeType} with id ${targetId}`,
+            targetId,
             userId: session.user.id,
         },
     });
@@ -467,45 +520,158 @@ export async function deleteReportedContent(
 }
 
 /**
- * Called after authClient.admin.updateUser changes a user's role.
- * Invalidates all active sessions for the affected user (so they re-login
- * and inherit the new role's privileges immediately), sends them a
- * notification, and writes an audit log entry.
+ * Authoritatively changes a user's role. This action deliberately performs
+ * both the hierarchy check and mutation; callers cannot pre-mutate through a
+ * target-agnostic Better Auth endpoint and use this action only for logging.
  */
 export async function applyRoleChange(
     userId: string,
-    oldRole: string,
+    _oldRole: string,
     newRole: string,
 ) {
     const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
+    if (!isRoleName(newRole)) throw new Error("Invalid role");
+    if (targetId === session.user.id) throw new Error("Forbidden");
 
-    const targetUser = await db.user.findUnique({
-        where: { id: userId },
-        select: { name: true, email: true },
-    });
+    const [actingUser, targetUser] = await Promise.all([
+        db.user.findUnique({ where: { id: session.user.id }, select: { role: true } }),
+        db.user.findUnique({
+            where: { id: targetId },
+            select: { name: true, email: true, role: true },
+        }),
+    ]);
 
     if (!targetUser) throw new Error("User not found");
+    if (!canManageRole(actingUser?.role, targetUser.role)) throw new Error("Forbidden");
+    if (!canAssignRole(actingUser?.role, newRole)) throw new Error("Forbidden");
+    if (targetUser.role === newRole) return { success: true };
 
-    // Invalidate all active sessions — user must re-sign-in to get the new role
-    await db.session.deleteMany({ where: { userId } });
+    await db.user.update({ where: { id: targetId }, data: { role: newRole } });
+    await db.session.deleteMany({ where: { userId: targetId } });
 
-    // Notify the affected user
     await db.notification.create({
         data: {
             type: "SYSTEM",
-            message: `Your account role has been updated from "${oldRole}" to "${newRole}". Please sign in again to access your new privileges.`,
-            userId,
+            message: `Your account role has been updated from "${targetUser.role}" to "${newRole}". Please sign in again to access your new privileges.`,
+            userId: targetId,
         },
     });
 
     await db.auditLog.create({
         data: {
             action: "CHANGE_ROLE",
-            details: `User role changed from "${oldRole}" to "${newRole}"`,
-            targetId: userId,
+            details: `User role changed from "${targetUser.role}" to "${newRole}"`,
+            targetId,
             userId: session.user.id,
         },
     });
 
+    return { success: true };
+}
+
+export async function createManagedUser(input: {
+    name: string;
+    email: string;
+    password: string;
+    role: RoleName;
+}) {
+    const session = await requireAdmin();
+    const parsed = createManagedUserSchema.parse(input);
+    const actor = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (!canAssignRole(actor?.role, parsed.role)) throw new Error("Forbidden");
+
+    const [{ auth }, { headers }] = await Promise.all([
+        import("@/lib/auth"),
+        import("next/headers"),
+    ]);
+    const created = await auth.api.createUser({
+        body: {
+            name: parsed.name,
+            email: parsed.email,
+            password: parsed.password,
+            ...(parsed.role === "user" ? {} : { role: parsed.role }),
+        },
+        headers: await headers(),
+    });
+
+    await db.auditLog.create({
+        data: {
+            action: "CREATE_USER",
+            details: `Created user with role "${parsed.role}"`,
+            targetId: created.user.id,
+            userId: session.user.id,
+        },
+    });
+    return { success: true, userId: created.user.id };
+}
+
+export async function updateManagedUser(
+    userId: string,
+    input: { name: string; email: string; role: RoleName },
+) {
+    const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
+    const parsed = managedUserSchema.parse(input);
+    if (targetId === session.user.id) throw new Error("Forbidden");
+
+    const [actor, target] = await Promise.all([
+        db.user.findUnique({ where: { id: session.user.id }, select: { role: true } }),
+        db.user.findUnique({ where: { id: targetId }, select: { role: true } }),
+    ]);
+    if (!target) throw new Error("User not found");
+    if (!canManageRole(actor?.role, target.role)) throw new Error("Forbidden");
+    if (!canAssignRole(actor?.role, parsed.role)) throw new Error("Forbidden");
+
+    await db.user.update({
+        where: { id: targetId },
+        data: { name: parsed.name, email: parsed.email, role: parsed.role },
+    });
+    if (target.role !== parsed.role) {
+        await db.session.deleteMany({ where: { userId: targetId } });
+        await db.notification.create({
+            data: {
+                type: "SYSTEM",
+                message: `Your account role has been updated from "${target.role}" to "${parsed.role}". Please sign in again to access your new privileges.`,
+                userId: targetId,
+            },
+        });
+    }
+    await db.auditLog.create({
+        data: {
+            action: target.role === parsed.role ? "UPDATE_USER" : "CHANGE_ROLE",
+            details: target.role === parsed.role
+                ? "User profile updated"
+                : `User role changed from "${target.role}" to "${parsed.role}"`,
+            targetId,
+            userId: session.user.id,
+        },
+    });
+    return { success: true, roleChanged: target.role !== parsed.role };
+}
+
+export async function removeManagedUser(userId: string) {
+    const session = await requireAdmin();
+    const targetId = idSchema.parse(userId);
+    if (targetId === session.user.id) throw new Error("Forbidden");
+    const [actor, target] = await Promise.all([
+        db.user.findUnique({ where: { id: session.user.id }, select: { role: true } }),
+        db.user.findUnique({ where: { id: targetId }, select: { role: true } }),
+    ]);
+    if (!target) throw new Error("User not found");
+    if (!canManageRole(actor?.role, target.role)) throw new Error("Forbidden");
+
+    await db.user.delete({ where: { id: targetId } });
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_USER",
+            details: "User account deleted",
+            targetId,
+            userId: session.user.id,
+        },
+    });
     return { success: true };
 }

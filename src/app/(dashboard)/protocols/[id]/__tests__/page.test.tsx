@@ -38,7 +38,7 @@ jest.mock("next/link", () => {
     };
 });
 
-// Simplify the child client components — they are covered by their own test suites.
+// Simplify the child client components - they are covered by their own test suites.
 jest.mock("../project-detail-actions", () => ({
     __esModule: true,
     default: (props: {
@@ -350,7 +350,7 @@ describe("ProjectDetailPage", () => {
         );
         mockedAuthIsRequired.mockResolvedValue(makeSession({ role: "admin" }) as never);
         await renderPage();
-        expect(screen.getByText("Admin — Assignment & Review Details")).toBeInTheDocument();
+        expect(screen.getByText("Admin - Assignment & Review Details")).toBeInTheDocument();
         expect(screen.getAllByText("Admin Bob").length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText("Status: ACTIVE")).toBeInTheDocument();
     });
@@ -374,8 +374,40 @@ describe("ProjectDetailPage", () => {
         mockedAuthIsRequired.mockResolvedValue(makeSession({ role: "user" }) as never);
         await renderPage();
         expect(
-            screen.queryByText("Admin — Assignment & Review Details"),
+            screen.queryByText("Admin - Assignment & Review Details"),
         ).not.toBeInTheDocument();
+    });
+
+    it("shows the evaluation action only to the active assigned reviewer", async () => {
+        mockedGetProjectById.mockResolvedValue(
+            makeProject({
+                userId: "protocol-owner",
+                reviewAssignments: [
+                    {
+                        id: "assignment-1",
+                        reviewerId: "reviewer-1",
+                        status: "ACTIVE",
+                        dueDate: "2026-10-01T00:00:00.000Z",
+                        reviewer: {
+                            id: "reviewer-1",
+                            name: "Reviewer One",
+                            email: "reviewer@example.com",
+                        },
+                        evaluationReport: { id: "report-1", status: "DRAFT" },
+                    },
+                ],
+            }) as never,
+        );
+        mockedAuthIsRequired.mockResolvedValue(
+            makeSession({ id: "reviewer-1", role: "admin" }) as never,
+        );
+        await renderPage();
+
+        expect(screen.getByText("Your ethics review")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Continue evaluation" })).toHaveAttribute(
+            "href",
+            "/protocols/project-1/evaluation/assignment-1",
+        );
     });
 
     it("renders document view and download links when a document is present", async () => {

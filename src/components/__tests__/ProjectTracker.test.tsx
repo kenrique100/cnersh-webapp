@@ -34,7 +34,7 @@ jest.mock("lucide-react", () => {
     };
 });
 
-// Plain wrappers — forwardRef not needed for these tests
+// Plain wrappers - forwardRef not needed for these tests
 jest.mock("@/components/ui/input", () => ({
     Input: function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
         return <input {...props} />;

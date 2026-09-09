@@ -113,7 +113,7 @@ describe("ImageUpload", () => {
         });
     });
 
-    describe("feed variant — file upload flow", () => {
+    describe("feed variant - file upload flow", () => {
         it("calls fetch /api/upload on file select", async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
@@ -190,7 +190,7 @@ describe("ImageUpload", () => {
         });
     });
 
-    describe("image already set — remove", () => {
+    describe("image already set - remove", () => {
         it("shows image preview and remove button", () => {
             render(<ImageUpload defaultUrl="https://cdn.test/photo.jpg" />);
             expect(screen.getByAltText("Uploaded image preview")).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe("ImageUpload", () => {
         });
     });
 
-    describe("profile variant — crop flow", () => {
+    describe("profile variant - crop flow", () => {
         function mockFileReader(result = "data:image/jpeg;base64,fake") {
             const originalFileReader = global.FileReader;
             class MockFileReader {

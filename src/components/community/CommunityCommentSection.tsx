@@ -284,7 +284,7 @@ export function CommunityCommentSection({
                         {selectedTopic.category === "Announcements" ? (
                             <>📢 {selectedTopic.title}</>
                         ) : (
-                            <>Welcome to #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}!</>
+                            <>Viewing #{selectedTopic.title.toLowerCase().replace(/\s+/g, "-")}</>
                         )}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -443,7 +443,7 @@ export function CommunityCommentSection({
                     <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                         <MessageCircleOffIcon className="h-4 w-4 text-gray-400" />
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                            Chat is disabled — only viewing is allowed
+                            Chat is disabled - only viewing is allowed
                         </span>
                     </div>
                 </div>
@@ -864,4 +864,3 @@ export function CommunityCommentSection({
         </div>
     );
 }
-

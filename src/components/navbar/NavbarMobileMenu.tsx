@@ -114,7 +114,7 @@ export default function NavbarMobileMenu({
                                         <span className={cn(
                                             "mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium w-fit",
                                             user?.role === "superadmin"
-                                                ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+                                                ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200"
                                                 : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
                                         )}>
                                             {user?.role === "superadmin" ? "Super Admin" : "Admin"}

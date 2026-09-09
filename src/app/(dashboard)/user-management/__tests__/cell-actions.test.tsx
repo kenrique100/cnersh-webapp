@@ -4,7 +4,11 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CellActions } from "../cell-actions";
-import { authClient } from "@/lib/auth-client";
+import {
+    banUserById,
+    removeManagedUser,
+    unbanUserById,
+} from "@/app/actions/admin";
 import { useUsers } from "@/hooks/use-user";
 
 jest.mock("next/navigation", () => ({
@@ -15,14 +19,10 @@ jest.mock("sonner", () => ({
     toast: { success: jest.fn(), error: jest.fn() },
 }));
 
-jest.mock("@/lib/auth-client", () => ({
-    authClient: {
-        admin: {
-            removeUser: jest.fn(),
-            banUser: jest.fn(),
-            unbanUser: jest.fn(),
-        },
-    },
+jest.mock("@/app/actions/admin", () => ({
+    banUserById: jest.fn(),
+    removeManagedUser: jest.fn(),
+    unbanUserById: jest.fn(),
 }));
 
 jest.mock("@/hooks/use-user", () => ({
@@ -205,9 +205,13 @@ describe("CellActions", () => {
         expect(screen.queryByTitle("Ban user")).not.toBeInTheDocument();
     });
 
-    it("does not render Delete button when hasDeletePermission is false", () => {
-        render(<CellActions {...defaultProps} hasDeletePermission={false} />);
+    it("does not render management actions without target permission", () => {
+        const { container } = render(
+            <CellActions {...defaultProps} hasDeletePermission={false} />,
+        );
         expect(screen.queryByTitle("Delete user")).not.toBeInTheDocument();
+        expect(screen.queryByTitle("Edit")).not.toBeInTheDocument();
+        expect(container).toBeEmptyDOMElement();
     });
 
     it("opens edit dialog and sets user in store", async () => {
@@ -267,34 +271,32 @@ describe("CellActions", () => {
         ).not.toBeInTheDocument();
     });
 
-    it("calls authClient.admin.removeUser and shows success toast on delete confirm", async () => {
-        (authClient.admin.removeUser as jest.Mock).mockResolvedValue({ error: null });
+    it("calls removeManagedUser and shows success toast on delete confirm", async () => {
+        (removeManagedUser as jest.Mock).mockResolvedValue({});
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Delete user"));
         await user.click(screen.getByRole("button", { name: "Delete User" }));
         await waitFor(() => {
-            expect(authClient.admin.removeUser).toHaveBeenCalledWith({ userId: "user-1" });
+            expect(removeManagedUser).toHaveBeenCalledWith("user-1");
             expect(toast.success).toHaveBeenCalledWith("User removed successfully");
             expect(mockRouter.refresh).toHaveBeenCalled();
         });
     });
 
-    it("shows error if authClient.admin.removeUser fails", async () => {
-        (authClient.admin.removeUser as jest.Mock).mockResolvedValue({
-            error: { message: "Forbidden" },
-        });
+    it("shows an error if removeManagedUser fails", async () => {
+        (removeManagedUser as jest.Mock).mockRejectedValue(new Error("Forbidden"));
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Delete user"));
         await user.click(screen.getByRole("button", { name: "Delete User" }));
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Forbidden");
+            expect(toast.error).toHaveBeenCalledWith("Something went wrong");
         });
     });
 
     it("shows generic error toast if removeUser throws", async () => {
-        (authClient.admin.removeUser as jest.Mock).mockRejectedValue(
+        (removeManagedUser as jest.Mock).mockRejectedValue(
             new Error("network down")
         );
         const user = userEvent.setup();
@@ -306,63 +308,56 @@ describe("CellActions", () => {
         });
     });
 
-    it("calls authClient.admin.banUser and shows success toast on ban", async () => {
-        (authClient.admin.banUser as jest.Mock).mockResolvedValue({ error: null });
+    it("calls banUserById and shows success toast on ban", async () => {
+        (banUserById as jest.Mock).mockResolvedValue({});
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Ban user"));
         await user.click(screen.getByRole("button", { name: "Ban" }));
         await waitFor(() => {
-            expect(authClient.admin.banUser).toHaveBeenCalledWith({
-                userId: "user-1",
-                banReason: "Banned by admin",
-            });
+            expect(banUserById).toHaveBeenCalledWith("user-1", "Banned by admin");
             expect(toast.success).toHaveBeenCalledWith("John Doe has been banned");
             expect(mockRouter.refresh).toHaveBeenCalled();
         });
     });
 
-    it("calls authClient.admin.unbanUser and shows success toast on unban", async () => {
-        (authClient.admin.unbanUser as jest.Mock).mockResolvedValue({ error: null });
+    it("calls unbanUserById and shows success toast on unban", async () => {
+        (unbanUserById as jest.Mock).mockResolvedValue({});
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} banned={true} />);
         await user.click(screen.getByTitle("Unban user"));
         await user.click(screen.getByRole("button", { name: "Unban" }));
         await waitFor(() => {
-            expect(authClient.admin.unbanUser).toHaveBeenCalledWith({ userId: "user-1" });
+            expect(unbanUserById).toHaveBeenCalledWith("user-1");
             expect(toast.success).toHaveBeenCalledWith("John Doe has been unbanned");
             expect(mockRouter.refresh).toHaveBeenCalled();
         });
     });
 
     it("shows error if ban fails", async () => {
-        (authClient.admin.banUser as jest.Mock).mockResolvedValue({
-            error: { message: "Failed" },
-        });
+        (banUserById as jest.Mock).mockRejectedValue(new Error("Failed"));
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Ban user"));
         await user.click(screen.getByRole("button", { name: "Ban" }));
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Failed");
+            expect(toast.error).toHaveBeenCalledWith("Something went wrong");
         });
     });
 
     it("shows error if unban fails", async () => {
-        (authClient.admin.unbanUser as jest.Mock).mockResolvedValue({
-            error: { message: "Failed" },
-        });
+        (unbanUserById as jest.Mock).mockRejectedValue(new Error("Failed"));
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} banned={true} />);
         await user.click(screen.getByTitle("Unban user"));
         await user.click(screen.getByRole("button", { name: "Unban" }));
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Failed");
+            expect(toast.error).toHaveBeenCalledWith("Something went wrong");
         });
     });
 
     it("shows generic error toast if ban throws", async () => {
-        (authClient.admin.banUser as jest.Mock).mockRejectedValue(new Error("boom"));
+        (banUserById as jest.Mock).mockRejectedValue(new Error("boom"));
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Ban user"));
@@ -402,10 +397,9 @@ describe("CellActions", () => {
         expect(dialogText).toBeInTheDocument();
     });
 
-    it("does not show Delete option in mobile dropdown without permission", async () => {
-        const user = userEvent.setup();
+    it("does not show the mobile menu without target permission", () => {
         render(<CellActions {...defaultProps} hasDeletePermission={false} />);
-        await user.click(getMobileTrigger());
+        expect(document.querySelector(".sm\\:hidden")).not.toBeInTheDocument();
         expect(screen.queryByText("Delete")).not.toBeInTheDocument();
     });
 

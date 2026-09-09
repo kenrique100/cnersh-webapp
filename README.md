@@ -41,7 +41,7 @@ BETTER_AUTH_SECRET="your-secret-key"
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 RESEND_API_KEY="your-resend-api-key"
-UPLOADTHING_TOKEN="your-uploadthing-token"
+UPLOADTHING_SECRET="sk_your-uploadthing-secret"
 ```
 
 ### 3. Set Up the Database
@@ -102,7 +102,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run db:generate` | Generate Prisma client (TypeScript types only) |
 | `npm run db:push` | Push schema to database (create/update tables) |
 | `npm run db:push:force` | Push schema with `--accept-data-loss` (drops removed columns) |
-| `npm run db:reset` | Reset database completely (`--force-reset`) — ️ deletes all data |
+| `npm run db:reset` | Reset database completely (`--force-reset`); deletes all data |
 | `npm run db:migrate` | Run pending migrations (production) |
 | `npm run db:migrate:dev` | Create and run migrations (development) |
 | `npm run db:studio` | Open Prisma Studio (database GUI) |

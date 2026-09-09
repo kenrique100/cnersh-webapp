@@ -273,7 +273,7 @@ export function CommunityPostCard({
             className="group hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded px-2 py-0.5 -mx-2 relative"
             onClick={() => onMessageTap(reply.id)}
         >
-            {/* Reply reference — shown above the message (Discord-style quote) */}
+            {/* Reply reference - shown above the message (Discord-style quote) */}
             {parentReply && (
                 <div className="flex items-center gap-1.5 ml-12 mb-0.5 text-xs text-gray-500 dark:text-gray-400">
                     <div className="w-6 h-3 border-l-2 border-t-2 border-gray-300 dark:border-gray-600 rounded-tl ml-1" />
@@ -372,14 +372,14 @@ export function CommunityPostCard({
                     {/* Attachments */}
                     <ReplyAttachments reply={reply} currentUserId={currentUserId} onVotePoll={onVotePoll} />
 
-                    {/* Reaction bar — below content */}
+                    {/* Reaction bar - below content */}
                     <ReactionBar
                         reactions={reply.reactions}
                         currentUserId={currentUserId}
                         onReact={(emoji) => onReactToReply?.(reply.id, emoji)}
                     />
 
-                    {/* Nested / child replies — always below content */}
+                    {/* Nested / child replies - always below content */}
                     {reply.children && reply.children.length > 0 && (
                         <div className="mt-2 ml-4 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2">
                             {reply.children.map((child) => (
@@ -437,7 +437,7 @@ export function CommunityPostCard({
                                             onReact={(emoji) => onReactToReply?.(child.id, emoji)}
                                         />
 
-                                        {/* Child action links — BELOW content */}
+                                        {/* Child action links - BELOW content */}
                                         <div className="flex items-center gap-3 mt-1">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onReplyTo(child); }}
@@ -496,7 +496,7 @@ export function CommunityPostCard({
                     )}
                 </div>
 
-                {/* Hover action bar — top-right floating */}
+                {/* Hover action bar - top-right floating */}
                 <div
                     className={`absolute top-0 right-2 -translate-y-1/2 flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg transition-opacity z-10 ${
                         activeMessageId === reply.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"

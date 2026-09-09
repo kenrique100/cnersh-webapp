@@ -70,7 +70,7 @@ export function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; o
                         className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
                     >
                         <DownloadIcon className="h-4 w-4 shrink-0" />
-                        Reviews
+                        Evaluation Form
                     </a>
                     <SOPsDropdown onNavigate={onNavigate} />
                 </div>
@@ -111,7 +111,7 @@ export default function OurPagesDesktopDropdown({ pathname }: { pathname: string
                 <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
             </button>
             {isOpen && (
-                <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[200px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
+                <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[200px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1.5 overflow-hidden">
                     <Link
                         href="/pages/about"
                         onClick={() => setIsOpen(false)}
@@ -156,7 +156,7 @@ export default function OurPagesDesktopDropdown({ pathname }: { pathname: string
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md"
                     >
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        Reviews
+                        Evaluation Form
                     </a>
                 </div>
             )}

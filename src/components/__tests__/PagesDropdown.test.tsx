@@ -52,7 +52,7 @@ const mockPages = [
 ];
 
 describe("PagesDropdown", () => {
-    // ── PageNode ───────────────────────────────────────────────────────
+    // PageNode
 
     it("renders dynamic page names", () => {
         render(<PagesDropdown pages={mockPages} />);
@@ -116,7 +116,7 @@ describe("PagesDropdown", () => {
 
     it("does not show chevron for page with no content", () => {
         render(<PagesDropdown pages={mockPages} />);
-        // Empty Page has no items and no children – clicking should not crash
+        // Empty Page has no items and no children, so clicking should not crash
         fireEvent.click(screen.getByText("Empty Page"));
         // No content to show
         expect(screen.queryByText("Policy Document")).not.toBeInTheDocument();
@@ -135,7 +135,7 @@ describe("PagesDropdown", () => {
         expect(screen.getByText("Resources")).toBeInTheDocument();
     });
 
-    // ── EthicalClearanceDropdown ───────────────────────────────────────
+    // EthicalClearanceDropdown
 
     it("renders Ethical Clearance section", () => {
         render(<PagesDropdown pages={[]} />);
@@ -187,7 +187,7 @@ describe("PagesDropdown", () => {
         expect(screen.queryByText("Protocol Content")).not.toBeInTheDocument();
     });
 
-    // ── ResourcesDropdown ──────────────────────────────────────────────
+    // ResourcesDropdown
 
     it("renders Resources section", () => {
         render(<PagesDropdown pages={[]} />);
@@ -238,7 +238,7 @@ describe("PagesDropdown", () => {
     it("expands Ministerial Decision under Resources", () => {
         render(<PagesDropdown pages={[]} />);
         fireEvent.click(screen.getByText("Resources"));
-        // Find the button that contains "Ministerial Decision" – there will be only one before expansion
+        // Find the button that contains "Ministerial Decision"; there is only one before expansion
         fireEvent.click(screen.getByText("Ministerial Decision"));
         // After expansion, we have two elements with that text: the button and the download link.
         // Use getAllByText to confirm both exist.
@@ -261,7 +261,7 @@ describe("PagesDropdown", () => {
         expect(screen.getByText("Ministerial Decision")).toBeInTheDocument(); // button still there
     });
 
-    // ── SOPsDropdown ───────────────────────────────────────────────────
+    // SOPsDropdown
 
     it("renders SOPs section", () => {
         render(<PagesDropdown pages={[]} />);
@@ -320,7 +320,7 @@ describe("PagesDropdown", () => {
         expect(screen.queryByText("SOP 1")).not.toBeInTheDocument();
     });
 
-    // ── Static links ───────────────────────────────────────────────────
+    // Static links
 
     it("renders About Us link", () => {
         render(<PagesDropdown pages={[]} />);
@@ -341,9 +341,9 @@ describe("PagesDropdown", () => {
         expect(link).toHaveAttribute("target", "_blank");
     });
 
-    it("renders Reviews download link", () => {
+    it("renders the study review and follow-up form link", () => {
         render(<PagesDropdown pages={[]} />);
-        const link = screen.getByText("Reviews").closest("a");
+        const link = screen.getByText("Study Review and Follow-up Form").closest("a");
         expect(link).toHaveAttribute("href", "/CNRESH Study Review & Follow up Form.pdf");
         expect(link).toHaveAttribute("target", "_blank");
     });

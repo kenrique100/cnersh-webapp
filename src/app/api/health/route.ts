@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
 
 /**
  * Health check endpoint
@@ -27,9 +30,10 @@ export async function GET() {
                 uptime: process.uptime(),
                 version: process.env.npm_package_version || '0.1.0',
             },
-            { status: 200 }
+            { status: 200, headers: NO_STORE_HEADERS }
         );
     } catch (error) {
+        console.error('[health] database check failed:', error);
         const responseTime = Date.now() - startTime;
 
         return NextResponse.json(
@@ -39,11 +43,10 @@ export async function GET() {
                 checks: {
                     database: 'down',
                     responseTime: `${responseTime}ms`,
-                    error: error instanceof Error ? error.message : 'Unknown error',
                 },
                 uptime: process.uptime(),
             },
-            { status: 503 }
+            { status: 503, headers: NO_STORE_HEADERS }
         );
     }
 }

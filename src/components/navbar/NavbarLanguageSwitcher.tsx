@@ -100,7 +100,7 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
                                     : "bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
                         >
-                            🇬🇧 English
+                            English
                         </button>
                         <button
                             onClick={() => handleChange("fr")}
@@ -112,7 +112,7 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
                                     : "bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
                         >
-                            🇫🇷 Français
+                            Français
                         </button>
                     </div>
                 </div>
@@ -122,7 +122,7 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
 
     return (
         <div
-            className="flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1 py-1 shadow-sm notranslate"
+            className="flex items-center gap-1 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1 py-1 notranslate"
             title="Switch language"
             translate="no"
         >
@@ -130,9 +130,9 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
                 onClick={() => handleChange("en")}
                 aria-label="Switch to English"
                 disabled={currentLang === "en"}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all disabled:cursor-default ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-sm text-xs font-semibold transition-colors disabled:cursor-default ${
                     currentLang === "en"
-                        ? "bg-blue-700 text-white shadow"
+                        ? "bg-blue-700 text-white"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
@@ -142,9 +142,9 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
                 onClick={() => handleChange("fr")}
                 aria-label="Switch to French"
                 disabled={currentLang === "fr"}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all disabled:cursor-default ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-sm text-xs font-semibold transition-colors disabled:cursor-default ${
                     currentLang === "fr"
-                        ? "bg-blue-700 text-white shadow"
+                        ? "bg-blue-700 text-white"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >

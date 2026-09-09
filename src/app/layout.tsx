@@ -32,7 +32,7 @@ export default function RootLayout({
 
         {/*
           Google Translate widget mount point.
-          MUST NOT be display:none — Google cannot inject its combo <select>
+          MUST NOT be display:none - Google cannot inject its combo <select>
           into a display:none subtree. We move it off-screen instead.
         */}
         <div
@@ -51,7 +51,7 @@ export default function RootLayout({
         />
 
         {/*
-          Step 1 — define the callback BEFORE the external script loads.
+          Step 1 - define the callback BEFORE the external script loads.
           strategy="afterInteractive" is used for both; Next.js App Router
           guarantees inline scripts run before subsequent afterInteractive
           scripts in document order.
@@ -80,7 +80,7 @@ export default function RootLayout({
           }}
         />
 
-        {/* Step 2 — load the widget; it calls googleTranslateElementInit when ready */}
+        {/* Step 2 - load the widget; it calls googleTranslateElementInit when ready */}
         <Script
           id="google-translate-script"
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
 
 /**
  * Readiness probe endpoint
@@ -18,7 +21,7 @@ export async function GET() {
                 ready: true,
                 timestamp: new Date().toISOString(),
             },
-            { status: 200 }
+            { status: 200, headers: NO_STORE_HEADERS }
         );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_error) {
@@ -29,7 +32,7 @@ export async function GET() {
                 timestamp: new Date().toISOString(),
                 reason: 'Database unavailable',
             },
-            { status: 503 }
+            { status: 503, headers: NO_STORE_HEADERS }
         );
     }
 }

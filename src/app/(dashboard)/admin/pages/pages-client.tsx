@@ -443,18 +443,18 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                             <Input value={pageName} onChange={(e) => setPageName(e.target.value)} placeholder="e.g. Resources, Ethical Clearance" className="mt-1" />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Parent Page (optional — for nested sub-pages)</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Parent Page (optional - for nested sub-pages)</label>
                             <select value={parentId} onChange={(e) => setParentId(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm">
                                 <option value="">None (top-level page)</option>
-                                {allPages.map((p) => (<option key={p.id} value={p.id}>{"—".repeat(p.depth)} {p.name}</option>))}
+                                {allPages.map((p) => (<option key={p.id} value={p.id}>{"-".repeat(p.depth)} {p.name}</option>))}
                             </select>
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">URL (optional — link to another website)</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">URL (optional - link to another website)</label>
                             <Input value={pageUrl} onChange={(e) => setPageUrl(e.target.value)} placeholder="https://example.com" className="mt-1" disabled={!!pageFile} />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Document (optional — PDF, DOC, DOCX)</label>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Document (optional - PDF, DOC, DOCX)</label>
                             <div className="mt-1 flex items-center gap-2">
                                 <label className="cursor-pointer flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-2">
                                     <UploadIcon className="w-4 h-4" />

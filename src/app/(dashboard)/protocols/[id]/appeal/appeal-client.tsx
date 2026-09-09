@@ -101,7 +101,7 @@ export default function AppealClient({
                             <div>
                                 <p className="font-semibold">Appeal Window</p>
                                 {/*
-                                 * IMPORTANT — keep the sentence inside ONE <p> element.
+                                 * IMPORTANT - keep the sentence inside ONE <p> element.
                                  *
                                  * The <strong> tag splits the text content across child
                                  * nodes, which causes `getByText` with a plain regex to

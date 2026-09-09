@@ -68,7 +68,7 @@ async function openPanel(user: ReturnType<typeof userEvent.setup>) {
 
 /**
  * Types text into the textarea and clicks Send. Does NOT wrap in
- * extra act() calls — userEvent v14 already wraps each action, and
+ * extra act() calls - userEvent v14 already wraps each action, and
  * `waitFor` (used by the caller) absorbs any subsequent async state
  * updates from the submit handler's promise chain.
  */

@@ -54,7 +54,7 @@ export function RequestPasswordForm() {
     };
 
     return (
-        <Card className="w-full max-w-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg rounded-2xl mx-auto relative overflow-hidden">
+        <Card className="relative mx-auto w-full max-w-md overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-950">
             {/* Top Back Navigation */}
             <div className="absolute top-6 left-6">
                 <Link
@@ -70,7 +70,7 @@ export function RequestPasswordForm() {
                 <>
                     <CardHeader className="space-y-6 px-6 sm:px-8 pt-20 pb-2">
                         <div className="flex flex-col items-center space-y-6">
-                            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-blue-100 dark:bg-blue-900/30 shadow-sm">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-md bg-blue-100 shadow-sm dark:bg-blue-900/30">
                                 <Mail className="w-10 h-10 text-blue-700 dark:text-blue-500" />
                             </div>
                             <div className="text-center">
@@ -78,7 +78,7 @@ export function RequestPasswordForm() {
                                     Check your mail
                                 </CardTitle>
                                 <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2 px-4">
-                                    We have sent a password recover instructions to your email.
+                                    We have sent password reset instructions to your email.
                                 </CardDescription>
                             </div>
                         </div>
@@ -108,7 +108,7 @@ export function RequestPasswordForm() {
                 <>
                     <CardHeader className="space-y-6 px-6 sm:px-8 pt-20 pb-6">
                         <div className="flex flex-col items-center space-y-4">
-                            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-600 dark:bg-white">
                                 <Image
                                     src="/logo.png"
                                     alt="CNERSH Logo"

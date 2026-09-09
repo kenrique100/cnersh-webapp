@@ -15,7 +15,7 @@ export default function NavbarThemeToggle() {
 
     if (!mounted) {
         return (
-            <div className="p-2 h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />
+            <div className="p-2 h-9 w-9 rounded-md bg-gray-100 dark:bg-gray-800" />
         );
     }
 
@@ -24,7 +24,7 @@ export default function NavbarThemeToggle() {
     return (
         <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="relative p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
         >

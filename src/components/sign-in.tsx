@@ -89,14 +89,14 @@ export function SignInForm() {
     };
 
     return (
-        <Card className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg rounded-2xl">
+        <Card className="w-full rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-950">
             <CardHeader className="space-y-6 px-6 sm:px-8 pt-10 pb-6">
                 <div className="flex flex-col items-center space-y-3">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-600 dark:bg-white">
                         <div className="flex items-center justify-center w-full h-full">
                             <Image
                                 src="/logo.png"
-                                alt="Government Services"
+                                alt="CNERSH logo"
                                 width={100}
                                 height={100}
                                 className="w-15 h-15"
@@ -109,7 +109,7 @@ export function SignInForm() {
                             Sign In
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Access your CNERSH Account
+                            Access your CNERSH account
                         </CardDescription>
                     </div>
                 </div>
@@ -289,7 +289,7 @@ export function SignInForm() {
 
             <div className="px-6 pb-6 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                    &copy; 2026 CNERSH - Cameroon National Ethics Community. All rights reserved.
+                    &copy; 2026 CNERSH - National Ethics Committee for Health Research on Humans. All rights reserved.
                 </p>
             </div>
         </Card>

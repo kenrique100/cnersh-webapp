@@ -95,13 +95,13 @@ export default async function Home() {
 
                     {/* Main Feed Column */}
                     <main className="w-full max-w-none sm:max-w-[600px] min-w-0">
-                        {/* Mobile Hero Banner - only for unauthenticated users */}
+                        {/* Mobile introduction for unauthenticated users */}
                         {!session && (
                             <div className="lg:hidden mb-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl overflow-hidden">
-                                    <CardContent className="py-4 text-center">
-                                        <div className="flex justify-center mb-2">
-                                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-md">
+                                <Card className="border border-blue-900 bg-blue-800 rounded-lg overflow-hidden">
+                                    <CardContent className="py-5 text-left">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex items-center justify-center w-12 h-12 rounded-md bg-white shrink-0">
                                                 <Image
                                                     src="/logo.png"
                                                     alt="CNERSH"
@@ -111,20 +111,22 @@ export default async function Home() {
                                                     priority
                                                 />
                                             </div>
+                                            <div>
+                                                <h1 className="text-lg font-bold text-white">
+                                                    Ethical review for health research in Cameroon
+                                                </h1>
+                                                <p className="text-sm text-blue-100 mt-1">
+                                                    CNERSH reviews research involving human participants to protect their rights, safety, and well-being.
+                                                </p>
+                                            </div>
                                         </div>
-                                        <h1 className="text-lg font-bold text-white">Welcome to CNERSH</h1>
-                                        <p className="text-xs text-blue-100 mt-1 mb-3">National Ethics Committee for Health Research on Humans</p>
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Link href="/sign-up">
-                                                <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50 text-xs font-medium">
-                                                    Get Started
-                                                </Button>
-                                            </Link>
-                                            <Link href="/sign-in">
-                                                <Button size="sm" variant="outline" className="border-white text-white hover:bg-white/10 text-xs font-medium">
-                                                    Sign In
-                                                </Button>
-                                            </Link>
+                                        <div className="flex items-center gap-2 mt-4">
+                                            <Button asChild size="sm" className="bg-white text-blue-800 hover:bg-blue-50 text-xs font-medium">
+                                                <Link href="/sign-up">Create account</Link>
+                                            </Button>
+                                            <Button asChild size="sm" variant="outline" className="border-blue-200 bg-transparent text-white hover:bg-blue-900 text-xs font-medium">
+                                                <Link href="/sign-in">Sign in</Link>
+                                            </Button>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -133,7 +135,7 @@ export default async function Home() {
 
                         {/* Mobile Protocol Tracker - shown at top on small screens */}
                         <div className="xl:hidden mb-4">
-                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <SearchIcon className="w-4 h-4 text-blue-600" />

@@ -596,7 +596,7 @@ describe("CommunityClient Integration", () => {
     it("renders initial state with welcome screen and topic list", () => {
         renderComponent();
         expect(screen.getByTestId("members-list")).toBeInTheDocument();
-        expect(screen.getByText("Welcome to CNERSH Community")).toBeInTheDocument();
+        expect(screen.getByText("CNERSH administrator community")).toBeInTheDocument();
         expect(screen.queryByTestId("comment-section")).toBeNull();
     });
 

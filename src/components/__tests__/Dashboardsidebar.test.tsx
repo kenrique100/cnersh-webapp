@@ -109,7 +109,7 @@ describe('DashboardSidebar', () => {
     describe('collapsed state', () => {
         it('hides label text when collapsed', () => {
             render(<DashboardSidebar collapsed={true} onToggle={onToggle} />);
-            // spans with text are not rendered when collapsed — links exist but no span text
+            // spans with text are not rendered when collapsed - links exist but no span text
             expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
         });
 

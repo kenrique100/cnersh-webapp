@@ -380,7 +380,7 @@ export default async function AdminOverviewPage() {
                     </div>
                 </div>
 
-                {/* Charts — super admin only, client-side only (Recharts + React 19 compat) */}
+                {/* Charts - super admin only, client-side only (Recharts + React 19 compat) */}
                 {isSuperAdmin && (
                     <div>
                         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
