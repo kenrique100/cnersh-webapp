@@ -23,6 +23,23 @@ describe('sanitizeHtml', () => {
         expect(result).not.toContain('alert');
     });
 
+    it('should drop unsafe URL schemes from links but keep safe ones', () => {
+        const unsafe = sanitizeHtml('<a href="javascript:alert(1)">x</a>');
+        expect(unsafe).not.toContain('javascript:');
+        expect(unsafe).toContain('x');
+        expect(sanitizeHtml('<a href="https://example.org" rel="noopener">ok</a>')).toContain('href="https://example.org"');
+        expect(sanitizeHtml('<a href="//evil.example">x</a>')).not.toContain('evil.example');
+    });
+
+    it('should drop disallowed tags and non-allowlisted attributes', () => {
+        const result = sanitizeHtml('<p style="color:red" class="lead" data-x="1">Hi <img src="x" onerror="alert(1)"><iframe src="https://a.b"></iframe></p>');
+        expect(result).toContain('class="lead"');
+        expect(result).not.toContain('style=');
+        expect(result).not.toContain('data-x');
+        expect(result).not.toContain('<img');
+        expect(result).not.toContain('<iframe');
+    });
+
     it('should remove dangerous event handlers', () => {
         const input = '<p onclick="alert(\'XSS\')">Click me</p>';
         const result = sanitizeHtml(input);
@@ -43,6 +60,10 @@ describe('sanitizeText', () => {
         expect(result).not.toContain('>');
         expect(result).toContain('Hello');
         expect(result).toContain('World');
+    });
+
+    it('should encode ampersands like a DOM serialiser and leave quotes alone', () => {
+        expect(sanitizeText('Tom & Jerry said "hi"')).toBe('Tom &amp; Jerry said "hi"');
     });
 
     it('should remove script content', () => {
