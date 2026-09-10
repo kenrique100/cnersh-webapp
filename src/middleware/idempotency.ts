@@ -31,17 +31,25 @@ function scopedStorageKey(key: string, scope: string): string {
 
 async function defaultFingerprint(req: NextRequest): Promise<string> {
     const hash = createHash("sha256");
-    hash.update(req.method.toUpperCase());
+    const method = req.method.toUpperCase();
+    const rawContentType = req.headers.get("content-type") ?? "";
+    const normalizedContentType = rawContentType.split(";")[0]?.trim().toLowerCase() ?? "";
+
+    hash.update(method);
     hash.update("\0");
     hash.update(req.nextUrl.pathname);
     hash.update(req.nextUrl.search);
     hash.update("\0");
-    hash.update(req.headers.get("content-type") ?? "");
+    hash.update(normalizedContentType);
     hash.update("\0");
+    hash.update(req.headers.get("content-length") ?? "");
 
-    if (!["GET", "HEAD"].includes(req.method.toUpperCase())) {
+    // Avoid buffering large/unstable bodies (notably multipart boundaries) by default.
+    if (!['GET', 'HEAD'].includes(method) && normalizedContentType !== 'multipart/form-data') {
+        hash.update("\0");
         hash.update(Buffer.from(await req.clone().arrayBuffer()));
     }
+
     return hash.digest("hex");
 }
 
