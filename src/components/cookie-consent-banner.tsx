@@ -37,8 +37,14 @@ function readConsent(): ConsentSnapshot {
     const stored = window.localStorage.getItem(CONSENT_KEY);
     return stored === "accepted" || stored === "rejected" ? stored : "unstored";
   } catch {
-    // localStorage throws when storage is disabled or partitioned.
-    return "unstored";
+    // localStorage throws when storage is disabled or partitioned; fall back to the consent cookie.
+    const cookieValue = document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("cookie_consent="))
+      ?.split("=")[1];
+
+    return cookieValue === "accepted" || cookieValue === "rejected" ? cookieValue : "unstored";
   }
 }
 
