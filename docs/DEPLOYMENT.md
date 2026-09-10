@@ -13,6 +13,20 @@
 
 Use `.env.example` as the canonical variable list.
 
+### Build time versus run time
+
+`next build` runs with `NODE_ENV=production` and imports every route while collecting page data, but it serves no requests. The build therefore needs only `DATABASE_URL` (for `prisma generate`) and the Sentry upload settings; the UploadThing client is created on first use and the Redis guard is skipped during the build phase, so a missing `UPLOADTHING_SECRET` or `REDIS_URL` no longer fails the build.
+
+At run time the following are checked when `src/lib/auth.ts` is first imported, which happens on every page that reads the session, including the home page. If any is missing the whole site answers 500, not just sign-in:
+
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+
+`REDIS_URL` is required at run time for every route that imports the rate limiter, cache, or idempotency store, and `UPLOADTHING_SECRET` for the first upload or deletion.
+
+On Vercel, tick each variable for both Production and Preview, and trigger a new deployment after saving: variables are read at build time, so an existing deployment does not pick them up. The 500 page Next renders in this state is prerendered at build time and cannot carry the per-request CSP nonce, so the browser console also shows nonce violations. Those are a symptom of the 500; fix the variable and they disappear. The runtime log for the failing request names the missing variable directly.
+
 ## Release flow
 
 ```mermaid

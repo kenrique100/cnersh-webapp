@@ -4,7 +4,8 @@ import { buildContentSecurityPolicy, createCspNonce } from "@/lib/csp";
 
 /**
  * Attaches a per-request Content Security Policy nonce to every document
- * response.
+ * response. This is the Next.js 16 `proxy` convention, the successor to the
+ * deprecated `middleware` file.
  *
  * The nonce is written onto the *request* headers as well as the response.
  * Next.js reads the incoming `Content-Security-Policy` header, finds the nonce,
@@ -12,7 +13,7 @@ import { buildContentSecurityPolicy, createCspNonce } from "@/lib/csp";
  * static policy cannot do this, and without it React never hydrates in
  * production.
  */
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
     const nonce = createCspNonce();
     const csp = buildContentSecurityPolicy({
         nonce,

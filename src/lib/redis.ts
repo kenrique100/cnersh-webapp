@@ -232,7 +232,17 @@ function buildIoRedisClient(): Redis {
 }
 
 const useRedis = Boolean(process.env.REDIS_URL);
-if (process.env.NODE_ENV === "production" && !useRedis) {
+
+/**
+ * `next build` runs with NODE_ENV=production and imports every route while
+ * collecting page data, but no request is ever served during a build, so
+ * nothing needs Redis then. Without this exemption the build itself demanded
+ * REDIS_URL and failed at `/api/auth/[...all]` in any environment that builds
+ * without production secrets. A running production server still fails closed.
+ */
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+if (process.env.NODE_ENV === "production" && !useRedis && !isBuildPhase) {
     throw new Error(
         "REDIS_URL is required in production so rate limits and idempotency are shared across instances."
     );

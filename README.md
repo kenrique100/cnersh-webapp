@@ -142,7 +142,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - Outbound link previews pin validated public DNS addresses to prevent DNS rebinding.
 - Redis-backed rate limits and idempotency are shared and atomic in production.
 - Multi-record workflow changes use database transactions and conditional state transitions.
-- Every document response carries a per-request Content Security Policy nonce issued by `src/middleware.ts`; scripts are restricted to that nonce plus `'strict-dynamic'`, with no `'unsafe-inline'` in production.
+- Every document response carries a per-request Content Security Policy nonce issued by `src/proxy.ts`; scripts are restricted to that nonce plus `'strict-dynamic'`, with no `'unsafe-inline'` in production.
 
 ### Content Security Policy
 
@@ -154,7 +154,7 @@ submitted values in the URL.
 
 Because of that:
 
-- `src/middleware.ts` mints the nonce and sets the document policy. `src/lib/csp.ts` builds the policy so there is a single definition.
+- `src/proxy.ts` mints the nonce and sets the document policy. `src/lib/csp.ts` builds the policy so there is a single definition.
 - `next.config.ts` must not also set a `Content-Security-Policy` on documents. When two policies are present the browser enforces both, and a static one would reject the nonced scripts.
 - Anything that needs an inline script must receive the nonce (`x-nonce` request header, as the root layout does for the theme script) or be moved to a real file under `public/`.
 - `src/lib/__tests__/csp.test.ts` guards these properties.

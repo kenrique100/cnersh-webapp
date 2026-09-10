@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 /**
- * Documents get their Content Security Policy from src/middleware.ts, which
+ * Documents get their Content Security Policy from src/proxy.ts, which
  * mints a per-request nonce. It must NOT be set here as well: when two CSP
  * headers are present a browser enforces both, and a static `script-src 'self'`
  * would reject the nonced scripts the middleware just authorised - which is
