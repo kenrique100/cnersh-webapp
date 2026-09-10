@@ -7,16 +7,71 @@ const CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
 
 type ConsentChoice = "accepted" | "rejected";
 
+/**
+ * "unstored" means no valid choice is saved, so the banner should show.
+ * "unknown" is the server's answer: it cannot read the visitor's storage.
+ */
+type ConsentSnapshot = ConsentChoice | "unstored" | "unknown";
+
+const listeners = new Set<() => void>();
+
+function emitConsentChange(): void {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function subscribeToConsent(onChange: () => void): () => void {
+  listeners.add(onChange);
+  // Another tab may record a choice.
+  window.addEventListener("storage", onChange);
+
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readConsent(): ConsentSnapshot {
+  try {
+    const stored = window.localStorage.getItem(CONSENT_KEY);
+    return stored === "accepted" || stored === "rejected" ? stored : "unstored";
+  } catch {
+    // localStorage throws when storage is disabled or partitioned.
+    return "unstored";
+  }
+}
+
+function readServerConsent(): ConsentSnapshot {
+  return "unknown";
+}
+
 export default function CookieConsentBanner() {
-  // Use lazy initializer to read localStorage once on client
-  const [visible, setVisible] = React.useState(() => {
-    if (typeof window === "undefined") return false;
-    const choice = window.localStorage.getItem(CONSENT_KEY) as ConsentChoice | null;
-    return choice !== "accepted" && choice !== "rejected";
-  });
+  /*
+    The stored choice is read through useSyncExternalStore rather than a lazy
+    useState initializer. An initializer runs during the first client render and
+    would report a visible banner where the server rendered nothing; React then
+    sees mismatched markup, hydration of the whole tree fails, and every client
+    component below it is discarded and re-created.
+
+    useSyncExternalStore hydrates against the server snapshot and only then
+    switches to the real one, so the markup agrees on the first pass and the
+    banner appears immediately afterwards - without setting state from an effect.
+  */
+  const consent = React.useSyncExternalStore(
+    subscribeToConsent,
+    readConsent,
+    readServerConsent,
+  );
+
+  const visible = consent === "unstored";
 
   const saveChoice = (choice: ConsentChoice): void => {
-    window.localStorage.setItem(CONSENT_KEY, choice);
+    try {
+      window.localStorage.setItem(CONSENT_KEY, choice);
+    } catch {
+      // A blocked write must not stop the cookie from being set below.
+    }
 
     document.cookie = [
       `cookie_consent=${choice}`,
@@ -25,7 +80,7 @@ export default function CookieConsentBanner() {
       `SameSite=Lax`,
     ].join("; ");
 
-    setVisible(false);
+    emitConsentChange();
   };
 
   if (!visible) return null;

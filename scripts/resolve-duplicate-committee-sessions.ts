@@ -21,6 +21,10 @@
  * DIRECT_URL (non-pooled) when one is configured.
  */
 
+// Load .env before reading connection settings, matching prisma.config.ts so the
+// script works from a plain shell as well as from an environment-injected CI job.
+import "dotenv/config";
+
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
