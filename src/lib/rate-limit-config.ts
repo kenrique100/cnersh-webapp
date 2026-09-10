@@ -8,13 +8,29 @@ export const RATE_LIMITS = Object.freeze({
         windowMs: 15 * 60 * 1000,
         maxRequests: 5,
     }),
+    authSignIn: Object.freeze({
+        windowMs: 15 * 60 * 1000,
+        maxRequests: 10,
+    }),
+    authSignUp: Object.freeze({
+        windowMs: 60 * 60 * 1000,
+        maxRequests: 5,
+    }),
     api: Object.freeze({
         windowMs: 15 * 60 * 1000,
         maxRequests: 100,
     }),
-    trending: Object.freeze({
+    postCreate: Object.freeze({
         windowMs: 60 * 1000,
-        maxRequests: 60,
+        maxRequests: 8,
+    }),
+    commentCreate: Object.freeze({
+        windowMs: 60 * 1000,
+        maxRequests: 20,
+    }),
+    likeToggle: Object.freeze({
+        windowMs: 60 * 1000,
+        maxRequests: 80,
     }),
     fileUpload: Object.freeze({
         windowMs: 60 * 60 * 1000,
@@ -26,6 +42,10 @@ export const RATE_LIMITS = Object.freeze({
     }),
     formSubmission: Object.freeze({
         windowMs: 60 * 60 * 1000,
+        maxRequests: 20,
+    }),
+    linkPreview: Object.freeze({
+        windowMs: 60 * 1000,
         maxRequests: 20,
     }),
 });

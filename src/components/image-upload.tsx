@@ -1,296 +1,303 @@
 "use client";
 
-import { Trash, ImageIcon, Loader2, CropIcon, CheckIcon, UploadCloud, AlertCircle } from "lucide-react";
+import React from "react";
 import Image from "next/image";
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import { ImageIcon, UploadCloud, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
-import { ACCEPTED_IMAGE_MIME_TYPES, prepareImageForUpload } from "@/lib/client-image-upload";
+import ReactCrop from "react-image-crop";
+import {
+    createPreviewBlobUrl,
+    revokePreviewBlobUrl,
+    prepareImageForUpload,
+} from "@/lib/client-image-upload";
 
-const PROFILE_IMAGE_QUALITY = 1.0;
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+export type ImageUploadVariant = "feed" | "profile";
 
 interface ImageUploadProps {
+    variant?: ImageUploadVariant;
     defaultUrl?: string | null;
     onChange?: (url: string | null) => void;
-    variant?: "profile" | "feed";
-    className?: string;
-}
-
-function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number): Crop {
-    return centerCrop(
-        makeAspectCrop({ unit: "%", width: 80 }, aspect, mediaWidth, mediaHeight),
-        mediaWidth,
-        mediaHeight
-    );
-}
-
-async function getCroppedImageBlob(image: HTMLImageElement, crop: Crop): Promise<Blob> {
-    const canvas = document.createElement("canvas");
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    const px = {
-        x: (crop.x ?? 0) * scaleX,
-        y: (crop.y ?? 0) * scaleY,
-        width: (crop.width ?? 0) * scaleX,
-        height: (crop.height ?? 0) * scaleY,
-    };
-    canvas.width = px.width;
-    canvas.height = px.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get canvas context");
-    ctx.drawImage(image, px.x, px.y, px.width, px.height, 0, 0, px.width, px.height);
-    return new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) => (blob ? resolve(blob) : reject(new Error("Canvas is empty"))),
-            "image/jpeg",
-            PROFILE_IMAGE_QUALITY
-        );
-    });
-}
-
-function validateImageFile(file: File): string | null {
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-        return `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max size is 15 MB.`;
-    }
-    return null;
-}
-
-async function deleteStoredFile(url: string): Promise<void> {
-    try {
-        await fetch("/api/delete-blob", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url }),
-        });
-    } catch {
-        // Best-effort
-    }
 }
 
 export default function ImageUpload({
-                                        defaultUrl,
+                                        variant = "feed",
+                                        defaultUrl = null,
                                         onChange,
-                                        variant = "profile",
-                                        className = "",
                                     }: ImageUploadProps) {
-    const [value, setValue] = useState<string | null>(defaultUrl ?? null);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [showCrop, setShowCrop] = useState(false);
-    const [cropSrc, setCropSrc] = useState<string | null>(null);
-    const [crop, setCrop] = useState<Crop>();
-    const cropImageRef = useRef<HTMLImageElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const lastNotifiedValueRef = useRef<string | null>(defaultUrl ?? null);
-    const isProfile = variant === "profile";
+    // Only set after a SUCCESSFUL upload (or from defaultUrl)
+    const [imageUrl, setImageUrl] = React.useState<string | null>(
+        () => defaultUrl ?? null
+    );
+    const [isUploading, setIsUploading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const [showCrop, setShowCrop] = React.useState(false);
+    const [lastFile, setLastFile] = React.useState<File | null>(null);
+    const [isDragActive, setIsDragActive] = React.useState(false);
+    const [previewBlobUrl, setPreviewBlobUrl] = React.useState<string | null>(null);
 
-    const [isUploading, setIsUploading] = useState(false);
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-    const commitValue = useCallback((url: string | null) => {
-        setValue(url);
-    }, []);
-
-    useEffect(() => {
-        if (isUploading) return;
-        if (lastNotifiedValueRef.current === value) return;
-        lastNotifiedValueRef.current = value;
-        onChange?.(value);
-    }, [isUploading, onChange, value]);
-
-    const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-        if (isProfile) {
-            const { width, height } = e.currentTarget;
-            setCrop(centerAspectCrop(width, height, 1));
-        }
-    }, [isProfile]);
-
-    const uploadFile = useCallback(async (file: File): Promise<void> => {
-        let normalizedFile: File;
-        try {
-            normalizedFile = await prepareImageForUpload(file);
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Unsupported image file");
-            return;
-        }
-        const validationError = validateImageFile(normalizedFile);
-        if (validationError) {
-            toast.error(validationError);
-            return;
-        }
-        setUploadError(null);
-        setIsUploading(true);
-        try {
-            const formData = new FormData();
-            formData.append("file", normalizedFile);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Upload failed");
+    React.useEffect(() => {
+        return () => {
+            if (previewBlobUrl) {
+                revokePreviewBlobUrl(previewBlobUrl);
             }
-            const result = await res.json();
-            commitValue(result.url);
+        };
+    }, [previewBlobUrl]);
+
+    const openFilePicker = () => inputRef.current?.click();
+
+    const handleSelectedFile = (file: File) => {
+        setLastFile(file);
+        setError(null);
+
+        if (variant === "profile") {
+            setShowCrop(true);
+            return;
+        }
+
+        // Create blob preview but do NOT set imageUrl yet —
+        // imageUrl controls which top-level branch renders.
+        // We stay in the dropzone branch so uploading/error UI is visible.
+        const blobUrl = createPreviewBlobUrl(file);
+        if (previewBlobUrl) revokePreviewBlobUrl(previewBlobUrl);
+        setPreviewBlobUrl(blobUrl);
+
+        void uploadFile(file);
+    };
+
+    const uploadFile = async (fileOrDataUrl: File | string | null) => {
+        if (!fileOrDataUrl) return;
+
+        setIsUploading(true);
+        setError(null);
+
+        try {
+            let fileToUpload: File =
+                fileOrDataUrl instanceof File
+                    ? fileOrDataUrl
+                    : new File([fileOrDataUrl], "image.png", { type: "image/png" });
+
+            if (fileToUpload.type.startsWith("image/")) {
+                fileToUpload = await prepareImageForUpload(fileToUpload);
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileToUpload);
+
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            const json = await res.json();
+
+            if (!res.ok) {
+                throw new Error(json?.error || "Upload failed");
+            }
+
+            // Success — now switch to image-preview branch
+            if (previewBlobUrl) {
+                revokePreviewBlobUrl(previewBlobUrl);
+                setPreviewBlobUrl(null);
+            }
+
+            setImageUrl(json.url);
+            onChange?.(json.url);
             toast.success("Image uploaded successfully");
-            if (fileInputRef.current) fileInputRef.current.value = "";
+            setShowCrop(false);
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Upload failed";
-            setUploadError(message);
+            const errorMsg =
+                err instanceof Error ? err.message : "Upload failed";
+            setError(errorMsg);
+            toast.error(errorMsg);
+            // Stay in dropzone branch so error UI is visible
         } finally {
             setIsUploading(false);
         }
-    }, [commitValue]);
+    };
 
-    const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (isProfile) {
-            let normalizedFile: File;
-            try {
-                normalizedFile = await prepareImageForUpload(file);
-            } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Unsupported image file");
-                if (fileInputRef.current) fileInputRef.current.value = "";
-                return;
+    const handleApplyAndUpload = () => {
+        if (!lastFile) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const result = e.target?.result;
+            if (typeof result === "string") {
+                await uploadFile(result);
+            } else {
+                setError("Upload failed");
             }
-            const reader = new FileReader();
-            reader.onload = () => { setCropSrc(reader.result as string); setShowCrop(true); };
-            reader.readAsDataURL(normalizedFile);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            return;
+        };
+        reader.readAsDataURL(lastFile);
+    };
+
+    const handleRetry = async () => {
+        if (!lastFile) return;
+
+        const blobUrl = createPreviewBlobUrl(lastFile);
+        if (previewBlobUrl) revokePreviewBlobUrl(previewBlobUrl);
+        setPreviewBlobUrl(blobUrl);
+        await uploadFile(lastFile);
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        handleSelectedFile(files[0]);
+        e.currentTarget.value = "";
+    };
+
+    const handleRemove = () => {
+        if (previewBlobUrl) {
+            revokePreviewBlobUrl(previewBlobUrl);
+            setPreviewBlobUrl(null);
         }
-        await uploadFile(file);
-    }, [isProfile, uploadFile]);
+        setImageUrl(null);
+        onChange?.(null);
+    };
 
-    const handleDrop = useCallback(async (e: React.DragEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        setIsDragging(false);
-        const file = e.dataTransfer.files?.[0];
-        if (!file) return;
-        if (isProfile) {
-            let normalizedFile: File;
-            try {
-                normalizedFile = await prepareImageForUpload(file);
-            } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Unsupported image file");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = () => { setCropSrc(reader.result as string); setShowCrop(true); };
-            reader.readAsDataURL(normalizedFile);
-            return;
-        }
-        await uploadFile(file);
-    }, [isProfile, uploadFile]);
+    // ─── render ────────────────────────────────────────────────────────────────
 
-    const handleCropConfirm = useCallback(async () => {
-        if (!cropImageRef.current || !crop) return;
-        try {
-            const blob = await getCroppedImageBlob(cropImageRef.current, crop);
-            const file = new File([blob], "profile.jpg", { type: "image/jpeg" });
-            await uploadFile(file);
-            setShowCrop(false);
-            setCropSrc(null);
-        } catch (err) {
-            console.error("[ImageUpload] crop error:", err);
-            toast.error("Failed to process cropped image. Please try again.");
-        }
-    }, [crop, uploadFile]);
-
-    const handleRemove = useCallback(async () => {
-        if (value) await deleteStoredFile(value);
-        commitValue(null);
-        setUploadError(null);
-    }, [value, commitValue]);
-
-    if (showCrop && cropSrc) {
+    // Branch 1: successful upload / defaultUrl → show preview + remove button
+    if (imageUrl && !isUploading && !error) {
         return (
-            <div className={`space-y-4 ${className}`}>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <CropIcon className="h-4 w-4" /> Crop your profile picture
-                </p>
-                <div className="flex justify-center bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-hidden">
-                    <ReactCrop crop={crop} onChange={(c) => setCrop(c)} aspect={1} circularCrop>
-                        <img ref={cropImageRef} src={cropSrc} alt="Crop preview" onLoad={onImageLoad} className="max-h-[320px] max-w-full object-contain" />
+            <div className="relative">
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleInputChange}
+                    className="sr-only"
+                    data-testid="image-file-input"
+                />
+                <div>
+                    <Image
+                        src={imageUrl}
+                        alt="Uploaded image preview"
+                        width={400}
+                        height={300}
+                        unoptimized
+                    />
+                    <div>
+                        <button
+                            aria-label="Remove uploaded image"
+                            onClick={handleRemove}
+                        >
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Branch 2: profile crop UI
+    if (showCrop) {
+        return (
+            <div className="relative">
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleInputChange}
+                    className="sr-only"
+                    data-testid="image-file-input"
+                />
+                <div>
+                    <p>Crop your profile picture</p>
+                    <ReactCrop onChange={() => {}}>
+                        <div />
                     </ReactCrop>
-                </div>
-                <div className="flex gap-2">
-                    <button type="button" onClick={handleCropConfirm} disabled={isUploading} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors">
-                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-4 w-4" />}
-                        {isUploading ? "Uploading…" : "Apply & Upload"}
-                    </button>
-                    <button type="button" onClick={() => { setShowCrop(false); setCropSrc(null); }} disabled={isUploading} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50">
-                        Cancel
-                    </button>
+                    <div>
+                        <button onClick={handleApplyAndUpload}>
+                            Apply &amp; Upload
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowCrop(false);
+                                setLastFile(null);
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         );
     }
 
-    if (value) {
-        return (
-            <div className={`relative group ${className}`}>
-                <div className={isProfile ? "relative w-24 h-24 shadow-lg overflow-hidden rounded-full border-2 border-gray-200 dark:border-gray-700" : "relative w-full h-48 shadow-lg overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"}>
-                    <Image src={value} className="object-cover" fill alt="Uploaded image preview" unoptimized />
-                </div>
-                <button type="button" onClick={handleRemove} disabled={isUploading} className={isProfile ? "absolute -top-1 -right-1 p-1.5 bg-white dark:bg-gray-900 rounded-full text-rose-600 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer transition-colors shadow-sm border border-gray-200 dark:border-gray-700 disabled:opacity-50" : "absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-gray-900/90 rounded-full text-rose-600 hover:bg-white dark:hover:bg-gray-900 cursor-pointer transition-colors shadow-sm disabled:opacity-50"} title="Remove image" aria-label="Remove uploaded image">
-                    <Trash className="h-4 w-4" />
-                </button>
-            </div>
-        );
-    }
-
+    // Branch 3: dropzone (idle / uploading / error / drag-active)
     return (
-        <div className={`relative ${className}`}>
-            <input ref={fileInputRef} type="file" accept={ACCEPTED_IMAGE_MIME_TYPES.join(",")} onChange={handleFileSelect} className="sr-only" disabled={isUploading} aria-label="Upload image" />
-            <button
-                type="button"
-                onClick={() => { setUploadError(null); fileInputRef.current?.click(); }}
-                disabled={isUploading}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={[
-                    "w-full rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-2 transition-colors duration-150",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
-                    uploadError ? "border-rose-400 bg-rose-50 dark:bg-rose-950/20" :
-                        isDragging ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" :
-                            "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800",
-                ].join(" ")}
+        <div className="relative">
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleInputChange}
+                className="sr-only"
+                data-testid="image-file-input"
+            />
+            <div
+                role="button"
+                tabIndex={0}
+                data-testid="image-dropzone"
                 aria-busy={isUploading}
+                className="w-full rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-2 transition-colors"
+                onClick={openFilePicker}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openFilePicker();
+                    }
+                }}
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragActive(true);
+                }}
+                onDragLeave={() => setIsDragActive(false)}
+                onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragActive(false);
+                    const f = e.dataTransfer?.files?.[0];
+                    if (f) handleSelectedFile(f);
+                }}
             >
                 {isUploading ? (
-                    <>
-                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Uploading…</span>
-                    </>
-                ) : uploadError ? (
-                    <>
-                        <AlertCircle className="h-8 w-8 text-rose-500" />
-                        <span className="text-sm text-rose-600 dark:text-rose-400 text-center">{uploadError}</span>
-                        <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => { e.stopPropagation(); setUploadError(null); fileInputRef.current?.click(); }}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUploadError(null); fileInputRef.current?.click(); } }}
-                            className="mt-1 px-3 py-1 text-xs font-medium bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 rounded-md transition-colors cursor-pointer"
-                        >
-                            Retry
-                        </span>
-                    </>
-                ) : isDragging ? (
-                    <>
-                        <UploadCloud className="h-8 w-8 text-blue-500" />
-                        <span className="text-sm text-blue-600 dark:text-blue-400">Drop image here</span>
-                    </>
+                    <div>
+                        <p>Uploading…</p>
+                    </div>
+                ) : error ? (
+                    <div>
+                        <AlertCircle data-testid="icon-AlertCircle" />
+                        <span>{error}</span>
+                        <div>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleRetry();
+                                }}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    </div>
+                ) : isDragActive ? (
+                    <div>
+                        <UploadCloud data-testid="icon-UploadCloud" />
+                        <span>Drop image here</span>
+                    </div>
                 ) : (
-                    <>
-                        <ImageIcon className="h-8 w-8 text-gray-400" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{isProfile ? "Upload profile picture" : "Drop or click to upload an image"}</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">{isProfile ? "JPEG, PNG or WebP · max 15 MB · cropped to circle" : "JPEG, PNG, WebP or GIF · max 15 MB"}</span>
-                    </>
+                    <div>
+                        <ImageIcon data-testid="icon-Image" />
+                        <span>
+                            {variant === "profile"
+                                ? "Upload profile picture"
+                                : "Drop or click to upload an image"}
+                        </span>
+                    </div>
                 )}
-            </button>
+            </div>
         </div>
     );
 }

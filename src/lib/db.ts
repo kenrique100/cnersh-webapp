@@ -1,5 +1,15 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { z } from "zod";
+
+// Validation for UploadThing token on server boot
+export const uploadthingEnvSchema = z.object({
+    UPLOADTHING_TOKEN: z.string().min(1, "UPLOADTHING_TOKEN is required"),
+});
+
+if (typeof window === "undefined") {
+    uploadthingEnvSchema.parse(process.env);
+}
 
 const globalForPrisma = global as unknown as {
     prisma?: PrismaClient;
@@ -24,6 +34,7 @@ if (process.env.NODE_ENV !== "production") {
     globalForPrisma.prisma = db;
 }
 
+// Graceful connection lifecycle management
 let isCleaningUp = false;
 const cleanup = async () => {
     if (isCleaningUp) return;

@@ -9,24 +9,22 @@ export const ALLOWED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
-// Updated max sizes (in bytes)
 export const MAX_FILE_SIZES = {
-  avatar:   8  * 1024 * 1024,   // 8 MB
-  image:    15 * 1024 * 1024,   // 15 MB
-  video:    50 * 1024 * 1024,   // 50 MB
-  audio:    8  * 1024 * 1024,   // 8 MB
-  document: 15 * 1024 * 1024,   // 15 MB
-  protocol: 50 * 1024 * 1024,   // 50 MB
+  avatar:   8  * 1024 * 1024,
+  image:    16 * 1024 * 1024,
+  video:    64 * 1024 * 1024,
+  audio:    8  * 1024 * 1024,
+  document: 16 * 1024 * 1024,
+  protocol: 64 * 1024 * 1024,
 } as const;
 
-// Corresponding UploadThing size strings
 export const UT_MAX_SIZES = {
   avatar:   "8MB",
-  image:    "15MB",
-  video:    "50MB",
+  image:    "16MB",
+  video:    "64MB",
   audio:    "8MB",
-  document: "15MB",
-  protocol: "50MB",
+  document: "16MB",
+  protocol: "64MB",
 } as const;
 
 export function getFileUrl(fileId: string): string {
@@ -65,15 +63,15 @@ export async function getFileMetadata(fileId: string) {
 export async function deleteFile(fileId: string): Promise<void> {
   const file = await db.file.findUnique({
     where:  { id: fileId },
-    select: { storageKey: true, data: true },
+    select: { storageKey: true },
   });
 
-  // If the file was stored in UploadThing (has a storageKey and no data blob), delete it from UploadThing
-  if (file?.storageKey && !file.data) {
+  if (file?.storageKey) {
     try {
       await utapi.deleteFiles(file.storageKey);
     } catch (err) {
       console.error("[file-utils] UploadThing deletion failed:", err);
+      // Continue to delete the DB record even if remote deletion fails
     }
   }
 

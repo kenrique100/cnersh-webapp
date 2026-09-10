@@ -38,7 +38,7 @@ export const sendResetPasswordEmail = async ({
             throw new Error("Email service not configured. Please contact support.");
         }
 
-        console.log(`📧 Sending password reset email to: ${to}`);
+        console.log(`Sending password reset email to: ${to}`);
 
         const response = await getResend().emails.send({
             from: process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM,

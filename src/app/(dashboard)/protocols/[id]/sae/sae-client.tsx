@@ -25,6 +25,23 @@ interface SAEReportClientProps {
     projectTitle: string;
 }
 
+/**
+ * Returns the current moment as a "YYYY-MM-DDTHH:mm" string in the browser's
+ * LOCAL time, suitable for a <input type="datetime-local"> max attribute.
+ *
+ * `datetime-local` inputs have no timezone concept — the browser interprets
+ * both the field's value and its max/min bounds as local wall-clock time.
+ * `new Date().toISOString()` returns UTC, so slicing it directly produces a
+ * string that's off by the user's UTC offset (e.g. ~5 hours in US Eastern),
+ * which either rejects the actual current moment or allows future entries
+ * depending on which side of UTC the user is on.
+ */
+function getLocalDateTimeNow(): string {
+    const now = new Date();
+    const tzOffsetMs = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+}
+
 export default function SAEReportClient({ projectId, projectTitle }: SAEReportClientProps) {
     const router = useRouter();
     const [eventType, setEventType] = useState("");
@@ -158,7 +175,7 @@ export default function SAEReportClient({ projectId, projectTitle }: SAEReportCl
                                     type="datetime-local"
                                     value={eventDate}
                                     onChange={(e) => setEventDate(e.target.value)}
-                                    max={new Date().toISOString().slice(0, 16)}
+                                    max={getLocalDateTimeNow()}
                                     required
                                 />
                             </div>

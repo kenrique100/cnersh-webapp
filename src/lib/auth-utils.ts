@@ -44,12 +44,12 @@ async function sendWelcomeEmailIfNeeded(userId: string) {
             },
         });
 
-        if (!user || !user.emailVerified) return;
+        if (!user || !user.emailVerified || !user.email) return;
 
         const result = await db.user.updateMany({
             where: {
                 id: userId,
-                welcomeEmailSent: false, // only update if not sent
+                welcomeEmailSent: false,
             },
             data: { welcomeEmailSent: true },
         });
@@ -58,6 +58,7 @@ async function sendWelcomeEmailIfNeeded(userId: string) {
             console.log(`Welcome email already sent for user ${userId}, skipping.`);
             return;
         }
+
         await sendWelcomeEmail({
             to: user.email,
             userName: user.name || "User",

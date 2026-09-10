@@ -4,25 +4,61 @@ import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
+import { enforceActionRateLimit } from "@/lib/action-rate-limit";
+import { RATE_LIMITS } from "@/lib/rate-limit";
+import { z } from "zod";
 
 const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
+
+const postPayloadSchema = z.object({
+    content: z.string().max(5000).transform((value) => sanitizeText(value)),
+    image: z.string().optional(),
+    video: z.string().optional(),
+    images: z.array(z.string()).max(6).optional(),
+    videos: z.array(z.string()).max(3).optional(),
+    tags: z.array(z.string()).max(10).optional(),
+    linkUrl: z.string().optional(),
+    linkType: z.string().max(64).optional(),
+});
+
+const commentContentSchema = z.string().min(1).max(2000).transform((value) => sanitizeText(value).trim());
 
 export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string; linkType?: string }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    await enforceActionRateLimit(session.user.id, RATE_LIMITS.postCreate, "post-create", "You're posting too quickly.");
+
+    const parsed = postPayloadSchema.safeParse(data);
+    if (!parsed.success) {
+        throw new Error("Invalid post content. Please review your input and try again.");
+    }
+    const payload = parsed.data;
+    const normalizedContent = payload.content.trim();
+    const normalizedImages = (payload.images || []).filter(Boolean);
+    const normalizedVideos = (payload.videos || []).filter(Boolean);
+    const normalizedTags = (payload.tags || []).map((tag) => sanitizeText(tag).trim()).filter(Boolean);
+    const normalizedLinkUrl = payload.linkUrl ? sanitizeUrl(payload.linkUrl) : "";
+
+    if (!normalizedContent && !payload.image && !payload.video && normalizedImages.length === 0 && normalizedVideos.length === 0) {
+        throw new Error("A post must include text or media.");
+    }
+    if (payload.linkUrl && !normalizedLinkUrl) {
+        throw new Error("Please provide a valid secure link URL.");
+    }
 
     let post;
     try {
         post = await db.post.create({
             data: {
-                content: data.content,
-                image: data.image || null,
-                video: data.video || null,
-                images: data.images || [],
-                videos: data.videos || [],
-                tags: data.tags || [],
-                linkUrl: data.linkUrl || null,
-                linkType: data.linkType || null,
+                content: normalizedContent,
+                image: payload.image || null,
+                video: payload.video || null,
+                images: normalizedImages,
+                videos: normalizedVideos,
+                tags: normalizedTags,
+                linkUrl: normalizedLinkUrl || null,
+                linkType: normalizedLinkUrl ? payload.linkType || null : null,
                 userId: session.user.id,
             },
             select: {
@@ -51,7 +87,7 @@ export async function createPost(data: { content: string; image?: string; video?
 
     // Notify mentioned users in the post content
     try {
-        const mentions = [...data.content.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
+        const mentions = [...normalizedContent.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
             const mentionedUsers = await db.user.findMany({
                 where: { name: { in: mentions }, id: { not: session.user.id } },
@@ -106,7 +142,18 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
         const [posts, total] = await Promise.all([
             db.post.findMany({
                 where: whereClause,
-                include: {
+                select: {
+                    id: true,
+                    content: true,
+                    image: true,
+                    video: true,
+                    images: true,
+                    videos: true,
+                    tags: true,
+                    linkUrl: true,
+                    linkType: true,
+                    commentsEnabled: true,
+                    createdAt: true,
                     user: { select: { id: true, name: true, image: true, profession: true, title: true } },
                     _count: { select: { comments: true, likes: true } },
                     likes: {
@@ -116,7 +163,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
                             user: { select: { id: true, name: true, image: true } },
                         },
                         orderBy: { createdAt: "desc" },
-                        take: 20,
+                        take: 10,
                     },
                     comments: {
                         where: { deleted: false },
@@ -171,12 +218,23 @@ export async function getPublicPosts(limit: number = 10) {
     try {
         const posts = await db.post.findMany({
             where: { deleted: false },
-            include: {
+            select: {
+                id: true,
+                content: true,
+                image: true,
+                video: true,
+                images: true,
+                videos: true,
+                tags: true,
+                linkUrl: true,
+                linkType: true,
+                commentsEnabled: true,
+                createdAt: true,
                 user: { select: { id: true, name: true, image: true } },
                 _count: { select: { comments: true, likes: true } },
                 likes: {
                     select: { reactionType: true },
-                    take: 20,
+                    take: 10,
                 },
             },
             orderBy: { createdAt: "desc" },
@@ -193,37 +251,18 @@ export async function getPublicPosts(limit: number = 10) {
     }
 }
 
-export async function getTrendingTags(limit: number = 5) {
-    try {
-        const results = await db.$queryRaw<{ tag: string; count: bigint }[]>`
-            SELECT LOWER(TRIM(t)) as tag, COUNT(*) as count
-            FROM post, unnest(tags) AS t
-            WHERE deleted = false AND TRIM(t) != ''
-            GROUP BY LOWER(TRIM(t))
-            ORDER BY count DESC
-            LIMIT ${limit}
-        `;
-
-        return results.map((r) => ({
-            tag: r.tag.charAt(0).toUpperCase() + r.tag.slice(1),
-            posts: Number(r.count),
-        }));
-    } catch (error) {
-        console.error("Error fetching trending tags:", error);
-        return [];
-    }
-}
-
 export async function toggleLike(postId: string, reactionType: string = "Like") {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    await enforceActionRateLimit(session.user.id, RATE_LIMITS.likeToggle, "post-like", "You're reacting too quickly.");
+    const normalizedReactionType = sanitizeText(reactionType).trim() || "Like";
 
     const existing = await db.like.findUnique({
         where: { postId_userId: { postId, userId: session.user.id } },
     });
 
     if (existing) {
-        if (existing.reactionType === reactionType) {
+        if (existing.reactionType === normalizedReactionType) {
             // Same reaction - remove it (toggle off)
             await db.like.delete({ where: { id: existing.id } });
             return { liked: false, reactionType: null };
@@ -231,13 +270,13 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
             // Different reaction - update it
             await db.like.update({
                 where: { id: existing.id },
-                data: { reactionType },
+                data: { reactionType: normalizedReactionType },
             });
-            return { liked: true, reactionType };
+            return { liked: true, reactionType: normalizedReactionType };
         }
     } else {
         await db.like.create({
-            data: { postId, userId: session.user.id, reactionType },
+            data: { postId, userId: session.user.id, reactionType: normalizedReactionType },
         });
 
         // Notify post owner of the like
@@ -280,17 +319,23 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
             console.error("Error creating like notification:", error);
         }
 
-        return { liked: true, reactionType };
+        return { liked: true, reactionType: normalizedReactionType };
     }
 }
 
 export async function addComment(postId: string, content: string, parentId?: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    await enforceActionRateLimit(session.user.id, RATE_LIMITS.commentCreate, "post-comment", "You're commenting too quickly.");
+    const parsedContent = commentContentSchema.safeParse(content);
+    if (!parsedContent.success) {
+        throw new Error("Comment must be between 1 and 2000 characters.");
+    }
+    const safeContent = parsedContent.data;
 
     const comment = await db.comment.create({
         data: {
-            content,
+            content: safeContent,
             postId,
             userId: session.user.id,
             parentId: parentId || null,
@@ -354,7 +399,7 @@ export async function addComment(postId: string, content: string, parentId?: str
             }
         }
         // Notify mentioned users (@username) - matches @Name patterns, stopping at next @ or end of string
-        const mentions = [...content.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
+        const mentions = [...safeContent.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
             const mentionedUsers = await db.user.findMany({
                 where: { name: { in: mentions }, id: { not: session.user.id } },
@@ -448,6 +493,11 @@ export async function deletePost(postId: string) {
 export async function updatePost(postId: string, data: { content: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string | null; linkType?: string | null }) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    const parsedContent = z.string().max(5000).safeParse(data.content);
+    if (!parsedContent.success) throw new Error("Post content is too long.");
+    const safeContent = sanitizeText(parsedContent.data).trim();
+    const safeLinkUrl = typeof data.linkUrl === "string" ? sanitizeUrl(data.linkUrl) : "";
+    if (data.linkUrl && !safeLinkUrl) throw new Error("Please provide a valid secure link URL.");
 
     const post = await db.post.findUnique({ where: { id: postId } });
     if (!post) throw new Error("Post not found");
@@ -456,12 +506,12 @@ export async function updatePost(postId: string, data: { content: string; images
     return db.post.update({
         where: { id: postId },
         data: {
-            content: data.content,
+            content: safeContent,
             ...(data.images !== undefined && { images: data.images }),
             ...(data.videos !== undefined && { videos: data.videos }),
-            ...(data.tags !== undefined && { tags: data.tags }),
-            ...(data.linkUrl !== undefined && { linkUrl: data.linkUrl }),
-            ...(data.linkType !== undefined && { linkType: data.linkType }),
+            ...(data.tags !== undefined && { tags: data.tags.map((tag) => sanitizeText(tag).trim()).filter(Boolean) }),
+            ...(data.linkUrl !== undefined && { linkUrl: safeLinkUrl || null }),
+            ...(data.linkType !== undefined && { linkType: safeLinkUrl ? data.linkType : null }),
         },
     });
 }
@@ -537,24 +587,26 @@ export async function getUserActivity(userId: string, limit: number = 10) {
 export async function toggleCommentLike(commentId: string, isDislike: boolean = false, reactionType: string = "Like") {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    await enforceActionRateLimit(session.user.id, RATE_LIMITS.likeToggle, "comment-like", "You're reacting too quickly.");
+    const normalizedReactionType = sanitizeText(reactionType).trim() || "Like";
 
     const existing = await db.commentLike.findUnique({
         where: { commentId_userId: { commentId, userId: session.user.id } },
     });
 
     if (existing) {
-        if (existing.reactionType === reactionType) {
+        if (existing.reactionType === normalizedReactionType) {
             // Same reaction - remove
             await db.commentLike.delete({ where: { id: existing.id } });
             return { action: "removed", reactionType: null };
         } else {
             // Different reaction - update
-            await db.commentLike.update({ where: { id: existing.id }, data: { reactionType, isDislike: false } });
-            return { action: "reacted", reactionType };
+            await db.commentLike.update({ where: { id: existing.id }, data: { reactionType: normalizedReactionType, isDislike: false } });
+            return { action: "reacted", reactionType: normalizedReactionType };
         }
     } else {
         await db.commentLike.create({
-            data: { commentId, userId: session.user.id, isDislike: false, reactionType },
+            data: { commentId, userId: session.user.id, isDislike: false, reactionType: normalizedReactionType },
         });
 
         // Notify comment owner
@@ -587,7 +639,7 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
             console.error("Error creating comment like notification:", error);
         }
 
-        return { action: "reacted", reactionType };
+        return { action: "reacted", reactionType: normalizedReactionType };
     }
 }
 

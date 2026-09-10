@@ -28,9 +28,6 @@ type AdminUser = {
     name: string;
 };
 
-function createAdminUsers(users: AdminUser[]): AdminUser[] {
-    return users;
-}
 
 describe('notifyAdmins', () => {
     beforeEach(() => {

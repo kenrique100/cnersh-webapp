@@ -34,6 +34,7 @@ import {
 } from "./community";
 import { getDisplayName } from "./community/utils";
 import { prepareImageForUpload } from "@/lib/client-image-upload";
+import { validatePDFPageCount } from "@/lib/pdf-validation";
 
 /* ─── Props Interface ─────────────────────────────────── */
 
@@ -46,12 +47,12 @@ interface CommunityClientProps {
 }
 
 export default function CommunityClient({
-                                            initialTopics,
-                                            users,
-                                            isAdmin = false,
-                                            currentUserId,
-                                            currentUserRole,
-                                        }: CommunityClientProps) {
+    initialTopics,
+    users,
+    isAdmin = false,
+    currentUserId,
+    currentUserRole,
+}: CommunityClientProps) {
     const router = useRouter();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -149,7 +150,7 @@ export default function CommunityClient({
             return;
         }
         try {
-            await createTopic({
+            const createdTopic = await createTopic({
                 title: newTopic.title,
                 content: newTopic.content,
                 category: newTopic.category,
@@ -160,10 +161,10 @@ export default function CommunityClient({
                 documents: newTopic.documents.length > 0 ? newTopic.documents : undefined,
                 linkUrl: newTopic.linkUrl || undefined,
             });
+            setTopics((prev) => [JSON.parse(JSON.stringify(createdTopic)), ...prev]);
             setShowCreate(false);
             setNewTopic({ title: "", content: "", category: "", image: "", images: [], video: "", videos: [], documents: [], linkUrl: "" });
             toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
-            router.refresh();
         } catch {
             toast.error("Failed to create channel");
         }
@@ -172,6 +173,15 @@ export default function CommunityClient({
     const handleTopicFileUpload = async (file: File, type: "image" | "video" | "document") => {
         setTopicUploading(true);
         try {
+            // PDF validation for documents
+            if (type === "document" && file.type === "application/pdf") {
+                const validation = await validatePDFPageCount(file);
+                if (!validation.valid) {
+                    toast.error(validation.error || "PDF validation failed");
+                    return;
+                }
+            }
+
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
                 const url = await uploadFileToVercelBlob(normalizedFile);
@@ -195,7 +205,7 @@ export default function CommunityClient({
             const result = await toggleTopicChat(topicId);
             setSelectedTopic((prev) => prev ? { ...prev, chatEnabled: result.chatEnabled } : prev);
             setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, chatEnabled: result.chatEnabled } : t));
-            toast.success(result.chatEnabled ? "Chat enabled" : "Chat disabled \u2014 members can only view messages");
+            toast.success(result.chatEnabled ? "Chat enabled" : "Chat disabled — members can only view messages");
         } catch {
             toast.error("Failed to toggle chat");
         }
@@ -215,10 +225,10 @@ export default function CommunityClient({
     };
 
     const handleSendMessage = async () => {
-        if ((!messageText.trim() && !pendingImage && pendingImages.length === 0 && pendingVideos.length === 0 && pendingAudios.length === 0 && pendingDocuments.length === 0 && !pendingVoiceNote && !pendingPollQuestion && !pendingEventTitle) || !selectedTopic) return;
+        if ((!messageText.trim() && !pendingImage && pendingImages.length === 0 && pendingVideos.length === 0 && pendingAudios.length === 0 && pendingDocuments.length === 0 && !pendingVoiceNote && !pendingLinkUrl && !pendingPollQuestion && !pendingEventTitle)) return;
         try {
             const reply = await addReply({
-                topicId: selectedTopic.id,
+                topicId: selectedTopic!.id,
                 content: messageText.trim(),
                 parentId: replyingTo?.id,
                 image: pendingImage || undefined,
@@ -294,7 +304,6 @@ export default function CommunityClient({
                 setSelectedTopic(null);
             }
             toast.success("Channel deleted");
-            router.refresh();
         } catch {
             toast.error("Failed to delete channel");
         }
@@ -521,6 +530,15 @@ export default function CommunityClient({
 
     const handleFileUpload = async (file: File, type: "image" | "video" | "audio" | "document") => {
         try {
+            // PDF validation for documents
+            if (type === "document" && file.type === "application/pdf") {
+                const validation = await validatePDFPageCount(file);
+                if (!validation.valid) {
+                    toast.error(validation.error || "PDF validation failed");
+                    return;
+                }
+            }
+
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
                 const url = await uploadFileToVercelBlob(normalizedFile);

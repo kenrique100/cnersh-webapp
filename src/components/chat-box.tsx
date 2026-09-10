@@ -1,3 +1,4 @@
+// src/components/chat-box.tsx
 "use client";
 
 import React from "react";
@@ -13,11 +14,19 @@ export default function ChatBox() {
     const [isSending, setIsSending] = React.useState(false);
     const [sent, setSent] = React.useState(false);
 
-    // Listen for custom event to open the chatbox from other components
+    // Keep track of timer so we can clear it on unmount
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
     React.useEffect(() => {
         const handleOpenChatBox = () => setIsOpen(true);
         window.addEventListener("open-chatbox", handleOpenChatBox);
-        return () => window.removeEventListener("open-chatbox", handleOpenChatBox);
+        return () => {
+            window.removeEventListener("open-chatbox", handleOpenChatBox);
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+        };
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -30,7 +39,16 @@ export default function ChatBox() {
             toast.success("Message sent to admin successfully");
             setMessage("");
             setSent(true);
-            setTimeout(() => setSent(false), 3000);
+
+            // clear any previous timer
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+
+            timerRef.current = setTimeout(() => {
+                setSent(false);
+                timerRef.current = null;
+            }, 3000);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to send message");
         } finally {
@@ -51,11 +69,7 @@ export default function ChatBox() {
                 )}
                 title="Submit a problem"
             >
-                {isOpen ? (
-                    <XIcon className="h-6 w-6" />
-                ) : (
-                    <MessageCircleIcon className="h-6 w-6" />
-                )}
+                {isOpen ? <XIcon className="h-6 w-6" /> : <MessageCircleIcon className="h-6 w-6" />}
             </button>
 
             {/* Chat Panel */}
@@ -83,18 +97,16 @@ export default function ChatBox() {
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit}>
-                                <textarea
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    placeholder="Describe your problem or question..."
-                                    className="w-full h-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                    disabled={isSending}
-                                    maxLength={1000}
-                                />
+                <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Describe your problem or question..."
+                    className="w-full h-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    disabled={isSending}
+                    maxLength={1000}
+                />
                                 <div className="flex items-center justify-between mt-3">
-                                    <span className="text-xs text-gray-400">
-                                        {message.length}/1000
-                                    </span>
+                                    <span className="text-xs text-gray-400">{message.length}/1000</span>
                                     <Button
                                         type="submit"
                                         size="sm"

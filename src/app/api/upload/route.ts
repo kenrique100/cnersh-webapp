@@ -5,18 +5,17 @@ import { sanitizeFilename } from "@/lib/sanitize-filename";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
-import type { FileType } from "@/generated/prisma";
-import { pdf } from "pdf-page-counter";
 import { utapi } from "@/lib/uploadthing";
+import type { FileType } from "@/generated/prisma";
+import { PDFDocument } from "pdf-lib";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
-// Updated max sizes per your requirements
-const MAX_IMAGE_SIZE    = 15 * 1024 * 1024; // 15 MB
-const MAX_VIDEO_SIZE    = 50 * 1024 * 1024; // 50 MB
-const MAX_DOCUMENT_SIZE = 15 * 1024 * 1024; // 15 MB
-const MAX_AUDIO_SIZE    =  8 * 1024 * 1024; // 8 MB
+const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE    = 64 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
 
 const ALLOWED_TYPES: Record<string, string[]> = {
   "image/": ["image/jpeg", "image/png", "image/gif", "image/webp"],
@@ -116,32 +115,49 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // PDF Page Count Validation (1-4 pages required)
   if (file.type === "application/pdf") {
     try {
-      const pdfDoc = await pdf(fileBuffer);
-      if (pdfDoc.numpages > 4) {
-        return NextResponse.json({ error: "PDF exceeds 4 pages" }, { status: 400 });
+      const pdfDoc = await PDFDocument.load(fileBuffer);
+      const pageCount = pdfDoc.getPageCount();
+
+      if (pageCount === 0) {
+        return NextResponse.json(
+            { error: "PDF is empty (0 pages). Please upload a PDF with at least 1 page." },
+            { status: 400 }
+        );
+      }
+
+      if (pageCount > 4) {
+        return NextResponse.json(
+            { error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.` },
+            { status: 400 }
+        );
       }
     } catch {
       return NextResponse.json({ error: "Invalid or corrupted PDF file" }, { status: 400 });
     }
   }
 
-  // Upload to UploadThing
-  let uploadedFile: { url: string; key: string };
+  let uploadResult;
   try {
-    const result = await utapi.uploadFiles(file);
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
-    uploadedFile = {
-      url: result.data.ufsUrl,
-      key: result.data.key,
-    };
+    const uploadFile = new File(
+        [new Uint8Array(fileBuffer)],
+        sanitizedFilename,
+        { type: file.type }
+    );
+    uploadResult = await utapi.uploadFiles(uploadFile);
   } catch (err) {
     console.error("[upload] UploadThing upload failed:", err);
     return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
   }
+
+  if (uploadResult.error) {
+    console.error("[upload] UploadThing error:", uploadResult.error);
+    return NextResponse.json({ error: "Upload service error" }, { status: 502 });
+  }
+
+  const { key, ufsUrl } = uploadResult.data;
 
   try {
     const stored = await db.file.create({
@@ -150,8 +166,8 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         mimeType:   file.type,
         size:       file.size,
         data:       null,
-        url:        uploadedFile.url,
-        storageKey: uploadedFile.key,
+        url:        ufsUrl,
+        storageKey: key,
         type:       resolveFileType(file.type),
         userId:     session.user.id,
       },

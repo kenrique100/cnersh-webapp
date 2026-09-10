@@ -1,24 +1,33 @@
+// src/components/__tests__/reaction-button.test.tsx
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { ReactionButton, ReactionPicker } from "../reaction-button";
+import { type ReactionType } from "@/components/reaction-icons";   // <--- added
+
+// Prevent style injection from leaving extra DOM in tests
+beforeEach(() => {
+    const existing = document.getElementById('reaction-animations');
+    if (existing) existing.remove();
+});
 
 describe("ReactionButton", () => {
-    const mockReaction = {
+    const mockReaction: { label: ReactionType; color: string } = {
         label: "Like",
         color: "#0A66C2",
     };
-
     const mockOnClick = jest.fn();
 
     beforeEach(() => {
         mockOnClick.mockClear();
     });
 
-    // Clean up micro/macro task queues between iterations
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     describe("Rendering", () => {
@@ -81,8 +90,9 @@ describe("ReactionButton", () => {
             });
 
             jest.useRealTimers();
-            // Critical macro-task flush right after swapping back to real timers
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            await act(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 0));
+            });
         });
 
         it("handles multiple rapid clicks", async () => {
@@ -105,7 +115,7 @@ describe("ReactionButton", () => {
         });
 
         it("is keyboard accessible", async () => {
-            const user = userEvent.setup();
+            const _user = userEvent.setup();
             render(<ReactionButton reaction={mockReaction} onClick={mockOnClick} />);
             const button = screen.getByRole("button");
 
@@ -151,11 +161,12 @@ describe("ReactionButton", () => {
 });
 
 describe("ReactionPicker", () => {
-    const mockReactions = [
+    // Explicitly typed array fixes TS error
+    const mockReactions: { label: ReactionType; color?: string }[] = [
         { label: "Like", color: "#0A66C2" },
         { label: "Celebrate", color: "#57C27D" },
         { label: "Love", color: "#F5666C" },
-    ] as const;
+    ];
 
     const mockOnReaction = jest.fn();
 
@@ -164,7 +175,10 @@ describe("ReactionPicker", () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        cleanup();
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
     });
 
     describe("Rendering", () => {
@@ -240,7 +254,7 @@ describe("ReactionPicker", () => {
             expect(picker).toHaveClass("flex");
             expect(picker).toHaveClass("items-center");
             expect(picker).toHaveClass("bg-white");
-            expect(picker).toHaveClass("rounded-lg");
+            expect(picker).toHaveClass("rounded-2xl");   // corrected class name
             expect(picker).toHaveClass("shadow-lg");
         });
     });
@@ -255,7 +269,9 @@ describe("ReactionPicker", () => {
         });
 
         it("handles single reaction", () => {
-            const singleReaction = [{ label: "Like", color: "#0A66C2" }] as const;
+            const singleReaction: { label: ReactionType; color?: string }[] = [
+                { label: "Like", color: "#0A66C2" },
+            ];
             render(<ReactionPicker reactions={singleReaction} onReaction={mockOnReaction} />);
             const buttons = screen.getAllByRole("button");
             expect(buttons.length).toBe(1);

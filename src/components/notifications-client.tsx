@@ -23,7 +23,7 @@ import {
     FolderIcon,
     AlertCircleIcon,
     InfoIcon,
-    UserCheckIcon
+    UserCheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { markNotificationRead, markAllNotificationsRead } from "@/app/actions/notification";
@@ -54,10 +54,10 @@ const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: s
 };
 
 export default function NotificationsClient({
-    initialNotifications,
-    unreadCount: initialUnreadCount,
-    isAdmin,
-}: NotificationsClientProps) {
+                                                initialNotifications,
+                                                unreadCount: initialUnreadCount,
+                                                isAdmin = false,
+                                            }: NotificationsClientProps) {
     const router = useRouter();
     const [notifications, setNotifications] = React.useState(initialNotifications);
     const [unreadCount, setUnreadCount] = React.useState(initialUnreadCount);
@@ -91,12 +91,7 @@ export default function NotificationsClient({
         if (!notification.read) {
             await handleMarkRead(notification.id);
         }
-        // Navigate directly to the linked page if available
-        if (notification.link) {
-            router.push(notification.link);
-        } else {
-            setSelectedNotification(notification);
-        }
+        setSelectedNotification(notification);
     };
 
     const handleNavigate = (link: string) => {
@@ -113,8 +108,7 @@ export default function NotificationsClient({
             minute: "2-digit",
         });
 
-    const getConfig = (type: string) =>
-        typeConfig[type] || typeConfig.SYSTEM;
+    const getConfig = (type: string) => typeConfig[type] || typeConfig.SYSTEM;
 
     return (
         <div className="space-y-4">
@@ -134,12 +128,8 @@ export default function NotificationsClient({
                             <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                                 <BellIcon className="h-8 w-8 text-gray-400" />
                             </div>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                No notifications
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                You&apos;re all caught up!
-                            </p>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">No notifications</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">You&apos;re all caught up!</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -164,9 +154,7 @@ export default function NotificationsClient({
                                     </div>
                                     <div className="min-w-0">
                                         <p className={`text-sm leading-relaxed ${
-                                            notification.read
-                                                ? "text-gray-600 dark:text-gray-400"
-                                                : "text-gray-900 dark:text-gray-100 font-medium"
+                                            notification.read ? "text-gray-600 dark:text-gray-400" : "text-gray-900 dark:text-gray-100 font-medium"
                                         }`}>
                                             {notification.message}
                                         </p>
@@ -200,31 +188,21 @@ export default function NotificationsClient({
                 })
             )}
 
-            {/* Notification Detail Dialog */}
-            <Dialog
-                open={selectedNotification !== null}
-                onOpenChange={(open) => {
-                    if (!open) setSelectedNotification(null);
-                }}
-            >
+            <Dialog open={selectedNotification !== null} onOpenChange={() => setSelectedNotification(null)}>
                 {selectedNotification && (() => {
-                    const config = getConfig(selectedNotification.type);
-                    const Icon = config.icon;
+                    // Compute the config for the selected notification inside the render block
+                    const notificationConfig = getConfig(selectedNotification.type);
+                    const Icon = notificationConfig.icon;
                     return (
                         <DialogContent className="sm:max-w-lg">
                             <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                    <div className={`h-8 w-8 rounded-full ${config.bg} flex items-center justify-center`}>
-                                        <Icon className={`h-4 w-4 ${config.color}`} />
-                                    </div>
-                                    <span>Notification Details</span>
-                                </DialogTitle>
-                                <DialogDescription className="sr-only">View notification details and actions</DialogDescription>
+                                <DialogTitle>Notification Details</DialogTitle>
+                                <DialogDescription className="sr-only">View notification details</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-2">
                                 <div className="flex items-center gap-2">
-                                    <Badge className={`${config.bg} ${config.color} text-xs`}>
-                                        {config.label}
+                                    <Badge className={`${notificationConfig.bg} ${notificationConfig.color} text-xs`}>
+                                        {notificationConfig.label}
                                     </Badge>
                                     <span className="text-xs text-gray-500 dark:text-gray-400">
                                         {formatDate(selectedNotification.createdAt)}
@@ -249,8 +227,8 @@ export default function NotificationsClient({
                                             {selectedNotification.type === "LIKE" || selectedNotification.type === "COMMENT"
                                                 ? "View Post"
                                                 : selectedNotification.type === "PROJECT_STATUS"
-                                                ? "View Protocol"
-                                                : "Go to Link"}
+                                                    ? "View Protocol"
+                                                    : "Go to Link"}
                                         </Button>
                                     )}
 

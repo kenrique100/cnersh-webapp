@@ -36,7 +36,7 @@ import {
 import { toast } from "sonner";
 import { CommunityUser, TopicDetail, ReplyData } from "./types";
 import { EMOJI_LIST, CATEGORY_COLORS } from "./constants";
-import { deleteBlobUrl, formatDate, formatTime, getDisplayName } from "./utils";
+import { deleteBlobUrl, formatDate, getDisplayName } from "./utils";
 import { CommunityPostCard } from "./CommunityPostCard";
 
 interface CommunityCommentSectionProps {

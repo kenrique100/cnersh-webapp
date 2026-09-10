@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
-import { deleteUploadThingFile } from "@/lib/uploadthing";
+import { utapi } from "@/lib/uploadthing";
 
 export async function DELETE(request: Request) {
     try {
         const body = await request.json() as { url?: string; storageKey?: string };
 
-        // Use storageKey if provided, otherwise try to extract from URL
-        let key = body.storageKey || null;
-        if (!key && body.url) {
-            // UploadThing keys are typically the last segment of the URL after /f/
-            const match = body.url.match(/\/f\/([^/?]+)/);
-            key = match ? match[1] : null;
-        }
-
+        // UploadThing file key is mandatory
+        const key = body.storageKey?.trim() || null;
         if (!key) {
             return NextResponse.json(
-                { error: "Provide either a valid url or storageKey" },
+                { error: "Provide a valid storageKey" },
                 { status: 400 }
             );
         }
 
-        await deleteUploadThingFile(key);
+        await utapi.deleteFiles(key);
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error("[delete-blob] deletion failed:", err);

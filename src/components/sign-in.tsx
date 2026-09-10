@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { authEmailClientSchema } from "@/lib/email-validation-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ import { useState } from "react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const formSchema = z.object({
-    email: z.string().min(1, "Email address is required").email("Please enter a valid email address"),
+    email: authEmailClientSchema,
     password: z.string().min(1, "Password is required"),
     rememberMe: z.boolean().optional(),
 });
@@ -69,7 +70,7 @@ export function SignInForm() {
                     },
                 }
             );
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred.");
         } finally {
             form.reset();
@@ -174,6 +175,7 @@ export function SignInForm() {
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            aria-label={showPassword ? "Hide password" : "Show password"}
                                         >
                                             {showPassword ? (
                                                 <EyeOffIcon className="h-4 w-4" />
@@ -245,9 +247,9 @@ export function SignInForm() {
                         <Separator className="w-full bg-gray-200 dark:bg-gray-800" />
                     </div>
                     <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
-              Or continue with
-            </span>
+                        <span className="px-2 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
+                            Or continue with
+                        </span>
                     </div>
                 </div>
 

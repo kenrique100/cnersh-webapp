@@ -29,6 +29,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "./ui/separator";
 import { Spinner } from "./ui/spinner";
 import { authClient } from "@/lib/auth-client";
+import { authEmailClientSchema } from "@/lib/email-validation-client";
 import Image from "next/image";
 import {
     Dialog,
@@ -50,10 +51,7 @@ interface SignUpData {
 }
 
 // Email validation schema
-const emailSchema = z
-    .string()
-    .min(1, "Email address is required")
-    .email("Please enter a valid email address");
+const emailSchema = authEmailClientSchema;
 
 // Password validation schema
 const passwordSchema = z
@@ -118,6 +116,7 @@ export function SignUpForm() {
         mode: "onChange",
     });
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const watchPassword = form.watch("password");
 
     useEffect(() => {
