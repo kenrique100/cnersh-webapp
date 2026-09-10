@@ -39,7 +39,14 @@ npm audit
 npm run build
 ```
 
-Before migration `20260909223000_unique_committee_session_schedule`, query for duplicate committee sessions by `sessionType` and `sessionDate`. Resolve duplicates before creating the unique index.
+Before migration `20260909223000_unique_committee_session_schedule`, resolve duplicate committee sessions sharing a `sessionType` and `sessionDate`; the unique index cannot be created while duplicates exist.
+
+```bash
+npm run db:dedupe:sessions          # read-only report and plan
+npm run db:dedupe:sessions:apply    # merge non-conflicting duplicate groups
+```
+
+Because `CommitteeSession` has no dependent relations, collapsing a group cannot orphan records. The script merges agenda entries as a union, carries over any field present on only one row, backs up deleted rows to `backups/`, and leaves groups with conflicting committee data untouched for manual resolution. Exit code `2` means duplicates still need a human decision. See `DEPLOYMENT.md` for the full procedure.
 
 ## Migration and deployment
 

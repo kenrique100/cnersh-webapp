@@ -43,7 +43,16 @@ GROUP BY "sessionType", "sessionDate"
 HAVING COUNT(*) > 1;
 ```
 
-5. Resolve every duplicate deliberately, then run:
+5. Resolve every duplicate deliberately. The repository ships a preflight that plans this for you:
+
+```bash
+npm run db:dedupe:sessions          # read-only report, writes backups/committee-session-duplicates-*.json
+npm run db:dedupe:sessions:apply    # merges only the groups with no conflicting data
+```
+
+The report classifies each duplicate group as auto-resolvable or needing review. Apply mode backs up every row it deletes to `backups/`, runs inside one transaction, re-reads each group before writing, and refuses any group whose duplicates disagree on status, venue, minutes, notes, or quorum. Resolve those flagged groups by hand using the queries the report prints, then re-run the report until it is clean.
+
+6. Once no duplicates remain, run:
 
 ```bash
 npx prisma migrate deploy

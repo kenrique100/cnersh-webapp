@@ -93,7 +93,14 @@ For production:
 npm run db:migrate
 ```
 
-Before applying migration `20260909223000_unique_committee_session_schedule`, remove any existing duplicate committee sessions that have the same `sessionType` and `sessionDate`.
+Before applying migration `20260909223000_unique_committee_session_schedule`, resolve existing duplicate committee sessions that share a `sessionType` and `sessionDate`:
+
+```bash
+npm run db:dedupe:sessions          # read-only report and merge plan
+npm run db:dedupe:sessions:apply    # merge duplicate groups that carry no conflicting data
+```
+
+Apply mode backs up removed rows to `backups/`, runs in one transaction, and leaves any group whose duplicates disagree on committee data for manual resolution. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Run and verify
 
@@ -120,6 +127,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:migrate:dev` | Create and apply development migrations |
 | `npm run db:migrate` | Apply committed migrations |
 | `npm run db:seed` | Seed administrator accounts |
+| `npm run db:dedupe:sessions` | Report duplicate committee sessions before the uniqueness migration |
+| `npm run db:dedupe:sessions:apply` | Merge non-conflicting duplicate committee sessions |
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run db:reset` | Delete and recreate local database data |
 

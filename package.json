@@ -19,6 +19,8 @@
     "db:reset": "prisma db push --force-reset",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:dedupe:sessions": "tsx scripts/resolve-duplicate-committee-sessions.ts",
+    "db:dedupe:sessions:apply": "tsx scripts/resolve-duplicate-committee-sessions.ts --apply",
     "db:setup": "prisma generate && prisma db push && tsx prisma/seed.ts"
   },
   "dependencies": {
