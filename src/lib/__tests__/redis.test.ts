@@ -6,6 +6,7 @@ const mockIoRedisGet = jest.fn();
 const mockIoRedisSet = jest.fn();
 const mockIoRedisDel = jest.fn();
 const mockIoRedisPipeline = jest.fn();
+const mockIoRedisEval = jest.fn();
 const mockIoRedisOn = jest.fn();
 
 const mockIoRedisInstance = {
@@ -13,6 +14,7 @@ const mockIoRedisInstance = {
     set: mockIoRedisSet,
     del: mockIoRedisDel,
     pipeline: mockIoRedisPipeline,
+    eval: mockIoRedisEval,
     on: mockIoRedisOn,
 };
 
@@ -20,7 +22,7 @@ const mockIoRedisConstructor = jest.fn(() => mockIoRedisInstance);
 
 jest.mock('ioredis', () => mockIoRedisConstructor);
 
-describe('redis (memory client — no REDIS_URL)', () => {
+describe('redis (memory client - no REDIS_URL)', () => {
     const originalEnv = process.env;
 
     beforeEach(() => {
@@ -31,6 +33,7 @@ describe('redis (memory client — no REDIS_URL)', () => {
         delete globalThis.__redis;
         delete globalThis.__redis_mem;
         delete globalThis.__redis_zsets;
+        delete globalThis.__redis_zset_expiry;
     });
 
     afterEach(() => {
@@ -136,9 +139,41 @@ describe('redis (memory client — no REDIS_URL)', () => {
         const val = await redis.get('no-ttl-key');
         expect(val).toBe('value');
     });
+
+    it('compareAndDelete only removes the expected value', async () => {
+        const { redis } = await import('@/lib/redis');
+        await redis.set('lock', 'owner-a');
+
+        await expect(redis.compareAndDelete('lock', 'owner-b')).resolves.toBe(false);
+        await expect(redis.get('lock')).resolves.toBe('owner-a');
+        await expect(redis.compareAndDelete('lock', 'owner-a')).resolves.toBe(true);
+        await expect(redis.get('lock')).resolves.toBeNull();
+    });
+
+    it('atomically enforces a sliding-window maximum without recording denied attempts', async () => {
+        const { redis } = await import('@/lib/redis');
+        const now = Date.now();
+
+        await expect(redis.slidingWindow('rl:test', now, 60_000, 2, 'a')).resolves.toEqual({
+            allowed: true,
+            count: 1,
+            resetTime: now + 60_000,
+        });
+        await expect(redis.slidingWindow('rl:test', now + 1, 60_000, 2, 'b')).resolves.toEqual({
+            allowed: true,
+            count: 2,
+            resetTime: now + 60_000,
+        });
+        const denied = await redis.slidingWindow('rl:test', now + 2, 60_000, 2, 'c');
+        expect(denied).toEqual({
+            allowed: false,
+            count: 2,
+            resetTime: now + 60_000,
+        });
+    });
 });
 
-describe('redis (ioredis client — with REDIS_URL)', () => {
+describe('redis (ioredis client - with REDIS_URL)', () => {
     const originalEnv = process.env;
 
     beforeEach(() => {
@@ -148,6 +183,7 @@ describe('redis (ioredis client — with REDIS_URL)', () => {
         delete globalThis.__redis;
         delete globalThis.__redis_mem;
         delete globalThis.__redis_zsets;
+        delete globalThis.__redis_zset_expiry;
     });
 
     afterEach(() => {
@@ -215,6 +251,23 @@ describe('redis (ioredis client — with REDIS_URL)', () => {
         expect(pl).toBe(mockPl);
     });
 
+    it('uses a Lua script for an atomic shared sliding-window check', async () => {
+        mockIoRedisEval.mockResolvedValueOnce([1, 3, 123456]);
+        const { redis } = await import('@/lib/redis');
+
+        const result = await redis.slidingWindow('rl:key', 120000, 60_000, 5, 'member');
+
+        expect(mockIoRedisEval).toHaveBeenCalledWith(
+            expect.stringContaining('ZREMRANGEBYSCORE'),
+            1,
+            'rl:key',
+            60_000,
+            5,
+            'member',
+        );
+        expect(result).toEqual({ allowed: true, count: 3, resetTime: 123456 });
+    });
+
     it('reuses the same ioredis instance (singleton)', async () => {
         const { redis } = await import('@/lib/redis');
         mockIoRedisGet.mockResolvedValue('v');
@@ -232,5 +285,24 @@ describe('redis (ioredis client — with REDIS_URL)', () => {
 
         expect(consoleError).toHaveBeenCalledWith('[Redis]', 'connection refused');
         consoleError.mockRestore();
+    });
+});
+
+describe('redis production configuration', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+        process.env = originalEnv;
+        jest.resetModules();
+    });
+
+    it('requires a shared Redis URL in production', async () => {
+        jest.resetModules();
+        process.env = { ...originalEnv, NODE_ENV: 'production' };
+        delete process.env.REDIS_URL;
+
+        await expect(import('@/lib/redis')).rejects.toThrow(
+            'REDIS_URL is required in production'
+        );
     });
 });

@@ -205,7 +205,7 @@ export default function CommunityClient({
             const result = await toggleTopicChat(topicId);
             setSelectedTopic((prev) => prev ? { ...prev, chatEnabled: result.chatEnabled } : prev);
             setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, chatEnabled: result.chatEnabled } : t));
-            toast.success(result.chatEnabled ? "Chat enabled" : "Chat disabled — members can only view messages");
+            toast.success(result.chatEnabled ? "Chat enabled" : "Chat disabled - members can only view messages");
         } catch {
             toast.error("Failed to toggle chat");
         }
@@ -716,7 +716,7 @@ export default function CommunityClient({
                             <HashIcon className="h-12 w-12 text-indigo-500" />
                         </div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                            Welcome to CNERSH Community
+                            CNERSH administrator community
                         </h2>
                         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">
                             Select a channel from the sidebar to start chatting, or

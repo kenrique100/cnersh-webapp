@@ -1,4 +1,15 @@
 import { RATE_LIMITS } from "@/lib/rate-limit-config";
+import type { NextRequest } from "next/server";
+import { redis } from "@/lib/redis";
+import { rateLimit } from "@/lib/rate-limit";
+
+jest.mock("@/lib/redis", () => ({
+    redis: {
+        slidingWindow: jest.fn(),
+    },
+}));
+
+const mockedRedis = jest.mocked(redis);
 
 describe("RATE_LIMITS values", () => {
     it("auth: 5 requests per 15 minutes", () => {
@@ -57,5 +68,49 @@ describe("RATE_LIMITS immutability", () => {
             (RATE_LIMITS.auth as Record<string, unknown>).maxRequests = 999;
         }).toThrow();
         expect(RATE_LIMITS.auth.maxRequests).toBe(original);
+    });
+});
+
+describe("rateLimit", () => {
+    const request = {
+        headers: new Headers({ "x-forwarded-for": "203.0.113.10" }),
+    } as NextRequest;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it("uses the atomic Redis sliding-window operation", async () => {
+        mockedRedis.slidingWindow.mockResolvedValueOnce({
+            allowed: true,
+            count: 1,
+            resetTime: Date.now() + 60_000,
+        });
+
+        await expect(
+            rateLimit(request, { windowMs: 60_000, maxRequests: 2 }, "test")
+        ).resolves.toBeNull();
+        expect(mockedRedis.slidingWindow).toHaveBeenCalledWith(
+            "rl:test:ip:203.0.113.10",
+            expect.any(Number),
+            60_000,
+            2,
+            expect.any(String),
+        );
+    });
+
+    it("fails closed with 503 when the shared limiter is unavailable", async () => {
+        mockedRedis.slidingWindow.mockRejectedValueOnce(new Error("redis down"));
+        const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+
+        const response = await rateLimit(
+            request,
+            { windowMs: 60_000, maxRequests: 2 },
+            "test",
+        );
+
+        expect(response?.status).toBe(503);
+        expect(response?.headers.get("Retry-After")).toBe("5");
+        consoleError.mockRestore();
     });
 });

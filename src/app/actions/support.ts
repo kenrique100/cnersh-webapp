@@ -3,6 +3,8 @@
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { sanitizeText } from "@/lib/sanitize";
+import { z } from "zod";
 
 export async function submitSupportMessage(message: string) {
     const session = await authSession();
@@ -11,8 +13,11 @@ export async function submitSupportMessage(message: string) {
     if (!message || message.trim().length === 0) {
         throw new Error("Message cannot be empty");
     }
+    const parsed = z.string().trim().max(5_000).safeParse(message);
+    if (!parsed.success) throw new Error("Message must be 5000 characters or fewer");
 
-    const trimmedMessage = message.trim();
+    const trimmedMessage = sanitizeText(parsed.data).trim();
+    if (!trimmedMessage) throw new Error("Message cannot be empty");
 
     // Find all super admins to notify
     const superAdmins = await db.user.findMany({

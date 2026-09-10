@@ -90,7 +90,7 @@ export function ChangePasswordForm() {
                     currentPassword: data.currentPassword,
                 },
                 {
-                    // Removed 'async' — none of these calls need to be awaited
+                    // Removed 'async' - none of these calls need to be awaited
                     onSuccess: () => {
                         toast.success("Your password has been changed successfully");
                         form.reset();

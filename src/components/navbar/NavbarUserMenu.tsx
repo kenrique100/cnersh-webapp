@@ -24,7 +24,7 @@ export default function NavbarUserMenu({ user, userInitials, handleSignOut }: Na
         <div className="hidden lg:block">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-3 cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <button className="flex items-center gap-3 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
                             <AvatarImage src={user.image || undefined} alt={user.name || ""} />
                             <AvatarFallback className="bg-blue-700 text-white dark:bg-blue-600">
@@ -51,13 +51,13 @@ export default function NavbarUserMenu({ user, userInitials, handleSignOut }: Na
                         </p>
                     </div>
                     <DropdownMenuItem asChild>
-                        <Link href="/update-profile" className="cursor-pointer">
+                        <Link href="/update-profile">
                             <UserIcon className="mr-2 h-4 w-4" />
                             <span>View Profile</span>
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                        <Link href="/settings" className="cursor-pointer">
+                        <Link href="/settings">
                             <SettingsIcon className="mr-2 h-4 w-4" />
                             <span>Settings</span>
                         </Link>
@@ -65,7 +65,7 @@ export default function NavbarUserMenu({ user, userInitials, handleSignOut }: Na
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                         onClick={handleSignOut}
-                        className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
+                        className="text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
                     >
                         <LogOutIcon className="mr-2 h-4 w-4" />
                         <span>Logout</span>

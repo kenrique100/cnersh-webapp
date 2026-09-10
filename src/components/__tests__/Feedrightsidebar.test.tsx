@@ -74,13 +74,13 @@ describe("FeedRightSidebar", () => {
         expect(screen.getByText(/no recent activity/i)).toBeInTheDocument();
     });
 
-    it("renders Stay Connected when not logged in", () => {
+    it("renders public community information when not logged in", () => {
         render(<FeedRightSidebar isLoggedIn={false} />);
-        expect(screen.getByText("Stay Connected")).toBeInTheDocument();
+        expect(screen.getByText("Public community updates")).toBeInTheDocument();
     });
 
-    it("does not render Stay Connected when logged in", () => {
+    it("does not render public community information when logged in", () => {
         render(<FeedRightSidebar isLoggedIn />);
-        expect(screen.queryByText("Stay Connected")).not.toBeInTheDocument();
+        expect(screen.queryByText("Public community updates")).not.toBeInTheDocument();
     });
 });

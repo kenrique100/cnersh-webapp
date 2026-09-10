@@ -48,10 +48,10 @@ export default function FeedLeftSidebar({
     return (
       <div className="space-y-4">
         {/* Guest Welcome Card */}
-        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-4 pb-6 text-center">
+        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg overflow-hidden">
+          <div className="bg-blue-800 p-4 pb-6 text-center">
             <div className="flex justify-center mb-2">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-md">
+              <div className="flex items-center justify-center w-16 h-16 rounded-md bg-white">
                 <Image
                   src="/logo.png"
                   alt="CNERSH Logo"
@@ -72,7 +72,7 @@ export default function FeedLeftSidebar({
             <div className="flex flex-col gap-2 mt-3">
               <Link href="/sign-up">
                 <Button size="sm" className="w-full bg-blue-700 hover:bg-blue-800 text-white text-xs">
-                  Get Started
+                  Create account
                 </Button>
               </Link>
               <Link href="/sign-in">
@@ -85,30 +85,24 @@ export default function FeedLeftSidebar({
         </Card>
 
         {/* Features */}
-        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
           <CardContent className="py-4 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
-                <ShieldCheckIcon className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-              </div>
+              <ShieldCheckIcon className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Secure Access</p>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400">Role-based access control</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900 shrink-0">
-                <UsersIcon className="w-4 h-4 text-green-700 dark:text-green-400" />
-              </div>
+              <UsersIcon className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Community</p>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400">Collaborate nationwide</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900 shrink-0">
-                <FolderIcon className="w-4 h-4 text-purple-700 dark:text-purple-400" />
-              </div>
+              <FolderIcon className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Protocol Submissions</p>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400">Submit for ethical review</p>
@@ -125,12 +119,12 @@ export default function FeedLeftSidebar({
   return (
     <Card
       className={cn(
-        "overflow-hidden rounded-xl border-0 bg-white shadow-sm",
+        "overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm",
         "dark:bg-zinc-900 dark:shadow-zinc-800/20"
       )}
     >
       {/* Cover banner */}
-      <div className="h-[60px] bg-gradient-to-r from-blue-600 to-indigo-500" />
+      <div className="h-[60px] bg-blue-700" />
 
       {/* Avatar + Info */}
       <div className="flex flex-col items-center px-4 pb-4">
@@ -154,7 +148,7 @@ export default function FeedLeftSidebar({
             {userGender}
           </p>
         )}
-        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 capitalize">
+        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 capitalize">
           {userRole || (isAdmin ? "Admin" : "Community Member")}
         </span>
       </div>

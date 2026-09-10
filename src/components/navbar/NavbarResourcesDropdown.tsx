@@ -34,7 +34,7 @@ export function ResourcesDesktopDropdown() {
                 <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
             </button>
             {isOpen && (
-                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[240px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
+                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[240px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1.5 overflow-hidden">
                     <a href="https://elearning.trree.org" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <GlobeIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />WHO links for training

@@ -86,7 +86,7 @@ export function DynamicPageDesktopDropdown({ page }: { page: NavbarPage }) {
                 <ChevronDownIcon className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
             </button>
             {isOpen && (
-                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[200px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 overflow-hidden">
+                <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[200px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1.5 overflow-hidden">
                     {page.items.map((item) => {
                         const href = item.url || item.fileUrl;
                         if (!href) return null;

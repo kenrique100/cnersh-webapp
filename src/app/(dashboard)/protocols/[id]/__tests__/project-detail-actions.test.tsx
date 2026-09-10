@@ -422,7 +422,7 @@ describe("ProjectDetailActions", () => {
                     currentStatus="SUBMITTED"
                 />,
             );
-            await user.click(screen.getByRole("button", { name: /return — incomplete/i }));
+            await user.click(screen.getByRole("button", { name: /return - incomplete/i }));
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith(
                     "Please specify what is missing or incomplete before returning",
@@ -503,7 +503,7 @@ describe("ProjectDetailActions", () => {
                     currentStatus="SUBMITTED"
                 />,
             );
-            expect(screen.getByRole("button", { name: /return — incomplete/i })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: /return - incomplete/i })).toBeInTheDocument();
             expect(screen.getByRole("button", { name: /mark pending review/i })).toBeInTheDocument();
             expect(
                 screen.queryByRole("button", { name: /schedule session/i }),
@@ -527,7 +527,7 @@ describe("ProjectDetailActions", () => {
                 screen.getByRole("button", { name: /approve with conditions/i }),
             ).toBeInTheDocument();
             expect(
-                screen.queryByRole("button", { name: /return — incomplete/i }),
+                screen.queryByRole("button", { name: /return - incomplete/i }),
             ).not.toBeInTheDocument();
             expect(
                 screen.queryByRole("button", { name: /mark pending review/i }),

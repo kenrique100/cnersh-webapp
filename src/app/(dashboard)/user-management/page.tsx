@@ -1,7 +1,6 @@
-import { auth } from "@/lib/auth";
 import { authIsRequired } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
+import { canManageRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import UserManagementClient, { Role } from "./user-client";
 import { getUserManagementData } from "@/app/actions/admin";
@@ -27,60 +26,24 @@ export default async function UserManagementPage() {
         redirect("/dashboard");
     }
 
-    const { users } = await auth.api.listUsers({
-        query: {},
-        headers: await headers(),
-    });
-
-    const hasDeletePermission = await auth.api.userHasPermission({
-        body: {
-            userId: session?.user.id,
-            permissions: {
-                user: ["delete"],
-            },
-        },
-    });
-
-    if (!users) redirect("/sign-in");
-
-    // Fetch additional user data (image, banned status) from DB
-    const userIds = users.map((u: { id: string }) => u.id);
-    const dbUsers = await db.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, image: true, banned: true },
-    });
-    const dbUserMap = new Map<string, { id: string; image: string | null; banned: boolean | null }>(
-        dbUsers.map((u: { id: string; image: string | null; banned: boolean | null }) => [u.id, u])
-    );
-    
-    const formattedUsers = users
-        .map((user) => {
-            const dbUser = dbUserMap.get(user.id);
-            return {
-                id: user.id,
-                name: user.name,
-                role: user.role as Role,
-                email: user.email,
-                emailVerified: user.emailVerified,
-                hasDeletePermission: hasDeletePermission.success,
-                image: dbUser?.image || null,
-                banned: dbUser?.banned || false,
-            };
-        })
-        .filter((f) => {
-            // Super admin can see all users (user, admin, superadmin)
-            if (currentUser?.role === "superadmin") return true;
-            // Admin can only see and manage regular users (not other admins or superadmins)
-            return f.role === "user";
-        });
-
-    // Fetch user management dashboard data
     let managementData = null;
     try {
         managementData = await getUserManagementData();
     } catch (error) {
         console.error("Error fetching user management data:", error);
     }
+    if (!managementData) redirect("/dashboard");
+
+    const formattedUsers = managementData.users.map((user) => ({
+        id: user.id,
+        name: user.name || "Unnamed user",
+        role: user.role as Role,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        hasDeletePermission: canManageRole(currentUser.role, user.role),
+        image: user.image || null,
+        banned: user.banned || false,
+    }));
 
     return (
         <div className="w-full p-2 sm:p-4 lg:p-6 mx-auto max-w-7xl min-h-dvh">

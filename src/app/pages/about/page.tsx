@@ -73,8 +73,8 @@ export default async function AboutUsPage() {
                 {/* Article Content */}
                 <div className="space-y-6">
                     {/* Hero Image Section */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-                        <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg overflow-hidden">
+                        <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] bg-gray-100 dark:bg-gray-800">
                             <Image
                                 src="/about-hero.png"
                                 alt="CNERSH - About Us"
@@ -87,7 +87,7 @@ export default async function AboutUsPage() {
                     </Card>
 
                     {/* Who We Are */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                 <UsersIcon className="w-5 h-5 text-blue-600 shrink-0" />
@@ -102,39 +102,21 @@ export default async function AboutUsPage() {
                                 The National Ethics Committee for Health Research on Humans (CNERSH) reviews research proposals involving human participants to ensure they are ethically sound and compliant with relevant guidelines and regulations, protecting the rights, safety, and well-being of participants.
                             </p>
 
-                            {/* Image Gallery */}
+                            {/* Institutional materials */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
+                                <div className="relative aspect-[4/3] rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-1.png"
-                                        alt="CNERSH - About Us Image 1"
+                                        alt="CNERSH framework for protecting research participants"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 50vw"
                                     />
                                 </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
+                                <div className="relative aspect-[4/3] rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                                     <Image
                                         src="/about-2.png"
-                                        alt="CNERSH - About Us Image 2"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, 50vw"
-                                    />
-                                </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-3.png"
-                                        alt="CNERSH - About Us Image 3"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, 50vw"
-                                    />
-                                </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-4.png"
-                                        alt="CNERSH - About Us Image 4"
+                                        alt="CNERSH committee members at an institutional event"
                                         fill
                                         className="object-contain"
                                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -146,7 +128,7 @@ export default async function AboutUsPage() {
 
                     {/* Vision & Mission */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                     <EyeIcon className="w-5 h-5 text-blue-600 shrink-0" />
@@ -159,7 +141,7 @@ export default async function AboutUsPage() {
                                 </p>
                             </CardContent>
                         </Card>
-                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                     <TargetIcon className="w-5 h-5 text-green-600 shrink-0" />
@@ -174,82 +156,39 @@ export default async function AboutUsPage() {
                         </Card>
                     </div>
 
-                    {/* Additional Images */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                        <CardContent className="py-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-5.png"
-                                        alt="CNERSH - About Us Image 5"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, 33vw"
-                                    />
-                                </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-6.png"
-                                        alt="CNERSH - About Us Image 6"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, 33vw"
-                                    />
-                                </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-7.png"
-                                        alt="CNERSH - About Us Image 7"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, 33vw"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
                     {/* Core Values */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <ShieldCheckIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <ShieldCheckIcon className="w-5 h-5 text-blue-700 dark:text-blue-400 shrink-0" />
                                 Our Core Values
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
-                                        <ShieldCheckIcon className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-                                    </div>
+                                    <ShieldCheckIcon className="w-4 h-4 mt-1 text-blue-700 dark:text-blue-400 shrink-0" />
                                     <div>
                                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Integrity</h3>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Upholding the highest standards of honesty and transparency in all our operations.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900 shrink-0">
-                                        <UsersIcon className="w-4 h-4 text-green-700 dark:text-green-400" />
-                                    </div>
+                                    <UsersIcon className="w-4 h-4 mt-1 text-blue-700 dark:text-blue-400 shrink-0" />
                                     <div>
                                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Respect for Human Dignity</h3>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Ensuring the protection and well-being of all research participants.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900 shrink-0">
-                                        <GlobeIcon className="w-4 h-4 text-purple-700 dark:text-purple-400" />
-                                    </div>
+                                    <GlobeIcon className="w-4 h-4 mt-1 text-blue-700 dark:text-blue-400 shrink-0" />
                                     <div>
                                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Accountability</h3>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Taking responsibility for ethical oversight and governance in health research.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900 shrink-0">
-                                        <EyeIcon className="w-4 h-4 text-orange-700 dark:text-orange-400" />
-                                    </div>
+                                    <EyeIcon className="w-4 h-4 mt-1 text-blue-700 dark:text-blue-400 shrink-0" />
                                     <div>
                                         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Transparency</h3>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Fostering open communication and clear ethical guidelines for all stakeholders.</p>
@@ -259,40 +198,6 @@ export default async function AboutUsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Bottom Images */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl overflow-hidden">
-                        <CardContent className="py-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-8.png"
-                                        alt="CNERSH - About Us Image 8"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    />
-                                </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                                    <Image
-                                        src="/about-9.png"
-                                        alt="CNERSH - About Us Image 9"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    />
-                                </div>
-                                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 sm:col-span-2 lg:col-span-1">
-                                    <Image
-                                        src="/about-10.png"
-                                        alt="CNERSH - About Us Image 10"
-                                        fill
-                                        className="object-contain"
-                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </main>
 

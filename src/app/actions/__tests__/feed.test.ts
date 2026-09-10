@@ -51,6 +51,13 @@ jest.mock('@/lib/auth-utils', () => ({
     authSession: jest.fn(),
 }));
 
+jest.mock('@/lib/permissions', () => ({
+    isAdminRole: (role: unknown) => role === 'admin' || role === 'superadmin',
+    canManageRole: (actor: string, target: string) =>
+        ({ user: 0, admin: 1, superadmin: 2 }[actor] ?? -1) >
+        ({ user: 0, admin: 1, superadmin: 2 }[target] ?? 99),
+}));
+
 jest.mock('@/lib/db', () => ({
     db: {
         post: {},
@@ -169,6 +176,23 @@ beforeEach(() => {
     mockedDb.comment = {};
     mockedDb.commentLike = {};
     mockedDb.$queryRaw = jest.fn();
+    mockSession('user-1', 'Alice');
+    mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+    mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+        id: 'p1',
+        userId: 'user-1',
+        deleted: false,
+        commentsEnabled: true,
+        user: { role: 'user', email: 'alice@test.com', name: 'Alice' },
+    });
+    mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
+        id: 'c1',
+        userId: 'user-1',
+        postId: 'p1',
+        deleted: false,
+        post: { deleted: false, commentsEnabled: true },
+        user: { role: 'user', email: 'alice@test.com', name: 'Alice' },
+    });
 
     // Keep the live reference in sync so the action modules see the reset tables.
     (db as unknown as MockDb).post = mockedDb.post;
@@ -305,6 +329,14 @@ describe('createPost', () => {
 // ── getPosts ──────────────────────────────────────────────────────────
 
 describe('getPosts', () => {
+    it('rejects unauthenticated feed reads', async () => {
+        mockedAuthSession.mockResolvedValue(null);
+        mockedDb.post.findMany = jest.fn();
+
+        await expect(getPosts()).rejects.toThrow('Unauthorized');
+        expect(mockedDb.post.findMany).not.toHaveBeenCalled();
+    });
+
     it('returns paginated posts with recentActivity', async () => {
         const mockPosts = [
             {
@@ -506,6 +538,8 @@ describe('addComment', () => {
         });
         mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
             userId: 'user-3',
+            postId: 'p1',
+            deleted: false,
             user: { email: 'parent@test.com', name: 'ParentUser' },
         });
         mockedDb.user.findMany = jest.fn().mockResolvedValue([]);
@@ -566,6 +600,34 @@ describe('addComment', () => {
             expect.objectContaining({ to: 'dave@test.com', notificationType: 'MENTION' })
         );
     });
+
+    it('rejects comments when the post is closed', async () => {
+        mockSession('user-2');
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            deleted: false,
+            commentsEnabled: false,
+            userId: 'user-1',
+            user: { role: 'user' },
+        });
+        mockedDb.comment.create = jest.fn();
+
+        await expect(addComment('p1', 'No')).rejects.toThrow('Comments are closed');
+        expect(mockedDb.comment.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a parent comment from a different post', async () => {
+        mockSession('user-2');
+        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-3',
+            postId: 'other-post',
+            deleted: false,
+            user: { email: null, name: 'Other' },
+        });
+
+        await expect(addComment('p1', 'No', 'c1')).rejects.toThrow(
+            'Invalid parent comment',
+        );
+    });
 });
 
 // ── getPostComments ───────────────────────────────────────────────────
@@ -622,7 +684,10 @@ describe('deletePost', () => {
 
     it('allows admin to delete', async () => {
         mockSession('admin-id');
-        mockedDb.post.findUnique = jest.fn().mockResolvedValue({ userId: 'other-user' });
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            userId: 'other-user',
+            user: { role: 'user' },
+        });
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
         mockedDb.post.update = jest.fn().mockResolvedValue(undefined);
         await deletePost('p1');
@@ -631,9 +696,26 @@ describe('deletePost', () => {
 
     it('throws Forbidden for non-owner non-admin', async () => {
         mockSession('user-2');
-        mockedDb.post.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1' });
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-1',
+            user: { role: 'user' },
+        });
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
         await expect(deletePost('p1')).rejects.toThrow('Forbidden');
+    });
+
+    it('prevents an admin from deleting a superadmin post', async () => {
+        mockSession('admin-id');
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            userId: 'super-id',
+            deleted: false,
+            user: { role: 'superadmin' },
+        });
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
+        mockedDb.post.update = jest.fn();
+
+        await expect(deletePost('p1')).rejects.toThrow('Forbidden');
+        expect(mockedDb.post.update).not.toHaveBeenCalled();
     });
 });
 
@@ -726,6 +808,30 @@ describe('getUserActivity', () => {
         expect(await getUserActivity('user-1')).toEqual([]);
         consoleErrorSpy.mockRestore();
     });
+
+    it('prevents ordinary users from reading another user activity', async () => {
+        mockSession('user-1');
+        mockedDb.user.findUnique = jest
+            .fn()
+            .mockResolvedValueOnce({ role: 'user' })
+            .mockResolvedValueOnce({ role: 'user' });
+        mockedDb.post.findMany = jest.fn();
+
+        await expect(getUserActivity('user-2')).rejects.toThrow('Forbidden');
+        expect(mockedDb.post.findMany).not.toHaveBeenCalled();
+    });
+
+    it('prevents an admin from reading superadmin activity', async () => {
+        mockSession('admin-1');
+        mockedDb.user.findUnique = jest
+            .fn()
+            .mockResolvedValueOnce({ role: 'admin' })
+            .mockResolvedValueOnce({ role: 'superadmin' });
+        mockedDb.post.findMany = jest.fn();
+
+        await expect(getUserActivity('superadmin-1')).rejects.toThrow('Forbidden');
+        expect(mockedDb.post.findMany).not.toHaveBeenCalled();
+    });
 });
 
 // ── toggleCommentLike ─────────────────────────────────────────────────
@@ -794,7 +900,11 @@ describe('toggleCommentLike', () => {
 describe('editComment', () => {
     it('edits own comment', async () => {
         mockSession('user-1');
-        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1' });
+        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-1',
+            post: { deleted: false },
+            user: { role: 'user' },
+        });
         mockedDb.comment.update = jest
             .fn()
             .mockResolvedValue({ id: 'c1', content: 'new' });
@@ -823,7 +933,11 @@ describe('deleteComment', () => {
 
     it('allows admin to delete', async () => {
         mockSession('admin-id');
-        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({ userId: 'user-2' });
+        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-2',
+            post: { deleted: false },
+            user: { role: 'user' },
+        });
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
         mockedDb.comment.update = jest.fn().mockResolvedValue({});
         await deleteComment('c1');
@@ -832,7 +946,11 @@ describe('deleteComment', () => {
 
     it('throws Forbidden for non-owner non-admin', async () => {
         mockSession('user-3');
-        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({ userId: 'user-2' });
+        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-2',
+            post: { deleted: false },
+            user: { role: 'user' },
+        });
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
         await expect(deleteComment('c1')).rejects.toThrow('Forbidden');
     });
@@ -854,6 +972,7 @@ describe('searchUsers', () => {
                 where: {
                     name: { contains: 'Bob', mode: 'insensitive' },
                     id: { not: 'user-1' },
+                    banned: { not: true },
                 },
             })
         );

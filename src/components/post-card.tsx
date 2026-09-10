@@ -53,7 +53,7 @@ interface PostCardProps { children: React.ReactNode; }
 export function PostCard({ children }: PostCardProps) { return <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow">{children}</Card>; }
 
 /* ---------------------------------------------------------------------- */
-/* PostContextBar — shown above a PostCard when there is recent activity  */
+/* PostContextBar - shown above a PostCard when there is recent activity  */
 /* (other users currently viewing / reacting / commenting on the post).   */
 /* This was previously imported by feed-client.tsx but never defined,     */
 /* which caused the "Export PostContextBar doesn't exist" build error.    */

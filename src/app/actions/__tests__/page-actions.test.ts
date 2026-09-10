@@ -194,7 +194,7 @@ describe('getPages', () => {
     });
 
     it('does not require authentication', async () => {
-        // No session set — getPages should still work
+        // No session set - getPages should still work
         mockedAuthSession.mockResolvedValue(null);
         mockedDb.page.findMany = jest.fn().mockResolvedValue([]);
         syncDb();

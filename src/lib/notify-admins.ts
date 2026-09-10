@@ -36,7 +36,7 @@ export async function notifyAdmins(data: {
     // Send email notifications to admins (fire-and-forget, dispatched concurrently)
     const emailPromises = admins
         // Type guard (`admin is typeof admin & { email: string }`) narrows
-        // `email` from `string | null` to `string` for everything below —
+        // `email` from `string | null` to `string` for everything below -
         // this is what fixes the TS2345 error.
         .filter((admin): admin is typeof admin & { email: string } => !!admin.email)
         .map((admin) => {

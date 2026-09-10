@@ -61,7 +61,7 @@ export function ResetPasswordForm() {
     };
 
     return (
-        <Card className="w-full max-w-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg rounded-2xl mx-auto relative overflow-hidden">
+        <Card className="relative mx-auto w-full max-w-md overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-950">
             <div className="absolute top-6 left-6">
                 <Link
                     href="/sign-in"
@@ -74,7 +74,7 @@ export function ResetPasswordForm() {
 
             <CardHeader className="space-y-6 px-6 sm:px-8 pt-20 pb-6">
                 <div className="flex flex-col items-center space-y-4">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-600 dark:bg-white">
                         <Image
                             src="/logo.png"
                             alt="CNERSH Logo"
@@ -89,7 +89,7 @@ export function ResetPasswordForm() {
                             Create new password
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                            Your new password must be different from previous used passwords.
+                            Your new password must be different from passwords you have used before.
                         </CardDescription>
                     </div>
                 </div>

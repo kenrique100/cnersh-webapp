@@ -3,7 +3,55 @@
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
+import { isAdminRole, canManageRole } from "@/lib/permissions";
+import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { z } from "zod";
+
+const idSchema = z.string().trim().min(1).max(128);
+const pageSchema = z.number().int().min(1).max(1_000_000).catch(1);
+const limitSchema = z.number().int().min(1).max(50).catch(10);
+const shortText = z.string().trim().min(1).max(200).transform(sanitizeText);
+const contentText = z.string().trim().min(1).max(10_000).transform(sanitizeText);
+
+type CommunityActor = {
+    session: NonNullable<Awaited<ReturnType<typeof authSession>>>;
+    role: "admin" | "superadmin";
+};
+
+async function requireCommunityAccess(): Promise<CommunityActor> {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (!isAdminRole(user?.role)) {
+        throw new Error("Only admins and superadmins can access the community");
+    }
+    return { session, role: user.role };
+}
+
+function cleanOptionalText(value: string | undefined, max = 1_000) {
+    if (value === undefined) return undefined;
+    return z.string().trim().max(max).transform(sanitizeText).parse(value) || undefined;
+}
+
+function cleanOptionalUrl(value: string | null | undefined): string | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null || value.trim() === "") return null;
+    if (value.length > 2_048) throw new Error("Invalid URL");
+    const safe = sanitizeUrl(value);
+    if (!safe) throw new Error("Invalid URL");
+    return safe;
+}
+
+function cleanUrls(values: string[] | undefined, max: number) {
+    if (values === undefined) return undefined;
+    return z.array(z.string()).max(max).parse(values).map((value) => cleanOptionalUrl(value)).filter(
+        (value): value is string => Boolean(value),
+    );
+}
 
 export async function createTopic(data: {
     title: string;
@@ -16,28 +64,28 @@ export async function createTopic(data: {
     documents?: string[];
     linkUrl?: string;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    // Only admins and superadmins can access the community
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-    if (!isAdmin) throw new Error("Only admins and superadmins can access the community");
+    const { session } = await requireCommunityAccess();
+    const title = shortText.parse(data.title);
+    const content = contentText.parse(data.content);
+    const category = z.string().trim().min(1).max(80).transform(sanitizeText).parse(data.category);
+    const image = cleanOptionalUrl(data.image);
+    const images = cleanUrls(data.images, 10) ?? [];
+    const video = cleanOptionalUrl(data.video);
+    const videos = cleanUrls(data.videos, 5) ?? [];
+    const documents = cleanUrls(data.documents, 10) ?? [];
+    const linkUrl = cleanOptionalUrl(data.linkUrl);
 
     const topic = await db.communityTopic.create({
         data: {
-            title: data.title,
-            content: data.content,
-            category: data.category,
-            image: data.image || null,
-            images: data.images || [],
-            video: data.video || null,
-            videos: data.videos || [],
-            documents: data.documents || [],
-            linkUrl: data.linkUrl || null,
+            title,
+            content,
+            category,
+            image: image || null,
+            images,
+            video: video || null,
+            videos,
+            documents,
+            linkUrl: linkUrl || null,
             userId: session.user.id,
         },
         include: {
@@ -47,77 +95,67 @@ export async function createTopic(data: {
         },
     });
 
-    // If it's an announcement, notify all users and send emails
-    if (data.category === "Announcements") {
+    if (category === "Announcements") {
         try {
-            const allUsers = await db.user.findMany({
+            const communityUsers = await db.user.findMany({
                 where: {
                     id: { not: session.user.id },
+                    role: { in: ["admin", "superadmin"] },
                     banned: { not: true },
                 },
                 select: { id: true, email: true, name: true },
             });
-
-            if (allUsers.length > 0) {
-                const announcementMessage = `New announcement: ${data.title}`;
+            const message = `New announcement: ${title}`;
+            if (communityUsers.length) {
                 await db.notification.createMany({
-                    data: allUsers.map((u) => ({
+                    data: communityUsers.map((user) => ({
                         type: "ANNOUNCEMENT" as const,
-                        message: announcementMessage,
+                        message,
                         link: "/community",
-                        userId: u.id,
+                        userId: user.id,
                     })),
                 });
-
-                // Send email notifications (non-blocking)
-                for (const u of allUsers) {
-                    if (u.email) {
-                        sendNotificationEmail({
-                            to: u.email,
-                            userName: u.name || "User",
-                            notificationMessage: announcementMessage,
-                            notificationType: "ANNOUNCEMENT",
-                            actionUrl: "/community",
-                        }).catch((err) => console.error("Error sending announcement email:", err));
-                    }
-                }
+                void Promise.allSettled(communityUsers.filter((user) => user.email).map((user) =>
+                    sendNotificationEmail({
+                        to: user.email,
+                        userName: user.name || "User",
+                        notificationMessage: message,
+                        notificationType: "ANNOUNCEMENT",
+                        actionUrl: "/community",
+                    }),
+                ));
             }
         } catch (error) {
             console.error("Error sending announcement notifications:", error);
         }
     }
-
     return topic;
 }
 
-export async function getTopics(category?: string, page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
-
+export async function getTopics(category?: string, page = 1, limit = 10) {
+    await requireCommunityAccess();
+    const safePage = pageSchema.parse(page);
+    const safeLimit = limitSchema.parse(limit);
+    const safeCategory = category
+        ? z.string().trim().min(1).max(80).transform(sanitizeText).parse(category)
+        : undefined;
+    const where = { deleted: false, ...(safeCategory ? { category: safeCategory } : {}) };
     try {
         const [topics, total] = await Promise.all([
             db.communityTopic.findMany({
-                where: {
-                    deleted: false,
-                    ...(category ? { category } : {}),
-                },
+                where,
                 include: {
                     user: { select: { id: true, name: true, image: true, role: true } },
-                    _count: { select: { replies: true, likes: true } },
+                    _count: { select: { replies: { where: { deleted: false } }, likes: true } },
                     likes: { select: { userId: true, isDislike: true } },
                 },
                 orderBy: { createdAt: "desc" },
-                skip,
-                take: limit,
+                skip: (safePage - 1) * safeLimit,
+                take: safeLimit,
             }),
-            db.communityTopic.count({
-                where: {
-                    deleted: false,
-                    ...(category ? { category } : {}),
-                },
-            }),
+            db.communityTopic.count({ where }),
         ]);
-
-        return { topics, total, pages: Math.ceil(total / limit) };
+        return { topics, total, pages: Math.ceil(total / safeLimit) };
     } catch (error) {
         console.error("Error fetching topics:", error);
         return { topics: [], total: 0, pages: 0 };
@@ -125,8 +163,10 @@ export async function getTopics(category?: string, page: number = 1, limit: numb
 }
 
 export async function getTopicWithReplies(topicId: string) {
+    await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
     const topic = await db.communityTopic.findUnique({
-        where: { id: topicId, deleted: false },
+        where: { id },
         include: {
             user: { select: { id: true, name: true, image: true, role: true } },
             likes: { select: { userId: true, isDislike: true } },
@@ -153,8 +193,7 @@ export async function getTopicWithReplies(topicId: string) {
             },
         },
     });
-
-    return topic;
+    return topic?.deleted ? null : topic;
 }
 
 export async function addReply(data: {
@@ -177,246 +216,189 @@ export async function addReply(data: {
     eventDate?: string;
     eventLocation?: string;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    // Only admins and superadmins can access the community
-    const currentUser = await db.user.findUnique({
-        where: {id: session.user.id},
-        select: {role: true},
+    const { session } = await requireCommunityAccess();
+    const topicId = idSchema.parse(data.topicId);
+    const parentId = data.parentId ? idSchema.parse(data.parentId) : undefined;
+    const content = contentText.parse(data.content);
+    const topic = await db.communityTopic.findUnique({
+        where: { id: topicId },
+        select: { chatEnabled: true, deleted: true },
     });
-    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can access the community");
+    if (!topic || topic.deleted) throw new Error("Topic not found");
+    if (!topic.chatEnabled) throw new Error("Topic is closed");
+
+    const parentReply = parentId
+        ? await db.communityReply.findUnique({
+            where: { id: parentId },
+            select: { userId: true, topicId: true, deleted: true, user: { select: { email: true, name: true } } },
+        })
+        : null;
+    if (parentId && (!parentReply || parentReply.deleted || parentReply.topicId !== topicId)) {
+        throw new Error("Invalid parent reply");
     }
+
+    const pollQuestion = cleanOptionalText(data.pollQuestion, 300);
+    const pollOptions = data.pollOptions === undefined
+        ? []
+        : z.array(z.string().trim().min(1).max(200).transform(sanitizeText)).min(2).max(10).parse(data.pollOptions);
+    if (Boolean(pollQuestion) !== (pollOptions.length > 0)) throw new Error("Invalid poll");
+    const eventDate = data.eventDate ? new Date(data.eventDate) : null;
+    if (eventDate && Number.isNaN(eventDate.getTime())) throw new Error("Invalid event date");
 
     const reply = await db.communityReply.create({
         data: {
-            content: data.content,
-            topicId: data.topicId,
-            parentId: data.parentId || null,
-            image: data.image || null,
-            images: data.images || [],
-            video: data.video || null,
-            videos: data.videos || [],
-            audio: data.audio || null,
-            audios: data.audios || [],
-            voiceNote: data.voiceNote || null,
-            document: data.document || null,
-            documents: data.documents || [],
-            linkUrl: data.linkUrl || null,
-            pollQuestion: data.pollQuestion || null,
-            pollOptions: data.pollOptions || [],
-            pollVotes: data.pollQuestion ? {} : undefined,
-            eventTitle: data.eventTitle || null,
-            eventDate: data.eventDate ? new Date(data.eventDate) : null,
-            eventLocation: data.eventLocation || null,
+            content,
+            topicId,
+            parentId: parentId || null,
+            image: cleanOptionalUrl(data.image) || null,
+            images: cleanUrls(data.images, 10) ?? [],
+            video: cleanOptionalUrl(data.video) || null,
+            videos: cleanUrls(data.videos, 5) ?? [],
+            audio: cleanOptionalUrl(data.audio) || null,
+            audios: cleanUrls(data.audios, 5) ?? [],
+            voiceNote: cleanOptionalUrl(data.voiceNote) || null,
+            document: cleanOptionalUrl(data.document) || null,
+            documents: cleanUrls(data.documents, 10) ?? [],
+            linkUrl: cleanOptionalUrl(data.linkUrl) || null,
+            pollQuestion: pollQuestion || null,
+            pollOptions,
+            pollVotes: pollQuestion ? {} : undefined,
+            eventTitle: cleanOptionalText(data.eventTitle, 200) || null,
+            eventDate,
+            eventLocation: cleanOptionalText(data.eventLocation, 300) || null,
             userId: session.user.id,
         },
         include: {
-            user: {select: {id: true, name: true, image: true, role: true}},
+            user: { select: { id: true, name: true, image: true, role: true } },
         },
     });
 
-    // Create notifications asynchronously (don't block the reply)
     try {
         const notifications: { type: "MENTION" | "COMMENT"; message: string; link: string; userId: string }[] = [];
-        const emailRecipients: { email: string; name: string; message: string; type: string }[] = [];
-
-        // Notify @mentioned users
-        const mentionMatches = data.content.match(/@(\w+(?:\s\w+)?)/g);
-        if (mentionMatches) {
-            const mentionedNames = mentionMatches.map(m => m.slice(1).trim());
+        const names = [...content.matchAll(/@(\w+(?:\s\w+)?)/g)].map((match) => match[1].trim()).slice(0, 20);
+        if (names.length) {
             const mentionedUsers = await db.user.findMany({
-                where: {name: {in: mentionedNames}, banned: {not: true}},
-                select: {id: true, email: true, name: true},
+                where: {
+                    name: { in: names },
+                    role: { in: ["admin", "superadmin"] },
+                    banned: { not: true },
+                    id: { not: session.user.id },
+                },
+                select: { id: true },
             });
-            for (const u of mentionedUsers) {
-                if (u.id !== session.user.id) {
-                    const mentionMessage = `${session.user.name || "Someone"} mentioned you in the community`;
-                    notifications.push({
-                        type: "MENTION",
-                        message: mentionMessage,
-                        link: `/community`,
-                        userId: u.id,
-                    });
-                    if (u.email) {
-                        emailRecipients.push({
-                            email: u.email,
-                            name: u.name || "User",
-                            message: mentionMessage,
-                            type: "MENTION",
-                        });
-                    }
-                }
-            }
+            notifications.push(...mentionedUsers.map((user) => ({
+                type: "MENTION" as const,
+                message: `${session.user.name || "Someone"} mentioned you in the community`,
+                link: "/community",
+                userId: user.id,
+            })));
         }
-
-        // Notify parent reply author when someone replies to their message
-        if (data.parentId) {
-            const parentReply = await db.communityReply.findUnique({
-                where: {id: data.parentId},
-                select: {userId: true, user: {select: {email: true, name: true}}},
+        if (parentReply && parentReply.userId !== session.user.id) {
+            notifications.push({
+                type: "COMMENT",
+                message: `${session.user.name || "Someone"} replied to your message in the community`,
+                link: "/community",
+                userId: parentReply.userId,
             });
-            if (parentReply && parentReply.userId !== session.user.id) {
-                const replyMessage = `${session.user.name || "Someone"} replied to your message in the community`;
-                notifications.push({
-                    type: "COMMENT",
-                    message: replyMessage,
-                    link: `/community`,
-                    userId: parentReply.userId,
-                });
-                if (parentReply.user?.email) {
-                    emailRecipients.push({
-                        email: parentReply.user.email,
-                        name: parentReply.user.name || "User",
-                        message: replyMessage,
-                        type: "COMMENT",
-                    });
-                }
-            }
         }
-
-        if (notifications.length > 0) {
-            await db.notification.createMany({data: notifications});
-        }
-
-        // Send email notifications (dispatched concurrently)
-        const emailPromises = emailRecipients
-            .filter(r => r.email)
-            .map(recipient =>
-                sendNotificationEmail({
-                    to: recipient.email,
-                    userName: recipient.name,
-                    notificationMessage: recipient.message,
-                    notificationType: recipient.type,
-                    actionUrl: "/community",
-                }).catch((err) => console.error("Error sending community email:", err))
-            );
-
-        void Promise.allSettled(emailPromises);
-
-        // Also notify admins about community activity
+        if (notifications.length) await db.notification.createMany({ data: notifications });
         await notifyAdmins({
             type: "COMMENT",
-            message: `${session.user.name || "A user"} posted a reply in the community`,
+            message: `${session.user.name || "An administrator"} posted a reply in the community`,
             link: "/community",
             excludeUserId: session.user.id,
         });
     } catch (error) {
         console.error("Error creating community notifications:", error);
     }
-
     return reply;
 }
 
 export async function getCommunityUsers() {
+    await requireCommunityAccess();
     try {
-        const users = await db.user.findMany({
-            where: { banned: { not: true } },
+        return await db.user.findMany({
+            where: {
+                role: { in: ["admin", "superadmin"] },
+                banned: { not: true },
+            },
             select: { id: true, name: true, image: true, role: true },
             orderBy: { name: "asc" },
+            take: 500,
         });
-        return users;
     } catch (error) {
         console.error("Error fetching community users:", error);
         return [];
     }
 }
 
+async function canDeleteCommunityContent(
+    actor: CommunityActor,
+    ownerId: string,
+    ownerRole: string | null,
+) {
+    return ownerId === actor.session.user.id || canManageRole(actor.role, ownerRole);
+}
+
 export async function deleteTopic(topicId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
+    const actor = await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
+    const topic = await db.communityTopic.findUnique({
+        where: { id },
+        select: { userId: true, deleted: true, user: { select: { role: true } } },
     });
-
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-    if (!isAdmin) throw new Error("Forbidden");
-
-    await db.communityTopic.update({
-        where: { id: topicId },
-        data: { deleted: true },
-    });
-
+    if (!topic || topic.deleted) throw new Error("Topic not found");
+    if (!await canDeleteCommunityContent(actor, topic.userId, topic.user.role)) throw new Error("Forbidden");
+    await db.communityTopic.update({ where: { id }, data: { deleted: true } });
     await db.auditLog.create({
         data: {
             action: "DELETE_TOPIC",
-            details: `Community topic deleted`,
-            targetId: topicId,
-            userId: session.user.id,
+            details: "Community topic deleted",
+            targetId: id,
+            userId: actor.session.user.id,
         },
     });
-
     return { success: true };
 }
 
 export async function deleteReply(replyId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-
+    const actor = await requireCommunityAccess();
+    const id = idSchema.parse(replyId);
     const reply = await db.communityReply.findUnique({
-        where: { id: replyId },
-        select: { userId: true },
+        where: { id },
+        select: {
+            userId: true,
+            deleted: true,
+            topic: { select: { deleted: true } },
+            user: { select: { role: true } },
+        },
     });
-
-    if (!reply) throw new Error("Reply not found");
-
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-    const isOwner = reply.userId === session.user.id;
-
-    if (!isAdmin && !isOwner) throw new Error("Forbidden");
-
-    await db.communityReply.update({
-        where: { id: replyId },
-        data: { deleted: true },
-    });
-
+    if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
+    if (!await canDeleteCommunityContent(actor, reply.userId, reply.user.role)) throw new Error("Forbidden");
+    await db.communityReply.update({ where: { id }, data: { deleted: true } });
     await db.auditLog.create({
         data: {
             action: "DELETE_REPLY",
-            details: `Community reply deleted`,
-            targetId: replyId,
-            userId: session.user.id,
+            details: "Community reply deleted",
+            targetId: id,
+            userId: actor.session.user.id,
         },
     });
-
     return { success: true };
 }
 
 export async function editReply(replyId: string, content: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    // Only admins and superadmins can access the community
-    const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can access the community");
-    }
-
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(replyId);
+    const safeContent = contentText.parse(content);
     const reply = await db.communityReply.findUnique({
-        where: { id: replyId },
-        select: { userId: true },
+        where: { id },
+        select: { userId: true, deleted: true, topic: { select: { chatEnabled: true, deleted: true } } },
     });
-
-    if (!reply) throw new Error("Reply not found");
+    if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
+    if (!reply.topic.chatEnabled) throw new Error("Topic is closed");
     if (reply.userId !== session.user.id) throw new Error("Forbidden");
-
-    const updated = await db.communityReply.update({
-        where: { id: replyId },
-        data: { content },
-    });
-
-    return updated;
+    return db.communityReply.update({ where: { id }, data: { content: safeContent } });
 }
 
 export async function editTopic(topicId: string, data: {
@@ -429,143 +411,93 @@ export async function editTopic(topicId: string, data: {
     documents?: string[];
     linkUrl?: string | null;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    // Only admins and superadmins can access the community
-    const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can access the community");
-    }
-
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
     const topic = await db.communityTopic.findUnique({
-        where: { id: topicId },
-        select: { userId: true, category: true },
+        where: { id },
+        select: { userId: true, deleted: true },
     });
-
-    if (!topic) throw new Error("Topic not found");
-
-    // Only the topic owner can edit their own topic
+    if (!topic || topic.deleted) throw new Error("Topic not found");
     if (topic.userId !== session.user.id) throw new Error("Forbidden");
-
     return db.communityTopic.update({
-        where: { id: topicId },
+        where: { id },
         data: {
-            ...(data.title !== undefined ? { title: data.title } : {}),
-            ...(data.content !== undefined ? { content: data.content } : {}),
-            ...(data.image !== undefined ? { image: data.image } : {}),
-            ...(data.images !== undefined ? { images: data.images } : {}),
-            ...(data.video !== undefined ? { video: data.video } : {}),
-            ...(data.videos !== undefined ? { videos: data.videos } : {}),
-            ...(data.documents !== undefined ? { documents: data.documents } : {}),
-            ...(data.linkUrl !== undefined ? { linkUrl: data.linkUrl } : {}),
+            ...(data.title !== undefined ? { title: shortText.parse(data.title) } : {}),
+            ...(data.content !== undefined ? { content: contentText.parse(data.content) } : {}),
+            ...(data.image !== undefined ? { image: cleanOptionalUrl(data.image) } : {}),
+            ...(data.images !== undefined ? { images: cleanUrls(data.images, 10) } : {}),
+            ...(data.video !== undefined ? { video: cleanOptionalUrl(data.video) } : {}),
+            ...(data.videos !== undefined ? { videos: cleanUrls(data.videos, 5) } : {}),
+            ...(data.documents !== undefined ? { documents: cleanUrls(data.documents, 10) } : {}),
+            ...(data.linkUrl !== undefined ? { linkUrl: cleanOptionalUrl(data.linkUrl) } : {}),
         },
     });
 }
 
 export async function toggleTopicChat(topicId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can toggle channel chat");
-    }
-
+    const actor = await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
     const topic = await db.communityTopic.findUnique({
-        where: { id: topicId },
-        select: { userId: true, chatEnabled: true },
+        where: { id },
+        select: { userId: true, chatEnabled: true, deleted: true },
     });
-
-    if (!topic) throw new Error("Topic not found");
-
-    // Only the topic creator or superadmin can toggle chat
-    if (topic.userId !== session.user.id && currentUser.role !== "superadmin") {
+    if (!topic || topic.deleted) throw new Error("Topic not found");
+    if (topic.userId !== actor.session.user.id && actor.role !== "superadmin") {
         throw new Error("Only the channel creator or super admin can toggle chat");
     }
-
-    const updated = await db.communityTopic.update({
-        where: { id: topicId },
+    return db.communityTopic.update({
+        where: { id },
         data: { chatEnabled: !topic.chatEnabled },
         select: { chatEnabled: true },
     });
-
-    return updated;
 }
 
-export async function toggleTopicLike(topicId: string, isDislike: boolean = false) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    // Only admins and superadmins can access the community
-    const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
+export async function toggleTopicLike(topicId: string, isDislike = false) {
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
+    const topic = await db.communityTopic.findUnique({
+        where: { id },
+        select: { chatEnabled: true, deleted: true },
     });
-    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can access the community");
-    }
-
+    if (!topic || topic.deleted) throw new Error("Topic not found");
+    if (!topic.chatEnabled) throw new Error("Topic is closed");
     const existing = await db.communityTopicLike.findUnique({
-        where: { topicId_userId: { topicId, userId: session.user.id } },
+        where: { topicId_userId: { topicId: id, userId: session.user.id } },
     });
-
+    if (existing?.isDislike === isDislike) {
+        await db.communityTopicLike.delete({ where: { id: existing.id } });
+        return { action: "removed" };
+    }
     if (existing) {
-        if (existing.isDislike === isDislike) {
-            await db.communityTopicLike.delete({ where: { id: existing.id } });
-            return { action: "removed" };
-        } else {
-            await db.communityTopicLike.update({ where: { id: existing.id }, data: { isDislike } });
-            return { action: isDislike ? "disliked" : "liked" };
-        }
+        await db.communityTopicLike.update({ where: { id: existing.id }, data: { isDislike } });
     } else {
         await db.communityTopicLike.create({
-            data: { topicId, userId: session.user.id, isDislike },
+            data: { topicId: id, userId: session.user.id, isDislike },
         });
-        return { action: isDislike ? "disliked" : "liked" };
     }
+    return { action: isDislike ? "disliked" : "liked" };
 }
 
 export async function voteOnPoll(replyId: string, optionIndex: number) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-
-    // Only admins and superadmins can access the community
-    const currentUser = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
-        throw new Error("Only admins and superadmins can access the community");
-    }
-
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(replyId);
+    if (!Number.isInteger(optionIndex)) throw new Error("Invalid poll option");
     const reply = await db.communityReply.findUnique({
-        where: { id: replyId },
-        select: { pollVotes: true, pollOptions: true },
+        where: { id },
+        select: {
+            pollVotes: true,
+            pollOptions: true,
+            deleted: true,
+            topic: { select: { deleted: true, chatEnabled: true } },
+        },
     });
-
-    if (!reply || !reply.pollOptions.length) throw new Error("Poll not found");
-
-    const votes = (reply.pollVotes as Record<string, number>) || {};
-    const voteKey = `${session.user.id}`;
-    
-    // Toggle vote: if voting for same option, remove vote; otherwise set new vote
-    if (votes[voteKey] === optionIndex) {
-        delete votes[voteKey];
-    } else {
-        votes[voteKey] = optionIndex;
+    if (!reply || reply.deleted || reply.topic.deleted || !reply.topic.chatEnabled ||
+        !reply.pollOptions.length || optionIndex < 0 || optionIndex >= reply.pollOptions.length) {
+        throw new Error("Poll not found");
     }
-
-    await db.communityReply.update({
-        where: { id: replyId },
-        data: { pollVotes: votes },
-    });
-
+    const votes = { ...((reply.pollVotes as Record<string, number>) || {}) };
+    if (votes[session.user.id] === optionIndex) delete votes[session.user.id];
+    else votes[session.user.id] = optionIndex;
+    await db.communityReply.update({ where: { id }, data: { pollVotes: votes } });
     return { success: true, votes };
 }

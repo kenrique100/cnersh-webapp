@@ -4,6 +4,10 @@ jest.mock('@/lib/auth-utils', () => ({
     authSession: jest.fn(),
 }));
 
+jest.mock('@/lib/permissions', () => ({
+    isAdminRole: (role: unknown) => role === 'admin' || role === 'superadmin',
+}));
+
 jest.mock('@/lib/db', () => ({
     db: {
         user: {},
@@ -71,7 +75,7 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
 
 /**
  * Reads the actual `take` value used by the action so tests stay in sync
- * automatically — we inspect a real call rather than hard-coding the number.
+ * automatically - we inspect a real call rather than hard-coding the number.
  */
 function getActualTakeValue(mockFn: jest.Mock): number {
     const callArg = mockFn.mock.calls[0]?.[0] as { take?: number } | undefined;
@@ -402,7 +406,12 @@ describe('getUserActivity', () => {
                     content: true,
                     image: true,
                     createdAt: true,
-                    _count: { select: { comments: true, likes: true } },
+                    _count: {
+                        select: {
+                            comments: { where: { deleted: false } },
+                            likes: true,
+                        },
+                    },
                 }),
             })
         );

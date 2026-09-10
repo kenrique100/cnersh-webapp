@@ -39,16 +39,16 @@ const activityIcons = {
 };
 
 const activityColors = {
-  post: "text-blue-500 bg-blue-50 dark:bg-blue-950",
-  comment: "text-green-500 bg-green-50 dark:bg-green-950",
-  reaction: "text-red-500 bg-red-50 dark:bg-red-950",
+  post: "text-blue-600 dark:text-blue-400",
+  comment: "text-blue-600 dark:text-blue-400",
+  reaction: "text-blue-600 dark:text-blue-400",
 };
 
 export default function FeedRightSidebar({ userActivity = [], isLoggedIn = false }: FeedRightSidebarProps) {
   return (
       <div className="flex flex-col gap-4">
         {/* Protocol Tracker Card */}
-        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <SearchIcon className="w-4 h-4 text-blue-600" />
@@ -67,7 +67,7 @@ export default function FeedRightSidebar({ userActivity = [], isLoggedIn = false
         {isLoggedIn && (
             <Card
                 className={cn(
-                    "overflow-hidden rounded-xl border-0 bg-white p-4 shadow-sm",
+                    "overflow-hidden rounded-lg border border-zinc-200 bg-white p-4 shadow-sm",
                     "dark:bg-zinc-900 dark:shadow-zinc-800/20"
                 )}
             >
@@ -85,7 +85,7 @@ export default function FeedRightSidebar({ userActivity = [], isLoggedIn = false
                       const colorClass = activityColors[activity.type];
                       return (
                           <li key={activity.id} className="flex items-start gap-2">
-                            <div className={cn("flex items-center justify-center w-6 h-6 rounded-full shrink-0 mt-0.5", colorClass)}>
+                            <div className={cn("flex items-center justify-center w-6 h-6 shrink-0 mt-0.5", colorClass)}>
                               <Icon className="size-3" />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -112,20 +112,20 @@ export default function FeedRightSidebar({ userActivity = [], isLoggedIn = false
         {!isLoggedIn && (
             <Card
                 className={cn(
-                    "overflow-hidden rounded-xl border-0 bg-white p-4 shadow-sm",
+                    "overflow-hidden rounded-lg border border-zinc-200 bg-white p-4 shadow-sm",
                     "dark:bg-zinc-900 dark:shadow-zinc-800/20"
                 )}
             >
               <div className="mb-3 flex items-center gap-2">
                 <Newspaper className="size-4 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Stay Connected
+                Public community updates
                 </h3>
               </div>
 
               <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                Engage with posts, share ideas, and connect with fellow community
-                members.
+                Read public updates from the CNERSH community. Sign in to post,
+                comment, or react.
               </p>
             </Card>
         )}

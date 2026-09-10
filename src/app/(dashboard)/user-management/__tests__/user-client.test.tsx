@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import UserManagementClient from "../user-client";
 import { useUsers } from "@/hooks/use-user";
-import { authClient } from "@/lib/auth-client";
-import { applyRoleChange } from "@/app/actions/admin";
+import {
+    createManagedUser,
+    updateManagedUser,
+} from "@/app/actions/admin";
 
 jest.mock("next/navigation", () => ({
     useRouter: jest.fn(),
@@ -20,17 +22,9 @@ jest.mock("@/hooks/use-user", () => ({
     useUsers: jest.fn(),
 }));
 
-jest.mock("@/lib/auth-client", () => ({
-    authClient: {
-        admin: {
-            createUser: jest.fn(),
-            updateUser: jest.fn(),
-        },
-    },
-}));
-
 jest.mock("@/app/actions/admin", () => ({
-    applyRoleChange: jest.fn(),
+    createManagedUser: jest.fn(),
+    updateManagedUser: jest.fn(),
 }));
 
 jest.mock("@/components/data-table", () => ({
@@ -470,22 +464,22 @@ describe("UserManagementClient", () => {
         expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     });
 
-    it("calls authClient.admin.createUser on submit for new user", async () => {
-        (authClient.admin.createUser as jest.Mock).mockResolvedValue({});
+    it("calls the target-aware create action on submit for a new user", async () => {
+        (createManagedUser as jest.Mock).mockResolvedValue({});
         const user = userEvent.setup();
         mockedUseUsers.mockReturnValue({ ...baseUserStore, isOpen: true });
         render(<UserManagementClient {...defaultProps} />);
         await user.type(screen.getByLabelText("Name"), "Charlie");
         await user.type(screen.getByLabelText("Email"), "charlie@example.com");
         await user.type(screen.getByLabelText("Password"), "password123456");
-        await user.selectOptions(screen.getByLabelText("Role"), "admin");
+        await user.selectOptions(screen.getByLabelText("Role"), "user");
         await user.click(screen.getByRole("button", { name: "Save changes" }));
         await waitFor(() => {
-            expect(authClient.admin.createUser).toHaveBeenCalledWith({
+            expect(createManagedUser).toHaveBeenCalledWith({
                 name: "Charlie",
                 email: "charlie@example.com",
                 password: "password123456",
-                role: "admin",
+                role: "user",
             });
             expect(toast.success).toHaveBeenCalledWith(
                 "New user created successfully",
@@ -495,9 +489,8 @@ describe("UserManagementClient", () => {
         });
     });
 
-    it("calls authClient.admin.updateUser and applyRoleChange on edit with role change", async () => {
-        (authClient.admin.updateUser as jest.Mock).mockResolvedValue({});
-        (applyRoleChange as jest.Mock).mockResolvedValue({});
+    it("calls the target-aware update action on edit with role change", async () => {
+        (updateManagedUser as jest.Mock).mockResolvedValue({ roleChanged: true });
         const user = userEvent.setup();
         mockedUseUsers.mockReturnValue({
             ...baseUserStore,
@@ -511,21 +504,17 @@ describe("UserManagementClient", () => {
                 hasDeletePermission: false,
             },
         });
-        render(<UserManagementClient {...defaultProps} />);
+        render(<UserManagementClient {...defaultProps} currentRole="superadmin" />);
         await user.clear(screen.getByDisplayValue("Alice"));
         await user.type(screen.getByLabelText("Name"), "Alice Updated");
         await user.selectOptions(screen.getByLabelText("Role"), "admin");
         await user.click(screen.getByRole("button", { name: "Save changes" }));
         await waitFor(() => {
-            expect(authClient.admin.updateUser).toHaveBeenCalledWith({
-                userId: "1",
-                data: {
-                    name: "Alice Updated",
-                    email: "alice@example.com",
-                    role: "admin",
-                },
+            expect(updateManagedUser).toHaveBeenCalledWith("1", {
+                name: "Alice Updated",
+                email: "alice@example.com",
+                role: "admin",
             });
-            expect(applyRoleChange).toHaveBeenCalledWith("1", "user", "admin");
             expect(toast.success).toHaveBeenCalledWith(
                 expect.stringContaining('Role changed to "admin"'),
             );
@@ -534,9 +523,8 @@ describe("UserManagementClient", () => {
         });
     });
 
-    it("calls authClient.admin.updateUser without role change if role same", async () => {
-        (authClient.admin.updateUser as jest.Mock).mockResolvedValue({});
-        (applyRoleChange as jest.Mock).mockReset();
+    it("calls the target-aware update action without a role-change notice if role is unchanged", async () => {
+        (updateManagedUser as jest.Mock).mockResolvedValue({ roleChanged: false });
         const user = userEvent.setup();
         mockedUseUsers.mockReturnValue({
             ...baseUserStore,
@@ -555,8 +543,11 @@ describe("UserManagementClient", () => {
         await user.type(screen.getByLabelText("Name"), "Alice Updated");
         await user.click(screen.getByRole("button", { name: "Save changes" }));
         await waitFor(() => {
-            expect(authClient.admin.updateUser).toHaveBeenCalled();
-            expect(applyRoleChange).not.toHaveBeenCalled();
+            expect(updateManagedUser).toHaveBeenCalledWith("1", {
+                name: "Alice Updated",
+                email: "alice@example.com",
+                role: "user",
+            });
             expect(toast.success).toHaveBeenCalledWith("User updated successfully");
         });
     });
@@ -576,7 +567,7 @@ describe("UserManagementClient", () => {
     });
 
     it("handles API error during create user", async () => {
-        (authClient.admin.createUser as jest.Mock).mockRejectedValue(
+        (createManagedUser as jest.Mock).mockRejectedValue(
             new Error("Network error"),
         );
         const user = userEvent.setup();
@@ -608,11 +599,18 @@ describe("UserManagementClient", () => {
         expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     });
 
-    it("allows any role based on currentRole (admin can assign any role)", () => {
+    it("allows an ordinary admin to assign only the user role", () => {
         mockedUseUsers.mockReturnValue({ ...baseUserStore, isOpen: true });
         render(<UserManagementClient {...defaultProps} currentRole="admin" />);
         const roleSelect = screen.getByLabelText("Role");
         expect(roleSelect).toBeInTheDocument();
+        const options = screen.getAllByRole("option");
+        expect(options.map((o) => o.textContent)).toEqual(["user"]);
+    });
+
+    it("allows a superadmin to assign all known roles", () => {
+        mockedUseUsers.mockReturnValue({ ...baseUserStore, isOpen: true });
+        render(<UserManagementClient {...defaultProps} currentRole="superadmin" />);
         const options = screen.getAllByRole("option");
         expect(options.map((o) => o.textContent)).toEqual([
             "user",
