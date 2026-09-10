@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
       ],
     },
     { source: "/api/auth/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
-    { source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "public, max-age=3600, must-revalidate" }] },
+    { source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
   ],
 };
 

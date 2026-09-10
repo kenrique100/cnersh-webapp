@@ -3,6 +3,8 @@
  */
 
 import type { NextRequest } from "next/server";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { utapi } from "@/lib/uploadthing";
@@ -90,6 +92,17 @@ describe("file API authorization", () => {
         expect(response.status).toBe(200);
         expect(response.headers.get("Cache-Control")).toContain("private");
         expect(response.headers.get("Cache-Control")).toContain("no-store");
+    });
+
+    it("keeps the global Next.js file-route cache policy private", () => {
+        const nextConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+
+        expect(nextConfig).toContain(
+            '{ source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "private, no-store" }] }',
+        );
+        expect(nextConfig).not.toContain(
+            '{ source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "public',
+        );
     });
 
     it("rejects anonymous storage-key redirects", async () => {
