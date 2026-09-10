@@ -16,12 +16,13 @@
     "db:push:force": "prisma db push --accept-data-loss",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:reset": "prisma db push --force-reset",
+    "db:reset": "prisma migrate reset --force && prisma db seed",
+    "db:reset:push": "prisma db push --force-reset",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:dedupe:sessions": "tsx scripts/resolve-duplicate-committee-sessions.ts",
     "db:dedupe:sessions:apply": "tsx scripts/resolve-duplicate-committee-sessions.ts --apply",
-    "db:setup": "prisma generate && prisma db push && tsx prisma/seed.ts"
+    "db:setup": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

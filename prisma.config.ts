@@ -6,6 +6,10 @@ export default defineConfig({
 
   migrations: {
     path: "prisma/migrations",
+    // Registering the seed here is what lets `prisma migrate reset` (npm run
+    // db:reset) leave a usable database behind. Without it the reset replays
+    // every migration and stops, leaving no accounts to sign in with.
+    seed: "tsx prisma/seed.ts",
   },
 
   datasource: {

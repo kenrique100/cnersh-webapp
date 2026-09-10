@@ -130,7 +130,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:dedupe:sessions` | Report duplicate committee sessions before the uniqueness migration |
 | `npm run db:dedupe:sessions:apply` | Merge non-conflicting duplicate committee sessions |
 | `npm run db:studio` | Open Prisma Studio |
-| `npm run db:reset` | Delete and recreate local database data |
+| `npm run db:reset` | Drop the local database, replay every migration, then seed |
+| `npm run db:reset:push` | Force schema push without migrations (escape hatch; bypasses the migration history) |
 
 ## Security model
 
@@ -141,6 +142,22 @@ Open [http://localhost:3000](http://localhost:3000).
 - Outbound link previews pin validated public DNS addresses to prevent DNS rebinding.
 - Redis-backed rate limits and idempotency are shared and atomic in production.
 - Multi-record workflow changes use database transactions and conditional state transitions.
+- Every document response carries a per-request Content Security Policy nonce issued by `src/middleware.ts`; scripts are restricted to that nonce plus `'strict-dynamic'`, with no `'unsafe-inline'` in production.
+
+### Content Security Policy
+
+The script policy must name a per-request nonce. The App Router streams its
+hydration payload through inline `<script>` tags, so a static `script-src 'self'`
+blocks them, React never hydrates, and every client component stops working -
+including forms, which then fall back to native browser submission and can place
+submitted values in the URL.
+
+Because of that:
+
+- `src/middleware.ts` mints the nonce and sets the document policy. `src/lib/csp.ts` builds the policy so there is a single definition.
+- `next.config.ts` must not also set a `Content-Security-Policy` on documents. When two policies are present the browser enforces both, and a static one would reject the nonced scripts.
+- Anything that needs an inline script must receive the nonce (`x-nonce` request header, as the root layout does for the theme script) or be moved to a real file under `public/`.
+- `src/lib/__tests__/csp.test.ts` guards these properties.
 
 Report vulnerabilities privately according to [SECURITY.md](SECURITY.md). Do not open a public vulnerability issue.
 
