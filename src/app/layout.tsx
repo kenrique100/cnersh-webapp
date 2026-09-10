@@ -18,7 +18,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   /*
-    src/middleware.ts mints this nonce and names it in the Content Security
+    src/proxy.ts mints this nonce and names it in the Content Security
     Policy. next-themes injects an inline script to apply the stored theme
     before first paint; without the nonce that script is blocked, the server and
     client markup disagree, and hydration fails.

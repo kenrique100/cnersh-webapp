@@ -300,9 +300,27 @@ describe('redis production configuration', () => {
         jest.resetModules();
         process.env = { ...originalEnv, NODE_ENV: 'production' };
         delete process.env.REDIS_URL;
+        delete process.env.NEXT_PHASE;
 
         await expect(import('@/lib/redis')).rejects.toThrow(
             'REDIS_URL is required in production'
         );
+    });
+
+    /**
+     * `next build` sets NODE_ENV=production and imports every route while
+     * collecting page data. No request is served during a build, so the
+     * missing URL must not fail the build itself.
+     */
+    it('does not require Redis while next build is collecting page data', async () => {
+        jest.resetModules();
+        process.env = {
+            ...originalEnv,
+            NODE_ENV: 'production',
+            NEXT_PHASE: 'phase-production-build',
+        };
+        delete process.env.REDIS_URL;
+
+        await expect(import('@/lib/redis')).resolves.toBeDefined();
     });
 });
