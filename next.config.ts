@@ -16,8 +16,8 @@ const API_CSP = ["default-src 'none'", "base-uri 'none'", "frame-ancestors 'none
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
-  transpilePackages: ["@exodus/bytes"],
-  serverExternalPackages: ["jsdom", "html-encoding-sniffer", "isomorphic-dompurify", "pdf-page-counter"],
+  transpilePackages: ["sanitize-html", "htmlparser2", "domhandler", "domutils", "dom-serializer", "domelementtype", "entities"],
+  serverExternalPackages: ["pdf-page-counter"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
