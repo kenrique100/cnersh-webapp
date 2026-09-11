@@ -1,4 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
+import { MAX_DOCUMENT_PAGES } from '@/lib/file-limits';
 
 export interface PDFValidationResult {
   valid: boolean;
@@ -24,11 +25,11 @@ export async function validatePDFPageCount(file: File): Promise<PDFValidationRes
       };
     }
 
-    if (pageCount > 4) {
+    if (pageCount > MAX_DOCUMENT_PAGES) {
       return {
         valid: false,
         pageCount,
-        error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.`,
+        error: `PDF has ${pageCount} pages. Maximum allowed is ${MAX_DOCUMENT_PAGES} pages.`,
       };
     }
 

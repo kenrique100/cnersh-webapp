@@ -7,15 +7,12 @@ import { withIdempotency } from "@/middleware/idempotency";
 import { db } from "@/lib/db";
 import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
+import { MAX_DOCUMENT_PAGES, MAX_FILE_SIZES } from "@/lib/file-limits";
 import { PDFDocument } from "pdf-lib";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
-const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
-const MAX_VIDEO_SIZE    = 64 * 1024 * 1024;
-const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
-const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
 const requestSessions = new WeakMap<NextRequest, ReturnType<typeof authSession>>();
 
 function getRequestSession(req: NextRequest): ReturnType<typeof authSession> {
@@ -53,10 +50,10 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 };
 
 const MAX_SIZES: Record<string, number> = {
-  "image/": MAX_IMAGE_SIZE,
-  "video/": MAX_VIDEO_SIZE,
-  "audio/": MAX_AUDIO_SIZE,
-  "doc":    MAX_DOCUMENT_SIZE,
+  "image/": MAX_FILE_SIZES.image,
+  "video/": MAX_FILE_SIZES.video,
+  "audio/": MAX_FILE_SIZES.audio,
+  "doc":    MAX_FILE_SIZES.document,
 };
 
 function getCategory(mimeType: string): "image/" | "video/" | "audio/" | "doc" {
@@ -150,9 +147,9 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         );
       }
 
-      if (pageCount > 4) {
+      if (pageCount > MAX_DOCUMENT_PAGES) {
         return NextResponse.json(
-            { error: `PDF has ${pageCount} pages. Maximum allowed is 4 pages.` },
+            { error: `PDF has ${pageCount} pages. Maximum allowed is ${MAX_DOCUMENT_PAGES} pages.` },
             { status: 400 }
         );
       }

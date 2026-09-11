@@ -1,31 +1,13 @@
 import { db } from "@/lib/db";
 import { utapi } from "@/lib/uploadthing";
 import type { FileType } from "@/generated/prisma";
-
-export const MAX_DOCUMENT_PAGES = 4;
+import { MAX_DOCUMENT_PAGES, MAX_FILE_SIZES, UT_MAX_SIZES } from "@/lib/file-limits";
 
 export const ALLOWED_DOCUMENT_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
-
-export const MAX_FILE_SIZES = {
-  avatar:   8  * 1024 * 1024,
-  image:    16 * 1024 * 1024,
-  video:    64 * 1024 * 1024,
-  audio:    8  * 1024 * 1024,
-  document: 16 * 1024 * 1024,
-  protocol: 64 * 1024 * 1024,
-} as const;
-
-export const UT_MAX_SIZES = {
-  avatar:   "8MB",
-  image:    "16MB",
-  video:    "64MB",
-  audio:    "8MB",
-  document: "16MB",
-  protocol: "64MB",
-} as const;
+export { MAX_DOCUMENT_PAGES, MAX_FILE_SIZES, UT_MAX_SIZES };
 
 export function getFileUrl(fileId: string): string {
   return `/api/files/${fileId}`;
@@ -67,11 +49,9 @@ export async function deleteFile(fileId: string): Promise<void> {
   });
 
   if (file?.storageKey) {
-    try {
-      await utapi.deleteFiles(file.storageKey);
-    } catch (err) {
-      console.error("[file-utils] UploadThing deletion failed:", err);
-      // Continue to delete the DB record even if remote deletion fails
+    const deletion = await utapi.deleteFiles(file.storageKey);
+    if (!deletion.success) {
+      throw new Error("Storage provider did not confirm deletion");
     }
   }
 
