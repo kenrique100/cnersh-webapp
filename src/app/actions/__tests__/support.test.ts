@@ -227,7 +227,7 @@ describe('submitSupportMessage', () => {
 
     it('falls back to session email in notification message when name is null', async () => {
         // Uses the dedicated helper that escapes the non-nullable `name` type
-        // via `null as unknown as string` — safe at runtime because the action
+        // via `null as unknown as string` - safe at runtime because the action
         // guards against falsy name with `session.user.name || session.user.email`.
         mockSessionWithNullName('user-noname', 'noname@test.com');
 

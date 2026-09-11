@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import React from "react";
+import { headers } from "next/headers";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import CookieConsentBanner from "@/components/cookie-consent-banner";
@@ -13,9 +14,17 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  /*
+    src/proxy.ts mints this nonce and names it in the Content Security
+    Policy. next-themes injects an inline script to apply the stored theme
+    before first paint; without the nonce that script is blocked, the server and
+    client markup disagree, and hydration fails.
+  */
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
       <body>
@@ -24,6 +33,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           {children}
           <CookieConsentBanner />
@@ -32,7 +42,7 @@ export default function RootLayout({
 
         {/*
           Google Translate widget mount point.
-          MUST NOT be display:none — Google cannot inject its combo <select>
+          MUST NOT be display:none - Google cannot inject its combo <select>
           into a display:none subtree. We move it off-screen instead.
         */}
         <div
@@ -51,36 +61,19 @@ export default function RootLayout({
         />
 
         {/*
-          Step 1 — define the callback BEFORE the external script loads.
-          strategy="afterInteractive" is used for both; Next.js App Router
-          guarantees inline scripts run before subsequent afterInteractive
-          scripts in document order.
+          Step 1 - define the callback BEFORE the external script loads.
+          The callback is served from /public as a real file instead of an
+          inline script, so the Content Security Policy can forbid inline
+          scripts outright. strategy="afterInteractive" is used for both;
+          Next.js App Router preserves document order between them.
         */}
         <Script
           id="google-translate-init"
+          src="/google-translate-init.js"
           strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.googleTranslateElementInit = function () {
-                if (
-                  typeof window.google === 'undefined' ||
-                  typeof window.google.translate === 'undefined'
-                ) return;
-                new window.google.translate.TranslateElement(
-                  {
-                    pageLanguage: 'en',
-                    includedLanguages: 'en,fr',
-                    autoDisplay: false,
-                    layout: 0
-                  },
-                  'google_translate_element'
-                );
-              };
-            `,
-          }}
         />
 
-        {/* Step 2 — load the widget; it calls googleTranslateElementInit when ready */}
+        {/* Step 2 - load the widget; it calls googleTranslateElementInit when ready */}
         <Script
           id="google-translate-script"
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"

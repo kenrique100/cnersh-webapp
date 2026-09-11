@@ -1,29 +1,57 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtmlLib, { type IOptions } from "sanitize-html";
+
+/**
+ * HTML sanitisation runs on the server inside server actions and API routes.
+ *
+ * This used to go through isomorphic-dompurify, which on the server builds a
+ * full jsdom window at import time. That crashed every Vercel function whose
+ * bundle included this module (the home page through the feed actions,
+ * /community, /api/link-preview, /api/sentry-feedback) before a single request
+ * was handled. sanitize-html is a pure JavaScript allowlist sanitiser built on
+ * htmlparser2, so it needs no DOM and loads anywhere Node runs. The allowlists
+ * below reproduce the previous DOMPurify configuration.
+ */
+
+const ALLOWED_SCHEMES = ["http", "https", "mailto", "tel"];
+
+const RICH_TEXT_OPTIONS: IOptions = {
+    allowedTags: [
+        "p", "br", "strong", "em", "u",
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "ul", "ol", "li", "blockquote",
+        "a", "code", "pre", "span",
+    ],
+    allowedAttributes: {
+        "*": ["class"],
+        a: ["href", "target", "rel", "class"],
+    },
+    allowedSchemes: ALLOWED_SCHEMES,
+    allowedSchemesByTag: {},
+    allowedSchemesAppliedToAttributes: ["href"],
+    allowProtocolRelative: false,
+    disallowedTagsMode: "discard",
+};
+
+/**
+ * Strips every tag but keeps their text, except for tags whose content is
+ * code rather than prose (script, style, textarea, option), which is dropped
+ * along with the tag. Text is serialised the way a DOM would serialise it:
+ * `&`, `<` and `>` are entity encoded, quotes are left alone.
+ */
+const PLAIN_TEXT_OPTIONS: IOptions = {
+    allowedTags: [],
+    allowedAttributes: {},
+    disallowedTagsMode: "discard",
+};
 
 export function sanitizeHtml(dirty: string): string {
     if (!dirty || typeof dirty !== "string") return "";
-    return DOMPurify.sanitize(dirty, {
-        ALLOWED_TAGS: [
-            "p", "br", "strong", "em", "u",
-            "h1", "h2", "h3", "h4", "h5", "h6",
-            "ul", "ol", "li", "blockquote",
-            "a", "code", "pre", "span",
-        ],
-        ALLOWED_ATTR: ["href", "target", "rel", "class"],
-        ALLOW_DATA_ATTR: false,
-        ALLOW_UNKNOWN_PROTOCOLS: false,
-        ALLOWED_URI_REGEXP:
-            /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-    });
+    return sanitizeHtmlLib(dirty, RICH_TEXT_OPTIONS);
 }
 
 export function sanitizeText(dirty: string): string {
     if (!dirty || typeof dirty !== "string") return "";
-    return DOMPurify.sanitize(dirty, {
-        ALLOWED_TAGS: [],
-        ALLOWED_ATTR: [],
-        KEEP_CONTENT: true,
-    });
+    return sanitizeHtmlLib(dirty, PLAIN_TEXT_OPTIONS);
 }
 
 export function escapeHtml(text: string): string {

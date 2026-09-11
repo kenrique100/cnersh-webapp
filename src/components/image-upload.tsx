@@ -56,7 +56,7 @@ export default function ImageUpload({
             return;
         }
 
-        // Create blob preview but do NOT set imageUrl yet —
+        // Create blob preview but do NOT set imageUrl yet -
         // imageUrl controls which top-level branch renders.
         // We stay in the dropzone branch so uploading/error UI is visible.
         const blobUrl = createPreviewBlobUrl(file);
@@ -96,7 +96,7 @@ export default function ImageUpload({
                 throw new Error(json?.error || "Upload failed");
             }
 
-            // Success — now switch to image-preview branch
+            // Success - now switch to image-preview branch
             if (previewBlobUrl) {
                 revokePreviewBlobUrl(previewBlobUrl);
                 setPreviewBlobUrl(null);

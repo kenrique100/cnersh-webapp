@@ -16,6 +16,28 @@ const MAX_IMAGE_SIZE    = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE    = 64 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const MAX_AUDIO_SIZE    =  8 * 1024 * 1024;
+const requestSessions = new WeakMap<NextRequest, ReturnType<typeof authSession>>();
+
+function getRequestSession(req: NextRequest): ReturnType<typeof authSession> {
+  const existing = requestSessions.get(req);
+  if (existing) return existing;
+  const pending = authSession();
+  requestSessions.set(req, pending);
+  return pending;
+}
+
+async function cleanupUploadedFile(storageKey: string): Promise<void> {
+  try {
+    const deletion = await utapi.deleteFiles(storageKey);
+    if (!deletion.success) {
+      throw new Error("Storage provider did not confirm deletion");
+    }
+  } catch (error) {
+    // The DB insert did not happen, so this object is now orphaned. Keep the
+    // storage key in server logs so operators can remove it manually.
+    console.error("[upload] failed to compensate orphaned storage object:", storageKey, error);
+  }
+}
 
 const ALLOWED_TYPES: Record<string, string[]> = {
   "image/": ["image/jpeg", "image/png", "image/gif", "image/webp"],
@@ -52,7 +74,7 @@ function resolveFileType(mimeType: string): FileType {
 }
 
 async function uploadHandler(req: NextRequest): Promise<NextResponse> {
-  const session = await authSession();
+  const session = await getRequestSession(req);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -157,7 +179,17 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Upload service error" }, { status: 502 });
   }
 
-  const { key, ufsUrl } = uploadResult.data;
+  const uploadedData = uploadResult.data as typeof uploadResult.data & {
+    ufsUrl?: string;
+    url?: string;
+  };
+  const key = uploadedData.key;
+  const uploadedUrl = uploadedData.ufsUrl ?? uploadedData.url;
+  if (!uploadedUrl) {
+    console.error("[upload] upload response did not include a file URL");
+    await cleanupUploadedFile(key);
+    return NextResponse.json({ error: "Upload service error" }, { status: 502 });
+  }
 
   try {
     const stored = await db.file.create({
@@ -166,7 +198,7 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         mimeType:   file.type,
         size:       file.size,
         data:       null,
-        url:        ufsUrl,
+        url:        uploadedUrl,
         storageKey: key,
         type:       resolveFileType(file.type),
         userId:     session.user.id,
@@ -193,21 +225,26 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     });
   } catch (err) {
     console.error("[upload] DB write failed:", err);
+    await cleanupUploadedFile(key);
     return NextResponse.json({ error: "Failed to save file" }, { status: 500 });
   }
 }
 
 const rateLimitedHandler = withRateLimit(uploadHandler, RATE_LIMITS.fileUpload, {
   keyPrefix: "upload",
-  getUserId: async () => {
-    const session = await authSession();
+  getUserId: async (req) => {
+    const session = await getRequestSession(req);
     return session?.user?.id;
   },
 });
 
 const idempotentHandler = withIdempotency(rateLimitedHandler, {
-  lockTtlSeconds:     60,
+  lockTtlSeconds:     120,
   responseTtlSeconds: 86_400,
+  getScope: async (req) => {
+    const session = await getRequestSession(req);
+    return session?.user?.id;
+  },
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

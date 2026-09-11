@@ -379,7 +379,7 @@ describe("SAEReportClient", () => {
 
             const form = document.querySelector("form");
 
-            // Nothing filled — first failing check should be eventType
+            // Nothing filled - first failing check should be eventType
             fireEvent.submit(form!);
             expect(toast.error).toHaveBeenLastCalledWith(
                 "Please select an event type"

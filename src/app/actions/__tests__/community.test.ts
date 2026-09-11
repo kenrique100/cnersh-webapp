@@ -15,6 +15,13 @@ jest.mock("@/lib/auth-utils", () => ({
     authSession: jest.fn(),
 }));
 
+jest.mock("@/lib/permissions", () => ({
+    isAdminRole: (role: unknown) => role === "admin" || role === "superadmin",
+    canManageRole: (actor: string, target: string) =>
+        ({ user: 0, admin: 1, superadmin: 2 }[actor] ?? -1) >
+        ({ user: 0, admin: 1, superadmin: 2 }[target] ?? 99),
+}));
+
 jest.mock("@/lib/db", () => ({
     db: {
         user: {},
@@ -107,6 +114,23 @@ beforeEach(() => {
     mockedDb.notification = {};
     mockedDb.auditLog = {};
 
+    mockSession("admin-1", "Admin");
+    mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
+    mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+        id: "t1",
+        userId: "admin-1",
+        deleted: false,
+        chatEnabled: true,
+        user: { role: "admin" },
+    });
+    mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        id: "r1",
+        userId: "admin-1",
+        topicId: "t1",
+        deleted: false,
+        topic: { deleted: false, chatEnabled: true },
+        user: { role: "admin" },
+    });
     syncDb();
 });
 
@@ -204,6 +228,18 @@ describe("createTopic", () => {
 });
 
 describe("getTopics", () => {
+    it("rejects ordinary users before reading community data", async () => {
+        mockSession("user-1");
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockedDb.communityTopic.findMany = jest.fn();
+        syncDb();
+
+        await expect(getTopics()).rejects.toThrow(
+            "Only admins and superadmins can access the community",
+        );
+        expect(mockedDb.communityTopic.findMany).not.toHaveBeenCalled();
+    });
+
     it("returns topics and pagination info", async () => {
         mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([
             { id: "t1", title: "First" },
@@ -275,7 +311,7 @@ describe("getTopicWithReplies", () => {
 
         expect(result).toHaveProperty("id", "t1");
         expect(mockedDb.communityTopic.findUnique).toHaveBeenCalledWith(
-            expect.objectContaining({ where: { id: "t1", deleted: false } })
+            expect.objectContaining({ where: { id: "t1" } })
         );
     });
 
@@ -332,6 +368,40 @@ describe("addReply", () => {
             })
         );
     });
+
+    it("rejects replies to closed topics", async () => {
+        mockSession("admin-1");
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+            deleted: false,
+            chatEnabled: false,
+        });
+        mockedDb.communityReply.create = jest.fn();
+        syncDb();
+
+        await expect(addReply({ topicId: "t1", content: "No" })).rejects.toThrow(
+            "Topic is closed",
+        );
+        expect(mockedDb.communityReply.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a parent reply from a different topic", async () => {
+        mockSession("admin-1");
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+            userId: "admin-2",
+            topicId: "different-topic",
+            deleted: false,
+            user: { email: "admin@test.com", name: "Admin" },
+        });
+        syncDb();
+
+        await expect(addReply({
+            topicId: "t1",
+            parentId: "r1",
+            content: "No",
+        })).rejects.toThrow("Invalid parent reply");
+    });
 });
 
 describe("getCommunityUsers", () => {
@@ -375,7 +445,9 @@ describe("deleteTopic", () => {
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
         syncDb();
 
-        await expect(deleteTopic("t1")).rejects.toThrow("Forbidden");
+        await expect(deleteTopic("t1")).rejects.toThrow(
+            "Only admins and superadmins can access the community",
+        );
     });
 
     it("soft-deletes topic for admin", async () => {
@@ -394,6 +466,21 @@ describe("deleteTopic", () => {
                 data: { deleted: true },
             })
         );
+    });
+
+    it("prevents an admin from deleting superadmin content", async () => {
+        mockSession("admin-1");
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+            userId: "super-1",
+            deleted: false,
+            user: { role: "superadmin" },
+        });
+        mockedDb.communityTopic.update = jest.fn();
+        syncDb();
+
+        await expect(deleteTopic("t1")).rejects.toThrow("Forbidden");
+        expect(mockedDb.communityTopic.update).not.toHaveBeenCalled();
     });
 });
 
@@ -415,20 +502,30 @@ describe("deleteReply", () => {
     it("throws Forbidden for non-owner non-admin", async () => {
         mockSession("user-1");
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
-        mockedDb.communityReply.findUnique = jest
-            .fn()
-            .mockResolvedValue({ userId: "other-user" });
+        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+            userId: "other-user",
+            deleted: false,
+            topic: { deleted: false },
+            user: { role: "user" },
+        });
         syncDb();
 
-        await expect(deleteReply("r1")).rejects.toThrow("Forbidden");
+        await expect(deleteReply("r1")).rejects.toThrow(
+            "Only admins and superadmins can access the community",
+        );
     });
 
     it("soft-deletes reply for owner", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("admin-1");
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
         mockedDb.communityReply.findUnique = jest
             .fn()
-            .mockResolvedValue({ userId: "user-1" });
+            .mockResolvedValue({
+                userId: "admin-1",
+                deleted: false,
+                topic: { deleted: false },
+                user: { role: "admin" },
+            });
         mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
         mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
         syncDb();
@@ -479,7 +576,11 @@ describe("editReply", () => {
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
         mockedDb.communityReply.findUnique = jest
             .fn()
-            .mockResolvedValue({ userId: "other-user" });
+            .mockResolvedValue({
+                userId: "other-user",
+                deleted: false,
+                topic: { deleted: false, chatEnabled: true },
+            });
         syncDb();
 
         await expect(editReply("r1", "content")).rejects.toThrow("Forbidden");
@@ -490,7 +591,11 @@ describe("editReply", () => {
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
         mockedDb.communityReply.findUnique = jest
             .fn()
-            .mockResolvedValue({ userId: "admin-1" });
+            .mockResolvedValue({
+                userId: "admin-1",
+                deleted: false,
+                topic: { deleted: false, chatEnabled: true },
+            });
         mockedDb.communityReply.update = jest
             .fn()
             .mockResolvedValue({ id: "r1", content: "updated" });
@@ -588,7 +693,12 @@ describe("voteOnPoll", () => {
         mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
         mockedDb.communityReply.findUnique = jest
             .fn()
-            .mockResolvedValue({ pollVotes: {}, pollOptions: [] });
+            .mockResolvedValue({
+                pollVotes: {},
+                pollOptions: [],
+                deleted: false,
+                topic: { deleted: false, chatEnabled: true },
+            });
         syncDb();
 
         await expect(voteOnPoll("r1", 0)).rejects.toThrow("Poll not found");
@@ -600,6 +710,8 @@ describe("voteOnPoll", () => {
         mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
             pollVotes: {},
             pollOptions: ["Yes", "No"],
+            deleted: false,
+            topic: { deleted: false, chatEnabled: true },
         });
         mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
         syncDb();
@@ -616,6 +728,8 @@ describe("voteOnPoll", () => {
         mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
             pollVotes: { "admin-1": 0 },
             pollOptions: ["Yes", "No"],
+            deleted: false,
+            topic: { deleted: false, chatEnabled: true },
         });
         mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
         syncDb();

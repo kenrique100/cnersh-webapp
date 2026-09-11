@@ -135,7 +135,7 @@ describe("CommunityCommentSection", () => {
         render(<CommunityCommentSection {...defaultProps} />);
         expect(screen.getByText("general-chat")).toBeInTheDocument();
         expect(screen.getByText("General")).toBeInTheDocument();
-        expect(screen.getByText(/Welcome to #general-chat!/)).toBeInTheDocument();
+        expect(screen.getByText(/Viewing #general-chat/)).toBeInTheDocument();
     });
 
     it("renders replies using CommunityPostCard", () => {

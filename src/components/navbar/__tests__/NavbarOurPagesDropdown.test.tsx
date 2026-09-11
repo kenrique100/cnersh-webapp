@@ -36,6 +36,7 @@ describe('OurPagesDropdown (mobile)', () => {
         fireEvent.click(screen.getByText('Our Pages'));
         expect(screen.getByText('About Us')).toBeInTheDocument();
         expect(screen.getByText('Contract Rex Org')).toBeInTheDocument();
+        expect(screen.getByText('Evaluation Form')).toBeInTheDocument();
     });
 });
 

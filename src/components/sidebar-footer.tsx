@@ -11,7 +11,7 @@ function SidebarFooterLink({
   children: React.ReactNode;
 }) {
   const className =
-    "text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors cursor-pointer";
+    "text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors";
 
   return (
     <Link href={href} className={className}>

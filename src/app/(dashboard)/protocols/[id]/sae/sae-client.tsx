@@ -29,7 +29,7 @@ interface SAEReportClientProps {
  * Returns the current moment as a "YYYY-MM-DDTHH:mm" string in the browser's
  * LOCAL time, suitable for a <input type="datetime-local"> max attribute.
  *
- * `datetime-local` inputs have no timezone concept — the browser interprets
+ * `datetime-local` inputs have no timezone concept - the browser interprets
  * both the field's value and its max/min bounds as local wall-clock time.
  * `new Date().toISOString()` returns UTC, so slicing it directly produces a
  * string that's off by the user's UTC offset (e.g. ~5 hours in US Eastern),

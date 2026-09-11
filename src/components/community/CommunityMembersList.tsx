@@ -56,7 +56,7 @@ export function CommunityMembersList({
                   {cat}
                 </span>
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                  — {catTopics.length}
+                  - {catTopics.length}
                 </span>
                             </div>
 

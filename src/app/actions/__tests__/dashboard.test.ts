@@ -5,6 +5,10 @@ jest.mock('@/lib/auth-utils', () => ({
     authSession: jest.fn(),
 }));
 
+jest.mock('@/lib/permissions', () => ({
+    isAdminRole: (role: unknown) => role === 'admin' || role === 'superadmin',
+}));
+
 jest.mock('@/lib/db', () => ({
     db: {
         user: {},

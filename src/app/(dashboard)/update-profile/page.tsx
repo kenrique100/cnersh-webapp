@@ -57,7 +57,7 @@ export default async function ProfilePage() {
             <div className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Profile Header Card */}
                 <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-8 overflow-hidden">
-                    <div className="h-28 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800" />
+                    <div className="h-28 bg-blue-700" />
                     <CardContent className="relative pt-0 pb-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-12">
                             <Avatar className="h-24 w-24 border-4 border-white dark:border-gray-950 shadow-lg">

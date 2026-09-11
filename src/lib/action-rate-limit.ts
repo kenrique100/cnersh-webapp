@@ -6,28 +6,31 @@ async function checkActionRateLimit(
     config: RateLimitConfig
 ): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
     const now = Date.now();
-    const windowStart = now - config.windowMs;
-    const windowSec = Math.ceil(config.windowMs / 1000);
     const member = `${now}-${Math.random().toString(36).slice(2, 9)}`;
 
     try {
-        const pipeline = redis.pipeline();
-        pipeline.zremrangebyscore(key, 0, windowStart);
-        pipeline.zcard(key);
-        pipeline.zadd(key, now, member);
-        pipeline.expire(key, windowSec + 1);
-        const results = await pipeline.exec();
-        const countBeforeAdd = (results?.[1]?.[1] as number) ?? 0;
-        const currentCount = countBeforeAdd + 1;
-        const allowed = currentCount <= config.maxRequests;
+        const result = await redis.slidingWindow(
+            key,
+            now,
+            config.windowMs,
+            config.maxRequests,
+            member
+        );
 
-        if (allowed) {
+        if (result.allowed) {
             return { allowed: true, retryAfterSeconds: 0 };
         }
 
-        return { allowed: false, retryAfterSeconds: windowSec };
-    } catch {
-        return { allowed: true, retryAfterSeconds: 0 };
+        return {
+            allowed: false,
+            retryAfterSeconds: Math.max(
+                1,
+                Math.ceil((result.resetTime - Date.now()) / 1000)
+            ),
+        };
+    } catch (error) {
+        console.error("[action-rate-limit] shared store unavailable:", error);
+        throw new Error("Rate limiting is temporarily unavailable. Please try again.");
     }
 }
 

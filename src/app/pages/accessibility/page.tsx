@@ -66,7 +66,7 @@ export default async function AccessibilityPage() {
                 </div>
 
                 {/* Accessibility Statement */}
-                <Card className="mb-6 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                <Card className="mb-6 rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                     <CardContent className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <AccessibilityIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -77,7 +77,7 @@ export default async function AccessibilityPage() {
 
                         <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
                             <p>
-                                CNERSH — the National Ethics Committee for Health Research on Humans — is committed
+                                CNERSH, the National Ethics Committee for Health Research on Humans, is committed
                                 to ensuring that our platform is accessible to all users, including those with
                                 disabilities. We strive to meet internationally recognized accessibility standards
                                 so that every researcher, reviewer, and member of the public can use our services

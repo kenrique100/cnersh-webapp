@@ -21,7 +21,7 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         dot: "bg-blue-500",
     },
     RETURNED_INCOMPLETE: {
-        label: "Returned — Incomplete",
+        label: "Returned - Incomplete",
         color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
         dot: "bg-orange-500",
     },

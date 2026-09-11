@@ -73,7 +73,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
     if (posts.length === 0) {
         return (
-            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                 <CardContent className="py-12 text-center">
                     <p className="text-gray-500 dark:text-gray-400">No posts yet. Check back later!</p>
                 </CardContent>
@@ -150,7 +150,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
             ))}
 
             {/* Sign in CTA */}
-            <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 rounded-xl">
+            <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 rounded-lg">
                 <CardContent className="py-6 text-center">
                     <LockIcon className="h-8 w-8 text-blue-600 mx-auto mb-3" />
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
@@ -202,17 +202,17 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         <>
                                             <button
                                                 onClick={() => setImageModalIndex((prev) => (prev - 1 + allImages.length) % allImages.length)}
-                                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-md text-white transition-colors"
                                             >
                                                 <ChevronLeftIcon className="h-5 w-5" />
                                             </button>
                                             <button
                                                 onClick={() => setImageModalIndex((prev) => (prev + 1) % allImages.length)}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-md text-white transition-colors"
                                             >
                                                 <ChevronRightIcon className="h-5 w-5" />
                                             </button>
-                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
+                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-md">
                                                 {imageModalIndex + 1} / {allImages.length}
                                             </div>
                                         </>

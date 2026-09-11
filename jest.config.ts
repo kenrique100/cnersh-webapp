@@ -14,10 +14,9 @@ const config: Config = {
     '^@/generated/prisma(.*)$': '<rootDir>/src/generated/prisma$1',
     '^next/server$': '<rootDir>/src/__mocks__/next/server.ts',
     '^next/navigation$': '<rootDir>/src/__mocks__/next/navigation.ts',
-    '^isomorphic-dompurify$': '<rootDir>/src/__mocks__/isomorphic-dompurify.ts',
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(isomorphic-dompurify|@exodus/bytes|html-encoding-sniffer|jsdom|parse5|nwsapi|whatwg-url|better-auth)/)',
+    '/node_modules/(?!(better-auth|sanitize-html|htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)/)',
   ],
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.[jt]s?(x)',

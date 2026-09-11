@@ -138,7 +138,12 @@ describe('getUserActivity', () => {
             where: { userId: 'user-1', deleted: false },
             select: {
                 id: true, content: true, image: true, createdAt: true,
-                _count: { select: { comments: true, likes: true } },
+                _count: {
+                    select: {
+                        comments: { where: { deleted: false } },
+                        likes: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
             take: 20,

@@ -69,15 +69,15 @@ describe('FeedLeftSidebar', () => {
             expect(screen.getAllByText('CNERSH').length).toBeGreaterThan(0);
         });
 
-        it('renders Get Started and Sign In buttons', () => {
+        it('renders Create account and Sign In buttons', () => {
             render(<FeedLeftSidebar {...guestProps} />);
-            expect(screen.getByText('Get Started')).toBeInTheDocument();
+            expect(screen.getByText('Create account')).toBeInTheDocument();
             expect(screen.getByText('Sign In')).toBeInTheDocument();
         });
 
-        it('Get Started links to /sign-up', () => {
+        it('Create account links to /sign-up', () => {
             render(<FeedLeftSidebar {...guestProps} />);
-            expect(screen.getByText('Get Started').closest('a')).toHaveAttribute('href', '/sign-up');
+            expect(screen.getByText('Create account').closest('a')).toHaveAttribute('href', '/sign-up');
         });
 
         it('Sign In links to /sign-in', () => {

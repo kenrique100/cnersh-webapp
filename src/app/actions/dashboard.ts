@@ -2,6 +2,8 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { isAdminRole } from "@/lib/permissions";
+import { z } from "zod";
 
 /** Dashboard stats for normal users */
 export async function getUserDashboardData() {
@@ -19,7 +21,6 @@ export async function getUserDashboardData() {
             unreadNotifications,
             recentPosts,
             recentProjects,
-            recentCommunityTopics,
         ] = await Promise.all([
             db.post.count({ where: { userId, deleted: false } }),
             db.project.count({ where: { userId, deleted: false } }),
@@ -38,7 +39,12 @@ export async function getUserDashboardData() {
                     id: true,
                     content: true,
                     createdAt: true,
-                    _count: { select: { comments: true, likes: true } },
+                    _count: {
+                        select: {
+                            comments: { where: { deleted: false } },
+                            likes: true,
+                        },
+                    },
                 },
                 orderBy: { createdAt: "desc" },
                 take: 5,
@@ -50,19 +56,6 @@ export async function getUserDashboardData() {
                     title: true,
                     status: true,
                     createdAt: true,
-                },
-                orderBy: { createdAt: "desc" },
-                take: 5,
-            }),
-            db.communityTopic.findMany({
-                where: { deleted: false },
-                select: {
-                    id: true,
-                    title: true,
-                    category: true,
-                    createdAt: true,
-                    user: { select: { name: true } },
-                    _count: { select: { replies: true, likes: true } },
                 },
                 orderBy: { createdAt: "desc" },
                 take: 5,
@@ -85,10 +78,15 @@ export async function getUserDashboardData() {
                 ...p,
                 createdAt: p.createdAt.toISOString(),
             })),
-            recentCommunityTopics: recentCommunityTopics.map((t) => ({
-                ...t,
-                createdAt: t.createdAt.toISOString(),
-            })),
+            // Community membership is restricted to administrators.
+            recentCommunityTopics: [] as Array<{
+                id: string;
+                title: string;
+                category: string;
+                createdAt: string;
+                user: { name: string | null };
+                _count: { replies: number; likes: number };
+            }>,
         };
     } catch (error) {
         console.error("Error fetching user dashboard data:", error);
@@ -107,11 +105,12 @@ export async function getAdminDashboardData() {
             select: { role: true },
         });
 
-        if (user?.role !== "admin" && user?.role !== "superadmin") {
+        if (!isAdminRole(user?.role)) {
             return null;
         }
 
         const isSuperAdmin = user.role === "superadmin";
+        const visibleUserFilter = isSuperAdmin ? {} : { role: "user" as const };
 
         const [
             totalUsers,
@@ -127,8 +126,8 @@ export async function getAdminDashboardData() {
             recentProjects,
             recentCommunityTopics,
         ] = await Promise.all([
-            db.user.count(),
-            db.user.count({ where: { banned: true } }),
+            db.user.count({ where: visibleUserFilter }),
+            db.user.count({ where: { ...visibleUserFilter, banned: true } }),
             db.post.count({ where: { deleted: false } }),
             db.project.count({ where: { deleted: false } }),
             db.project.count({ where: { status: "APPROVED", deleted: false } }),
@@ -142,6 +141,7 @@ export async function getAdminDashboardData() {
             db.communityTopic.count({ where: { deleted: false } }),
             db.report.count({ where: { status: "PENDING" } }),
             db.auditLog.findMany({
+                where: isSuperAdmin ? {} : { userId: session.user.id },
                 include: {
                     user: { select: { name: true, email: true } },
                 },
@@ -171,7 +171,12 @@ export async function getAdminDashboardData() {
                     category: true,
                     createdAt: true,
                     user: { select: { name: true } },
-                    _count: { select: { replies: true, likes: true } },
+                    _count: {
+                        select: {
+                            replies: { where: { deleted: false } },
+                            likes: true,
+                        },
+                    },
                 },
                 orderBy: { createdAt: "desc" },
                 take: 5,
@@ -250,7 +255,9 @@ export async function getUserActivity(page = 1, limit = 10) {
 
     try {
         const userId = session.user.id;
-        const skip = (page - 1) * limit;
+        const safePage = z.number().int().min(1).max(1_000_000).catch(1).parse(page);
+        const safeLimit = z.number().int().min(1).max(50).catch(10).parse(limit);
+        const skip = (safePage - 1) * safeLimit;
 
         const [posts, projects, totalPosts, totalProjects] = await Promise.all([
             db.post.findMany({
@@ -260,11 +267,16 @@ export async function getUserActivity(page = 1, limit = 10) {
                     content: true,
                     image: true,
                     createdAt: true,
-                    _count: { select: { comments: true, likes: true } },
+                    _count: {
+                        select: {
+                            comments: { where: { deleted: false } },
+                            likes: true,
+                        },
+                    },
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
-                take: limit,
+                take: safeLimit,
             }),
             db.project.findMany({
                 where: { userId, deleted: false },
@@ -280,7 +292,7 @@ export async function getUserActivity(page = 1, limit = 10) {
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
-                take: limit,
+                take: safeLimit,
             }),
             db.post.count({ where: { userId, deleted: false } }),
             db.project.count({ where: { userId, deleted: false } }),
