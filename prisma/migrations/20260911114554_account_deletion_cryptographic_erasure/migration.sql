@@ -55,7 +55,7 @@ CREATE TABLE "erasure_journal" (
 );
 
 -- CreateIndex
-CREATE INDEX "account_deletion_request_userId_idx" ON "account_deletion_request"("userId");
+CREATE UNIQUE INDEX "account_deletion_request_userId_key" ON "account_deletion_request"("userId");
 
 -- CreateIndex
 CREATE INDEX "account_deletion_request_status_idx" ON "account_deletion_request"("status");

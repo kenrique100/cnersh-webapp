@@ -91,7 +91,7 @@ model AccountDeletionRequest {
   userId         String
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@unique([userId])
   @@index([status])
   @@index([createdAt])
   @@map("account_deletion_request")
