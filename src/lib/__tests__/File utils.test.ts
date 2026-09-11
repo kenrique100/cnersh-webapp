@@ -49,12 +49,13 @@ describe('constants', () => {
     });
 
     it('MAX_FILE_SIZES has correct values in bytes', () => {
-        expect(MAX_FILE_SIZES.avatar).toBe(8 * 1024 * 1024);
-        expect(MAX_FILE_SIZES.image).toBe(10 * 1024 * 1024);
-        expect(MAX_FILE_SIZES.video).toBe(64 * 1024 * 1024);
-        expect(MAX_FILE_SIZES.audio).toBe(8 * 1024 * 1024);
-        expect(MAX_FILE_SIZES.document).toBe(10 * 1024 * 1024);
-        expect(MAX_FILE_SIZES.protocol).toBe(64 * 1024 * 1024);
+        const MB = 1024 * 1024;
+        expect(MAX_FILE_SIZES.avatar).toBe(8 * MB);
+        expect(MAX_FILE_SIZES.image).toBe(8 * MB);
+        expect(MAX_FILE_SIZES.video).toBe(64 * MB);
+        expect(MAX_FILE_SIZES.audio).toBe(16 * MB);
+        expect(MAX_FILE_SIZES.document).toBe(16 * MB);
+        expect(MAX_FILE_SIZES.protocol).toBe(64 * MB);
     });
 });
 
