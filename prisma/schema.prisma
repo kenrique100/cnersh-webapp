@@ -28,6 +28,8 @@ model User {
   expertiseTags       String[]  @default([])
   pendingActivation   Boolean   @default(false)
   activationExpiresAt DateTime?
+  deletionRequestedAt DateTime?
+  erasedAt            DateTime?
 
   sessions            Session[]
   accounts            Account[]
@@ -50,11 +52,85 @@ model User {
   aarApplications     AARApplication[]
   appeals             Appeal[]
   files               File[]
+  deletionRequests    AccountDeletionRequest[]
 
   @@index([email])
   @@index([role])
   @@index([createdAt])
+  @@index([erasedAt])
   @@map("user")
+}
+
+/// Lifecycle of an account deletion. Transitions are owned by
+/// src/lib/erasure/deletion-service.ts and are idempotent so a request can be
+/// resumed after a crash, a failed external call, or a database restore.
+enum AccountDeletionStatus {
+  REQUESTED
+  ACCEPTED
+  PROCESSING
+  BLOCKED
+  COMPLETED
+
+  @@map("account_deletion_status")
+}
+
+model AccountDeletionRequest {
+  id             String                @id @default(uuid())
+  status         AccountDeletionStatus @default(REQUESTED)
+  requestedVia   String
+  requestedById  String
+  reason         String?
+  attempts       Int                   @default(0)
+  lastError      String?
+  lastAttemptAt  DateTime?
+  completedSteps String[]              @default([])
+  journalId      String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  completedAt    DateTime?
+  userId         String
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("account_deletion_request")
+}
+
+/// Per-subject data-encryption key, wrapped by the configured KEK.
+/// Lives in the erasure store (ERASURE_STORE_URL). When that store is the
+/// application database this table is created by the Prisma migration; when it
+/// is a separate database, scripts/sql/erasure-store.sql creates it there.
+model ErasureSubjectKey {
+  subjectId  String    @id
+  keyVersion Int       @default(1)
+  kekId      String
+  wrappedDek Bytes
+  createdAt  DateTime  @default(now())
+  rotatedAt  DateTime?
+
+  @@map("erasure_subject_key")
+}
+
+/// Durable record of every accepted deletion. Never deleted. Used by the
+/// restore gate (scripts/reconcile-erasure-journal.ts and the erasure cron) to
+/// re-apply deletions that a backup restore would otherwise undo.
+model ErasureJournalEntry {
+  id               String    @id @default(uuid())
+  subjectId        String    @unique
+  emailHmac        String?
+  status           String
+  requestedVia     String
+  requestedAt      DateTime  @default(now())
+  keyDestroyedAt   DateTime?
+  completedAt      DateTime?
+  lastReconciledAt DateTime?
+  details          Json?
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([emailHmac])
+  @@map("erasure_journal")
 }
 
 model Session {

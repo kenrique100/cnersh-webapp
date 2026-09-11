@@ -194,14 +194,19 @@ describe('getFileMetadata - integration', () => {
 
 describe('deleteFile - integration', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        jest.resetAllMocks();
     });
 
-    it('calls utapi.deleteFiles when storageKey exists', async () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('deletes the DB row only after UploadThing confirms storage deletion', async () => {
         const storageKey = 'uploadthing-file-key-123';
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
             storageKey,
         });
+        mockedUtapi.deleteFiles.mockResolvedValueOnce({ success: true, deletedCount: 1 });
         (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
 
         await deleteFile(VALID_UUID);
@@ -210,6 +215,36 @@ describe('deleteFile - integration', () => {
         expect(mockedDb.file.delete).toHaveBeenCalledWith({
             where: { id: VALID_UUID },
         });
+        expect(mockedUtapi.deleteFiles.mock.invocationCallOrder[0]).toBeLessThan(
+            (mockedDb.file.delete as jest.Mock).mock.invocationCallOrder[0]
+        );
+    });
+
+    it('keeps the DB row while storage deletion is still pending', async () => {
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({ storageKey: 'some-key' });
+        let confirmStorageDeletion!: (result: Awaited<ReturnType<typeof utapi.deleteFiles>>) => void;
+        mockedUtapi.deleteFiles.mockReturnValueOnce(new Promise((resolve) => {
+            confirmStorageDeletion = resolve;
+        }));
+
+        const deletion = deleteFile(VALID_UUID);
+        await Promise.resolve();
+
+        expect(mockedUtapi.deleteFiles).toHaveBeenCalledWith('some-key');
+        expect(mockedDb.file.delete).not.toHaveBeenCalled();
+
+        confirmStorageDeletion({ success: true, deletedCount: 1 });
+        await deletion;
+        expect(mockedDb.file.delete).toHaveBeenCalledWith({ where: { id: VALID_UUID } });
+    });
+
+    it('does nothing when the file record does not exist', async () => {
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+        await deleteFile(VALID_UUID);
+
+        expect(mockedUtapi.deleteFiles).not.toHaveBeenCalled();
+        expect(mockedDb.file.delete).not.toHaveBeenCalled();
     });
 
     it('skips UploadThing deletion when file has no storageKey', async () => {
@@ -224,7 +259,26 @@ describe('deleteFile - integration', () => {
         expect(mockedDb.file.delete).toHaveBeenCalled();
     });
 
-    it('still deletes DB record even when UploadThing deletion throws', async () => {
+    it.each([
+        ['success false', { success: false, deletedCount: 0 }],
+        ['success null', { success: null }],
+        ['success undefined', { success: undefined }],
+        ['missing success', {}],
+        ['null response', null],
+        ['undefined response', undefined],
+    ])('keeps the DB row and throws for %s', async (_label, result) => {
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({ storageKey: 'some-key' });
+        // Exercise malformed runtime responses as well as a normal failure.
+        (mockedUtapi.deleteFiles as jest.Mock).mockResolvedValueOnce(result);
+
+        await expect(deleteFile(VALID_UUID)).rejects.toThrow('File could not be deleted from storage');
+
+        expect(mockedUtapi.deleteFiles).toHaveBeenCalledWith('some-key');
+        expect(mockedDb.file.delete).not.toHaveBeenCalled();
+    });
+
+    it('keeps the DB record and throws when UploadThing rejects, so the object is never orphaned', async () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
         const storageKey = 'some-key';
@@ -232,18 +286,15 @@ describe('deleteFile - integration', () => {
             storageKey,
         });
         mockedUtapi.deleteFiles.mockRejectedValueOnce(new Error('UploadThing error'));
-        (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
 
-        await expect(deleteFile(VALID_UUID)).resolves.toBeUndefined();
+        await expect(deleteFile(VALID_UUID)).rejects.toThrow('File could not be deleted from storage');
 
-        expect(mockedDb.file.delete).toHaveBeenCalled();
+        expect(mockedDb.file.delete).not.toHaveBeenCalled();
 
         expect(consoleSpy).toHaveBeenCalledWith(
-            "[file-utils] UploadThing deletion failed:",
+            "[file-utils] UploadThing deletion failed; keeping record for retry:",
             expect.any(Error)
         );
-
-        consoleSpy.mockRestore();
     });
 });
 

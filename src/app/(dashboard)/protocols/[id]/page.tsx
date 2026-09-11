@@ -1,4 +1,5 @@
 import { authIsRequired } from "@/lib/auth-utils";
+import { openProjectFormData } from "@/lib/erasure/fields";
 import { getProjectById } from "@/app/actions/project";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,6 +120,10 @@ export default async function ProjectDetailPage({
     }
 
     if (!project) notFound();
+
+    // Sealed wizard payloads are decrypted server-side; once the submitter's
+    // key has been destroyed the payload is reported as erased rather than shown.
+    const openedFormData = await openProjectFormData(project.formData);
 
     const isOwner = project.userId === session.user.id;
     const myActiveAssignment = project.reviewAssignments?.find(
@@ -508,8 +513,16 @@ export default async function ProjectDetailPage({
                     )}
 
                     {/* ── Comprehensive Protocol Data (from formData JSON) ── */}
-                    {project.formData && (() => {
-                        const fd = project.formData as Record<string, unknown>;
+                    {openedFormData.erased && (
+                        <Card className="border-gray-200 dark:border-gray-800">
+                            <CardContent className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                                The detailed application form for this protocol was submitted by an account that has since been
+                                deleted. Its contents were erased and are no longer available.
+                            </CardContent>
+                        </Card>
+                    )}
+                    {openedFormData.data && (() => {
+                        const fd = openedFormData.data;
                         const piCv = fd.piCv as { url?: string; name?: string } | undefined;
                         const coInvestigators = fd.coInvestigators as Array<{ name: string; institution: string; email: string; role: string; cvUrl?: string; cvName?: string }> | undefined;
                         const fundingDocument = fd.fundingDocument as { url?: string; name?: string } | undefined;

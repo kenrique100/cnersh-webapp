@@ -66,12 +66,19 @@ export async function deleteFile(fileId: string): Promise<void> {
     select: { storageKey: true },
   });
 
-  if (file?.storageKey) {
+  if (!file) return;
+
+  if (file.storageKey) {
+    // Storage first. If the remote object cannot be removed we keep the row so
+    // the object is never orphaned and silently retained.
     try {
-      await utapi.deleteFiles(file.storageKey);
+      const result = await utapi.deleteFiles(file.storageKey);
+      if (result?.success !== true) {
+        throw new Error("Storage did not confirm file deletion");
+      }
     } catch (err) {
-      console.error("[file-utils] UploadThing deletion failed:", err);
-      // Continue to delete the DB record even if remote deletion fails
+      console.error("[file-utils] UploadThing deletion failed; keeping record for retry:", err);
+      throw new Error("File could not be deleted from storage");
     }
   }
 

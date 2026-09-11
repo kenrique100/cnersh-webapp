@@ -3,10 +3,12 @@ import { authIsRequired } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { SettingsIcon, PaletteIcon, UserIcon, LockIcon } from "lucide-react";
+import { SettingsIcon, PaletteIcon, UserIcon, LockIcon, Trash2Icon } from "lucide-react";
 import { UpdateProfile } from "@/components/update-profile";
 import { ChangePasswordForm } from "@/components/change-password";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DeleteAccount } from "@/components/delete-account";
+import { getAccountDeletionContext } from "@/app/actions/account-deletion";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,8 @@ export default async function SettingsPage() {
 
     const user = await updateProfile();
     if (!user) redirect("/sign-in");
+
+    const deletionContext = await getAccountDeletionContext();
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -92,6 +96,28 @@ export default async function SettingsPage() {
                         </Card>
                     </div>
                 </div>
+
+                {/* Delete Account Card */}
+                {deletionContext && (
+                    <Card
+                        id="delete-account"
+                        className="mt-6 scroll-mt-24 border border-red-200 dark:border-red-900/60 bg-white dark:bg-gray-950 shadow-lg"
+                    >
+                        <CardHeader className="space-y-1 pb-4">
+                            <CardTitle className="text-xl font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
+                                <Trash2Icon className="w-5 h-5" />
+                                Delete Account
+                            </CardTitle>
+                            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                                Permanently delete your account and erase your personal data
+                            </CardDescription>
+                        </CardHeader>
+                        <Separator className="bg-red-100 dark:bg-red-900/40" />
+                        <CardContent className="pt-6">
+                            <DeleteAccount context={deletionContext} />
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </div>
     );
