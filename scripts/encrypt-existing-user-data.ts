@@ -16,7 +16,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { loadErasureConfig } from "@/lib/erasure/config";
 import { isEncryptedValue } from "@/lib/erasure/crypto";
-import { isSealedFormData, sealFileData, sealProjectFormData } from "@/lib/erasure/fields";
+import { isErasedFormData, isSealedFormData, sealFileData, sealProjectFormData } from "@/lib/erasure/fields";
 
 import { flagValue, hasFlag, run } from "./erasure-lib";
 
@@ -32,7 +32,7 @@ run(async () => {
     let cursor: string | undefined;
     for (;;) {
         const projects = await db.project.findMany({
-            where: { formData: { not: Prisma.DbNull } },
+            where: { formData: { not: Prisma.DbNull }, user: { erasedAt: null } },
             select: { id: true, userId: true, formData: true, updatedAt: true },
             orderBy: { id: "asc" },
             take: BATCH,
@@ -41,7 +41,13 @@ run(async () => {
         if (projects.length === 0) break;
         cursor = projects[projects.length - 1].id;
         for (const project of projects) {
-            if (project.formData === null || typeof project.formData !== "object" || isSealedFormData(project.formData)) continue;
+            if (
+                project.formData === null ||
+                typeof project.formData !== "object" ||
+                isSealedFormData(project.formData) ||
+                isErasedFormData(project.formData)
+            )
+                continue;
             formDataPending += 1;
             if (!apply) continue;
             const sealed = await sealProjectFormData(project.userId, project.formData as Record<string, unknown>);
@@ -59,7 +65,7 @@ run(async () => {
     cursor = undefined;
     for (;;) {
         const files: Array<{ id: string; userId: string; data: string | null }> = await db.file.findMany({
-            where: { data: { not: null } },
+            where: { data: { not: null }, user: { erasedAt: null } },
             select: { id: true, userId: true, data: true },
             orderBy: { id: "asc" },
             take: BATCH,
