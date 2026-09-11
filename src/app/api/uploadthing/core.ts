@@ -11,9 +11,9 @@ export const ourFileRouter = {
             if (!session) throw new Error("Unauthorized");
             return { userId: session.user.id };
         })
-        .onUploadComplete(async ({ metadata, file }) => {
+        .onUploadComplete(async ({ metadata }) => {
             // Here you could save the file metadata to your database
-            console.log("Upload complete for userId:", metadata.userId, "file url:", file.url);
+            console.log("Upload complete for userId:", metadata.userId);
             return { uploadedBy: metadata.userId };
         }),
     videoUploader: f({ video: { maxFileSize: UT_MAX_SIZES.video } })
@@ -22,7 +22,7 @@ export const ourFileRouter = {
             if (!session) throw new Error("Unauthorized");
             return { userId: session.user.id };
         })
-        .onUploadComplete(async ({ metadata, file }) => {
+        .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
     audioUploader: f({ audio: { maxFileSize: UT_MAX_SIZES.audio } })
@@ -31,7 +31,7 @@ export const ourFileRouter = {
             if (!session) throw new Error("Unauthorized");
             return { userId: session.user.id };
         })
-        .onUploadComplete(async ({ metadata, file }) => {
+        .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
     pdfUploader: f({ pdf: { maxFileSize: UT_MAX_SIZES.document } })
@@ -40,7 +40,7 @@ export const ourFileRouter = {
             if (!session) throw new Error("Unauthorized");
             return { userId: session.user.id };
         })
-        .onUploadComplete(async ({ metadata, file }) => {
+        .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
 } satisfies FileRouter;
