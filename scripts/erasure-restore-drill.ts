@@ -13,12 +13,18 @@
  *   5. assert A's protected data is unreadable because the key is gone;
  *   6. run reconciliation and assert A is scrubbed again, B is untouched.
  *
- *   npm run erasure:drill -- --confirm-restore
+ *   npm run erasure:drill -- --confirm-database=cnersh_drill
  *
- * Safety: the script REFUSES to run unless the database name in DATABASE_URL
- * contains "drill", "staging", "test" or "dev", NODE_ENV is not "production",
- * and --confirm-restore is passed. It performs a full pg_restore --clean, so
- * never point it at production.
+ * Safety: the script REFUSES to run unless the database name in the effective
+ * URL (DIRECT_URL before DATABASE_URL) contains "drill", "staging", "test" or
+ * "dev", NODE_ENV is not "production", and both --confirm-restore and an exact
+ * --confirm-database=NAME are passed. The npm alias supplies --confirm-restore,
+ * but the operator must supply the database name. These guards cannot identify
+ * a provider's production branch: only use a disposable non-production target.
+ * DATABASE_URL is required for the shared application client, and DIRECT_URL,
+ * if supplied, must identify that same database (pooled/direct aliases count).
+ * It performs a full pg_restore --clean --exit-on-error; never use production.
+ * This is a logical single-database drill, not a Neon branch-restore test.
  */
 // Load .env before anything imports the database client (import order matters).
 import "dotenv/config";
@@ -33,7 +39,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "@/generated/prisma/client";
-import { loadErasureConfig } from "@/lib/erasure/config";
+import { isSameDatabaseDestination, loadErasureConfig } from "@/lib/erasure/config";
 import { __setDbForTests, reconcileWithJournal, requestAccountDeletion } from "@/lib/erasure/deletion-service";
 import { ErasedDataError, openFileData, openProjectFormData, sealFileData, sealProjectFormData } from "@/lib/erasure/fields";
 import { forgetSubjectKey, getOrCreateSubjectKey, getSubjectKey } from "@/lib/erasure/keys";
@@ -62,10 +68,60 @@ function pass(message: string): void {
     console.log(`  ok  ${message}`);
 }
 
-async function terminateOtherConnections(url: string): Promise<void> {
-    const dbName = new URL(url).pathname.replace(/^\//, "");
+/** Pure preflight: reject an unsafe or ambiguous target before any mutations. */
+export function validateDrillTarget(
+    url: string,
+    env: NodeJS.ProcessEnv = process.env,
+    args: readonly string[] = process.argv,
+): string {
+    if (env.NODE_ENV?.trim().toLowerCase() === "production") {
+        throw new Error("Refusing to run the drill with NODE_ENV=production");
+    }
+    let parsed: URL;
+    let dbName: string;
+    try {
+        parsed = new URL(url);
+        dbName = decodeURIComponent(parsed.pathname.slice(1));
+    } catch {
+        // Do not include a connection URL (and its credentials) in errors.
+        throw new Error("Refusing to run against an invalid PostgreSQL destination");
+    }
+    if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !parsed.hostname || !dbName || /[\/\0]/.test(dbName)) {
+        throw new Error("Refusing to run without an explicit PostgreSQL host and database name");
+    }
+    if (["host", "hostaddr", "port", "dbname", "database", "service", "servicefile"].some((key) => parsed.searchParams.has(key))) {
+        throw new Error("Refusing to run with destination overrides in the connection URL query");
+    }
+    if (!/drill|staging|test|dev/i.test(dbName)) {
+        throw new Error(`Refusing to run against database "${dbName}"; the name must contain drill, staging, test or dev`);
+    }
+    if (!args.includes("--confirm-restore")) {
+        throw new Error("Pass --confirm-restore to acknowledge that this script restores the database from a fresh dump");
+    }
+    const confirmations = args.filter((arg) => arg.startsWith("--confirm-database="));
+    if (confirmations.length !== 1 || confirmations[0] !== `--confirm-database=${dbName}`) {
+        throw new Error(`Pass exactly one --confirm-database=${dbName} to confirm the effective restore target`);
+    }
+    if (!env.DATABASE_URL?.trim()) {
+        throw new Error("Set DATABASE_URL to the restore target so the shared application client uses the same database");
+    }
+    if (!isSameDatabaseDestination(url, env.DATABASE_URL)
+        || (env.DIRECT_URL && !isSameDatabaseDestination(url, env.DIRECT_URL))) {
+        throw new Error("Refusing to run: DATABASE_URL and DIRECT_URL must identify the same database as the restore target");
+    }
+    return dbName;
+}
+
+/** A non-zero pg_restore exit is always a failed drill, regardless of stderr. */
+export async function restoreDatabase(url: string, dumpFile: string): Promise<void> {
+    await exec("pg_restore", [
+        "--clean", "--if-exists", "--exit-on-error", "--no-owner", "--no-privileges", "--dbname", url, dumpFile,
+    ]);
+}
+
+async function terminateOtherConnections(url: string, dbName: string): Promise<void> {
     await exec("psql", [
-        "--dbname", url, "--quiet", "--no-psqlrc", "-c",
+        "--dbname", url, "--quiet", "--no-psqlrc", "--set", "ON_ERROR_STOP=1", "-c",
         `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbName.replace(/'/g, "''")}' AND pid <> pg_backend_pid();`,
     ]);
 }
@@ -130,20 +186,13 @@ async function cleanup(ids: string[]): Promise<void> {
 }
 
 run(async () => {
-    const config = loadErasureConfig();
     const url = connectionString();
-    const dbName = new URL(url).pathname.replace(/^\//, "");
-
-    if (process.env.NODE_ENV === "production") throw new Error("Refusing to run the drill with NODE_ENV=production");
-    if (!/drill|staging|test|dev/i.test(dbName)) {
-        throw new Error(`Refusing to run against database "${dbName}"; the name must contain drill, staging, test or dev`);
-    }
-    if (!hasFlag("--confirm-restore")) {
-        throw new Error("Pass --confirm-restore to acknowledge that this script restores the database from a fresh dump");
-    }
+    const dbName = validateDrillTarget(url);
+    const config = loadErasureConfig();
     if (!config.storeIsolated) {
-        console.warn("WARNING: ERASURE_STORE_URL points at the application database. The restore will also resurrect keys;");
-        console.warn("         the drill still checks reconciliation, but production must use a separate store.");
+        console.warn("WARNING: Independent erasure-store restore history is not established by these URLs.");
+        console.warn("         Same-database restores resurrect keys; Neon branch restores include every database.");
+        console.warn("         This logical drill cannot establish production backup isolation.");
     }
 
     const stamp = Date.now().toString(36);
@@ -182,11 +231,8 @@ run(async () => {
         console.log("4. Restoring the backup (simulating disaster recovery)");
         await db.$disconnect();
         forgetSubjectKey();
-        await terminateOtherConnections(url);
-        await exec("pg_restore", ["--clean", "--if-exists", "--no-owner", "--no-privileges", "--dbname", url, dumpFile]).catch((error: { stderr?: string }) => {
-            // pg_restore reports harmless "does not exist" notices as warnings on stderr.
-            if (!/errors ignored on restore|WARNING/i.test(error.stderr ?? "")) throw error;
-        });
+        await terminateOtherConnections(url, dbName);
+        await restoreDatabase(url, dumpFile);
         connect(url);
         pass("database restored to the pre-deletion snapshot");
 
@@ -211,7 +257,7 @@ run(async () => {
             assert(fileUnreadable, "A's restored inline file is unreadable without the key");
             pass("protected data stayed unreadable through the restore");
         } else {
-            console.warn("  --  key store was restored together with the database; skipping unreadability assertions");
+            console.warn("  --  independent erasure-store restore history is unverified; skipping unreadability assertions");
         }
 
         console.log("6. Running reconciliation (the restore gate)");
@@ -241,7 +287,9 @@ run(async () => {
         assert((await openProjectFormData(bProject.formData)).data?.secret === "pi-B", "B's data still readable");
         pass("reconciliation restored the erased state and left B intact");
 
-        console.log("\nDRILL PASSED");
+        console.log(config.storeIsolated
+            ? "\nDRILL PASSED (logical database restore only; verify production backup isolation separately)"
+            : "\nRECONCILIATION DRILL PASSED (backup isolation and unreadability assertions not verified)");
         if (!hasFlag("--keep")) await cleanup([a.id, b.id]);
         return 0;
     } catch (error) {

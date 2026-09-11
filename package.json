@@ -28,6 +28,7 @@
     "erasure:encrypt-existing": "tsx scripts/encrypt-existing-user-data.ts",
     "erasure:encrypt-existing:apply": "tsx scripts/encrypt-existing-user-data.ts --apply",
     "erasure:rotate-kek": "tsx scripts/rotate-erasure-kek.ts",
+    "erasure:generate-keys": "tsx scripts/generate-erasure-secrets.ts",
     "erasure:drill": "tsx scripts/erasure-restore-drill.ts --confirm-restore"
   },
   "dependencies": {

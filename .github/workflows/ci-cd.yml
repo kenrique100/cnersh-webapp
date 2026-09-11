@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
+    branches: [master, feat/account-deletion-cryptographic-erasure]
   workflow_dispatch: {}
 
 concurrency:
@@ -78,7 +78,7 @@ jobs:
         run: npm run lint
 
       - name: Verify TypeScript Compilation
-        run: npx tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo || true
+        run: npx tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo
 
       - name: Execute Unit & Integration Tests
         run: npm test -- --ci --coverage

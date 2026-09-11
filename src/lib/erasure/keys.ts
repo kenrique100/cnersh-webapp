@@ -11,6 +11,7 @@ import { loadErasureConfig } from "./config";
 import { generateDek, unwrapDek, wrapDek } from "./crypto";
 import {
     deleteSubjectKey,
+    INSTITUTION_SUBJECT,
     insertSubjectKeyIfAbsent,
     listSubjectKeys,
     readSubjectKey,
@@ -18,7 +19,7 @@ import {
     type SubjectKeyRecord,
 } from "./store";
 
-export const INSTITUTION_SUBJECT = "institution-records";
+export { INSTITUTION_SUBJECT, SubjectKeyRevokedError } from "./store";
 
 export interface SubjectKey {
     subjectId: string;
@@ -26,38 +27,11 @@ export interface SubjectKey {
     dek: Buffer;
 }
 
-interface CacheEntry {
-    key: SubjectKey;
-    expiresAt: number;
-}
-
-const CACHE_TTL_MS = 60_000;
-const CACHE_MAX_ENTRIES = 500;
-const cache = new Map<string, CacheEntry>();
-
-function cacheGet(subjectId: string): SubjectKey | null {
-    const entry = cache.get(subjectId);
-    if (!entry) return null;
-    if (entry.expiresAt < Date.now()) {
-        cache.delete(subjectId);
-        return null;
-    }
-    return entry.key;
-}
-
-function cacheSet(key: SubjectKey): void {
-    if (cache.size >= CACHE_MAX_ENTRIES) {
-        const oldest = cache.keys().next().value;
-        if (oldest) cache.delete(oldest);
-    }
-    cache.set(key.subjectId, { key, expiresAt: Date.now() + CACHE_TTL_MS });
-}
-
-/** Drop a subject from the in-process cache. Called on destruction and by tests. */
-export function forgetSubjectKey(subjectId?: string): void {
-    if (subjectId) cache.delete(subjectId);
-    else cache.clear();
-}
+/**
+ * Compatibility no-op: DEKs are no longer cached in this process. This cannot
+ * revoke buffers already returned to callers, including reads in flight.
+ */
+export function forgetSubjectKey(_subjectId?: string): void {} // eslint-disable-line @typescript-eslint/no-unused-vars
 
 function kekById(kekId: string): Buffer {
     const config = loadErasureConfig();
@@ -74,25 +48,23 @@ function unwrapRecord(record: SubjectKeyRecord): SubjectKey {
     return { subjectId: record.subjectId, keyVersion: record.keyVersion, dek };
 }
 
-/** Return the subject's key, or null if it has never existed or was destroyed. */
+/**
+ * Read through to the store every time. Accepted deletion intents still allow
+ * reads until destruction so retained records can be re-keyed.
+ */
 export async function getSubjectKey(subjectId: string): Promise<SubjectKey | null> {
-    const cached = cacheGet(subjectId);
-    if (cached) return cached;
     const record = await readSubjectKey(subjectId);
-    if (!record) return null;
-    const key = unwrapRecord(record);
-    cacheSet(key);
-    return key;
+    return record ? unwrapRecord(record) : null;
 }
 
 /**
- * Return the subject's key, creating one when the subject has none. Creation is
- * a conditional insert, so concurrent first writes converge on one key.
+ * Obtain a key for a write, creating one when the subject has none. Always use
+ * the store's guarded operation, including for existing keys: a durable
+ * deletion intent revokes new writes even before key destruction.
+ * This orders key authorization, not application writes using bytes that a
+ * caller already obtained before revocation.
  */
 export async function getOrCreateSubjectKey(subjectId: string): Promise<SubjectKey> {
-    const existing = await getSubjectKey(subjectId);
-    if (existing) return existing;
-
     const config = loadErasureConfig();
     const dek = generateDek();
     const record = await insertSubjectKeyIfAbsent({
@@ -100,9 +72,7 @@ export async function getOrCreateSubjectKey(subjectId: string): Promise<SubjectK
         kekId: config.currentKek.id,
         wrappedDek: wrapDek(config.currentKek.key, dek, subjectId, config.currentKek.id),
     });
-    const key = unwrapRecord(record);
-    cacheSet(key);
-    return key;
+    return unwrapRecord(record);
 }
 
 /**
@@ -114,15 +84,11 @@ export async function destroySubjectKey(subjectId: string): Promise<boolean> {
     if (subjectId === INSTITUTION_SUBJECT) {
         throw new Error("Refusing to destroy the institutional records key");
     }
-    forgetSubjectKey(subjectId);
-    const removed = await deleteSubjectKey(subjectId);
-    forgetSubjectKey(subjectId);
-    return removed;
+    return deleteSubjectKey(subjectId);
 }
 
-/** Confirm destruction by reading through to the store, bypassing the cache. */
+/** Confirm destruction by reading through to the store. */
 export async function verifySubjectKeyDestroyed(subjectId: string): Promise<boolean> {
-    forgetSubjectKey(subjectId);
     return (await readSubjectKey(subjectId)) === null;
 }
 
@@ -146,7 +112,6 @@ export async function rewrapAllSubjectKeys(onProgress?: (done: number) => void):
                     config.currentKek.id,
                     wrapDek(config.currentKek.key, dek, record.subjectId, config.currentKek.id)
                 );
-                forgetSubjectKey(record.subjectId);
                 rewrapped += 1;
                 onProgress?.(rewrapped);
             }

@@ -11,16 +11,25 @@ jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
 jest.mock("@/lib/db", () => ({ db: { file: { findUnique: jest.fn(), delete: jest.fn() } } }));
 jest.mock("@/lib/uploadthing", () => ({ utapi: { deleteFiles: jest.fn() } }));
 jest.mock("@/lib/erasure/store", () => {
+    const { INSTITUTION_SUBJECT, SubjectKeyRevokedError } = jest.requireActual("@/lib/erasure/store");
     const rows = new Map<string, Record<string, unknown>>();
+    const revoked = new Set<string>();
     return {
+        INSTITUTION_SUBJECT,
+        SubjectKeyRevokedError,
         readSubjectKey: jest.fn(async (subjectId: string) => rows.get(subjectId) ?? null),
         insertSubjectKeyIfAbsent: jest.fn(async (record: Record<string, unknown>) => {
             const id = record.subjectId as string;
+            if (revoked.has(id)) throw new SubjectKeyRevokedError(id);
             if (!rows.has(id)) rows.set(id, { ...record, keyVersion: 1, createdAt: new Date(), rotatedAt: null });
             return rows.get(id);
         }),
         updateSubjectKeyWrapping: jest.fn(),
-        deleteSubjectKey: jest.fn(async (subjectId: string) => rows.delete(subjectId)),
+        deleteSubjectKey: jest.fn(async (subjectId: string) => {
+            if (subjectId === INSTITUTION_SUBJECT) throw new Error("Refusing to destroy the institutional records key");
+            revoked.add(subjectId);
+            return rows.delete(subjectId);
+        }),
         listSubjectKeys: jest.fn(async () => []),
     };
 });
