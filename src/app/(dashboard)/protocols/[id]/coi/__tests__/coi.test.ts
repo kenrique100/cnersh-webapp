@@ -7,15 +7,22 @@ jest.mock("@/lib/db", () => ({
     db: {
         reviewAssignment: {
             findUnique: jest.fn(),
-            update: jest.fn(),
+            updateMany: jest.fn(),
             findMany: jest.fn(),
         },
         cOIDeclaration: {
             create: jest.fn(),
         },
+        project: {
+            updateMany: jest.fn(),
+        },
+        projectStatusHistory: {
+            create: jest.fn(),
+        },
         auditLog: {
             create: jest.fn(),
         },
+        $transaction: jest.fn(),
     },
 }));
 
@@ -30,15 +37,22 @@ jest.mock("@/lib/notify-admins", () => ({
 type MockDb = {
     reviewAssignment: {
         findUnique: jest.Mock;
-        update: jest.Mock;
+        updateMany: jest.Mock;
         findMany: jest.Mock;
     };
     cOIDeclaration: {
         create: jest.Mock;
     };
+    project: {
+        updateMany: jest.Mock;
+    };
+    projectStatusHistory: {
+        create: jest.Mock;
+    };
     auditLog: {
         create: jest.Mock;
     };
+    $transaction: jest.Mock;
 };
 
 const mockSession = { user: { id: "user-1" } };
@@ -53,6 +67,10 @@ describe("COI actions", () => {
         jest.clearAllMocks();
         // 3. Clean usage without needing inline 'as jest.Mock' casting
         mockAuthSession.mockResolvedValue(mockSession);
+        mockNotifyAdmins.mockResolvedValue(undefined);
+        mockDb.$transaction.mockImplementation(async (callback: (tx: MockDb) => unknown) => callback(mockDb));
+        mockDb.reviewAssignment.updateMany.mockResolvedValue({ count: 1 });
+        mockDb.project.updateMany.mockResolvedValue({ count: 0 });
     });
 
     describe("submitCOIDeclaration", () => {
@@ -76,7 +94,8 @@ describe("COI actions", () => {
             const assignment = {
                 id: "assign-1",
                 reviewerId: "other-user",
-                project: { id: "proj-1", title: "Test" },
+                status: "PENDING_COI",
+                project: { id: "proj-1", title: "Test", deleted: false, status: "PENDING_REVIEW" },
                 coiDeclaration: null,
             };
             mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment);
@@ -89,7 +108,8 @@ describe("COI actions", () => {
             const assignment = {
                 id: "assign-1",
                 reviewerId: "user-1",
-                project: { id: "proj-1", title: "Test" },
+                status: "PENDING_COI",
+                project: { id: "proj-1", title: "Test", deleted: false, status: "PENDING_REVIEW" },
                 coiDeclaration: { id: "coi-1" },
             };
             mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment);
@@ -102,14 +122,13 @@ describe("COI actions", () => {
             const assignment = {
                 id: "assign-1",
                 reviewerId: "user-1",
-                project: { id: "proj-1", title: "Test" },
+                status: "PENDING_COI",
+                project: { id: "proj-1", title: "Test", deleted: false, status: "PENDING_REVIEW" },
                 coiDeclaration: null,
             };
             mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment);
             const declaration = { id: "decl-1", hasCOI: false, declaredAt: new Date() };
             mockDb.cOIDeclaration.create.mockResolvedValue(declaration);
-            mockDb.reviewAssignment.update.mockResolvedValue({});
-
             const result = await submitCOIDeclaration({ ...input, hasCOI: false, details: undefined });
 
             expect(mockDb.cOIDeclaration.create).toHaveBeenCalledWith({
@@ -120,8 +139,12 @@ describe("COI actions", () => {
                     details: null,
                 },
             });
-            expect(mockDb.reviewAssignment.update).toHaveBeenCalledWith({
-                where: { id: "assign-1" },
+            expect(mockDb.reviewAssignment.updateMany).toHaveBeenCalledWith({
+                where: expect.objectContaining({
+                    id: "assign-1",
+                    reviewerId: "user-1",
+                    status: "PENDING_COI",
+                }),
                 data: { status: "ACTIVE" },
             });
             expect(mockDb.auditLog.create).toHaveBeenCalled();
@@ -137,18 +160,21 @@ describe("COI actions", () => {
             const assignment = {
                 id: "assign-1",
                 reviewerId: "user-1",
-                project: { id: "proj-1", title: "Test" },
+                status: "PENDING_COI",
+                project: { id: "proj-1", title: "Test", deleted: false, status: "PENDING_REVIEW" },
                 coiDeclaration: null,
             };
             mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment);
             const declaration = { id: "decl-1", hasCOI: true, declaredAt: new Date() };
             mockDb.cOIDeclaration.create.mockResolvedValue(declaration);
-            mockDb.reviewAssignment.update.mockResolvedValue({});
-
             await submitCOIDeclaration({ ...input, hasCOI: true, details: "Conflict" });
 
-            expect(mockDb.reviewAssignment.update).toHaveBeenCalledWith({
-                where: { id: "assign-1" },
+            expect(mockDb.reviewAssignment.updateMany).toHaveBeenCalledWith({
+                where: expect.objectContaining({
+                    id: "assign-1",
+                    reviewerId: "user-1",
+                    status: "PENDING_COI",
+                }),
                 data: { status: "EXCLUDED" },
             });
             expect(mockNotifyAdmins).toHaveBeenCalledWith({
@@ -181,7 +207,7 @@ describe("COI actions", () => {
             const result = await getMyReviewAssignments();
 
             expect(mockDb.reviewAssignment.findMany).toHaveBeenCalledWith({
-                where: { reviewerId: "user-1" },
+                where: { reviewerId: "user-1", project: { deleted: false } },
                 include: {
                     project: {
                         select: {

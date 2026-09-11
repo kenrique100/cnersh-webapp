@@ -15,7 +15,7 @@ describe('EthicalClearanceDesktopDropdown', () => {
     it('toggles dropdown and closes on outside click', () => {
         render(<EthicalClearanceDesktopDropdown />);
         fireEvent.click(screen.getByRole('button'));
-        // Match the decoded text — React renders & not &amp; in the DOM
+        // Match the decoded text; React renders & not &amp; in the DOM
         expect(screen.getByText('Documents & Calendar')).toBeInTheDocument();
         fireEvent.mouseDown(document.body);
         expect(screen.queryByText('Documents & Calendar')).not.toBeInTheDocument();

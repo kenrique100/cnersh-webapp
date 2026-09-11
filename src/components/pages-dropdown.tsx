@@ -29,7 +29,7 @@ function PageNode({ page }: { page: Page }) {
                 className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
             >
                 <span className="flex items-center gap-1.5">
-                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     {page.name}
                 </span>
                 {hasContent && (
@@ -99,7 +99,7 @@ function EthicalClearanceDropdown() {
                 className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
             >
                 <span className="flex items-center gap-1.5">
-                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     Ethical Clearance
                 </span>
                 <ChevronDownIcon
@@ -128,7 +128,7 @@ function EthicalClearanceDropdown() {
                             className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 Application Guidelines
                             </span>
                             <ChevronDownIcon
@@ -171,7 +171,7 @@ function EthicalClearanceDropdown() {
                             className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 Forms &amp; Questionnaires
                             </span>
                             <ChevronDownIcon
@@ -225,7 +225,7 @@ function ResourcesDropdown() {
                 className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
             >
                 <span className="flex items-center gap-1.5">
-                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     Resources
                 </span>
                 <ChevronDownIcon
@@ -287,7 +287,7 @@ function ResourcesDropdown() {
                             className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 Law &amp; Research in Cameroon
                             </span>
                             <ChevronDownIcon
@@ -362,7 +362,7 @@ function ResourcesDropdown() {
                             className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 Ministerial Decision
                             </span>
                             <ChevronDownIcon
@@ -405,7 +405,7 @@ function SOPsDropdown() {
                 className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
             >
                 <span className="flex items-center gap-1.5">
-                    <FileTextIcon className="w-3 h-3 text-purple-500" />
+                    <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     SOP&apos;s
                 </span>
                 <ChevronDownIcon
@@ -421,7 +421,7 @@ function SOPsDropdown() {
                             className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 English
                             </span>
                             <ChevronDownIcon
@@ -464,7 +464,7 @@ function SOPsDropdown() {
                             className="w-full flex items-center justify-between text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <FileTextIcon className="w-3 h-3 text-purple-500" />
+                                <FileTextIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 French
                             </span>
                             <ChevronDownIcon
@@ -531,7 +531,7 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
                     href="/pages/about"
                     className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                 >
-                    <UsersIcon className="w-3 h-3 text-purple-500" />
+                    <UsersIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     About Us
                 </Link>
             </div>
@@ -540,7 +540,7 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
                     href="/pages/contract-rex"
                     className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                 >
-                    <BuildingIcon className="w-3 h-3 text-purple-500" />
+                    <BuildingIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     Contract Rex Org
                 </Link>
             </div>
@@ -551,7 +551,7 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
                     rel="noopener noreferrer"
                     className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                 >
-                    <DownloadIcon className="w-3 h-3 text-purple-500" />
+                    <DownloadIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     Membership
                 </a>
             </div>
@@ -562,8 +562,8 @@ export default function PagesDropdown({ pages }: { pages: Page[] }) {
                     rel="noopener noreferrer"
                     className="w-full flex items-center gap-1.5 text-[11px] font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 py-1 transition-colors"
                 >
-                    <DownloadIcon className="w-3 h-3 text-purple-500" />
-                    Reviews
+                    <DownloadIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                    Study Review and Follow-up Form
                 </a>
             </div>
         </div>

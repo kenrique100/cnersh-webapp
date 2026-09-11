@@ -16,10 +16,13 @@
     "db:push:force": "prisma db push --accept-data-loss",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:reset": "prisma db push --force-reset",
+    "db:reset": "prisma migrate reset --force && prisma db seed",
+    "db:reset:push": "prisma db push --force-reset",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma generate && prisma db push && tsx prisma/seed.ts"
+    "db:dedupe:sessions": "tsx scripts/resolve-duplicate-committee-sessions.ts",
+    "db:dedupe:sessions:apply": "tsx scripts/resolve-duplicate-committee-sessions.ts --apply",
+    "db:setup": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -27,7 +30,7 @@
     "@better-auth/sso": "^1.6.9",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.4.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/client": "^7.10.0",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.4",
@@ -43,9 +46,8 @@
     "embla-carousel-react": "^8.6.0",
     "file-type": "^22.0.0",
     "ioredis": "^5.11.1",
-    "isomorphic-dompurify": "^3.19.0",
     "lucide-react": "^0.563.0",
-    "next": "^16.2.9",
+    "next": "^16.3.4",
     "next-themes": "^0.4.6",
     "pdf-lib": "^1.17.1",
     "pg": "^8.18.0",
@@ -59,9 +61,10 @@
     "react-resizable-panels": "^4.6.2",
     "recharts": "^3.8.1",
     "resend": "^6.9.2",
+    "sanitize-html": "^2.17.7",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "uploadthing": "^7.7.4",
+    "uploadthing": "^6.12.0",
     "vaul": "^1.1.2",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
@@ -72,19 +75,18 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/dompurify": "^3.0.5",
     "@types/jest": "^30.0.0",
-    "@types/jsdom": "^28.0.3",
-    "@types/node": "^20",
+    "@types/node": "^22.20.2",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.1",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.3.4",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "prisma": "^7.8.0",
+    "prisma": "^7.10.0",
     "shadcn": "^3.8.4",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
@@ -92,5 +94,12 @@
     "tsx": "^4.21.0",
     "tw-animate-css": "^1.4.0",
     "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2",
+    "mysql2": "^3.24.4"
   }
 }

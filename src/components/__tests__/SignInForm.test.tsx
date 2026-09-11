@@ -56,13 +56,13 @@ describe("SignInForm", () => {
         render(<SignInForm />);
 
         // Fix: Use Alt text for logo
-        expect(screen.getByAltText("Government Services")).toBeInTheDocument();
+        expect(screen.getByAltText("CNERSH logo")).toBeInTheDocument();
 
         // Fix: Disambiguate "Sign In" title from button using role/selector
         expect(screen.getByText("Sign In", { selector: "div" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /^sign in$/i })).toBeInTheDocument();
 
-        expect(screen.getByText("Access your CNERSH Account")).toBeInTheDocument();
+        expect(screen.getByText("Access your CNERSH account")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("name@agency.gov.cm")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("Enter your password")).toBeInTheDocument();
         expect(screen.getByText("Continue with Google")).toBeInTheDocument();

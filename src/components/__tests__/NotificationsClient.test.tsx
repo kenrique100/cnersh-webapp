@@ -384,7 +384,7 @@ describe("NotificationsClient", () => {
                 unreadCount={2}
             />
         );
-        // Date is formatted — just check it renders without crash
+        // Date is formatted - just check it renders without crash
         expect(screen.getByText("Someone liked your post")).toBeInTheDocument();
     });
 });

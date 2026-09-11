@@ -22,7 +22,7 @@ export async function getCachedPreview(url: string): Promise<CachedPreview | nul
         if (!raw) return null;
         return JSON.parse(raw) as CachedPreview;
     } catch {
-        return null; // cache errors are never fatal — just fetch fresh
+        return null; // cache errors are never fatal - just fetch fresh
     }
 }
 
@@ -30,6 +30,6 @@ export async function setCachedPreview(url: string, data: CachedPreview): Promis
     try {
         await redis.set(cacheKey(url), JSON.stringify(data), TTL_SECONDS);
     } catch {
-        // best-effort — ignore
+        // best-effort - ignore
     }
 }

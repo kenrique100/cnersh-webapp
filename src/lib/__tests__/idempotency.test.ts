@@ -1,5 +1,11 @@
 import { redis } from '@/lib/redis';
-import { getResponse, saveResponse, claimKey, releaseKey } from '@/lib/idempotency-store';
+import {
+    getResponse,
+    saveResponse,
+    claimKey,
+    getClaim,
+    releaseKey,
+} from '@/lib/idempotency-store';
 
 // Jest hoists this block to the top. Defining the mocks inline avoids initialization errors.
 jest.mock('@/lib/redis', () => ({
@@ -7,6 +13,8 @@ jest.mock('@/lib/redis', () => ({
         getJson: jest.fn(),
         setJson: jest.fn(),
         setnx: jest.fn(),
+        get: jest.fn(),
+        compareAndDelete: jest.fn(),
         del: jest.fn(),
     },
 }));
@@ -70,6 +78,27 @@ describe('idempotency', () => {
 
             expect(result).toBe(false);
         });
+
+        it('stores an owner token when supplied', async () => {
+            mockedRedis.setnx.mockResolvedValueOnce(true);
+
+            await claimKey('key-1', 60, 'request-hash:owner-token');
+
+            expect(mockedRedis.setnx).toHaveBeenCalledWith(
+                'idemp:lock:key-1',
+                'request-hash:owner-token',
+                60,
+            );
+        });
+    });
+
+    describe('getClaim', () => {
+        it('returns the active claim value', async () => {
+            mockedRedis.get.mockResolvedValueOnce('request-hash:owner-token');
+
+            await expect(getClaim('key-1')).resolves.toBe('request-hash:owner-token');
+            expect(mockedRedis.get).toHaveBeenCalledWith('idemp:lock:key-1');
+        });
     });
 
     describe('releaseKey', () => {
@@ -79,6 +108,18 @@ describe('idempotency', () => {
             await releaseKey('key-1');
 
             expect(mockedRedis.del).toHaveBeenCalledWith('idemp:lock:key-1');
+        });
+
+        it('only deletes a lock owned by the supplied token', async () => {
+            mockedRedis.compareAndDelete.mockResolvedValueOnce(true);
+
+            await releaseKey('key-1', 'owner-token');
+
+            expect(mockedRedis.compareAndDelete).toHaveBeenCalledWith(
+                'idemp:lock:key-1',
+                'owner-token',
+            );
+            expect(mockedRedis.del).not.toHaveBeenCalled();
         });
     });
 });

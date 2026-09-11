@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { UserProps, useUsers } from "@/hooks/use-user";
-import { authClient } from "@/lib/auth-client";
+import { banUserById, removeManagedUser, unbanUserById } from "@/app/actions/admin";
 import { Edit, Trash, ShieldBan, ShieldCheck, MoreVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -42,13 +42,7 @@ export const CellActions = ({
     const onRemoveUser = async () => {
         setIsLoading(true);
         try {
-            const { error } = await authClient.admin.removeUser({ userId: id });
-
-            if (error) {
-                toast.error(error.message);
-                setIsLoading(false);
-                return;
-            }
+            await removeManagedUser(id);
             toast.success("User removed successfully");
             router.refresh();
             setIsLoading(false);
@@ -64,23 +58,10 @@ export const CellActions = ({
         setIsLoading(true);
         try {
             if (banned) {
-                const { error } = await authClient.admin.unbanUser({ userId: id });
-                if (error) {
-                    toast.error(error.message);
-                    setIsLoading(false);
-                    return;
-                }
+                await unbanUserById(id);
                 toast.success(`${name} has been unbanned`);
             } else {
-                const { error } = await authClient.admin.banUser({
-                    userId: id,
-                    banReason: "Banned by admin",
-                });
-                if (error) {
-                    toast.error(error.message);
-                    setIsLoading(false);
-                    return;
-                }
+                await banUserById(id, "Banned by admin");
                 toast.success(`${name} has been banned`);
             }
             router.refresh();
@@ -107,6 +88,8 @@ export const CellActions = ({
         });
         setIsMobileMenuOpen(false);
     };
+
+    if (!hasDeletePermission) return null;
 
     return (
         <>
@@ -235,7 +218,7 @@ export const CellActions = ({
                 </DialogContent>
             </Dialog>
 
-            {/* Ban/Unban Dialog — unchanged */}
+            {/* Ban/Unban Dialog - unchanged */}
             <Dialog open={isBanModalOpen} onOpenChange={setIsBanModalOpen}>
                 <DialogContent className="w-[90%] sm:w-full max-w-md rounded-lg mx-auto p-4 sm:p-6">
                     <DialogHeader>

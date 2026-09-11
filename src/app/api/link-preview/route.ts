@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { assertSafeUrl } from "@/lib/ssrf-guard";
+import { assertSafeUrl, fetchSafeUrl } from "@/lib/ssrf-guard";
 import { parseHtmlMetadata } from "@/lib/extract-metadata";
 import { getCachedPreview, setCachedPreview, type CachedPreview } from "@/lib/cache";
 import { sanitizeText } from "@/lib/sanitize";
 
-// SSRF guard needs node:dns / node:net — not available on the edge runtime.
+// SSRF guard needs node:dns / node:net - not available on the edge runtime.
 export const runtime = "nodejs";
 export const maxDuration = 10;
 
 const MAX_REDIRECTS = 5;
-const MAX_BYTES = 100 * 1024; // 100KB — enough for meta tags even on bloated pages
+const MAX_BYTES = 100 * 1024; // 100KB - enough for meta tags even on bloated pages
 const FETCH_TIMEOUT_MS = 6000;
 const USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -33,55 +33,31 @@ async function safeFetchHtml(startUrl: string): Promise<{ html: string; finalUrl
     let currentUrl = startUrl;
 
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-        const validated = await assertSafeUrl(currentUrl);
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-        let response: Response;
-        try {
-            response = await fetch(validated.href, {
-                signal: controller.signal,
-                redirect: "manual",
-                headers: {
-                    "User-Agent": USER_AGENT,
-                    Accept: "text/html,application/xhtml+xml",
-                    "Accept-Language": "en-US,en;q=0.9",
-                },
-            });
-        } finally {
-            clearTimeout(timeout);
-        }
+        const response = await fetchSafeUrl(currentUrl, {
+            timeoutMs: FETCH_TIMEOUT_MS,
+            maxBytes: MAX_BYTES,
+            headers: {
+                "User-Agent": USER_AGENT,
+                Accept: "text/html,application/xhtml+xml",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        });
 
         if ([301, 302, 303, 307, 308].includes(response.status)) {
             const location = response.headers.get("location");
             if (!location) return null;
-            currentUrl = new URL(location, validated.href).href;
+            currentUrl = new URL(location, currentUrl).href;
             continue; // loop re-validates the new URL against the SSRF guard
         }
 
-        if (!response.ok) return null;
+        if (response.status < 200 || response.status >= 300) return null;
 
         const contentType = response.headers.get("content-type") || "";
         if (!contentType.includes("text/html")) return null;
 
-        const reader = response.body?.getReader();
-        let html = "";
-        const decoder = new TextDecoder();
-        let bytesRead = 0;
+        const html = new TextDecoder().decode(response.body);
 
-        if (reader) {
-            while (bytesRead < MAX_BYTES) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                html += decoder.decode(value, { stream: true });
-                bytesRead += value.length;
-            }
-            html += decoder.decode();
-            reader.cancel().catch(() => {});
-        }
-
-        return { html, finalUrl: validated.href };
+        return { html, finalUrl: currentUrl };
     }
 
     return null; // too many redirects

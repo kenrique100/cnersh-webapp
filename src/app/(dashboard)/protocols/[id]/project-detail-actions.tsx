@@ -316,7 +316,7 @@ export default function ProjectDetailActions({
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         <Textarea
-                            placeholder="Required for rejection, return, or conditional approval — add a reason, specify missing items, or list the conditions"
+                            placeholder="Required for rejection, return, or conditional approval - add a reason, specify missing items, or list the conditions"
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             className="min-h-[80px]"
@@ -330,7 +330,7 @@ export default function ProjectDetailActions({
                                     variant="outline"
                                     className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
                                 >
-                                    <RotateCcwIcon className="h-4 w-4 mr-1" />Return — Incomplete
+                                    <RotateCcwIcon className="h-4 w-4 mr-1" />Return - Incomplete
                                 </Button>
                             )}
                             {["REVIEW_COMPLETE", "PENDING_REVIEW", "UNDER_REVIEW"].includes(currentStatus) && (

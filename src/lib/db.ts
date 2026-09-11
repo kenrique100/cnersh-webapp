@@ -2,14 +2,13 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { z } from "zod";
 
-// Validation for UploadThing token on server boot
+// Exported for callers that need to validate file-storage configuration.
+// Do not parse it while constructing the database client: health/readiness
+// probes must still be able to report database state when storage is
+// independently misconfigured.
 export const uploadthingEnvSchema = z.object({
-    UPLOADTHING_TOKEN: z.string().min(1, "UPLOADTHING_TOKEN is required"),
+    UPLOADTHING_SECRET: z.string().startsWith("sk_", "UPLOADTHING_SECRET must start with sk_"),
 });
-
-if (typeof window === "undefined") {
-    uploadthingEnvSchema.parse(process.env);
-}
 
 const globalForPrisma = global as unknown as {
     prisma?: PrismaClient;

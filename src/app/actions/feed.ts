@@ -7,6 +7,7 @@ import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
 import { enforceActionRateLimit } from "@/lib/action-rate-limit";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { canManageRole, isAdminRole } from "@/lib/permissions";
 import { z } from "zod";
 
 const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
@@ -23,6 +24,10 @@ const postPayloadSchema = z.object({
 });
 
 const commentContentSchema = z.string().min(1).max(2000).transform((value) => sanitizeText(value).trim());
+const idSchema = z.string().trim().min(1).max(128);
+const pageSchema = z.number().int().min(1).max(1_000_000).catch(1);
+const limitSchema = z.number().int().min(1).max(50).catch(10);
+const reactionSchema = z.string().trim().min(1).max(64).transform(sanitizeText);
 
 export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string; linkType?: string }) {
     const session = await authSession();
@@ -133,11 +138,16 @@ export async function createPost(data: { content: string; image?: string; video?
 }
 
 export async function getPosts(page: number = 1, limit: number = 10, userId?: string) {
-    const skip = (page - 1) * limit;
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+    const safePage = pageSchema.parse(page);
+    const safeLimit = limitSchema.parse(limit);
+    const safeUserId = userId ? idSchema.parse(userId) : undefined;
+    const skip = (safePage - 1) * safeLimit;
 
     try {
-        const whereClause = userId
-            ? { deleted: false, userId }
+        const whereClause = safeUserId
+            ? { deleted: false, userId: safeUserId }
             : { deleted: false };
         const [posts, total] = await Promise.all([
             db.post.findMany({
@@ -155,7 +165,12 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
                     commentsEnabled: true,
                     createdAt: true,
                     user: { select: { id: true, name: true, image: true, profession: true, title: true } },
-                    _count: { select: { comments: true, likes: true } },
+                    _count: {
+                        select: {
+                            comments: { where: { deleted: false } },
+                            likes: true,
+                        },
+                    },
                     likes: {
                         select: {
                             userId: true,
@@ -176,7 +191,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
-                take: limit,
+                take: safeLimit,
             }),
             db.post.count({ where: whereClause }),
         ]);
@@ -207,7 +222,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
             };
         });
 
-        return { posts: postsWithActivity, total, pages: Math.ceil(total / limit) };
+        return { posts: postsWithActivity, total, pages: Math.ceil(total / safeLimit) };
     } catch (error) {
         console.error("Error fetching posts:", error);
         return { posts: [], total: 0, pages: 0 };
@@ -215,6 +230,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
 }
 
 export async function getPublicPosts(limit: number = 10) {
+    const safeLimit = limitSchema.parse(limit);
     try {
         const posts = await db.post.findMany({
             where: { deleted: false },
@@ -231,14 +247,19 @@ export async function getPublicPosts(limit: number = 10) {
                 commentsEnabled: true,
                 createdAt: true,
                 user: { select: { id: true, name: true, image: true } },
-                _count: { select: { comments: true, likes: true } },
+                _count: {
+                    select: {
+                        comments: { where: { deleted: false } },
+                        likes: true,
+                    },
+                },
                 likes: {
                     select: { reactionType: true },
                     take: 10,
                 },
             },
             orderBy: { createdAt: "desc" },
-            take: limit,
+            take: safeLimit,
         });
 
         return posts.map((post) => ({
@@ -255,10 +276,16 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
     await enforceActionRateLimit(session.user.id, RATE_LIMITS.likeToggle, "post-like", "You're reacting too quickly.");
-    const normalizedReactionType = sanitizeText(reactionType).trim() || "Like";
+    const safePostId = idSchema.parse(postId);
+    const normalizedReactionType = reactionSchema.parse(reactionType);
+    const post = await db.post.findUnique({
+        where: { id: safePostId },
+        select: { userId: true, deleted: true, user: { select: { role: true, email: true, name: true } } },
+    });
+    if (!post || post.deleted) throw new Error("Post not found");
 
     const existing = await db.like.findUnique({
-        where: { postId_userId: { postId, userId: session.user.id } },
+        where: { postId_userId: { postId: safePostId, userId: session.user.id } },
     });
 
     if (existing) {
@@ -276,16 +303,12 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
         }
     } else {
         await db.like.create({
-            data: { postId, userId: session.user.id, reactionType: normalizedReactionType },
+            data: { postId: safePostId, userId: session.user.id, reactionType: normalizedReactionType },
         });
 
         // Notify post owner of the like
         try {
-            const post = await db.post.findUnique({
-                where: { id: postId },
-                select: { userId: true, user: { select: { role: true, email: true, name: true } } },
-            });
-            if (post && post.userId !== session.user.id) {
+            if (post.userId !== session.user.id) {
                 const likeMessage = `${session.user.name || "Someone"} liked your post`;
                 await db.notification.create({
                     data: {
@@ -307,7 +330,7 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
                 }
             }
             // Also notify admins if the post is not by an admin
-            if (post && post.user?.role !== "admin" && post.user?.role !== "superadmin") {
+            if (!isAdminRole(post.user?.role)) {
                 await notifyAdmins({
                     type: "LIKE",
                     message: `${session.user.name || "A user"} liked a post`,
@@ -332,13 +355,35 @@ export async function addComment(postId: string, content: string, parentId?: str
         throw new Error("Comment must be between 1 and 2000 characters.");
     }
     const safeContent = parsedContent.data;
+    const safePostId = idSchema.parse(postId);
+    const safeParentId = parentId ? idSchema.parse(parentId) : undefined;
+    const post = await db.post.findUnique({
+        where: { id: safePostId },
+        select: {
+            userId: true,
+            commentsEnabled: true,
+            deleted: true,
+            user: { select: { role: true, email: true, name: true } },
+        },
+    });
+    if (!post || post.deleted) throw new Error("Post not found");
+    if (post.commentsEnabled === false) throw new Error("Comments are closed");
+    const parentComment = safeParentId
+        ? await db.comment.findUnique({
+            where: { id: safeParentId },
+            select: { userId: true, postId: true, deleted: true, user: { select: { email: true, name: true } } },
+        })
+        : null;
+    if (safeParentId && (!parentComment || parentComment.deleted || parentComment.postId !== safePostId)) {
+        throw new Error("Invalid parent comment");
+    }
 
     const comment = await db.comment.create({
         data: {
             content: safeContent,
-            postId,
+            postId: safePostId,
             userId: session.user.id,
-            parentId: parentId || null,
+            parentId: safeParentId || null,
         },
         include: {
             user: { select: { id: true, name: true, image: true, role: true } },
@@ -347,11 +392,7 @@ export async function addComment(postId: string, content: string, parentId?: str
 
     // Notify post owner of the comment
     try {
-        const post = await db.post.findUnique({
-            where: { id: postId },
-            select: { userId: true, user: { select: { role: true, email: true, name: true } } },
-        });
-        if (post && post.userId !== session.user.id) {
+        if (post.userId !== session.user.id) {
             const commentMessage = `${session.user.name || "Someone"} commented on your post`;
             await db.notification.create({
                 data: {
@@ -372,12 +413,7 @@ export async function addComment(postId: string, content: string, parentId?: str
             }
         }
         // Notify parent comment owner if it's a reply
-        if (parentId) {
-            const parentComment = await db.comment.findUnique({
-                where: { id: parentId },
-                select: { userId: true, user: { select: { email: true, name: true } } },
-            });
-            if (parentComment && parentComment.userId !== session.user.id) {
+        if (parentComment && parentComment.userId !== session.user.id) {
                 const replyMessage = `${session.user.name || "Someone"} replied to your comment`;
                 await db.notification.create({
                     data: {
@@ -396,7 +432,6 @@ export async function addComment(postId: string, content: string, parentId?: str
                         actionUrl: "/feeds",
                     }).catch((err) => console.error("Error sending reply email:", err));
                 }
-            }
         }
         // Notify mentioned users (@username) - matches @Name patterns, stopping at next @ or end of string
         const mentions = [...safeContent.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
@@ -429,7 +464,7 @@ export async function addComment(postId: string, content: string, parentId?: str
             }
         }
         // Also notify admins if the post is not by an admin
-        if (post && post.user?.role !== "admin" && post.user?.role !== "superadmin") {
+        if (!isAdminRole(post.user?.role)) {
             await notifyAdmins({
                 type: "COMMENT",
                 message: `${session.user.name || "A user"} commented on a post`,
@@ -445,11 +480,24 @@ export async function addComment(postId: string, content: string, parentId?: str
 }
 
 export async function getPostComments(postId: string) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+    const safePostId = idSchema.parse(postId);
+    const post = await db.post.findUnique({
+        where: { id: safePostId },
+        select: { id: true, deleted: true },
+    });
+    if (!post || post.deleted) throw new Error("Post not found");
     return db.comment.findMany({
-        where: { postId, deleted: false, parentId: null },
+        where: { postId: safePostId, deleted: false, parentId: null },
         include: {
             user: { select: { id: true, name: true, image: true, role: true, profession: true, title: true } },
-            _count: { select: { commentLikes: true, replies: true } },
+            _count: {
+                select: {
+                    commentLikes: true,
+                    replies: { where: { deleted: false } },
+                },
+            },
             commentLikes: { select: { userId: true, isDislike: true, reactionType: true } },
             replies: {
                 where: { deleted: false },
@@ -468,9 +516,13 @@ export async function getPostComments(postId: string) {
 export async function deletePost(postId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
+    const safePostId = idSchema.parse(postId);
 
-    const post = await db.post.findUnique({ where: { id: postId } });
-    if (!post) throw new Error("Post not found");
+    const post = await db.post.findUnique({
+        where: { id: safePostId },
+        select: { userId: true, deleted: true, user: { select: { role: true } } },
+    });
+    if (!post || post.deleted) throw new Error("Post not found");
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -478,12 +530,10 @@ export async function deletePost(postId: string) {
     });
 
     const isOwner = post.userId === session.user.id;
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-
-    if (!isOwner && !isAdmin) throw new Error("Forbidden");
+    if (!isOwner && !canManageRole(user?.role, post.user.role)) throw new Error("Forbidden");
 
     await db.post.update({
-        where: { id: postId },
+        where: { id: safePostId },
         data: { deleted: true },
     });
 
@@ -496,20 +546,26 @@ export async function updatePost(postId: string, data: { content: string; images
     const parsedContent = z.string().max(5000).safeParse(data.content);
     if (!parsedContent.success) throw new Error("Post content is too long.");
     const safeContent = sanitizeText(parsedContent.data).trim();
+    const safePostId = idSchema.parse(postId);
+    const safeImages = data.images === undefined ? undefined : z.array(z.string()).max(6).parse(data.images);
+    const safeVideos = data.videos === undefined ? undefined : z.array(z.string()).max(3).parse(data.videos);
+    const safeTags = data.tags === undefined
+        ? undefined
+        : z.array(z.string().max(100)).max(10).parse(data.tags).map((tag) => sanitizeText(tag).trim()).filter(Boolean);
     const safeLinkUrl = typeof data.linkUrl === "string" ? sanitizeUrl(data.linkUrl) : "";
     if (data.linkUrl && !safeLinkUrl) throw new Error("Please provide a valid secure link URL.");
 
-    const post = await db.post.findUnique({ where: { id: postId } });
-    if (!post) throw new Error("Post not found");
+    const post = await db.post.findUnique({ where: { id: safePostId } });
+    if (!post || post.deleted) throw new Error("Post not found");
     if (post.userId !== session.user.id) throw new Error("Forbidden");
 
     return db.post.update({
-        where: { id: postId },
+        where: { id: safePostId },
         data: {
             content: safeContent,
-            ...(data.images !== undefined && { images: data.images }),
-            ...(data.videos !== undefined && { videos: data.videos }),
-            ...(data.tags !== undefined && { tags: data.tags.map((tag) => sanitizeText(tag).trim()).filter(Boolean) }),
+            ...(safeImages !== undefined && { images: safeImages }),
+            ...(safeVideos !== undefined && { videos: safeVideos }),
+            ...(safeTags !== undefined && { tags: safeTags }),
             ...(data.linkUrl !== undefined && { linkUrl: safeLinkUrl || null }),
             ...(data.linkType !== undefined && { linkType: safeLinkUrl ? data.linkType : null }),
         },
@@ -520,12 +576,13 @@ export async function togglePostComments(postId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const post = await db.post.findUnique({ where: { id: postId } });
-    if (!post) throw new Error("Post not found");
+    const safePostId = idSchema.parse(postId);
+    const post = await db.post.findUnique({ where: { id: safePostId } });
+    if (!post || post.deleted) throw new Error("Post not found");
     if (post.userId !== session.user.id) throw new Error("Forbidden");
 
     const updated = await db.post.update({
-        where: { id: postId },
+        where: { id: safePostId },
         data: { commentsEnabled: !post.commentsEnabled },
     });
 
@@ -533,25 +590,44 @@ export async function togglePostComments(postId: string) {
 }
 
 export async function getUserActivity(userId: string, limit: number = 10) {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+    const safeUserId = idSchema.parse(userId);
+    const safeLimit = limitSchema.parse(limit);
+    if (safeUserId !== session.user.id) {
+        const [actor, target] = await Promise.all([
+            db.user.findUnique({
+                where: { id: session.user.id },
+                select: { role: true },
+            }),
+            db.user.findUnique({
+                where: { id: safeUserId },
+                select: { role: true },
+            }),
+        ]);
+        if (!target || !canManageRole(actor?.role, target.role)) {
+            throw new Error("Forbidden");
+        }
+    }
     try {
         const [recentPosts, recentComments, recentLikes] = await Promise.all([
             db.post.findMany({
-                where: { userId, deleted: false },
+                where: { userId: safeUserId, deleted: false },
                 select: { id: true, content: true, createdAt: true },
                 orderBy: { createdAt: "desc" },
-                take: limit,
+                take: safeLimit,
             }),
             db.comment.findMany({
-                where: { userId, deleted: false },
+                where: { userId: safeUserId, deleted: false, post: { deleted: false } },
                 select: { id: true, content: true, createdAt: true, post: { select: { id: true, content: true } } },
                 orderBy: { createdAt: "desc" },
-                take: limit,
+                take: safeLimit,
             }),
             db.like.findMany({
-                where: { userId },
+                where: { userId: safeUserId, post: { deleted: false } },
                 select: { id: true, reactionType: true, createdAt: true, post: { select: { id: true, content: true } } },
                 orderBy: { createdAt: "desc" },
-                take: limit,
+                take: safeLimit,
             }),
         ]);
 
@@ -577,7 +653,7 @@ export async function getUserActivity(userId: string, limit: number = 10) {
         ];
 
         activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return activities.slice(0, limit);
+        return activities.slice(0, safeLimit);
     } catch (error) {
         console.error("Error fetching user activity:", error);
         return [];
@@ -588,10 +664,21 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
     await enforceActionRateLimit(session.user.id, RATE_LIMITS.likeToggle, "comment-like", "You're reacting too quickly.");
-    const normalizedReactionType = sanitizeText(reactionType).trim() || "Like";
+    const safeCommentId = idSchema.parse(commentId);
+    const normalizedReactionType = reactionSchema.parse(reactionType);
+    const comment = await db.comment.findUnique({
+        where: { id: safeCommentId },
+        select: {
+            userId: true,
+            deleted: true,
+            post: { select: { deleted: true } },
+            user: { select: { email: true, name: true } },
+        },
+    });
+    if (!comment || comment.deleted || comment.post?.deleted) throw new Error("Comment not found");
 
     const existing = await db.commentLike.findUnique({
-        where: { commentId_userId: { commentId, userId: session.user.id } },
+        where: { commentId_userId: { commentId: safeCommentId, userId: session.user.id } },
     });
 
     if (existing) {
@@ -606,16 +693,12 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
         }
     } else {
         await db.commentLike.create({
-            data: { commentId, userId: session.user.id, isDislike: false, reactionType: normalizedReactionType },
+            data: { commentId: safeCommentId, userId: session.user.id, isDislike, reactionType: normalizedReactionType },
         });
 
         // Notify comment owner
         try {
-            const comment = await db.comment.findUnique({
-                where: { id: commentId },
-                select: { userId: true, user: { select: { email: true, name: true } } },
-            });
-            if (comment && comment.userId !== session.user.id) {
+            if (comment.userId !== session.user.id) {
                 const likeMessage = `${session.user.name || "Someone"} ${isDislike ? "disliked" : "liked"} your comment`;
                 await db.notification.create({
                     data: {
@@ -647,13 +730,20 @@ export async function editComment(commentId: string, content: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const comment = await db.comment.findUnique({ where: { id: commentId } });
-    if (!comment) throw new Error("Comment not found");
+    const safeCommentId = idSchema.parse(commentId);
+    const parsedContent = commentContentSchema.safeParse(content);
+    if (!parsedContent.success) throw new Error("Comment must be between 1 and 2000 characters.");
+    const comment = await db.comment.findUnique({
+        where: { id: safeCommentId },
+        include: { post: { select: { deleted: true, commentsEnabled: true } } },
+    });
+    if (!comment || comment.deleted || comment.post?.deleted) throw new Error("Comment not found");
+    if (comment.post?.commentsEnabled === false) throw new Error("Comments are closed");
     if (comment.userId !== session.user.id) throw new Error("Forbidden");
 
     return db.comment.update({
-        where: { id: commentId },
-        data: { content },
+        where: { id: safeCommentId },
+        data: { content: parsedContent.data },
     });
 }
 
@@ -661,8 +751,17 @@ export async function deleteComment(commentId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
-    const comment = await db.comment.findUnique({ where: { id: commentId } });
-    if (!comment) throw new Error("Comment not found");
+    const safeCommentId = idSchema.parse(commentId);
+    const comment = await db.comment.findUnique({
+        where: { id: safeCommentId },
+        select: {
+            userId: true,
+            deleted: true,
+            post: { select: { deleted: true } },
+            user: { select: { role: true } },
+        },
+    });
+    if (!comment || comment.deleted || comment.post?.deleted) throw new Error("Comment not found");
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -670,11 +769,10 @@ export async function deleteComment(commentId: string) {
     });
 
     const isOwner = comment.userId === session.user.id;
-    const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-    if (!isOwner && !isAdmin) throw new Error("Forbidden");
+    if (!isOwner && !canManageRole(user?.role, comment.user.role)) throw new Error("Forbidden");
 
     await db.comment.update({
-        where: { id: commentId },
+        where: { id: safeCommentId },
         data: { deleted: true },
     });
 
@@ -685,10 +783,12 @@ export async function searchUsers(query: string) {
     const session = await authSession();
     if (!session) return [];
 
+    const safeQuery = z.string().trim().max(100).transform(sanitizeText).parse(query || "");
     const users = await db.user.findMany({
         where: {
-            ...(query?.trim() ? { name: { contains: query.trim(), mode: "insensitive" as const } } : {}),
+            ...(safeQuery ? { name: { contains: safeQuery, mode: "insensitive" as const } } : {}),
             id: { not: session.user.id },
+            banned: { not: true },
         },
         select: { id: true, name: true, image: true },
         take: 8,
@@ -718,10 +818,17 @@ export async function getPostLikers(postId: string) {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
 
+    const safePostId = idSchema.parse(postId);
+    const post = await db.post.findUnique({
+        where: { id: safePostId },
+        select: { id: true, deleted: true },
+    });
+    if (!post || post.deleted) throw new Error("Post not found");
     const likes = await db.like.findMany({
-        where: { postId },
+        where: { postId: safePostId },
         include: { user: { select: { id: true, name: true, image: true } } },
         orderBy: { createdAt: "desc" },
+        take: 500,
     });
 
     return likes.map((l) => ({ ...l.user, reactionType: l.reactionType }));

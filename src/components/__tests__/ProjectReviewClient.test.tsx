@@ -57,7 +57,7 @@ jest.mock("@/components/ui/button", () => ({
 }));
 
 // Extracts a plain text label from React children so it's safe to put inside <option>.
-// The real SelectItem passes a <span> with nested elements — <option> can't hold those.
+// The real SelectItem passes a <span> with nested elements - <option> can't hold those.
 function extractText(node: React.ReactNode): string {
     if (typeof node === "string" || typeof node === "number") return String(node);
     if (Array.isArray(node)) return node.map(extractText).join("");
@@ -76,7 +76,7 @@ function SelectContentMock({ children }: { children: React.ReactNode }) {
 SelectContentMock.displayName = CONTENT_DISPLAY_NAME;
 
 function SelectItemMock({ children, value }: { children: React.ReactNode; value: string }) {
-    // <option> only allows plain text — strip out any nested elements
+    // <option> only allows plain text - strip out any nested elements
     return <option value={value}>{extractText(children)}</option>;
 }
 SelectItemMock.displayName = "SelectItem";

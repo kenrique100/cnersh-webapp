@@ -108,7 +108,7 @@ export default function AARClient({ projectId, projectTitle, application }: AARC
                     <li>Submit physical hard copies to MINSANTE in person</li>
                   </ol>
                   <p className="text-xs mt-1">
-                    The {AAR_REQUIREMENTS.reviewDays} working-day DROS review clock starts when the DROS Officer confirms receipt — not when you submit this application.
+                    The {AAR_REQUIREMENTS.reviewDays} working-day DROS review clock starts when the DROS Officer confirms receipt - not when you submit this application.
                   </p>
                 </div>
               </div>
@@ -125,7 +125,7 @@ export default function AARClient({ projectId, projectTitle, application }: AARC
                       <strong>
                         {application.submittedAt
                             ? new Date(application.submittedAt).toLocaleDateString()
-                            : "—"}
+                            : "-"}
                       </strong>
                       . Current status: <strong>{statusInfo.label}</strong>.
                     </p>

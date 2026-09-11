@@ -80,6 +80,13 @@ describe('CtaLinkButton', () => {
         expect(link).toHaveClass('extra-class');
     });
 
+    test('uses a modest rectangular radius', () => {
+        render(<CtaLinkButton url="https://example.com" />);
+        const link = screen.getByRole('link', { name: /visit website/i });
+        expect(link).toHaveClass('rounded-md');
+        expect(link).not.toHaveClass('rounded-full');
+    });
+
     test.each([
         'javascript:alert(1)',
         'ftp://example.com',

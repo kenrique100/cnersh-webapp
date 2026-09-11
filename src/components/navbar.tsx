@@ -38,10 +38,10 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
             <div className="container mx-auto max-w-7xl">
                 <div className="flex min-h-16 items-center justify-between px-4 sm:px-6 lg:px-8 py-2">
 
-                    {/* ── Left: Logo ─────────────────────────────────── */}
+                    {/* Left: Logo */}
                     <div className="flex items-center shrink-0">
                         <Link href="/" className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-md bg-white dark:bg-white border border-gray-200 dark:border-gray-600 shadow-sm">
                                 <Image
                                     src="/logo.png"
                                     alt="CNERSH"
@@ -57,7 +57,7 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                         </Link>
                     </div>
 
-                    {/* ── Center: Desktop nav dropdowns (lg+) ────────── */}
+                    {/* Center: Desktop nav dropdowns */}
                     <div className="hidden lg:flex items-center justify-center gap-1 flex-1 min-w-0 mx-2 flex-wrap">
                         <ResourcesDesktopDropdown />
                         <EthicalClearanceDesktopDropdown />
@@ -67,16 +67,16 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                         ))}
                     </div>
 
-                    {/* ── Right: actions ─────────────────────────────── */}
+                    {/* Right: actions */}
                     <div className="flex items-center gap-1.5 sm:gap-3">
 
-                        {/* Our Pages dropdown — desktop only */}
+                        {/* Our Pages dropdown on desktop */}
                         <div className="hidden lg:flex">
                             <OurPagesDesktopDropdown pathname={pathname} />
                         </div>
 
                         {/*
-                         * Language switcher — always visible in the navbar bar.
+                         * Language switcher is always visible in the navbar bar.
                          *
                          * xs (< 640 px): compact EN/FR pill sits directly in the bar
                          *                so users don't need to open the hamburger.

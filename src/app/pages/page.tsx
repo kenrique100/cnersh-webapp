@@ -1,4 +1,4 @@
-// Route: /pages — This is an App Router URL segment, NOT the Next.js Pages Router.
+// Route: /pages. This is an App Router URL segment, not the Next.js Pages Router.
 // The `pages/` directory here is intentional and acts as a /pages/* route group.
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,10 +28,10 @@ interface Page {
 
 function PageSection({ page, depth = 0 }: { page: Page; depth?: number }) {
     return (
-        <Card className={`border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl ${depth > 0 ? "border-l-4 border-l-purple-300 dark:border-l-purple-700" : ""}`}>
+        <Card className={`rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 ${depth > 0 ? "bg-gray-50 dark:bg-gray-900" : ""}`}>
             <CardHeader className="pb-2">
                 <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                    <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                     <span className="break-words">{page.name}</span>
                     {depth > 0 && (
                         <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
@@ -152,15 +152,13 @@ export default async function OurPagesPage() {
                 </div>
 
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900">
-                        <FileTextIcon className="w-5 h-5 text-purple-700 dark:text-purple-400" />
-                    </div>
+                    <FileTextIcon className="h-8 w-8 text-blue-700 dark:text-blue-400" />
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                             Our Pages
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Browse resources, documents, and information
+                            CNERSH forms, guidance, legal references, and institutional information
                         </p>
                     </div>
                 </div>
@@ -172,10 +170,10 @@ export default async function OurPagesPage() {
                     ))}
 
                     {/* Static Ethical Clearance Page */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                 <span className="break-words">Ethical Clearance</span>
                             </CardTitle>
                         </CardHeader>
@@ -199,10 +197,10 @@ export default async function OurPagesPage() {
 
                             {/* Application Guidelines - sub-section */}
                             <div className="mt-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                             <span className="break-words">Application Guidelines</span>
                                             <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
                                         </CardTitle>
@@ -244,10 +242,10 @@ export default async function OurPagesPage() {
 
                             {/* Forms & Questionnaires - sub-section */}
                             <div className="mt-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                             <span className="break-words">Forms &amp; Questionnaires</span>
                                             <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
                                         </CardTitle>
@@ -290,10 +288,10 @@ export default async function OurPagesPage() {
                     </Card>
 
                     {/* Static Resources Page */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                 <span className="break-words">Resources</span>
                             </CardTitle>
                         </CardHeader>
@@ -359,10 +357,10 @@ export default async function OurPagesPage() {
 
                             {/* Law & Research in Cameroon - sub-section */}
                             <div className="mt-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                             <span className="break-words">Law &amp; Research in Cameroon</span>
                                             <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
                                         </CardTitle>
@@ -450,10 +448,10 @@ export default async function OurPagesPage() {
 
                             {/* Ministerial Decision - sub-section */}
                             <div className="mt-4">
-                                <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl border-l-4 border-l-purple-300 dark:border-l-purple-700">
+                                <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                            <FileTextIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                            <FileTextIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                             <span className="break-words">Ministerial Decision</span>
                                             <span className="text-xs text-gray-400 font-normal">(sub-page)</span>
                                         </CardTitle>
@@ -482,7 +480,7 @@ export default async function OurPagesPage() {
                     </Card>
 
                     {/* Static Article Pages */}
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                 <UsersIcon className="w-5 h-5 text-blue-600 shrink-0" />
@@ -507,10 +505,10 @@ export default async function OurPagesPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <BuildingIcon className="w-5 h-5 text-purple-600 shrink-0" />
+                                <BuildingIcon className="h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
                                 <span className="break-words">Contract Rex Org</span>
                             </CardTitle>
                         </CardHeader>
@@ -532,7 +530,7 @@ export default async function OurPagesPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                 <DownloadIcon className="w-5 h-5 text-green-600 shrink-0" />
@@ -559,11 +557,11 @@ export default async function OurPagesPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                    <Card className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                 <DownloadIcon className="w-5 h-5 text-green-600 shrink-0" />
-                                <span className="break-words">Reviews</span>
+                                <span className="break-words">Evaluation Form</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">

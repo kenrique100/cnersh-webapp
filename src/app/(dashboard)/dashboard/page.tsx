@@ -87,7 +87,7 @@ export default async function DashboardPage() {
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
                 {/* Profile Header */}
                 <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg mb-4 sm:mb-6 overflow-hidden py-0 gap-0">
-                    <div className="h-20 sm:h-28 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700" />
+                    <div className="h-20 bg-blue-700 sm:h-28" />
                     <CardContent className="relative pt-0 pb-4 sm:pb-5 px-3 sm:px-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 -mt-8 sm:-mt-10">
                             <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-4 border-white dark:border-gray-950 shadow-lg">
