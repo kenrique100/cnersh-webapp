@@ -1,7 +1,8 @@
 /**
  * Shared bootstrap for the erasure scripts. Loads `.env` (like prisma.config.ts),
- * points the shared Prisma client at DIRECT_URL when configured, and exposes a
- * tidy shutdown helper.
+ * exposes a direct URL for CLI operations and a tidy shutdown helper.
+ * The shared Prisma client uses DATABASE_URL; operators must point both app
+ * URLs at the same database (the drill validates this explicitly).
  */
 import "dotenv/config";
 

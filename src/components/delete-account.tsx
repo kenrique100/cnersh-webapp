@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangleIcon, ShieldCheckIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
@@ -29,17 +29,17 @@ import { clearAccountScopedStorage } from "@/lib/client-account-storage";
 const CONFIRMATION_PHRASE = "DELETE";
 
 export const DELETION_CONSEQUENCES = [
-    "You are signed out of every device immediately and can no longer sign in.",
-    "Your name, email address, photo, profession, and other profile details are removed.",
-    "Your posts, comments, community topics, and replies are blanked and marked as deleted; your reactions and notifications are removed.",
-    "Files you uploaded are deleted from storage, except documents attached to protocols the committee must keep.",
-    "Draft protocols that were never submitted are deleted.",
-    "The encryption key protecting your protected data is destroyed, so encrypted copies, including those in backups, can no longer be read.",
+    "Once your request is accepted, you are signed out of every device and can no longer sign in, even if deletion is still pending.",
+    "Your name, email address, photo, profession, and other account profile details will be removed.",
+    "Your posts, comments, community topics, and replies will be blanked and marked as deleted; your reactions and notifications will be removed.",
+    "Files you uploaded will be deleted from storage, except documents attached to protocols the committee must keep.",
+    "Draft protocols that were never submitted will be deleted.",
+    "Deletion is only complete after destruction of the encryption key protecting your protected data has been verified. Encrypted copies protected solely by that key, including those in backups, will then be unreadable.",
 ] as const;
 
 export const RETAINED_RECORDS_NOTICE =
-    "Protocols you submitted, their review history, decisions, appeals, and the audit trail are institutional records. " +
-    "They are kept in de-identified form under the committee's retention rules and are no longer linked to you.";
+    "Protocols you submitted, their attachments, review history, decisions, appeals, and the audit trail are institutional records. " +
+    "They are kept under the committee's retention rules. Retained records may contain identifying information.";
 
 interface DeleteAccountProps {
     context: AccountDeletionContext;
@@ -50,11 +50,18 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
     const [reason, setReason] = useState("");
     const [dialogOpen, setDialogOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [acceptedStatus, setAcceptedStatus] = useState<AccountDeletionContext["status"] | null>(null);
+    const [reauthRequired, setReauthRequired] = useState(false);
     const [pending, startTransition] = useTransition();
+    const submissionLocked = useRef(false);
     const router = useRouter();
 
-    const inProgress = context.status === "IN_PROGRESS" || context.status === "BLOCKED";
-    const canSubmit = confirmation.trim() === CONFIRMATION_PHRASE && !pending && !inProgress;
+    const status = acceptedStatus ?? context.status;
+    const inProgress = status === "IN_PROGRESS" || status === "BLOCKED";
+    const needsReauth = !context.recentAuth || reauthRequired;
+    const canSubmit = confirmation.trim() === CONFIRMATION_PHRASE
+        && !pending && !inProgress && status !== "COMPLETED"
+        && !needsReauth && context.available && !context.isSuperAdmin;
 
     const signInAgain = async () => {
         clearAccountScopedStorage();
@@ -64,27 +71,52 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
     };
 
     const submit = () => {
+        if (!canSubmit || submissionLocked.current) return;
+        submissionLocked.current = true;
         setError(null);
         startTransition(async () => {
-            const result = await requestMyAccountDeletion({ confirmation: confirmation.trim(), reason: reason || undefined });
-            if (!result.ok) {
+            let accepted = false;
+            try {
+                const result = await requestMyAccountDeletion({ confirmation: confirmation.trim(), reason: reason || undefined });
+                if (!result.ok) {
+                    setDialogOpen(false);
+                    setError(result.error);
+                    if (result.code === "REAUTH") {
+                        setReauthRequired(true);
+                        toast.error(result.error);
+                    }
+                    return;
+                }
+                accepted = true;
+                // An accepted request revokes the session even when erasure is
+                // blocked. Keep its status locally instead of refreshing away.
+                setAcceptedStatus(result.status === "NONE" ? "IN_PROGRESS" : result.status);
                 setDialogOpen(false);
-                setError(result.error);
-                if (result.code === "REAUTH") toast.error(result.error);
-                return;
+                setConfirmation("");
+                setReason("");
+                clearAccountScopedStorage();
+                if (result.status === "COMPLETED") {
+                    router.push("/account-deleted");
+                }
+            } catch {
+                setDialogOpen(false);
+                setError("We could not confirm the deletion status. Contact the CNERSH secretariat if you need help.");
+            } finally {
+                // Prevent another submission after acceptance, including before
+                // the state update has rendered.
+                submissionLocked.current = accepted;
             }
-            clearAccountScopedStorage();
-            router.push("/account-deleted");
-            router.refresh();
         });
     };
 
-    if (context.status === "COMPLETED") {
+    if (status === "COMPLETED") {
         return (
             <Alert>
                 <ShieldCheckIcon className="h-4 w-4" />
                 <AlertTitle>This account has been deleted</AlertTitle>
-                <AlertDescription>Personal data has been erased. No further action is possible.</AlertDescription>
+                <AlertDescription>
+                    Account deletion is complete. No further action is possible. {RETAINED_RECORDS_NOTICE}
+                </AlertDescription>
             </Alert>
         );
     }
@@ -92,13 +124,18 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
     return (
         <div className="space-y-5" id="delete-account">
             {inProgress && (
-                <Alert>
-                    <ShieldCheckIcon className="h-4 w-4" />
-                    <AlertTitle>Deletion in progress</AlertTitle>
+                <Alert role="status" aria-live="polite" aria-atomic="true">
+                    <AlertTriangleIcon className="h-4 w-4" />
+                    <AlertTitle>{status === "BLOCKED" ? "Deletion accepted — temporarily blocked" : "Deletion in progress"}</AlertTitle>
                     <AlertDescription>
                         Your deletion request was accepted
-                        {context.requestedAt ? ` on ${new Date(context.requestedAt).toLocaleString()}` : ""} and is being completed.
-                        You cannot make further changes to this account.
+                        {context.requestedAt ? ` on ${new Date(context.requestedAt).toLocaleString()}` : ""}.
+                        {" "}{status === "BLOCKED"
+                            ? "Deletion is not yet complete. Some steps are temporarily blocked and will be retried."
+                            : "Deletion is not yet complete and is still being processed."}
+                        {" "}Erasure of your personal data and destruction of your encryption key have not been confirmed.
+                        You cannot make further changes to this account. Do not submit another request.
+                        Contact the CNERSH secretariat if you need help.
                     </AlertDescription>
                 </Alert>
             )}
@@ -126,7 +163,7 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
                     Database backups are rotated on the hosting provider&apos;s retention schedule. A reconciliation step runs after
                     any restore so a deleted account is never reinstated
                     {context.keyStoreIsolated
-                        ? ", and destroyed encryption keys are kept in a separate store that is not part of those backups."
+                        ? ", and the encryption key store is separate from those backups."
                         : "."}
                 </p>
             </div>
@@ -141,7 +178,7 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
                 </Alert>
             )}
 
-            {!context.recentAuth && !inProgress && context.available && (
+            {needsReauth && !inProgress && context.available && (
                 <Alert>
                     <ShieldCheckIcon className="h-4 w-4" />
                     <AlertTitle>Recent sign-in required</AlertTitle>
@@ -191,7 +228,7 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
                     type="button"
                     variant="destructive"
                     className="w-full sm:w-auto"
-                    disabled={!canSubmit || !context.recentAuth || !context.available || context.isSuperAdmin}
+                    disabled={!canSubmit}
                     onClick={() => setDialogOpen(true)}
                 >
                     {pending ? <Spinner /> : <Trash2Icon className="h-4 w-4" />}
@@ -199,26 +236,29 @@ export function DeleteAccount({ context }: DeleteAccountProps) {
                 </Button>
             </div>
 
-            <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <AlertDialog open={dialogOpen} onOpenChange={(open) => {
+                if (!submissionLocked.current) setDialogOpen(open);
+            }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Permanently delete your account?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This cannot be undone. You will be signed out immediately, your personal data will be erased, and the
-                            encryption key protecting your protected data will be destroyed.
+                            This cannot be undone. Once your request is accepted, you will be signed out immediately.
+                            Erasure may take longer and is only complete after all required steps, including encryption key
+                            destruction, have been verified. {RETAINED_RECORDS_NOTICE}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={pending}>Keep my account</AlertDialogCancel>
                         <AlertDialogAction
-                            disabled={pending}
+                            disabled={!canSubmit}
                             onClick={(event) => {
                                 event.preventDefault();
                                 submit();
                             }}
                             className="bg-red-600 text-white hover:bg-red-700"
                         >
-                            {pending ? "Deleting..." : "Delete permanently"}
+                            {pending ? "Requesting deletion..." : "Delete permanently"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

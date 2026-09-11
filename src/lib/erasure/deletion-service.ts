@@ -126,52 +126,65 @@ export async function requestAccountDeletion(input: RequestDeletionInput): Promi
         throw error;
     }
 
-    const user = await client.user.findUnique({
-        where: { id: input.userId },
-        select: { id: true, email: true, name: true, role: true, erasedAt: true },
-    });
-    if (!user) throw new DeletionRefusedError("User not found");
-
-    const existing = await client.accountDeletionRequest.findFirst({
-        where: { userId: user.id },
-        orderBy: { createdAt: "desc" },
-    });
-    if (existing?.status === "COMPLETED" || user.erasedAt) {
-        return existing ? toOutcome(existing) : { requestId: "", status: "COMPLETED", completedSteps: [...DELETION_STEPS], lastError: null };
-    }
-    if (existing) {
-        // Already accepted: resume rather than duplicate.
-        return processDeletionRequest(existing.id);
-    }
-
-    if (user.role === "superadmin") {
-        const otherSuperAdmins = await client.user.count({
-            where: { role: "superadmin", erasedAt: null, id: { not: user.id } },
+    // Serialize acceptance across instances, including the last-super-admin
+    // check. READ COMMITTED makes reads after waiting see the preceding commit.
+    // No application mutation occurs until the external intent is durable.
+    const accepted = await client.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(716204, 1)`;
+        const existing = await tx.accountDeletionRequest.findFirst({
+            where: { userId: input.userId },
+            orderBy: { createdAt: "desc" },
         });
-        if (otherSuperAdmins === 0) {
-            throw new DeletionRefusedError(
-                "Transfer the super administrator role to another account before deleting this one."
-            );
+        // erasedAt is only the profile-step marker, not proof of completion.
+        // Resume an existing request even when the user row is already absent.
+        if (existing) return { request: existing, notice: null };
+        const user = await tx.user.findUnique({
+            where: { id: input.userId },
+            select: { id: true, email: true, name: true, role: true, erasedAt: true },
+        });
+        if (!user) throw new DeletionRefusedError("User not found");
+        if (user.erasedAt) return { request: null, notice: null };
+
+        if (user.role === "superadmin") {
+            // A journal can outlive a failed app transaction or a restore.
+            // Such subjects must not count as available administrators either.
+            let journalSubjects: string[];
+            try {
+                journalSubjects = (await listJournalEntries()).map((entry) => entry.subjectId);
+            } catch {
+                throw new DeletionUnavailableError();
+            }
+            const otherSuperAdmins = await tx.user.count({
+                where: {
+                    role: "superadmin",
+                    erasedAt: null,
+                    deletionRequestedAt: null,
+                    id: { not: user.id, notIn: journalSubjects },
+                    OR: [{ banned: false }, { banned: null }],
+                    deletionRequests: { none: { status: { in: ["ACCEPTED", "PROCESSING", "BLOCKED"] } } },
+                },
+            });
+            if (otherSuperAdmins === 0) {
+                throw new DeletionRefusedError(
+                    "Transfer the super administrator role to another active account before deleting this one."
+                );
+            }
         }
-    }
 
-    // 1. Durable intent, outside the application database when configured.
-    let journalId: string;
-    try {
-        const entry = await recordDeletionIntent({
-            subjectId: user.id,
-            emailHmac: config.hmacKey ? hmacPseudonym(config.hmacKey, user.email) : null,
-            requestedVia: input.via,
-        });
-        journalId = entry.id;
-    } catch (error) {
-        console.error("[erasure] journal write failed; refusing deletion", error);
-        Sentry.captureException(error, { tags: { feature: "account-deletion", stage: "journal" } });
-        throw new DeletionUnavailableError();
-    }
+        let journalId: string;
+        try {
+            const entry = await recordDeletionIntent({
+                subjectId: user.id,
+                emailHmac: config.hmacKey ? hmacPseudonym(config.hmacKey, user.email) : null,
+                requestedVia: input.via,
+            });
+            journalId = entry.id;
+        } catch (error) {
+            console.error("[erasure] journal write failed; refusing deletion", error);
+            Sentry.captureException(error, { tags: { feature: "account-deletion", stage: "journal" } });
+            throw new DeletionUnavailableError();
+        }
 
-    // 2. Accept in the application database and lock the account out.
-    const request = await client.$transaction(async (tx) => {
         const created = await tx.accountDeletionRequest.create({
             data: {
                 userId: user.id,
@@ -195,11 +208,16 @@ export async function requestAccountDeletion(input: RequestDeletionInput): Promi
                 userId: input.actorId,
             },
         });
-        return created;
-    });
+        return { request: created, notice: user };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10_000, timeout: 30_000 });
+
+    if (!accepted.request) {
+        return { requestId: "", status: "COMPLETED", completedSteps: [...DELETION_STEPS], lastError: null };
+    }
+    const user = accepted.notice;
 
     // 3. Notice to the address on file, before it is scrubbed. Best effort.
-    if (!isTombstoneEmail(user.email)) {
+    if (user && !isTombstoneEmail(user.email)) {
         await sendNotificationEmail({
             to: user.email,
             userName: user.name ?? "there",
@@ -207,12 +225,12 @@ export async function requestAccountDeletion(input: RequestDeletionInput): Promi
             notificationMessage:
                 "We have started deleting your CNERSH account. You have been signed out everywhere and can no longer sign in. " +
                 "Personal data is being removed and the encryption key protecting your protected data will be destroyed. " +
-                "Records the ethics committee is required to keep are retained without your identity. " +
+                "Records the ethics committee is required to keep are retained and may contain identifying information. " +
                 "If you did not request this, contact the CNERSH secretariat immediately.",
-        });
+        }).catch((error) => console.error("[erasure] deletion notice failed:", error));
     }
 
-    return processDeletionRequest(request.id);
+    return processDeletionRequest(accepted.request.id);
 }
 
 // ── Processing ────────────────────────────────────────────────────────────────
@@ -226,67 +244,69 @@ export async function processDeletionRequest(requestId: string): Promise<Deletio
         where: { id: request.userId },
         select: { id: true, email: true, erasedAt: true },
     });
-    if (!user) {
-        // Row hard-deleted by an older code path; make sure the key is gone and close out.
-        await destroySubjectKey(request.userId).catch(() => undefined);
-        const done = await client.accountDeletionRequest.update({
-            where: { id: request.id },
-            data: { status: "COMPLETED", completedAt: new Date(), completedSteps: [...DELETION_STEPS] },
-        });
-        await markJournalStatus(request.userId, "COMPLETED", { note: "user row absent" }).catch(() => undefined);
-        return toOutcome(done);
-    }
-
     await client.accountDeletionRequest.update({
         where: { id: request.id },
         data: { status: "PROCESSING", attempts: { increment: 1 }, lastAttemptAt: new Date(), lastError: null },
     });
 
     const context: StepContext = {
-        userId: user.id,
-        originalEmail: isTombstoneEmail(user.email) ? null : user.email,
+        userId: request.userId,
+        originalEmail: user && !isTombstoneEmail(user.email) ? user.email : null,
         counts: {},
     };
     const completed = new Set<string>(request.completedSteps);
 
     try {
-        for (const step of DELETION_STEPS) {
-            // "verify" always runs so a resumed request is re-checked end to end.
-            if (completed.has(step) && step !== "verify") continue;
-            await runStep(step, context);
-            completed.add(step);
-            await client.accountDeletionRequest.update({
-                where: { id: request.id },
-                data: { completedSteps: [...completed] },
-            });
+        if (!user) {
+            // A missing app row says nothing about external key destruction.
+            // Always retry destruction and verify directly, even with saved steps.
+            await destroyKey(context);
+            const [sessions, accounts] = await Promise.all([
+                client.session.count({ where: { userId: request.userId } }),
+                client.account.count({ where: { userId: request.userId } }),
+            ]);
+            if (sessions || accounts) throw new Error("Credentials remain for missing user");
+            for (const step of DELETION_STEPS) completed.add(step);
+        } else {
+            for (const step of DELETION_STEPS) {
+                // "verify" always runs so a resumed request is re-checked end to end.
+                if (completed.has(step) && step !== "verify") continue;
+                await runStep(step, context);
+                completed.add(step);
+                await client.accountDeletionRequest.update({
+                    where: { id: request.id },
+                    data: { completedSteps: [...completed] },
+                });
+            }
         }
+        // Journal completion must succeed before app completion is visible.
+        await markJournalStatus(request.userId, "COMPLETED", { counts: context.counts });
+        const done = await client.accountDeletionRequest.update({
+            where: { id: request.id },
+            data: { status: "COMPLETED", completedAt: new Date(), lastError: null, completedSteps: [...DELETION_STEPS] },
+        });
+        // AuditLog requires an app user FK. With a missing user, the durable
+        // journal is the authoritative completion record instead.
+        if (user) await client.auditLog.create({
+            data: {
+                action: "ACCOUNT_ERASURE_COMPLETED",
+                details: JSON.stringify({ requestId: request.id, counts: context.counts }),
+                targetId: request.userId,
+                userId: request.requestedById,
+            },
+        }).catch((error) => console.error("[erasure] audit log write failed:", error));
+        return toOutcome(done);
     } catch (error) {
         const message = errorMessage(error);
         console.error(`[erasure] request ${request.id} blocked:`, message);
         Sentry.captureException(error, { tags: { feature: "account-deletion", requestId: request.id } });
         const blocked = await client.accountDeletionRequest.update({
             where: { id: request.id },
-            data: { status: "BLOCKED", lastError: message.slice(0, 2000), completedSteps: [...completed] },
+            data: { status: "BLOCKED", completedAt: null, lastError: message.slice(0, 2000), completedSteps: [...completed] },
         });
-        await markJournalStatus(user.id, "BLOCKED", { lastError: message.slice(0, 500) }).catch(() => undefined);
+        await markJournalStatus(request.userId, "BLOCKED", { lastError: message.slice(0, 500) }).catch(() => undefined);
         return toOutcome(blocked);
     }
-
-    const done = await client.accountDeletionRequest.update({
-        where: { id: request.id },
-        data: { status: "COMPLETED", completedAt: new Date(), lastError: null, completedSteps: [...DELETION_STEPS] },
-    });
-    await markJournalStatus(user.id, "COMPLETED", { counts: context.counts });
-    await client.auditLog.create({
-        data: {
-            action: "ACCOUNT_ERASURE_COMPLETED",
-            details: JSON.stringify({ requestId: request.id, counts: context.counts }),
-            targetId: user.id,
-            userId: request.requestedById,
-        },
-    }).catch((error) => console.error("[erasure] audit log write failed:", error));
-
-    return toOutcome(done);
 }
 
 async function runStep(step: DeletionStep, ctx: StepContext): Promise<void> {
@@ -423,7 +443,16 @@ async function handleProtocols(ctx: StepContext): Promise<void> {
     for (const project of retained) {
         if (project.formData === null || project.formData === undefined) continue;
         const next = await rekeyProjectFormData(project.formData, INSTITUTION_SUBJECT);
-        await client.project.update({ where: { id: project.id }, data: { formData: next as Prisma.InputJsonValue } });
+        // Another worker may have already transferred custody and destroyed
+        // the source key while this worker held an old payload. Never replace
+        // the newer institutional ciphertext with a stale erased marker.
+        const updated = await client.project.updateMany({
+            where: { id: project.id, formData: { equals: project.formData as Prisma.InputJsonValue } },
+            data: { formData: next as Prisma.InputJsonValue },
+        });
+        if (updated.count !== 1) {
+            throw new Error(`Retained protocol ${project.id} changed during re-keying; retry required`);
+        }
         rekeyed += 1;
     }
 
@@ -524,7 +553,8 @@ export async function auditJournalConsistency(): Promise<JournalFinding[]> {
         ]);
         const userResurrected = Boolean(user && (!user.erasedAt || !isTombstoneEmail(user.email)));
         const consistent =
-            entry.status === "COMPLETED" && !userResurrected && sessions === 0 && accounts === 0 && !key;
+            entry.status === "COMPLETED" && (!request || request.status === "COMPLETED") &&
+            !userResurrected && sessions === 0 && accounts === 0 && !key;
         findings.push({
             subjectId: userId,
             journalStatus: entry.status,
@@ -552,60 +582,89 @@ export async function reconcileWithJournal(): Promise<ReconciliationReport> {
     for (const entry of entries) {
         report.checked += 1;
         const userId = entry.subjectId;
-        const user = await client.user.findUnique({
-            where: { id: userId },
-            select: { erasedAt: true, email: true },
-        });
-        const [sessions, accounts, key] = await Promise.all([
-            client.session.count({ where: { userId } }),
-            client.account.count({ where: { userId } }),
-            getSubjectKey(userId),
-        ]);
-
-        const userResurrected = Boolean(user && (!user.erasedAt || !isTombstoneEmail(user.email)));
-        const needsWork = entry.status !== "COMPLETED" || userResurrected || sessions > 0 || accounts > 0 || Boolean(key);
-
-        if (!needsWork) {
-            report.consistent += 1;
-            await markJournalReconciled(userId);
-            continue;
-        }
-
-        if (!user) {
-            // Nothing to scrub; make sure the key is gone and close the entry.
-            await destroySubjectKey(userId).catch(() => undefined);
-            await markJournalStatus(userId, "COMPLETED", { note: "user row absent at reconciliation" });
-            await markJournalReconciled(userId);
-            report.reapplied.push(userId);
-            continue;
-        }
-
-        let request = await getDeletionRequestForUser(userId);
-        if (!request || request.status === "COMPLETED") {
-            // The restore erased or completed the request row; open a fresh one
-            // so processing can start from step one.
-            request = await client.accountDeletionRequest.create({
-                data: {
-                    userId,
-                    status: "ACCEPTED",
-                    requestedVia: "RECONCILIATION",
-                    requestedById: userId,
-                    journalId: entry.id,
-                    reason: "Re-applied from erasure journal after inconsistency was detected",
-                },
-            });
-            await client.user.update({
+        try {
+            const user = await client.user.findUnique({
                 where: { id: userId },
-                data: { banned: true, banReason: PENDING_BAN_REASON, deletionRequestedAt: entry.requestedAt },
-            }).catch(() => undefined);
-            report.reapplied.push(userId);
-        } else {
-            report.resumed.push(userId);
-        }
+                select: { erasedAt: true, email: true },
+            });
+            const [sessions, accounts, key] = await Promise.all([
+                client.session.count({ where: { userId } }),
+                client.account.count({ where: { userId } }),
+                getSubjectKey(userId),
+            ]);
 
-        const outcome = await processDeletionRequest(request.id);
-        if (outcome.status !== "COMPLETED") report.blocked.push(userId);
-        await markJournalReconciled(userId);
+            const userResurrected = Boolean(user && (!user.erasedAt || !isTombstoneEmail(user.email)));
+            let request = await getDeletionRequestForUser(userId);
+            const needsWork = entry.status !== "COMPLETED" || userResurrected || sessions > 0 || accounts > 0 ||
+                Boolean(key) || Boolean(request && request.status !== "COMPLETED");
+
+            if (!needsWork) {
+                await markJournalReconciled(userId);
+                report.consistent += 1;
+                continue;
+            }
+
+            if (!user) {
+                // Never treat missing app data as evidence of external erasure.
+                await destroyKey({ userId, originalEmail: null, counts: {} });
+                if (sessions || accounts) throw new Error("Credentials remain for missing user");
+                await markJournalStatus(userId, "COMPLETED", { note: "user row absent at reconciliation" });
+                if (request) {
+                    await client.accountDeletionRequest.update({
+                        where: { id: request.id },
+                        data: { status: "COMPLETED", completedAt: new Date(), lastError: null, completedSteps: [...DELETION_STEPS] },
+                    });
+                }
+                await markJournalReconciled(userId);
+                report.reapplied.push(userId);
+                continue;
+            }
+
+            if (!request || request.status === "COMPLETED" || userResurrected) {
+                // Preserve the one-request-per-user constraint from ca15ea4.
+                // A restored partial request may also have stale step checkpoints.
+                request = await client.$transaction(async (tx) => {
+                    await tx.$executeRaw`SELECT pg_advisory_xact_lock(716204, 1)`;
+                    const current = await tx.accountDeletionRequest.findFirst({ where: { userId } });
+                    const data = {
+                        userId,
+                        status: "ACCEPTED" as const,
+                        requestedVia: "RECONCILIATION",
+                        requestedById: userId,
+                        journalId: entry.id,
+                        reason: "Re-applied from erasure journal after inconsistency was detected",
+                        completedSteps: [],
+                        completedAt: null,
+                        lastError: null,
+                    };
+                    const reset = current
+                        ? await tx.accountDeletionRequest.update({ where: { id: current.id }, data })
+                        : await tx.accountDeletionRequest.create({ data });
+                    await tx.user.update({
+                        where: { id: userId },
+                        data: { banned: true, banReason: PENDING_BAN_REASON, banExpires: null, deletionRequestedAt: entry.requestedAt },
+                    });
+                    return reset;
+                }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10_000, timeout: 30_000 });
+                report.reapplied.push(userId);
+            } else {
+                report.resumed.push(userId);
+            }
+
+            const outcome = await processDeletionRequest(request.id);
+            if (outcome.status !== "COMPLETED") {
+                report.blocked.push(userId);
+            } else {
+                await markJournalReconciled(userId);
+            }
+        } catch (error) {
+            report.blocked.push(userId);
+            const message = errorMessage(error).slice(0, 500);
+            console.error(`[erasure] reconciliation blocked for ${userId}:`, message);
+            await markJournalStatus(userId, "BLOCKED", { lastError: message }).catch(() => undefined);
+            // Do not advance lastReconciledAt on failure. The durable entry
+            // remains visible to the next run even if its store is unavailable.
+        }
     }
 
     return report;

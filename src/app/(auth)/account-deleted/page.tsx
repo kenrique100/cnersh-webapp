@@ -22,9 +22,9 @@ export default function AccountDeletedPage() {
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-gray-600 dark:text-gray-400">
                 <p>
-                    Your personal data has been removed and the encryption key protecting your protected data has been
-                    destroyed. Protocols you submitted and their review records are kept by the ethics committee in
-                    de-identified form, as required by its retention rules.
+                    Your account profile has been removed and the encryption key protecting your protected data has been
+                    destroyed. Protocols you submitted, their attachments, review records, and the audit trail are kept by the
+                    ethics committee under its retention rules. Retained records may contain identifying information.
                 </p>
                 <p>
                     If you did not request this deletion, contact the CNERSH secretariat as soon as possible.
