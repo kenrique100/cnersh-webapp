@@ -22,7 +22,13 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:dedupe:sessions": "tsx scripts/resolve-duplicate-committee-sessions.ts",
     "db:dedupe:sessions:apply": "tsx scripts/resolve-duplicate-committee-sessions.ts --apply",
-    "db:setup": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts"
+    "db:setup": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts",
+    "erasure:reconcile": "tsx scripts/reconcile-erasure-journal.ts",
+    "erasure:reconcile:apply": "tsx scripts/reconcile-erasure-journal.ts --apply",
+    "erasure:encrypt-existing": "tsx scripts/encrypt-existing-user-data.ts",
+    "erasure:encrypt-existing:apply": "tsx scripts/encrypt-existing-user-data.ts --apply",
+    "erasure:rotate-kek": "tsx scripts/rotate-erasure-kek.ts",
+    "erasure:drill": "tsx scripts/erasure-restore-drill.ts --confirm-restore"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

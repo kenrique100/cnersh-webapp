@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { authSession } from "@/lib/auth-utils";
+import { ErasedDataError, openFileData } from "@/lib/erasure/fields";
 
 const PRIVATE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -59,7 +60,17 @@ export async function GET(
     return jsonError("File has no content", 500);
   }
 
-  const buffer = Buffer.from(file.data, "base64");
+  // Legacy inline content is sealed under the owner's per-user key. Once that
+  // key has been destroyed the bytes are unreadable by design.
+  let base64: string;
+  try {
+    base64 = await openFileData(file.data);
+  } catch (err) {
+    if (err instanceof ErasedDataError) return jsonError("File content has been erased", 410);
+    console.error("[files] failed to open file content:", err);
+    return jsonError("File content unavailable", 500);
+  }
+  const buffer = Buffer.from(base64, "base64");
 
   const isInline =
       file.mimeType.startsWith("image/") ||

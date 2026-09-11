@@ -224,7 +224,7 @@ describe('deleteFile - integration', () => {
         expect(mockedDb.file.delete).toHaveBeenCalled();
     });
 
-    it('still deletes DB record even when UploadThing deletion throws', async () => {
+    it('keeps the DB record and throws when UploadThing deletion fails, so the object is never orphaned', async () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
         const storageKey = 'some-key';
@@ -232,18 +232,15 @@ describe('deleteFile - integration', () => {
             storageKey,
         });
         mockedUtapi.deleteFiles.mockRejectedValueOnce(new Error('UploadThing error'));
-        (mockedDb.file.delete as jest.Mock).mockResolvedValueOnce({});
 
-        await expect(deleteFile(VALID_UUID)).resolves.toBeUndefined();
+        await expect(deleteFile(VALID_UUID)).rejects.toThrow('File could not be deleted from storage');
 
-        expect(mockedDb.file.delete).toHaveBeenCalled();
+        expect(mockedDb.file.delete).not.toHaveBeenCalled();
 
         expect(consoleSpy).toHaveBeenCalledWith(
-            "[file-utils] UploadThing deletion failed:",
+            "[file-utils] UploadThing deletion failed; keeping record for retry:",
             expect.any(Error)
         );
-
-        consoleSpy.mockRestore();
     });
 });
 

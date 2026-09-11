@@ -72,12 +72,20 @@ export default async function ProfilePage() {
                                 </h1>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                             </div>
-                            <Link
-                                href="/settings"
-                                className="text-sm text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 font-medium"
-                            >
-                                Edit Profile
-                            </Link>
+                            <div className="flex flex-col items-end gap-1">
+                                <Link
+                                    href="/settings"
+                                    className="text-sm text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 font-medium"
+                                >
+                                    Edit Profile
+                                </Link>
+                                <Link
+                                    href="/settings#delete-account"
+                                    className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                    Delete account
+                                </Link>
+                            </div>
                         </div>
                         {/* Stats Bar */}
                         <div className="flex gap-6 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">

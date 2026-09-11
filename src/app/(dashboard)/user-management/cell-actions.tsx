@@ -42,14 +42,18 @@ export const CellActions = ({
     const onRemoveUser = async () => {
         setIsLoading(true);
         try {
-            await removeManagedUser(id);
-            toast.success("User removed successfully");
+            const result = await removeManagedUser(id);
+            if (result.status === "COMPLETED") {
+                toast.success("User account deleted and personal data erased");
+            } else {
+                toast.warning("Deletion accepted. The account is locked and erasure will finish automatically.");
+            }
             router.refresh();
             setIsLoading(false);
             setIsDeleteModalOpen(false);
             setIsMobileMenuOpen(false);
-        } catch {
-            toast.error("Something went wrong");
+        } catch (error) {
+            toast.error(error instanceof Error && error.message ? error.message : "Something went wrong");
             setIsLoading(false);
         }
     };

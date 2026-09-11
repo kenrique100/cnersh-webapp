@@ -16,7 +16,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("sonner", () => ({
-    toast: { success: jest.fn(), error: jest.fn() },
+    toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
 
 jest.mock("@/app/actions/admin", () => ({
@@ -271,34 +271,44 @@ describe("CellActions", () => {
         ).not.toBeInTheDocument();
     });
 
-    it("calls removeManagedUser and shows success toast on delete confirm", async () => {
-        (removeManagedUser as jest.Mock).mockResolvedValue({});
+    it("calls removeManagedUser and shows the erasure-complete toast on delete confirm", async () => {
+        (removeManagedUser as jest.Mock).mockResolvedValue({ success: true, status: "COMPLETED", requestId: "req-1" });
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Delete user"));
         await user.click(screen.getByRole("button", { name: "Delete User" }));
         await waitFor(() => {
             expect(removeManagedUser).toHaveBeenCalledWith("user-1");
-            expect(toast.success).toHaveBeenCalledWith("User removed successfully");
+            expect(toast.success).toHaveBeenCalledWith("User account deleted and personal data erased");
             expect(mockRouter.refresh).toHaveBeenCalled();
         });
     });
 
-    it("shows an error if removeManagedUser fails", async () => {
+    it("does not claim success when the deletion is only accepted or blocked", async () => {
+        (removeManagedUser as jest.Mock).mockResolvedValue({ success: true, status: "BLOCKED", requestId: "req-1" });
+        const user = userEvent.setup();
+        render(<CellActions {...defaultProps} />);
+        await user.click(screen.getByTitle("Delete user"));
+        await user.click(screen.getByRole("button", { name: "Delete User" }));
+        await waitFor(() => {
+            expect(toast.success).not.toHaveBeenCalled();
+            expect(toast.warning).toHaveBeenCalled();
+        });
+    });
+
+    it("shows the server's reason when removeManagedUser fails", async () => {
         (removeManagedUser as jest.Mock).mockRejectedValue(new Error("Forbidden"));
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Delete user"));
         await user.click(screen.getByRole("button", { name: "Delete User" }));
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Something went wrong");
+            expect(toast.error).toHaveBeenCalledWith("Forbidden");
         });
     });
 
-    it("shows generic error toast if removeUser throws", async () => {
-        (removeManagedUser as jest.Mock).mockRejectedValue(
-            new Error("network down")
-        );
+    it("falls back to a generic error toast when the failure has no message", async () => {
+        (removeManagedUser as jest.Mock).mockRejectedValue(new Error(""));
         const user = userEvent.setup();
         render(<CellActions {...defaultProps} />);
         await user.click(screen.getByTitle("Delete user"));

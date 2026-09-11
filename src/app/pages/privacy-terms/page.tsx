@@ -122,8 +122,14 @@ export default async function PrivacyTermsPage() {
                                 </h3>
                                 <p>
                                     You have the right to access, correct, or request deletion of your personal data.
-                                    To exercise these rights, please contact the CNERSH administration through the
-                                    Help Center.
+                                    You can delete your account yourself at any time from Settings. Deleting your
+                                    account signs you out everywhere, removes your profile and community content,
+                                    deletes files and draft protocols that are not part of a committee record, and
+                                    destroys the encryption key protecting your protected data so that encrypted
+                                    copies, including those in backups, can no longer be read. Protocols you
+                                    submitted, their reviews, decisions and the audit trail are institutional records
+                                    that the committee retains in de-identified form. For other requests, contact the
+                                    CNERSH administration through the Help Center.
                                 </p>
                             </div>
                         </div>
