@@ -2,7 +2,6 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { sealProjectFormData } from "@/lib/erasure/fields";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
@@ -155,12 +154,7 @@ export async function submitProject(data: {
         // Submitters, including admins, must pass through the normal review workflow.
         const availableAdmin = await findAvailableAdmin([session.user.id]);
         const trackingCode = await generateTrackingCode();
-        // Wizard payloads carry investigator identities and contact details;
-        // seal them under the submitter's per-user key so account deletion can
-        // render them unreadable, including in backups.
-        const sanitizedFormData = input.formData
-            ? toJsonValue(await sealProjectFormData(session.user.id, input.formData))
-            : undefined;
+        const sanitizedFormData = toJsonValue(input.formData);
 
         // Create project + auto-assignment in one transaction
         const transactionResult = await db.$transaction(async (tx) => {
@@ -548,9 +542,7 @@ export async function updateProject(
         ...(input.location !== undefined && { location: input.location || null }),
         ...(input.timeline !== undefined && { timeline: input.timeline || null }),
         ...(input.budget !== undefined && { budget: input.budget || null }),
-        ...(input.formData !== undefined && {
-            formData: toJsonValue(await sealProjectFormData(session.user.id, input.formData)),
-        }),
+        ...(input.formData !== undefined && { formData: toJsonValue(input.formData) }),
     };
     return db.$transaction(async (tx) => {
         const result = await tx.project.updateMany({

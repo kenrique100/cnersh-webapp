@@ -45,11 +45,6 @@ export const auth = betterAuth({
       title: { type: "string", required: false, input: true },
       welcomeEmailSent: { type: "boolean", default: false },
     },
-    // Better Auth's own `deleteUser` endpoint stays disabled (its default). A hard
-    // row delete would be silently undone by a database restore. Account deletion
-    // goes through src/lib/erasure/deletion-service.ts, which journals the intent
-    // outside this database, scrubs the account and destroys the user's data key.
-    deleteUser: { enabled: false },
   },
   socialProviders: {
     google: { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, prompt: "select_account", redirectUri: `${authBaseUrl}/api/auth/callback/google` },
