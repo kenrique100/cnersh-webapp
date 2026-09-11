@@ -5,6 +5,7 @@ import { FileTextIcon, LinkIcon, Loader2Icon, UploadIcon, XIcon } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MAX_FILE_SIZES } from "@/lib/file-limits";
 
 export interface ProtocolDocument {
     url: string;
@@ -18,6 +19,8 @@ interface BaseFieldProps {
     hint?: string;
     error?: string;
 }
+
+const MAX_PROTOCOL_DOCUMENT_MB = MAX_FILE_SIZES.document / (1024 * 1024);
 
 function FieldShell({
     id,
@@ -197,8 +200,8 @@ export function ProtocolDocumentField({
 
     const uploadFile = async (file: File) => {
         setUploadError("");
-        if (file.size > 10 * 1024 * 1024) {
-            setUploadError("The document must be 10 MB or smaller.");
+        if (file.size > MAX_FILE_SIZES.document) {
+            setUploadError(`The document must be ${MAX_PROTOCOL_DOCUMENT_MB} MB or smaller.`);
             return;
         }
 
@@ -257,7 +260,9 @@ export function ProtocolDocumentField({
                         )}
                         {isUploading ? "Uploading" : "Choose document"}
                     </Button>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">PDF or Word, up to 10 MB</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                        PDF or Word, up to {MAX_PROTOCOL_DOCUMENT_MB} MB
+                    </span>
                 </div>
 
                 <div className="my-3 flex items-center gap-3" aria-hidden="true">
