@@ -12,10 +12,10 @@ export const ourFileRouter = {
             return { userId: session.user.id };
         })
         .onUploadComplete(async ({ metadata }) => {
-            // Here you could save the file metadata to your database
             console.log("Upload complete for userId:", metadata.userId);
             return { uploadedBy: metadata.userId };
         }),
+
     videoUploader: f({ video: { maxFileSize: UT_MAX_SIZES.video } })
         .middleware(async () => {
             const session = await authSession();
@@ -25,6 +25,7 @@ export const ourFileRouter = {
         .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
+
     audioUploader: f({ audio: { maxFileSize: UT_MAX_SIZES.audio } })
         .middleware(async () => {
             const session = await authSession();
@@ -34,6 +35,7 @@ export const ourFileRouter = {
         .onUploadComplete(async ({ metadata }) => {
             return { uploadedBy: metadata.userId };
         }),
+
     pdfUploader: f({ pdf: { maxFileSize: UT_MAX_SIZES.document } })
         .middleware(async () => {
             const session = await authSession();
