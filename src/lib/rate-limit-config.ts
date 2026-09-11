@@ -48,8 +48,4 @@ export const RATE_LIMITS = Object.freeze({
         windowMs: 60 * 1000,
         maxRequests: 20,
     }),
-    accountDeletion: Object.freeze({
-        windowMs: 60 * 60 * 1000,
-        maxRequests: 3,
-    }),
 });

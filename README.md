@@ -132,12 +132,6 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run db:reset` | Drop the local database, replay every migration, then seed |
 | `npm run db:reset:push` | Force schema push without migrations (escape hatch; bypasses the migration history) |
-| `npm run erasure:reconcile` | Compare the erasure journal with the database and report resurrected accounts (exit 2 if any) |
-| `npm run erasure:reconcile:apply` | Re-apply erasure for every journalled account a restore brought back |
-| `npm run erasure:encrypt-existing` | Report plaintext protocol payloads and inline files that still need sealing |
-| `npm run erasure:encrypt-existing:apply` | Seal existing plaintext rows under their owners' keys |
-| `npm run erasure:rotate-kek` | Re-wrap every per-user key under the current `ERASURE_KEK` |
-| `npm run erasure:drill` | End-to-end backup, delete, restore, reconcile drill (non-production databases only) |
 
 ## Security model
 
@@ -148,7 +142,6 @@ Open [http://localhost:3000](http://localhost:3000).
 - Outbound link previews pin validated public DNS addresses to prevent DNS rebinding.
 - Redis-backed rate limits and idempotency are shared and atomic in production.
 - Multi-record workflow changes use database transactions and conditional state transitions.
-- Account deletion is backup-safe: protocol payloads and inline files are encrypted per user, deletion destroys that user's key and records the intent in an erasure journal, and a reconciliation step re-applies erasure after any database restore. See [docs/ACCOUNT_DELETION.md](docs/ACCOUNT_DELETION.md).
 - Every document response carries a per-request Content Security Policy nonce issued by `src/proxy.ts`; scripts are restricted to that nonce plus `'strict-dynamic'`, with no `'unsafe-inline'` in production.
 
 ### Content Security Policy

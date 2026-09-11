@@ -2,7 +2,6 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { requestAccountDeletion } from "@/lib/erasure/deletion-service";
 import { notifyAdmins } from "@/lib/notify-admins";
 import {
     canAssignRole,
@@ -665,15 +664,14 @@ export async function removeManagedUser(userId: string) {
     if (!target) throw new Error("User not found");
     if (!canManageRole(actor?.role, target.role)) throw new Error("Forbidden");
 
-    // Administrative removal follows the same durable erasure path as
-    // self-service deletion: journal first, revoke, scrub, retain committee
-    // records de-identified, destroy the subject key. A hard `user.delete`
-    // would be silently undone by a database restore.
-    const outcome = await requestAccountDeletion({
-        userId: targetId,
-        actorId: session.user.id,
-        via: "ADMIN",
-        reason: "Removed by administrator",
+    await db.user.delete({ where: { id: targetId } });
+    await db.auditLog.create({
+        data: {
+            action: "DELETE_USER",
+            details: "User account deleted",
+            targetId,
+            userId: session.user.id,
+        },
     });
-    return { success: true, status: outcome.status, requestId: outcome.requestId };
+    return { success: true };
 }
