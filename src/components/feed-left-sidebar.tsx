@@ -31,12 +31,19 @@ const adminNavItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
-const ourPagesItems = [
+interface OurPagesItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  external?: boolean;
+}
+
+const ourPagesItems: OurPagesItem[] = [
   { href: "/pages/about", label: "About Us", icon: Users },
   { href: "/pages/contract-rex", label: "Contract Rex Org", icon: FolderIcon },
   { href: "/membership.pdf", label: "Membership", icon: DownloadIcon, external: true },
   { href: "/Fiche d'Evaluation CNERSH.pdf", label: "Evaluation Form", icon: DownloadIcon, external: true },
-] as const;
+];
 
 const communityFooterLinks: { label: string; href: string }[] = [
   { label: "About", href: "/pages/about" },
