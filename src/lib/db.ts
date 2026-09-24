@@ -2,20 +2,10 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { z } from "zod";
 
-// Exported for callers that need to validate file-storage configuration.
-// Do not parse it while constructing the database client: health/readiness
-// probes must still be able to report database state when storage is
-// independently misconfigured.
 export const uploadthingEnvSchema = z.object({
     UPLOADTHING_TOKEN: z.string().startsWith("eyJ", "UPLOADTHING_TOKEN must be a v6 JWT token"),
 });
 
-/**
- * Normalize `sslmode` in a PostgreSQL connection string so that the
- * deprecated aliases (`prefer`, `require`, `verify-ca`) are rewritten
- * to `verify-full`.  This silences the pg v8 security warning while
- * preserving the behaviour that pg already enforces today.
- */
 function normalizeSslMode(url: string): string {
     try {
         const parsed = new URL(url);
@@ -26,8 +16,6 @@ function normalizeSslMode(url: string): string {
         }
         return url;
     } catch {
-        // If the URL can't be parsed, return it unchanged and let pg
-        // surface its own error.
         return url;
     }
 }
