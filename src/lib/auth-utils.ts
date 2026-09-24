@@ -17,6 +17,7 @@ export const authSession = async () => {
 export const authIsRequired = async () => {
     const session = await authSession();
     if (!session) redirect("/sign-in");
+    if (!session.user.emailVerified) redirect("/sign-in?unverified=1");
 
     // Send welcome email only once, atomically
     await sendWelcomeEmailIfNeeded(session.user.id);
@@ -29,7 +30,7 @@ export const getDashboardPath = (role?: string | null): string =>
 
 export const authIsNotRequired = async () => {
     const session = await authSession();
-    if (session) redirect(getDashboardPath(session.user?.role));
+    if (session?.user?.emailVerified) redirect(getDashboardPath(session.user?.role));
 };
 
 async function sendWelcomeEmailIfNeeded(userId: string) {
