@@ -1,15 +1,15 @@
+import type { authSession } from "@/lib/auth-utils";
 
-import type { authSession } from '@/lib/auth-utils';
-
-jest.mock('@/lib/auth-utils', () => ({
+jest.mock("@/lib/auth-utils", () => ({
     authSession: jest.fn(),
 }));
 
-jest.mock('@/lib/permissions', () => ({
-    isAdminRole: (role: unknown) => role === 'admin' || role === 'superadmin',
+jest.mock("@/lib/permissions", () => ({
+    isAdminRole: (role: unknown) =>
+        role === "admin" || role === "superadmin",
 }));
 
-jest.mock('@/lib/db', () => ({
+jest.mock("@/lib/db", () => ({
     db: {
         user: {},
         post: {},
@@ -21,10 +21,19 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-import { authSession as _authSession } from '@/lib/auth-utils';
-import { db as _db } from '@/lib/db';
+import { authSession as importedAuthSession } from "@/lib/auth-utils";
+import { db as importedDb } from "@/lib/db";
 
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
+import {
+    getAdminDashboardData,
+    getUserActivity,
+    getUserDashboardData,
+    updateProfile,
+} from "@/app/actions/dashboard";
+
+const mockedAuthSession = importedAuthSession as jest.MockedFunction<
+    typeof authSession
+>;
 
 type MockTable = Record<string, jest.Mock>;
 
@@ -38,24 +47,47 @@ interface MockDb {
     report: MockTable;
 }
 
-const mockedDb = _db as unknown as MockDb;
+const mockedDb = importedDb as unknown as MockDb;
 
-import {
-    updateProfile,
-    getUserActivity,
-    getUserDashboardData,
-    getAdminDashboardData,
-} from '@/app/actions/dashboard';
+function createMockTable(): MockTable {
+    return {
+        findUnique: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        create: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+        delete: jest.fn(),
+        deleteMany: jest.fn(),
+        groupBy: jest.fn().mockResolvedValue([]),
+        aggregate: jest.fn().mockResolvedValue({}),
+    };
+}
 
-function mockSession(userId = 'user-1', name = 'Test User'): void {
+function resetMockDb(): void {
+    mockedDb.user = createMockTable();
+    mockedDb.post = createMockTable();
+    mockedDb.project = createMockTable();
+    mockedDb.notification = createMockTable();
+    mockedDb.communityTopic = createMockTable();
+    mockedDb.auditLog = createMockTable();
+    mockedDb.report = createMockTable();
+}
+
+function mockSession(
+    userId = "user-1",
+    name = "Test User",
+    role: "user" | "admin" | "superadmin" = "user"
+): void {
     mockedAuthSession.mockResolvedValue({
         session: {
-            id: 'session-id',
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            id: "session-id",
+            createdAt: new Date("2024-01-01T00:00:00.000Z"),
+            updatedAt: new Date("2024-01-01T00:00:00.000Z"),
             userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: 'token',
+            expiresAt: new Date("2025-01-01T00:00:00.000Z"),
+            token: "test-token",
             ipAddress: null,
             userAgent: null,
             impersonatedBy: null,
@@ -63,267 +95,617 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
         user: {
             id: userId,
             name,
-            email: `${name.toLowerCase().replace(/\s+/g, '')}@test.com`,
+            email: `${name.toLowerCase().replace(/\s+/g, "")}@test.com`,
             emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: new Date("2024-01-01T00:00:00.000Z"),
+            updatedAt: new Date("2024-01-01T00:00:00.000Z"),
             image: null,
-            role: 'user',
+            role,
             banned: false,
             banReason: null,
             banExpires: null,
             welcomeEmailSent: false,
-            gender: 'male',
-            profession: null,
+            gender: "male",
+            profession: "researcher",
             title: null,
         },
     } as Awaited<ReturnType<typeof authSession>>);
 }
 
+function mockUserDashboardQueries(): void {
+    mockedDb.post.count.mockResolvedValue(3);
+
+    mockedDb.project.count
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(1);
+
+    mockedDb.notification.count.mockResolvedValue(1);
+
+    mockedDb.post.findMany.mockResolvedValue([]);
+    mockedDb.project.findMany.mockResolvedValue([]);
+}
+
+function mockAdminDashboardQueries(): void {
+    mockedDb.user.count
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(2);
+
+    mockedDb.post.count.mockResolvedValue(5);
+
+    mockedDb.project.count
+        .mockResolvedValueOnce(4)
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(1);
+
+    mockedDb.communityTopic.count.mockResolvedValue(3);
+    mockedDb.report.count.mockResolvedValue(2);
+
+    mockedDb.auditLog.findMany.mockResolvedValue([]);
+    mockedDb.project.findMany.mockResolvedValue([]);
+    mockedDb.communityTopic.findMany.mockResolvedValue([]);
+}
+
 beforeEach(() => {
     jest.clearAllMocks();
-
-    mockedDb.user = {};
-    mockedDb.post = {};
-    mockedDb.project = {};
-    mockedDb.notification = {};
-    mockedDb.communityTopic = {};
-    mockedDb.auditLog = {};
-    mockedDb.report = {};
-
-    ((_db as unknown) as MockDb).user = mockedDb.user;
-    ((_db as unknown) as MockDb).post = mockedDb.post;
-    ((_db as unknown) as MockDb).project = mockedDb.project;
-    ((_db as unknown) as MockDb).notification = mockedDb.notification;
-    ((_db as unknown) as MockDb).communityTopic = mockedDb.communityTopic;
-    ((_db as unknown) as MockDb).auditLog = mockedDb.auditLog;
-    ((_db as unknown) as MockDb).report = mockedDb.report;
+    resetMockDb();
 });
 
-describe('updateProfile', () => {
-    it('returns user profile when authenticated', async () => {
-        mockSession('user-1', 'Test User');
+afterEach(() => {
+    jest.restoreAllMocks();
+});
 
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({
-            email: 'test@test.com',
-            name: 'Test',
+describe("updateProfile", () => {
+    it("returns null when not authenticated", async () => {
+        mockedAuthSession.mockResolvedValue(null);
+
+        const result = await updateProfile();
+
+        expect(result).toBeNull();
+        expect(mockedDb.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("returns the expected profile fields for the current user", async () => {
+        mockSession("user-1", "Alice");
+
+        mockedDb.user.findUnique.mockResolvedValue({
+            email: "alice@test.com",
+            name: "Alice",
             image: null,
-            role: 'user',
-            profession: 'Dev',
-            title: 'Mr',
+            gender: "female",
+            role: "user",
+            profession: "researcher",
+            title: "Dr",
         });
 
-        const profile = await updateProfile();
+        const result = await updateProfile();
 
-        expect(profile).toHaveProperty('email', 'test@test.com');
-        expect(profile).toHaveProperty('profession', 'Dev');
-        expect(mockedDb.user.findUnique).toHaveBeenCalledWith(
+        expect(result).toEqual({
+            email: "alice@test.com",
+            name: "Alice",
+            image: null,
+            gender: "female",
+            role: "user",
+            profession: "researcher",
+            title: "Dr",
+        });
+
+        expect(mockedDb.user.findUnique).toHaveBeenCalledWith({
+            where: {
+                id: "user-1",
+            },
+            select: {
+                email: true,
+                name: true,
+                image: true,
+                gender: true,
+                role: true,
+                profession: true,
+                title: true,
+            },
+        });
+    });
+
+    it("returns null when no matching database user exists", async () => {
+        mockSession("missing-user");
+
+        mockedDb.user.findUnique.mockResolvedValue(null);
+
+        const result = await updateProfile();
+
+        expect(result).toBeNull();
+    });
+
+    it("returns null and logs an error when the profile query fails", async () => {
+        mockSession();
+
+        const databaseError = new Error("Profile query failed");
+
+        mockedDb.user.findUnique.mockRejectedValue(databaseError);
+
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
+
+        const result = await updateProfile();
+
+        expect(result).toBeNull();
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            "Error fetching user profile:",
+            databaseError
+        );
+    });
+});
+
+describe("getUserActivity", () => {
+    it("throws Unauthorized when not authenticated", async () => {
+        mockedAuthSession.mockResolvedValue(null);
+
+        await expect(getUserActivity()).rejects.toThrow("Unauthorized");
+    });
+
+    it("returns serialized posts, projects, and their total counts", async () => {
+        mockSession("user-1");
+
+        mockedDb.post.findMany.mockResolvedValue([
+            {
+                id: "post-1",
+                content: "My research update",
+                image: null,
+                createdAt: new Date("2024-01-01T00:00:00.000Z"),
+                _count: {
+                    comments: 2,
+                    likes: 3,
+                },
+            },
+        ]);
+
+        mockedDb.project.findMany.mockResolvedValue([
+            {
+                id: "project-1",
+                title: "Medical Research Project",
+                description: "Project description",
+                status: "APPROVED",
+                category: "Health",
+                location: "Yaoundé",
+                feedback: null,
+                createdAt: new Date("2024-01-02T00:00:00.000Z"),
+            },
+        ]);
+
+        mockedDb.post.count.mockResolvedValue(12);
+        mockedDb.project.count.mockResolvedValue(7);
+
+        const result = await getUserActivity();
+
+        expect(result).toEqual({
+            posts: [
+                {
+                    id: "post-1",
+                    content: "My research update",
+                    image: null,
+                    createdAt: "2024-01-01T00:00:00.000Z",
+                    _count: {
+                        comments: 2,
+                        likes: 3,
+                    },
+                },
+            ],
+            projects: [
+                {
+                    id: "project-1",
+                    title: "Medical Research Project",
+                    description: "Project description",
+                    status: "APPROVED",
+                    category: "Health",
+                    location: "Yaoundé",
+                    feedback: null,
+                    createdAt: "2024-01-02T00:00:00.000Z",
+                },
+            ],
+            totalPosts: 12,
+            totalProjects: 7,
+        });
+    });
+
+    it("uses page 1 and a limit of 10 by default", async () => {
+        mockSession("user-1");
+
+        await getUserActivity();
+
+        expect(mockedDb.post.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: { id: 'user-1' },
+                skip: 0,
+                take: 10,
+            })
+        );
+
+        expect(mockedDb.project.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                skip: 0,
+                take: 10,
             })
         );
     });
 
-    it('returns null if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
-        expect(await updateProfile()).toBeNull();
-    });
-
-    it('returns null on database error', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockRejectedValue(new Error('DB error'));
-
-        const consoleErrorSpy = jest
-            .spyOn(console, 'error')
-            .mockImplementation(() => undefined);
-
-        expect(await updateProfile()).toBeNull();
-
-        consoleErrorSpy.mockRestore();
-    });
-});
-
-describe('getUserActivity', () => {
-    it('returns posts and projects with counts', async () => {
-        mockSession('user-1');
-
-        mockedDb.post.findMany = jest.fn().mockResolvedValue([
-            {
-                id: 'p1',
-                content: 'post',
-                image: null,
-                createdAt: new Date('2024-01-01'),
-                _count: { comments: 0, likes: 0 },
-            },
-        ]);
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([
-            {
-                id: 'proj1',
-                title: 'Proj',
-                description: 'desc',
-                status: 'APPROVED',
-                category: 'cat',
-                location: null,
-                feedback: null,
-                createdAt: new Date('2024-01-02'),
-            },
-        ]);
-        mockedDb.post.count = jest.fn().mockResolvedValue(1);
-        mockedDb.project.count = jest.fn().mockResolvedValue(1);
-
-        const result = await getUserActivity();
-
-        expect(result.totalPosts).toBe(1);
-        expect(result.totalProjects).toBe(1);
-        expect(result.posts).toHaveLength(1);
-        expect(result.projects).toHaveLength(1);
-        expect(typeof result.posts[0].createdAt).toBe('string');
-        expect(typeof result.projects[0].createdAt).toBe('string');
-    });
-
-    it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
-        await expect(getUserActivity()).rejects.toThrow('Unauthorized');
-    });
-
-    it('returns empty arrays on database error', async () => {
-        mockSession('user-1');
-
-        mockedDb.post.findMany = jest.fn().mockRejectedValue(new Error('fail'));
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.post.count = jest.fn().mockResolvedValue(0);
-        mockedDb.project.count = jest.fn().mockResolvedValue(0);
-
-        const consoleErrorSpy = jest
-            .spyOn(console, 'error')
-            .mockImplementation(() => undefined);
-
-        const result = await getUserActivity();
-
-        expect(result.posts).toEqual([]);
-        expect(result.projects).toEqual([]);
-        expect(result.totalPosts).toBe(0);
-        expect(result.totalProjects).toBe(0);
-
-        consoleErrorSpy.mockRestore();
-    });
-
-    it('respects pagination parameters', async () => {
-        mockSession('user-1');
-
-        mockedDb.post.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.post.count = jest.fn().mockResolvedValue(0);
-        mockedDb.project.count = jest.fn().mockResolvedValue(0);
+    it("uses the requested page and limit", async () => {
+        mockSession("user-1");
 
         await getUserActivity(2, 5);
 
         expect(mockedDb.post.findMany).toHaveBeenCalledWith(
-            expect.objectContaining({ skip: 5, take: 5 })
+            expect.objectContaining({
+                skip: 5,
+                take: 5,
+            })
+        );
+
+        expect(mockedDb.project.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                skip: 5,
+                take: 5,
+            })
+        );
+    });
+
+    it("falls back to page 1 and limit 10 for invalid pagination values", async () => {
+        mockSession("user-1");
+
+        await getUserActivity(0, 100);
+
+        expect(mockedDb.post.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                skip: 0,
+                take: 10,
+            })
+        );
+
+        expect(mockedDb.project.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                skip: 0,
+                take: 10,
+            })
+        );
+    });
+
+    it("filters all activity queries by user and excludes soft-deleted records", async () => {
+        mockSession("user-42");
+
+        await getUserActivity();
+
+        expect(mockedDb.post.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: {
+                    userId: "user-42",
+                    deleted: false,
+                },
+            })
+        );
+
+        expect(mockedDb.project.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: {
+                    userId: "user-42",
+                    deleted: false,
+                },
+            })
+        );
+
+        expect(mockedDb.post.count).toHaveBeenCalledWith({
+            where: {
+                userId: "user-42",
+                deleted: false,
+            },
+        });
+
+        expect(mockedDb.project.count).toHaveBeenCalledWith({
+            where: {
+                userId: "user-42",
+                deleted: false,
+            },
+        });
+    });
+
+    it("orders posts and projects by latest created date", async () => {
+        mockSession();
+
+        await getUserActivity();
+
+        expect(mockedDb.post.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                orderBy: {
+                    createdAt: "desc",
+                },
+            })
+        );
+
+        expect(mockedDb.project.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                orderBy: {
+                    createdAt: "desc",
+                },
+            })
+        );
+    });
+
+    it("selects the expected post fields", async () => {
+        mockSession();
+
+        await getUserActivity();
+
+        expect(mockedDb.post.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                select: {
+                    id: true,
+                    content: true,
+                    image: true,
+                    createdAt: true,
+                    _count: {
+                        select: {
+                            comments: {
+                                where: {
+                                    deleted: false,
+                                },
+                            },
+                            likes: true,
+                        },
+                    },
+                },
+            })
+        );
+    });
+
+    it("selects the expected project fields", async () => {
+        mockSession();
+
+        await getUserActivity();
+
+        expect(mockedDb.project.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    status: true,
+                    category: true,
+                    location: true,
+                    feedback: true,
+                    createdAt: true,
+                },
+            })
+        );
+    });
+
+    it("returns empty activity data and logs an error when a database query fails", async () => {
+        mockSession();
+
+        const databaseError = new Error("Activity query failed");
+
+        mockedDb.post.findMany.mockRejectedValue(databaseError);
+
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
+
+        const result = await getUserActivity();
+
+        expect(result).toEqual({
+            posts: [],
+            projects: [],
+            totalPosts: 0,
+            totalProjects: 0,
+        });
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            "Error fetching user activity:",
+            databaseError
         );
     });
 });
 
-describe('getUserDashboardData', () => {
-    it('returns null if not authenticated', async () => {
+describe("getUserDashboardData", () => {
+    it("returns null when not authenticated", async () => {
         mockedAuthSession.mockResolvedValue(null);
-        expect(await getUserDashboardData()).toBeNull();
-    });
-
-    it('returns dashboard stats for authenticated user', async () => {
-        mockSession('user-1');
-
-        mockedDb.post.count = jest.fn().mockResolvedValue(3);
-        mockedDb.project.count = jest.fn().mockResolvedValue(2);
-        mockedDb.notification.count = jest.fn().mockResolvedValue(1);
-        mockedDb.post.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
 
         const result = await getUserDashboardData();
 
-        expect(result).not.toBeNull();
-        expect(result?.stats.totalPosts).toBe(3);
+        expect(result).toBeNull();
     });
 
-    it('returns null on database error', async () => {
-        mockSession('user-1');
+    it("returns dashboard statistics for the authenticated user", async () => {
+        mockSession("user-1");
+        mockUserDashboardQueries();
 
-        mockedDb.post.count = jest.fn().mockRejectedValue(new Error('fail'));
-        mockedDb.project.count = jest.fn().mockResolvedValue(0);
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
-        mockedDb.post.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
+        const result = await getUserDashboardData();
+
+        expect(result).toEqual({
+            stats: {
+                totalPosts: 3,
+                totalProjects: 2,
+                approvedProjects: 1,
+                pendingProjects: 1,
+                unreadNotifications: 1,
+            },
+            recentPosts: [],
+            recentProjects: [],
+            recentCommunityTopics: [],
+        });
+    });
+
+    it("filters dashboard data using the current user id", async () => {
+        mockSession("user-99");
+        mockUserDashboardQueries();
+
+        await getUserDashboardData();
+
+        expect(mockedDb.post.count).toHaveBeenCalledWith({
+            where: {
+                userId: "user-99",
+                deleted: false,
+            },
+        });
+
+        expect(mockedDb.notification.count).toHaveBeenCalledWith({
+            where: {
+                userId: "user-99",
+                read: false,
+            },
+        });
+    });
+
+    it("returns null and logs an error when a user dashboard query fails", async () => {
+        mockSession();
+
+        const databaseError = new Error("User dashboard query failed");
+
+        mockedDb.post.count.mockRejectedValue(databaseError);
 
         const consoleErrorSpy = jest
-            .spyOn(console, 'error')
+            .spyOn(console, "error")
             .mockImplementation(() => undefined);
 
-        expect(await getUserDashboardData()).toBeNull();
+        const result = await getUserDashboardData();
 
-        consoleErrorSpy.mockRestore();
+        expect(result).toBeNull();
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            "Error fetching user dashboard data:",
+            databaseError
+        );
     });
 });
 
-describe('getAdminDashboardData', () => {
-    it('returns null if not authenticated', async () => {
+describe("getAdminDashboardData", () => {
+    it("returns null when not authenticated", async () => {
         mockedAuthSession.mockResolvedValue(null);
-        expect(await getAdminDashboardData()).toBeNull();
+
+        const result = await getAdminDashboardData();
+
+        expect(result).toBeNull();
     });
 
-    it('returns null if user is not admin', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        expect(await getAdminDashboardData()).toBeNull();
+    it("returns null when the user is not an administrator", async () => {
+        mockSession("user-1", "Normal User", "user");
+
+        mockedDb.user.findUnique.mockResolvedValue({
+            role: "user",
+        });
+
+        const result = await getAdminDashboardData();
+
+        expect(result).toBeNull();
+
+        expect(mockedDb.user.findUnique).toHaveBeenCalledWith({
+            where: {
+                id: "user-1",
+            },
+            select: {
+                role: true,
+            },
+        });
     });
 
-    it('returns admin dashboard data for admin role', async () => {
-        mockSession('admin-1', 'Admin User');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
-        mockedDb.user.count = jest.fn().mockResolvedValue(10);
-        mockedDb.post.count = jest.fn().mockResolvedValue(5);
-        mockedDb.project.count = jest.fn().mockResolvedValue(4);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(3);
-        mockedDb.report.count = jest.fn().mockResolvedValue(2);
-        mockedDb.auditLog.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
+    it("returns admin dashboard data for an administrator", async () => {
+        mockSession("admin-1", "Admin User", "admin");
+
+        mockedDb.user.findUnique.mockResolvedValue({
+            role: "admin",
+        });
+
+        mockAdminDashboardQueries();
+
+        const result = await getAdminDashboardData();
+
+        expect(result).toEqual({
+            isSuperAdmin: false,
+            stats: {
+                totalUsers: 10,
+                activeUsers: 8,
+                bannedUsers: 2,
+                totalPosts: 5,
+                totalProjects: 4,
+                approvedProjects: 2,
+                rejectedProjects: 1,
+                pendingProjects: 1,
+                totalTopics: 3,
+                pendingReports: 2,
+            },
+            recentAuditLogs: [],
+            recentProjects: [],
+            recentCommunityTopics: [],
+        });
+    });
+
+    it("returns superadmin dashboard data with isSuperAdmin set to true", async () => {
+        mockSession("superadmin-1", "Super Admin", "superadmin");
+
+        mockedDb.user.findUnique.mockResolvedValue({
+            role: "superadmin",
+        });
+
+        mockAdminDashboardQueries();
 
         const result = await getAdminDashboardData();
 
         expect(result).not.toBeNull();
-        expect(result?.isSuperAdmin).toBe(false);
-        expect(result?.stats.totalUsers).toBe(10);
+        expect(result?.isSuperAdmin).toBe(true);
+
+        expect(mockedDb.user.count).toHaveBeenCalledWith({
+            where: {},
+        });
+
+        expect(mockedDb.auditLog.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: {},
+            })
+        );
     });
 
-    it('sets isSuperAdmin correctly for superadmin role', async () => {
-        mockSession('super-1', 'Super Admin');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'superadmin' });
-        mockedDb.user.count = jest.fn().mockResolvedValue(20);
-        mockedDb.post.count = jest.fn().mockResolvedValue(0);
-        mockedDb.project.count = jest.fn().mockResolvedValue(0);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(0);
-        mockedDb.report.count = jest.fn().mockResolvedValue(0);
-        mockedDb.auditLog.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.project.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
+    it("limits normal admin user counts to the user role", async () => {
+        mockSession("admin-1", "Admin User", "admin");
+
+        mockedDb.user.findUnique.mockResolvedValue({
+            role: "admin",
+        });
+
+        mockAdminDashboardQueries();
+
+        await getAdminDashboardData();
+
+        expect(mockedDb.user.count).toHaveBeenNthCalledWith(1, {
+            where: {
+                role: "user",
+            },
+        });
+
+        expect(mockedDb.user.count).toHaveBeenNthCalledWith(2, {
+            where: {
+                role: "user",
+                banned: true,
+            },
+        });
+    });
+
+    it("returns null and logs an error when the admin role query fails", async () => {
+        mockSession("admin-1", "Admin User", "admin");
+
+        const databaseError = new Error("Admin role query failed");
+
+        mockedDb.user.findUnique.mockRejectedValue(databaseError);
+
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
 
         const result = await getAdminDashboardData();
 
-        expect(result?.isSuperAdmin).toBe(true);
-    });
+        expect(result).toBeNull();
 
-    it('returns null on database error', async () => {
-        mockSession('admin-1');
-        mockedDb.user.findUnique = jest.fn().mockRejectedValue(new Error('fail'));
-
-        const consoleErrorSpy = jest
-            .spyOn(console, 'error')
-            .mockImplementation(() => undefined);
-
-        expect(await getAdminDashboardData()).toBeNull();
-
-        consoleErrorSpy.mockRestore();
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            "Error fetching admin dashboard data:",
+            databaseError
+        );
     });
 });

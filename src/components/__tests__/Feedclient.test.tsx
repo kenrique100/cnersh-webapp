@@ -1,5 +1,5 @@
 import React from 'react';
-import {render, screen, waitFor, fireEvent, within, act} from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // ── Action mocks ───────────────────────────────────────────────────
@@ -107,6 +107,8 @@ jest.mock('next/image', () => {
     NextImage.displayName = 'NextImage';
     return { __esModule: true, default: NextImage };
 });
+
+// ── lucide-react mock (auto-creates any icon) ──────────────────────
 jest.mock('lucide-react', () => {
     const icon = (name: string) => {
         function Icon({ className }: { className?: string }) {
@@ -115,28 +117,24 @@ jest.mock('lucide-react', () => {
         Icon.displayName = name;
         return Icon;
     };
-    return {
-        MessageCircleIcon: icon('MessageCircle'),
-        MessageCircleOffIcon: icon('MessageCircleOff'),
-        SendIcon: icon('Send'),
-        TrashIcon: icon('Trash'),
-        PenIcon: icon('Pen'),
-        ImageIcon: icon('Image'),
-        VideoIcon: icon('Video'),
-        ThumbsUpIcon: icon('ThumbsUp'),
-        ShareIcon: icon('Share'),
-        FlagIcon: icon('Flag'),
-        XIcon: icon('X'),
-        SmileIcon: icon('Smile'),
-        ReplyIcon: icon('Reply'),
-        PencilIcon: icon('Pencil'),
-        Loader2: icon('Loader2'),
-        LinkIcon: icon('Link'),
-        UsersIcon: icon('Users'),
-        ChevronLeftIcon: icon('ChevronLeft'),
-        ChevronRightIcon: icon('ChevronRight'),
-    };
+
+    const cache = new Map<string, ReturnType<typeof icon>>();
+
+    return new Proxy({} as Record<string, ReturnType<typeof icon>>, {
+        get(_target, prop: string) {
+            if (prop === '__esModule') return true;
+            if (typeof prop !== 'string') return undefined;
+            if (!cache.has(prop)) {
+                // Strip trailing "Icon" so `XIcon` → `icon-X`,
+                // `ChevronLeftIcon` → `icon-ChevronLeft`, etc.
+                const label = prop.endsWith('Icon') ? prop.slice(0, -4) : prop;
+                cache.set(prop, icon(label));
+            }
+            return cache.get(prop);
+        },
+    });
 });
+
 jest.mock('@/components/image-upload', () => {
     function ImageUploadMock({ onChange }: { onChange: (url: string) => void }) {
         return <button onClick={() => onChange('https://cdn.test/img.jpg')}>Upload Image</button>;
@@ -185,7 +183,7 @@ jest.mock('@/components/post-card', () => ({
     formatRelativeDate: () => '2h ago',
     renderPostContent: (text: string) => text,
     REACTIONS: [{ label: 'Like' }, { label: 'Love' }],
-    getReactionEmoji: (r: string) => r === 'Love' ? '❤️' : '👍',
+    getReactionEmoji: (r: string) => (r === 'Love' ? '❤️' : '👍'),
     getReactionBg: () => 'bg-blue-100',
     postHasMedia: () => false,
 }));
@@ -230,28 +228,15 @@ function setup(props: Partial<typeof defaultProps> = {}) {
     return { user, ...utils };
 }
 
-// Helper: open comments for post-1
 async function openComments(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByTestId('comment-count'));
     await waitFor(() => expect(screen.getByTestId('comments-section')).toBeInTheDocument());
 }
 
-// ── SubComponent tests ─────────────────────────────────────────────
-
-// Import subcomponents directly for isolated unit tests
-// We test them through FeedClient since they're not exported, but we also
-// test the exported modules through their behaviour in FeedClient.
-
-// We need to import FeedClient after all mocks are set up
+// Import FeedClient after all mocks are set up
 import FeedClient from '@/components/feed-client';
 
-// ── CommentTextWithSeeMore ──────────────────────────────────────────
-// These are tested indirectly via comments rendered inside FeedClient.
-
-// ── VideoUploadInput ────────────────────────────────────────────────
-// VideoUploadInput is an internal component. We test its branches via
-// rendering FeedClient with the video upload area shown.
-
+// ── VideoUploadInput (via FeedClient) ──────────────────────────────
 describe('VideoUploadInput (via FeedClient)', () => {
     const originalConsoleError = console.error;
 
@@ -261,13 +246,9 @@ describe('VideoUploadInput (via FeedClient)', () => {
 
         jest.spyOn(console, 'error').mockImplementation((...args) => {
             const firstArg = String(args[0]);
-
-            // Hide expected video upload errors from this component
             if (firstArg.includes('Video upload error:')) {
                 return;
             }
-
-            // Keep other real React/Jest errors visible
             originalConsoleError(...args);
         });
     });
@@ -303,21 +284,43 @@ describe('VideoUploadInput (via FeedClient)', () => {
         });
     });
 
-    it('shows error toast for oversized video', async () => {
+    it('shows error toast for oversized video (65MB > 64MB limit)', async () => {
         const { user } = setup();
         await user.click(screen.getByRole('button', { name: /video/i }));
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
 
-        // Simulate a large file without allocating memory
-        const file = new File([""], "big.mp4", { type: "video/mp4" });
-        Object.defineProperty(file, "size", { value: 65 * 1024 * 1024 }); // 65 MB
-        Object.defineProperty(input, "files", { value: [file], configurable: true });
+        const file = new File([''], 'big.mp4', { type: 'video/mp4' });
+        Object.defineProperty(file, 'size', { value: 65 * 1024 * 1024 }); // 65 MB
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
 
         fireEvent.change(input);
 
         await waitFor(() => {
-            expect(mockToastError).toHaveBeenCalledWith("Video must be less than 65MB");
+            expect(mockToastError).toHaveBeenCalledWith('Video must be less than 65MB');
         });
+    });
+
+    it('accepts a video exactly at the 64MB boundary', async () => {
+        const mockFetch = jest.fn().mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ url: 'https://cdn.test/borderline.mp4' }),
+        });
+        (global as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
+
+        const { user } = setup();
+        await user.click(screen.getByRole('button', { name: /video/i }));
+
+        const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
+        const file = new File(['v'], 'borderline.mp4', { type: 'video/mp4' });
+        Object.defineProperty(file, 'size', { value: 64 * 1024 * 1024 }); // exactly 64 MB
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+        fireEvent.change(input);
+
+        await waitFor(() => {
+            expect(mockFetch).toHaveBeenCalled();
+        });
+        expect(mockToastError).not.toHaveBeenCalledWith('Video must be less than 65MB');
     });
 
     it('calls onUpload with URL on successful video upload', async () => {
@@ -427,29 +430,22 @@ describe('VideoUploadInput (via FeedClient)', () => {
     });
 });
 
-// ── deleteBlobUrl ───────────────────────────────────────────────────
-// We test it indirectly via image removal in the new post area.
+// ── deleteBlobUrl (via image removal in create-post) ───────────────
 describe('deleteBlobUrl (via image removal in create-post)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchUsers.mockResolvedValue([]);
     });
 
-    it('calls DELETE /api/delete-blob for bunny CDN URLs when removing image', async () => {
-        // Set NEXT_PUBLIC_BUNNY_PULL_ZONE_URL to something we can match
+    it('does not call DELETE /api/delete-blob for non-UploadThing URLs', async () => {
         process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL = 'https://cdn.bunny.net';
         const mockFetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
         (global as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
 
         const { user } = setup();
-        // Open image upload and trigger the mock onChange (which provides a URL)
         await user.click(screen.getByRole('button', { name: /photo/i }));
         await user.click(screen.getByRole('button', { name: /upload image/i }));
-        // The image URL is https://cdn.test/img.jpg (from mock), not a bunny URL,
-        // so deleteBlobUrl will no-op. To test the bunny path, we need a bunny URL.
-        // We'll test via a post that has a bunny image and click its remove button.
-        // Since the URL from ImageUpload mock is not a bunny URL, deleteBlobUrl
-        // silently returns - this covers the early-return branch.
+
         expect(mockFetch).not.toHaveBeenCalledWith(
             '/api/delete-blob',
             expect.objectContaining({ method: 'DELETE' })
@@ -541,7 +537,6 @@ describe('FeedClient', () => {
             await user.type(textarea, 'My post');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
 
-            // Wait for the async action to complete
             await waitFor(() => {
                 expect(mockCreatePost).toHaveBeenCalledWith(
                     expect.objectContaining({ content: 'My post' })
@@ -644,7 +639,6 @@ describe('FeedClient', () => {
         it('clicking Link X button hides link input', async () => {
             const { user } = setup();
             await user.click(screen.getByRole('button', { name: /link/i }));
-            // Find the X button inside the link input area
             const xButtons = screen.getAllByTestId('icon-X');
             await user.click(xButtons[0].closest('button')!);
             expect(screen.queryByPlaceholderText(/paste a link url/i)).not.toBeInTheDocument();
@@ -676,10 +670,6 @@ describe('FeedClient', () => {
             });
         });
     });
-
-    // ── mention search ──────────────────────────────────────────────
-
-
 
     // ── @All mention ────────────────────────────────────────────────
     describe('@All mention', () => {
@@ -746,7 +736,6 @@ describe('FeedClient', () => {
             const { user } = setup({ initialPosts: [postWithLike] });
             await user.click(screen.getByTestId('like-btn'));
             await waitFor(() => {
-                // Like count stays the same (just reaction type changed)
                 expect(screen.getByTestId('like-count')).toHaveTextContent('1 likes');
             });
         });
@@ -976,8 +965,8 @@ describe('FeedClient', () => {
         it('does not reload comments if already loaded', async () => {
             const { user } = setup();
             await openComments(user);
-            await user.click(screen.getByTestId('comment-count')); // collapse
-            await user.click(screen.getByTestId('comment-count')); // expand again
+            await user.click(screen.getByTestId('comment-count'));
+            await user.click(screen.getByTestId('comment-count'));
             expect(mockGetPostComments).toHaveBeenCalledTimes(1);
         });
 
@@ -1277,7 +1266,6 @@ describe('FeedClient', () => {
             mockCreateReport.mockResolvedValueOnce(undefined);
             const { user } = setup({ currentUserId: 'other-user' });
             await user.click(screen.getByTitle('Report post'));
-            // Select wrapper click triggers onValueChange('Spam')
             await user.click(screen.getByTestId('select-wrapper'));
             await user.click(screen.getByRole('button', { name: /submit report/i }));
             await waitFor(() => {
@@ -1410,7 +1398,7 @@ describe('FeedClient', () => {
         });
     });
 
-// ── image modal ─────────────────────────────────────────────────
+    // ── image modal ─────────────────────────────────────────────────
     describe('image modal', () => {
         it('opens image modal when image is clicked', async () => {
             const { user } = setup({
@@ -1428,7 +1416,6 @@ describe('FeedClient', () => {
             });
             await user.click(screen.getByTestId('open-image-modal'));
             await waitFor(() => {
-                // Since both icons might appear elsewhere, scope to the modal dialog
                 const dialog = screen.getByRole('dialog');
                 expect(within(dialog).getByTestId('icon-ChevronLeft')).toBeInTheDocument();
                 expect(within(dialog).getByTestId('icon-ChevronRight')).toBeInTheDocument();
@@ -1566,7 +1553,6 @@ describe('FeedClient', () => {
             await waitFor(() => expect(screen.getByText('WhatsApp')).toBeInTheDocument());
             await user.click(screen.getByText('WhatsApp'));
             windowOpenSpy.mockRestore();
-            // Share count persists to localStorage
             expect(localStorage.getItem('feed-share-counts')).toContain('post-1');
         });
     });
@@ -1617,8 +1603,6 @@ describe('FeedClient', () => {
         it('reads share counts from localStorage on init', () => {
             localStorage.setItem('feed-share-counts', JSON.stringify({ 'post-1': 5 }));
             setup();
-            // The shareCounts state is initialized from localStorage
-            // We verify by checking it doesn't throw and the value is read
             expect(screen.getByTestId('post-card')).toBeInTheDocument();
             localStorage.removeItem('feed-share-counts');
         });
@@ -1658,11 +1642,10 @@ describe('FeedClient', () => {
             const commentInput = screen.getByPlaceholderText(/write a comment/i);
             await user.type(commentInput, '@Alice');
 
-            // Find the mention name inside the popover (the element is a span with specific classes)
             const mentionOption = await screen.findByText((content, element) => {
-                return element?.tagName === "SPAN" &&
-                    element.className.includes("text-sm font-medium") &&
-                    content === "Alice";
+                return element?.tagName === 'SPAN' &&
+                    element.className.includes('text-sm font-medium') &&
+                    content === 'Alice';
             });
 
             await user.click(mentionOption);
@@ -1673,7 +1656,7 @@ describe('FeedClient', () => {
         });
     });
 
-// ── disabled comments post ───────────────────────────────────────
+    // ── disabled comments post ───────────────────────────────────────
     describe('disabled comments post', () => {
         it('shows MessageCircleOff icon when comments disabled', () => {
             const disabledPost = { ...basePost, commentsEnabled: false };

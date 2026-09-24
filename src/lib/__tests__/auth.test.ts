@@ -197,7 +197,7 @@ describe('auth', () => {
 
         expect(config.user.additionalFields.gender).toMatchObject({
             type: 'string',
-            required: true,
+            required: false,
             input: true,
         });
         expect(config.user.additionalFields.profession).toEqual({

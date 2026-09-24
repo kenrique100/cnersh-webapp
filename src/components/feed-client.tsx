@@ -220,7 +220,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > 64 * 1024 * 1024) {
             toast.error("Video must be less than 65MB");
             return;
         }

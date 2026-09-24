@@ -167,6 +167,7 @@ describe('updateProfile', () => {
                     email: true,
                     name: true,
                     image: true,
+                    gender: true,
                     role: true,
                     profession: true,
                     title: true,

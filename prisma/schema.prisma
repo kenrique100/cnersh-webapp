@@ -21,6 +21,7 @@ model User {
   image               String?
   gender              Gender?
   profession          String?
+  professionOther     String?
   title               String?
   banned              Boolean?
   banReason           String?
