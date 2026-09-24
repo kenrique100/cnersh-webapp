@@ -1,21 +1,4 @@
-/**
- * Content Security Policy construction.
- *
- * The policy is built here so the middleware (which serves documents with a
- * per-request nonce) and any non-document fallback cannot drift apart.
- *
- * Why a nonce is required: the Next.js App Router streams its hydration payload
- * through inline `<script>` tags. A production policy of `script-src 'self'`
- * blocks those tags, React never hydrates, and every client component silently
- * stops working - forms then fall back to native browser submission. So the
- * document policy must name a nonce, and the nonce must be per request.
- *
- * `'strict-dynamic'` lets scripts loaded by an already-trusted script (the
- * Next.js runtime loading its chunks, and next/script loading the Google
- * Translate widget) execute without enumerating hosts. CSP Level 3 browsers
- * ignore host allowlists in `script-src` once `'strict-dynamic'` is present;
- * the hosts are retained for older browsers that ignore `'strict-dynamic'`.
- */
+
 
 const GOOGLE_TRANSLATE_DOMAINS = [
     "https://www.google.com",
