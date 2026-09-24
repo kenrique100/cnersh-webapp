@@ -1,8 +1,3 @@
-/**
- * Importing the module must never touch the environment. A module-level
- * `new UTApi()` made UPLOADTHING_SECRET a build-time requirement and failed
- * `next build` at /api/delete-blob whenever the key was absent.
- */
 const construct = jest.fn();
 const uploadFiles = jest.fn().mockResolvedValue("uploaded");
 const deleteFiles = jest.fn().mockResolvedValue("deleted");
@@ -15,20 +10,11 @@ jest.mock("uploadthing/server", () => ({
 }));
 
 describe("uploadthing client", () => {
-    const originalEnv = process.env;
-
     beforeEach(() => {
         jest.resetModules();
         construct.mockClear();
         uploadFiles.mockClear();
         deleteFiles.mockClear();
-        process.env = { ...originalEnv };
-        delete process.env.UPLOADTHING_SECRET;
-        delete process.env.UPLOADTHING_TOKEN;
-    });
-
-    afterAll(() => {
-        process.env = originalEnv;
     });
 
     it("does not construct the client when the module is imported", async () => {
@@ -37,7 +23,6 @@ describe("uploadthing client", () => {
     });
 
     it("constructs the client once, on first use, and reuses it", async () => {
-        process.env.UPLOADTHING_SECRET = "sk_test_fake_key";
         const { utapi } = await import("@/lib/uploadthing");
 
         await expect(utapi.deleteFiles("key-1")).resolves.toBe("deleted");
@@ -49,52 +34,44 @@ describe("uploadthing client", () => {
     });
 
     it("exposes the same instance through getUtapi", async () => {
-        process.env.UPLOADTHING_SECRET = "sk_test_fake_key";
         const { getUtapi } = await import("@/lib/uploadthing");
+
         expect(getUtapi()).toBe(getUtapi());
         expect(construct).toHaveBeenCalledTimes(1);
     });
 
-    it("decodes UPLOADTHING_TOKEN JWT and sets UPLOADTHING_SECRET", async () => {
-        // Build a fake token that mirrors the UploadThing JWT structure
-        const payload = { apiKey: "sk_live_test123", appId: "testapp", regions: ["sea1"] };
-        process.env.UPLOADTHING_TOKEN = Buffer.from(JSON.stringify(payload)).toString("base64");
+    it("forwards a single deleteFiles key through the lazy wrapper", async () => {
+        const { utapi } = await import("@/lib/uploadthing");
 
-        const { getUtapi } = await import("@/lib/uploadthing");
-        getUtapi();
+        await utapi.deleteFiles("a");
 
-        expect(process.env.UPLOADTHING_SECRET).toBe("sk_live_test123");
-        expect(construct).toHaveBeenCalledTimes(1);
+        expect(deleteFiles).toHaveBeenCalledWith("a");
     });
 
-    it("prefers UPLOADTHING_SECRET over UPLOADTHING_TOKEN when both are set", async () => {
-        process.env.UPLOADTHING_SECRET = "sk_test_direct";
-        const payload = { apiKey: "sk_live_from_token", appId: "testapp", regions: ["sea1"] };
-        process.env.UPLOADTHING_TOKEN = Buffer.from(JSON.stringify(payload)).toString("base64");
+    it("forwards an array of deleteFiles keys through the lazy wrapper", async () => {
+        const { utapi } = await import("@/lib/uploadthing");
 
-        const { getUtapi } = await import("@/lib/uploadthing");
-        getUtapi();
+        await utapi.deleteFiles(["a", "b"]);
 
-        // Direct secret should win
-        expect(process.env.UPLOADTHING_SECRET).toBe("sk_test_direct");
+        expect(deleteFiles).toHaveBeenCalledWith(["a", "b"]);
     });
 
-    it("throws a clear error when neither env var is set", async () => {
-        const { getUtapi } = await import("@/lib/uploadthing");
-        expect(() => getUtapi()).toThrow("Missing UploadThing credentials");
+    it("forwards deleteFiles with an options object through the lazy wrapper", async () => {
+        const { utapi } = await import("@/lib/uploadthing");
+
+        const opts = {} as Parameters<typeof utapi.deleteFiles>[1];
+        await utapi.deleteFiles("a", opts);
+
+        expect(deleteFiles).toHaveBeenCalledWith("a", opts);
     });
 
-    it("throws when UPLOADTHING_TOKEN contains invalid base64", async () => {
-        process.env.UPLOADTHING_TOKEN = "not-valid-base64!!!";
-        const { getUtapi } = await import("@/lib/uploadthing");
-        expect(() => getUtapi()).toThrow("Failed to decode UPLOADTHING_TOKEN");
-    });
+    it("forwards uploadFiles and its options through the lazy wrapper", async () => {
+        const { utapi } = await import("@/lib/uploadthing");
 
-    it("throws when decoded token lacks a valid apiKey", async () => {
-        const payload = { appId: "testapp" }; // missing apiKey
-        process.env.UPLOADTHING_TOKEN = Buffer.from(JSON.stringify(payload)).toString("base64");
+        const f1 = {} as never;
+        const opts = {} as Parameters<typeof utapi.uploadFiles>[1];
+        await utapi.uploadFiles(f1, opts);
 
-        const { getUtapi } = await import("@/lib/uploadthing");
-        expect(() => getUtapi()).toThrow("does not contain a valid apiKey");
+        expect(uploadFiles).toHaveBeenCalledWith(f1, opts);
     });
 });

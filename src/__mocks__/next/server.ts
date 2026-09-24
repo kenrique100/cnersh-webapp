@@ -1,5 +1,5 @@
+// src/__mocks__/next/server.ts
 
-// NextRequest mock – extend as needed
 export class NextRequest {
     url: string;
     headers: Headers;
@@ -12,33 +12,73 @@ export class NextRequest {
     }
 }
 
-// NextResponse mock
 export class NextResponse {
-    headers: Headers;
-    status: number;
+    readonly headers: Headers;
+    readonly status: number;
+    readonly body: BodyInit | null;
 
-    constructor(body?: unknown, init?: ResponseInit) {
-        this.headers = new Headers(init?.headers as HeadersInit | undefined);
-        this.status = init?.status ?? 200;
+    constructor(body: BodyInit | null = null, init: ResponseInit = {}) {
+        this.body = body;
+        this.status = init.status ?? 200;
+        this.headers = new Headers(init.headers);
     }
 
-    static json(body: unknown, init?: ResponseInit) {
+    static json(body: unknown, init: ResponseInit = {}): NextResponse {
+        const headers = new Headers(init.headers);
+
+        if (!headers.has("content-type")) {
+            headers.set("content-type", "application/json");
+        }
+
         return new NextResponse(JSON.stringify(body), {
             ...init,
-            headers: { 'content-type': 'application/json', ...(init?.headers as Record<string, string>) },
+            headers,
         });
     }
 
-    static redirect(url: string, status = 307) {
-        return new NextResponse(null, { status, headers: { Location: url } });
+    static redirect(url: string | URL, init: number | ResponseInit = 307): NextResponse {
+        const responseInit: ResponseInit =
+            typeof init === "number" ? { status: init } : init;
+        const headers = new Headers(responseInit.headers);
+
+        headers.set("location", String(url));
+
+        return new NextResponse(null, {
+            ...responseInit,
+            status: responseInit.status ?? 307,
+            headers,
+        });
     }
 
-    static next() {
+    static next(): NextResponse {
         return new NextResponse(null, { status: 200 });
+    }
+
+    async text(): Promise<string> {
+        if (this.body === null) {
+            return "";
+        }
+
+        if (typeof this.body === "string") {
+            return this.body;
+        }
+
+        if (this.body instanceof Uint8Array) {
+            return new TextDecoder().decode(this.body);
+        }
+
+        if (typeof Blob !== "undefined" && this.body instanceof Blob) {
+            return this.body.text();
+        }
+
+        return String(this.body);
+    }
+
+    async json(): Promise<unknown> {
+        return JSON.parse(await this.text()) as unknown;
     }
 }
 
-// If you ever import these directly from next/server (rare, they usually come from next/headers)
 export function cookies() {
     return {
         get: jest.fn(),
