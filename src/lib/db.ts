@@ -7,7 +7,7 @@ import { z } from "zod";
 // probes must still be able to report database state when storage is
 // independently misconfigured.
 export const uploadthingEnvSchema = z.object({
-    UPLOADTHING_SECRET: z.string().startsWith("sk_", "UPLOADTHING_SECRET must start with sk_"),
+    UPLOADTHING_TOKEN: z.string().startsWith("eyJ", "UPLOADTHING_TOKEN must be a v6 JWT token"),
 });
 
 const globalForPrisma = global as unknown as {

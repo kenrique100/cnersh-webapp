@@ -171,7 +171,11 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     uploadResult = await utapi.uploadFiles(uploadFile);
   } catch (err) {
     console.error("[upload] UploadThing upload failed:", err);
-    return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 502 });
+    const message =
+        err instanceof Error && /MISSING_ENV|invalid API key/i.test(err.message)
+            ? "Storage is not configured"
+            : "Failed to upload file to storage";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 
   if (uploadResult.error) {
