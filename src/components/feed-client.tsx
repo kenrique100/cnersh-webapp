@@ -109,6 +109,7 @@ import {
     postHasMedia,
 } from "@/components/post-card";
 import { ReactionsPicker } from "@/components/reactions-picker";
+import UserAvatar from "@/components/user-avatar";
 
 interface PostUser {
     id: string;
@@ -161,6 +162,7 @@ interface FeedClientProps {
     currentUserId: string;
     currentUserName?: string | null;
     currentUserImage?: string | null;
+    currentUserGender?: string | null;
     isAdmin: boolean;
 }
 
@@ -289,6 +291,7 @@ export default function FeedClient({
                                        currentUserId,
                                        currentUserName,
                                        currentUserImage,
+                                       currentUserGender,
                                        isAdmin,
                                    }: FeedClientProps) {
     const router = useRouter();
@@ -369,8 +372,6 @@ export default function FeedClient({
         } catch {
         }
     }, [shareCounts]);
-
-    const currentUserInitials = getInitials(currentUserName);
 
     const handleMentionSearch = (text: string, source: string) => {
         const lastAtIndex = text.lastIndexOf("@");
@@ -826,12 +827,13 @@ export default function FeedClient({
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
                 <CardContent className="p-3 sm:p-4">
                     <div className="flex items-start gap-3">
-                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border border-gray-200 dark:border-gray-700">
-                            <AvatarImage src={currentUserImage ?? undefined} alt={currentUserName || ""} />
-                            <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
-                                {currentUserInitials}
-                            </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                            name={currentUserName}
+                            image={currentUserImage}
+                            gender={currentUserGender}
+                            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border border-gray-200 dark:border-gray-700"
+                            fallbackClassName="text-sm font-semibold"
+                        />
                         <div className="flex-1 space-y-3">
                             <div className="relative">
                                 <Textarea
@@ -1268,7 +1270,13 @@ export default function FeedClient({
                                             </div>
                                         )}
                                         <div className="flex gap-2.5 pt-1">
-                                            <Avatar className="h-8 w-8 shrink-0"><AvatarImage src={currentUserImage || undefined} /><AvatarFallback className="text-xs bg-blue-700 text-white font-medium">{currentUserInitials}</AvatarFallback></Avatar>
+                                            <UserAvatar
+                                                name={currentUserName}
+                                                image={currentUserImage}
+                                                gender={currentUserGender}
+                                                className="h-8 w-8 shrink-0"
+                                                fallbackClassName="text-xs font-medium"
+                                            />
                                             <div className="flex-1 relative">
                                                 <div className="flex items-center gap-1">
                                                     <Popover open={showCommentEmoji === post.id} onOpenChange={(open) => setShowCommentEmoji(open ? post.id : null)}>

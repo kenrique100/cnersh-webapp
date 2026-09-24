@@ -20,10 +20,9 @@ jest.mock('@/components/ui/button', () => ({
         <button {...props}>{children}</button>
     ),
 }));
-jest.mock('@/components/ui/avatar', () => ({
-    Avatar: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    AvatarImage: () => null,
-    AvatarFallback: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+jest.mock('@/components/user-avatar', () => ({
+    __esModule: true,
+    default: () => <span data-testid="user-avatar" />,
 }));
 jest.mock('lucide-react', () => ({
     MenuIcon: () => <span data-testid="menu" />,
@@ -64,7 +63,6 @@ jest.mock('../NavbarLanguageSwitcher', () => {
 
 const defaultProps = {
     user: { name: 'John Doe', email: 'john@example.com', image: null },
-    userInitials: 'JD',
     isAdmin: false,
     notificationCount: 5,
     pathname: '/dashboard',

@@ -1,6 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import FeedLeftSidebar from '@/components/feed-left-sidebar';
+import { usePathname } from 'next/navigation';
+
+jest.mock('next/navigation', () => ({
+    usePathname: jest.fn(),
+}));
 
 jest.mock('next/link', () => {
     function LinkMock({ children, href }: React.PropsWithChildren<{ href: string }>) {
@@ -16,10 +21,9 @@ jest.mock('next/image', () => {
     NextImage.displayName = 'NextImage';
     return NextImage;
 });
-jest.mock('@/components/ui/avatar', () => ({
-    Avatar: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    AvatarImage: ({ src, alt }: { src?: string; alt?: string }) => <img src={src} alt={alt} />,
-    AvatarFallback: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+jest.mock('@/components/user-avatar', () => ({
+    __esModule: true,
+    default: () => <span data-testid="user-avatar" />,
 }));
 jest.mock('@/components/ui/button', () => ({
     Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode; size?: string; variant?: string }) => (
@@ -48,6 +52,9 @@ jest.mock('lucide-react', () => {
         ShieldCheckIcon: icon('ShieldCheck'),
         UsersIcon: icon('Users'),
         FolderIcon: icon('Folder'),
+        FileTextIcon: icon('FileText'),
+        ChevronDownIcon: icon('ChevronDown'),
+        DownloadIcon: icon('Download'),
     };
 });
 
@@ -63,6 +70,10 @@ const userProps = {
 const adminProps = { ...userProps, isAdmin: true };
 
 describe('FeedLeftSidebar', () => {
+    beforeEach(() => {
+        (usePathname as jest.Mock).mockReturnValue('/feeds');
+    });
+
     describe('guest mode', () => {
         it('renders the CNERSH branding', () => {
             render(<FeedLeftSidebar {...guestProps} />);
@@ -126,6 +137,7 @@ describe('FeedLeftSidebar', () => {
             expect(screen.getByText('Feeds')).toBeInTheDocument();
             expect(screen.getByText('My Protocols')).toBeInTheDocument();
             expect(screen.getByText('Settings')).toBeInTheDocument();
+            expect(screen.getByText('Our Pages')).toBeInTheDocument();
         });
 
         it('does not render admin Community link for regular user', () => {
@@ -139,19 +151,9 @@ describe('FeedLeftSidebar', () => {
             expect(screen.queryByText('Privacy & Terms')).not.toBeInTheDocument();
         });
 
-        it('shows avatar fallback initial', () => {
+        it('renders reusable avatar component', () => {
             render(<FeedLeftSidebar {...userProps} />);
-            expect(screen.getByText('J')).toBeInTheDocument();
-        });
-
-        it('falls back to "Community Member" when no role provided', () => {
-            render(<FeedLeftSidebar {...userProps} userRole={undefined} />);
-            expect(screen.getByText('Community Member')).toBeInTheDocument();
-        });
-
-        it('falls back to "U" avatar initial when no name', () => {
-            render(<FeedLeftSidebar {...userProps} userName={undefined} />);
-            expect(screen.getByText('U')).toBeInTheDocument();
+            expect(screen.getByTestId('user-avatar')).toBeInTheDocument();
         });
     });
 

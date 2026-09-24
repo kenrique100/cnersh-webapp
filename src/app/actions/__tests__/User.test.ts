@@ -33,6 +33,7 @@ const PROFILE = {
     email: 'test@example.com',
     name: 'Test User',
     image: null,
+    gender: 'male',
     role: 'user',
     profession: 'Researcher',
     title: 'Dr.',
@@ -71,7 +72,7 @@ describe('updateProfile', () => {
         expect(mockUserFindUnique).toHaveBeenCalledWith({
             where: { id: 'user-1' },
             select: {
-                email: true, name: true, image: true,
+                email: true, name: true, image: true, gender: true,
                 role: true, profession: true, title: true,
             },
         });

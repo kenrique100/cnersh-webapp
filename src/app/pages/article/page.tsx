@@ -18,12 +18,12 @@ export default async function ArticlePage() {
         const [user, unreadCount] = await Promise.all([
             db.user.findUnique({
                 where: { id: session.user.id },
-                select: { name: true, email: true, image: true, role: true },
+                select: { name: true, email: true, image: true, gender: true, role: true },
             }),
             getUnreadNotificationCount(),
         ]);
         if (user) {
-            navUser = { name: user.name, email: user.email, image: user.image, role: user.role };
+            navUser = { name: user.name, email: user.email, image: user.image, gender: user.gender, role: user.role };
         }
         notificationCount = unreadCount;
     }

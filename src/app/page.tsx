@@ -54,7 +54,7 @@ export default async function Home() {
                 getUserActivity(session.user.id, 8),
             ]);
             if (user) {
-                navUser = { name: user.name, email: user.email, image: user.image, role: user.role };
+                navUser = { name: user.name, email: user.email, image: user.image, gender: user.gender, role: user.role };
                 userGender = user.gender;
                 isAdmin = user.role === "admin" || user.role === "superadmin";
             }
@@ -165,6 +165,7 @@ export default async function Home() {
                                 currentUserId={session.user.id}
                                 currentUserName={navUser.name}
                                 currentUserImage={navUser.image}
+                                currentUserGender={navUser.gender}
                                 isAdmin={isAdmin}
                             />
                         ) : (
