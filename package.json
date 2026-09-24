@@ -100,6 +100,7 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",
-    "mysql2": "^3.24.4"
+    "mysql2": "^3.24.4",
+    "effect": "^3.20.0"
   }
 }
