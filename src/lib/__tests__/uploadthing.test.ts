@@ -24,6 +24,7 @@ describe("uploadthing client", () => {
         deleteFiles.mockClear();
         process.env = { ...originalEnv };
         delete process.env.UPLOADTHING_SECRET;
+        delete process.env.UPLOADTHING_TOKEN;
     });
 
     afterAll(() => {
@@ -36,6 +37,7 @@ describe("uploadthing client", () => {
     });
 
     it("constructs the client once, on first use, and reuses it", async () => {
+        process.env.UPLOADTHING_SECRET = "sk_test_fake_key";
         const { utapi } = await import("@/lib/uploadthing");
 
         await expect(utapi.deleteFiles("key-1")).resolves.toBe("deleted");
@@ -47,8 +49,52 @@ describe("uploadthing client", () => {
     });
 
     it("exposes the same instance through getUtapi", async () => {
+        process.env.UPLOADTHING_SECRET = "sk_test_fake_key";
         const { getUtapi } = await import("@/lib/uploadthing");
         expect(getUtapi()).toBe(getUtapi());
         expect(construct).toHaveBeenCalledTimes(1);
+    });
+
+    it("decodes UPLOADTHING_TOKEN JWT and sets UPLOADTHING_SECRET", async () => {
+        // Build a fake token that mirrors the UploadThing JWT structure
+        const payload = { apiKey: "sk_live_test123", appId: "testapp", regions: ["sea1"] };
+        process.env.UPLOADTHING_TOKEN = Buffer.from(JSON.stringify(payload)).toString("base64");
+
+        const { getUtapi } = await import("@/lib/uploadthing");
+        getUtapi();
+
+        expect(process.env.UPLOADTHING_SECRET).toBe("sk_live_test123");
+        expect(construct).toHaveBeenCalledTimes(1);
+    });
+
+    it("prefers UPLOADTHING_SECRET over UPLOADTHING_TOKEN when both are set", async () => {
+        process.env.UPLOADTHING_SECRET = "sk_test_direct";
+        const payload = { apiKey: "sk_live_from_token", appId: "testapp", regions: ["sea1"] };
+        process.env.UPLOADTHING_TOKEN = Buffer.from(JSON.stringify(payload)).toString("base64");
+
+        const { getUtapi } = await import("@/lib/uploadthing");
+        getUtapi();
+
+        // Direct secret should win
+        expect(process.env.UPLOADTHING_SECRET).toBe("sk_test_direct");
+    });
+
+    it("throws a clear error when neither env var is set", async () => {
+        const { getUtapi } = await import("@/lib/uploadthing");
+        expect(() => getUtapi()).toThrow("Missing UploadThing credentials");
+    });
+
+    it("throws when UPLOADTHING_TOKEN contains invalid base64", async () => {
+        process.env.UPLOADTHING_TOKEN = "not-valid-base64!!!";
+        const { getUtapi } = await import("@/lib/uploadthing");
+        expect(() => getUtapi()).toThrow("Failed to decode UPLOADTHING_TOKEN");
+    });
+
+    it("throws when decoded token lacks a valid apiKey", async () => {
+        const payload = { appId: "testapp" }; // missing apiKey
+        process.env.UPLOADTHING_TOKEN = Buffer.from(JSON.stringify(payload)).toString("base64");
+
+        const { getUtapi } = await import("@/lib/uploadthing");
+        expect(() => getUtapi()).toThrow("does not contain a valid apiKey");
     });
 });

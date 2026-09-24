@@ -10,12 +10,34 @@ export const uploadthingEnvSchema = z.object({
     UPLOADTHING_TOKEN: z.string().startsWith("eyJ", "UPLOADTHING_TOKEN must be a v6 JWT token"),
 });
 
+/**
+ * Normalize `sslmode` in a PostgreSQL connection string so that the
+ * deprecated aliases (`prefer`, `require`, `verify-ca`) are rewritten
+ * to `verify-full`.  This silences the pg v8 security warning while
+ * preserving the behaviour that pg already enforces today.
+ */
+function normalizeSslMode(url: string): string {
+    try {
+        const parsed = new URL(url);
+        const sslmode = parsed.searchParams.get("sslmode");
+        if (sslmode && ["prefer", "require", "verify-ca"].includes(sslmode)) {
+            parsed.searchParams.set("sslmode", "verify-full");
+            return parsed.toString();
+        }
+        return url;
+    } catch {
+        // If the URL can't be parsed, return it unchanged and let pg
+        // surface its own error.
+        return url;
+    }
+}
+
 const globalForPrisma = global as unknown as {
     prisma?: PrismaClient;
 };
 
 const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL!,
+    connectionString: normalizeSslMode(process.env.DATABASE_URL!),
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 20000,
