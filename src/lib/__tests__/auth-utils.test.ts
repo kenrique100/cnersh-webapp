@@ -51,7 +51,7 @@ describe('authSession', () => {
     });
 
     it('returns session when found', async () => {
-        const session = { user: { id: 'user-1', role: 'user' } };
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
 
         const result = await authSession();
@@ -119,7 +119,7 @@ describe('authIsRequired', () => {
     });
 
     it('returns session and skips welcome email when user not found in db', async () => {
-        const session = { user: { id: 'user-1', role: 'user' } };
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
         mockFindUnique.mockResolvedValueOnce(null);
 
@@ -134,25 +134,20 @@ describe('authIsRequired', () => {
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
     });
 
-    it('skips welcome email when emailVerified is false', async () => {
-        const session = { user: { id: 'user-1', role: 'user' } };
+    it('redirects unverified users to sign-in and skips welcome flow', async () => {
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: false } };
         mockGetSession.mockResolvedValueOnce(session);
-        mockFindUnique.mockResolvedValueOnce({
-            email: 'user@example.com',
-            name: 'Ada',
-            emailVerified: false,
-        });
 
-        const result = await authIsRequired();
-
-        expect(result).toBe(session);
+        await expect(authIsRequired()).rejects.toThrow('NEXT_REDIRECT:/sign-in?unverified=1');
+        expect(mockRedirect).toHaveBeenCalledWith('/sign-in?unverified=1');
+        expect(mockFindUnique).not.toHaveBeenCalled();
         expect(mockUpdateMany).not.toHaveBeenCalled();
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
     });
 
     it('logs and skips sending when welcome email already sent (count === 0)', async () => {
         const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
-        const session = { user: { id: 'user-1', role: 'user' } };
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
         mockFindUnique.mockResolvedValueOnce({
             email: 'user@example.com',
@@ -177,7 +172,7 @@ describe('authIsRequired', () => {
 
     it('sends welcome email with user name when count > 0', async () => {
         const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
-        const session = { user: { id: 'user-1', role: 'user' } };
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
         mockFindUnique.mockResolvedValueOnce({
             email: 'user@example.com',
@@ -199,7 +194,7 @@ describe('authIsRequired', () => {
     });
 
     it('uses "User" as fallback userName when name is empty', async () => {
-        const session = { user: { id: 'user-1', role: 'user' } };
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
         mockFindUnique.mockResolvedValueOnce({
             email: 'user@example.com',
@@ -219,7 +214,7 @@ describe('authIsRequired', () => {
 
     it('swallows welcome email error and still returns session', async () => {
         const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-        const session = { user: { id: 'user-1', role: 'user' } };
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
         mockFindUnique.mockResolvedValueOnce({
             email: 'user@example.com',
@@ -252,30 +247,37 @@ describe('authIsNotRequired', () => {
     });
 
     it('redirects to /admin when role is admin', async () => {
-        mockGetSession.mockResolvedValueOnce({ user: { id: 'admin-1', role: 'admin' } });
+        mockGetSession.mockResolvedValueOnce({ user: { id: 'admin-1', role: 'admin', emailVerified: true } });
 
         await expect(authIsNotRequired()).rejects.toThrow('NEXT_REDIRECT:/admin');
         expect(mockRedirect).toHaveBeenCalledWith('/admin');
     });
 
     it('redirects to /admin when role is superadmin', async () => {
-        mockGetSession.mockResolvedValueOnce({ user: { id: 'super-1', role: 'superadmin' } });
+        mockGetSession.mockResolvedValueOnce({ user: { id: 'super-1', role: 'superadmin', emailVerified: true } });
 
         await expect(authIsNotRequired()).rejects.toThrow('NEXT_REDIRECT:/admin');
         expect(mockRedirect).toHaveBeenCalledWith('/admin');
     });
 
     it('redirects to /dashboard for regular user role', async () => {
-        mockGetSession.mockResolvedValueOnce({ user: { id: 'user-1', role: 'user' } });
+        mockGetSession.mockResolvedValueOnce({ user: { id: 'user-1', role: 'user', emailVerified: true } });
 
         await expect(authIsNotRequired()).rejects.toThrow('NEXT_REDIRECT:/dashboard');
         expect(mockRedirect).toHaveBeenCalledWith('/dashboard');
     });
 
     it('redirects to /dashboard when role is undefined', async () => {
-        mockGetSession.mockResolvedValueOnce({ user: { id: 'user-1' } });
+        mockGetSession.mockResolvedValueOnce({ user: { id: 'user-1', emailVerified: true } });
 
         await expect(authIsNotRequired()).rejects.toThrow('NEXT_REDIRECT:/dashboard');
         expect(mockRedirect).toHaveBeenCalledWith('/dashboard');
+    });
+
+    it('does not redirect when session user is unverified', async () => {
+        mockGetSession.mockResolvedValueOnce({ user: { id: 'user-1', role: 'user', emailVerified: false } });
+
+        await expect(authIsNotRequired()).resolves.toBeUndefined();
+        expect(mockRedirect).not.toHaveBeenCalled();
     });
 });
