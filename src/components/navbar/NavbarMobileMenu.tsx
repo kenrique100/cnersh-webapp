@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     MenuIcon,
     LogOutIcon,
@@ -30,6 +29,7 @@ import { ResourcesMobileDropdown } from "./NavbarResourcesDropdown";
 import { EthicalClearanceMobileDropdown } from "./NavbarEthicalClearanceDropdown";
 import { MobileDynamicPageDropdown } from "./NavbarDynamicPageDropdown";
 import NavbarLanguageSwitcher from "./NavbarLanguageSwitcher";
+import UserAvatar from "@/components/user-avatar";
 
 const userMobileNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
@@ -61,7 +61,6 @@ const adminMobileNavItems: NavItem[] = [
 
 interface NavbarMobileMenuProps {
     user: NavbarProps["user"];
-    userInitials: string;
     isAdmin: boolean;
     notificationCount: number;
     pathname: string;
@@ -73,7 +72,6 @@ interface NavbarMobileMenuProps {
 
 export default function NavbarMobileMenu({
     user,
-    userInitials,
     isAdmin,
     notificationCount,
     pathname,
@@ -97,12 +95,13 @@ export default function NavbarMobileMenu({
                         <>
                             {/* User Info Header */}
                             <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-800">
-                                <Avatar className="h-12 w-12 border-2 border-gray-200 dark:border-gray-700">
-                                    <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-                                    <AvatarFallback className="bg-blue-700 text-white dark:bg-blue-600">
-                                        {userInitials}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <UserAvatar
+                                    name={user.name}
+                                    image={user.image}
+                                    gender={user.gender}
+                                    className="h-12 w-12 border-2 border-gray-200 dark:border-gray-700"
+                                    fallbackClassName="dark:bg-blue-600"
+                                />
                                 <div className="flex flex-col min-w-0">
                                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                         {user.name || "User"}

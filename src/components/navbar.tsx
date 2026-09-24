@@ -9,7 +9,6 @@ import Image from "next/image";
 import NotificationDropdown from "@/components/notification-dropdown";
 import type { NavbarProps } from "./navbar/types";
 import SOPsDesktopSubmenuNav from "./navbar/NavbarSOPsDropdown";
-import OurPagesDesktopDropdown from "./navbar/NavbarOurPagesDropdown";
 import { ResourcesDesktopDropdown } from "./navbar/NavbarResourcesDropdown";
 import { EthicalClearanceDesktopDropdown } from "./navbar/NavbarEthicalClearanceDropdown";
 import { DynamicPageDesktopDropdown } from "./navbar/NavbarDynamicPageDropdown";
@@ -26,10 +25,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
         await authClient.signOut();
         router.push("/");
     };
-
-    const userInitials = user?.name
-        ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-        : user?.email?.slice(0, 2).toUpperCase() || "U";
 
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
@@ -70,11 +65,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                     {/* Right: actions */}
                     <div className="flex items-center gap-1.5 sm:gap-3">
 
-                        {/* Our Pages dropdown on desktop */}
-                        <div className="hidden lg:flex">
-                            <OurPagesDesktopDropdown pathname={pathname} />
-                        </div>
-
                         {/*
                          * Language switcher is always visible in the navbar bar.
                          *
@@ -91,12 +81,10 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 <NotificationDropdown count={notificationCount} />
                                 <NavbarUserMenu
                                     user={user}
-                                    userInitials={userInitials}
                                     handleSignOut={handleSignOut}
                                 />
                                 <NavbarMobileMenu
                                     user={user}
-                                    userInitials={userInitials}
                                     isAdmin={isAdmin}
                                     notificationCount={notificationCount}
                                     pathname={pathname}
@@ -122,7 +110,6 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                                 </div>
                                 <NavbarMobileMenu
                                     user={user}
-                                    userInitials={userInitials}
                                     isAdmin={isAdmin}
                                     notificationCount={notificationCount}
                                     pathname={pathname}

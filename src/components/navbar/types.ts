@@ -19,6 +19,7 @@ export interface NavbarProps {
         name: string | null;
         email: string;
         image: string | null;
+        gender?: string | null;
         role?: string | null;
     } | null;
     notificationCount?: number;

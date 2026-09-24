@@ -7,24 +7,21 @@ import { GlobeIcon } from "lucide-react";
  * Sets the googtrans cookie (which Google Translate reads on page load)
  * and reloads the page so every piece of content is fully translated.
  *
- * For English: expire the cookie so Google restores original text.
- * For French: set cookie to /en/fr before reloading.
+ * We always write /en/{targetLang} so switching works reliably
+ * in both directions (EN ↔ FR).
  */
-function switchLanguage(lang: "en" | "fr"): void {
-    localStorage.setItem("cnersh_lang", lang);
+function setGoogleTranslateCookie(value: string): void {
+    document.cookie = `googtrans=${value}; path=/; max-age=31536000; SameSite=Lax`;
 
     const hostname = window.location.hostname;
-
-    if (lang === "en") {
-        // Expire the googtrans cookie on both root path and domain
-        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${hostname};`;
-    } else {
-        // Google Translate reads /en/{targetLang} from the googtrans cookie on load
-        document.cookie = `googtrans=/en/${lang}; path=/;`;
-        document.cookie = `googtrans=/en/${lang}; path=/; domain=${hostname};`;
+    if (hostname && hostname.includes(".")) {
+        document.cookie = `googtrans=${value}; path=/; domain=.${hostname}; max-age=31536000; SameSite=Lax`;
     }
+}
 
+function switchLanguage(lang: "en" | "fr"): void {
+    localStorage.setItem("cnersh_lang", lang);
+    setGoogleTranslateCookie(`/en/${lang}`);
     window.location.reload();
 }
 
@@ -63,7 +60,7 @@ export default function NavbarLanguageSwitcher({ mobile = false }: NavbarLanguag
         const interval = setInterval(() => {
             if (document.querySelector(".goog-te-combo")) {
                 clearInterval(interval);
-                if (lang === "fr") applyCombo(lang);
+                applyCombo(lang);
             }
         }, 400);
 

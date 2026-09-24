@@ -1,12 +1,14 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { User, Rss, FolderOpen, Settings, Users, ShieldCheckIcon, UsersIcon, FolderIcon } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { usePathname } from "next/navigation";
+import { User, Rss, FolderOpen, Settings, Users, ShieldCheckIcon, UsersIcon, FolderIcon, FileTextIcon, ChevronDownIcon, DownloadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import UserAvatar from "@/components/user-avatar";
 
 interface FeedLeftSidebarProps {
   userName?: string | null;
@@ -29,6 +31,13 @@ const adminNavItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
+const ourPagesItems = [
+  { href: "/pages/about", label: "About Us", icon: Users },
+  { href: "/pages/contract-rex", label: "Contract Rex Org", icon: FolderIcon },
+  { href: "/membership.pdf", label: "Membership", icon: DownloadIcon, external: true },
+  { href: "/Fiche d'Evaluation CNERSH.pdf", label: "Evaluation Form", icon: DownloadIcon, external: true },
+] as const;
+
 const communityFooterLinks: { label: string; href: string }[] = [
   { label: "About", href: "/pages/about" },
   { label: "Accessibility", href: "/pages/accessibility" },
@@ -44,6 +53,11 @@ export default function FeedLeftSidebar({
   isAdmin,
   isGuest = false,
 }: FeedLeftSidebarProps) {
+  const pathname = usePathname();
+  const isOurPagesRoute = pathname.startsWith("/pages/");
+  const [isOurPagesExpanded, setIsOurPagesExpanded] = React.useState(isOurPagesRoute);
+  const isOurPagesOpen = isOurPagesRoute || isOurPagesExpanded;
+
   if (isGuest) {
     return (
       <div className="space-y-4">
@@ -128,12 +142,13 @@ export default function FeedLeftSidebar({
 
       {/* Avatar + Info */}
       <div className="flex flex-col items-center px-4 pb-4">
-        <Avatar className="-mt-9 size-[72px] border-4 border-white dark:border-zinc-900">
-          <AvatarImage src={userImage ?? undefined} alt={userName ?? "User"} />
-          <AvatarFallback className="text-lg font-semibold">
-            {userName?.charAt(0)?.toUpperCase() ?? "U"}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          name={userName}
+          image={userImage}
+          gender={userGender}
+          className="-mt-9 size-[72px] border-4 border-white dark:border-zinc-900"
+          iconClassName="h-6 w-6"
+        />
 
         <h3 className="mt-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
           {userName ?? "User"}
@@ -161,15 +176,82 @@ export default function FeedLeftSidebar({
             href={href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-              "text-zinc-700 hover:bg-zinc-100",
-              "dark:text-zinc-300 dark:hover:bg-zinc-800",
-              "transition-colors"
+              "transition-colors",
+              pathname === href
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             )}
           >
             <Icon className="size-4 shrink-0" />
             {label}
           </Link>
         ))}
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsOurPagesExpanded((prev) => !prev);
+            }}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+              "transition-colors",
+              isOurPagesRoute || isOurPagesOpen
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            )}
+          >
+            <FileTextIcon className="size-4 shrink-0" />
+            <span className="flex-1">Our Pages</span>
+            <ChevronDownIcon
+              className={cn(
+                "size-4 shrink-0 transition-transform duration-300",
+                isOurPagesOpen && "rotate-180"
+              )}
+            />
+          </button>
+          <div
+            className={cn(
+              "grid transition-all duration-300 ease-in-out",
+              isOurPagesOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="ml-7 mt-1 space-y-1 border-l border-zinc-200 pl-2.5 dark:border-zinc-700">
+                {ourPagesItems.map(({ href, label, icon: Icon, external }) => {
+                  const isActive = !external && pathname === href;
+                  const classes = cn(
+                    "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                    isActive
+                      ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  );
+
+                  if (external) {
+                    return (
+                      <a
+                        key={href}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={classes}
+                      >
+                        <Icon className="size-3.5 shrink-0" />
+                        {label}
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <Link key={href} href={href} className={classes}>
+                      <Icon className="size-3.5 shrink-0" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       </nav>
 
       {/* Community Footer Links */}

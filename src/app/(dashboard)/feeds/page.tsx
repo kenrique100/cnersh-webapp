@@ -55,6 +55,7 @@ export default async function FeedsPage() {
                             currentUserId={session.user.id}
                             currentUserName={user?.name}
                             currentUserImage={user?.image}
+                            currentUserGender={user?.gender}
                             isAdmin={isAdmin}
                         />
                     </main>

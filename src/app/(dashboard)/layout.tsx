@@ -33,6 +33,7 @@ export default async function DashboardLayout({
                 name: user.name,
                 email: user.email,
                 image: user.image,
+                gender: user.gender,
                 role: user.role,
             } : null} notificationCount={unreadCount} pages={pages} />
             <DashboardShell role={user?.role}>

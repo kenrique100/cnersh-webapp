@@ -46,28 +46,10 @@ jest.mock('@/components/ui/dropdown-menu', () => {
     };
 });
 
-jest.mock('@/components/ui/avatar', () => {
-    function AvatarMock({ children }: React.PropsWithChildren) {
-        return <div>{children}</div>;
-    }
-    AvatarMock.displayName = 'AvatarMock';
-
-    function AvatarImageMock() {
-        return null;
-    }
-    AvatarImageMock.displayName = 'AvatarImageMock';
-
-    function AvatarFallbackMock({ children }: React.PropsWithChildren) {
-        return <span>{children}</span>;
-    }
-    AvatarFallbackMock.displayName = 'AvatarFallbackMock';
-
-    return {
-        Avatar: AvatarMock,
-        AvatarImage: AvatarImageMock,
-        AvatarFallback: AvatarFallbackMock,
-    };
-});
+jest.mock('@/components/user-avatar', () => ({
+    __esModule: true,
+    default: () => <span data-testid="user-avatar" />,
+}));
 
 jest.mock('next/link', () => {
     function LinkMock({
@@ -107,7 +89,6 @@ describe('NavbarUserMenu', () => {
         render(
             <NavbarUserMenu
                 user={user}
-                userInitials="JD"
                 handleSignOut={jest.fn()}
             />
         );
@@ -122,7 +103,6 @@ describe('NavbarUserMenu', () => {
         render(
             <NavbarUserMenu
                 user={user}
-                userInitials="JD"
                 handleSignOut={signOut}
             />
         );

@@ -40,7 +40,7 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      gender: { type: "string", required: true, input: true, validate: (value: string) => ["male", "female"].includes(value) || "Invalid gender value" },
+      gender: { type: "string", required: false, input: true, validate: (value: string) => value ? (["male", "female"].includes(value) || "Invalid gender value") : true },
       profession: { type: "string", required: false, input: true },
       title: { type: "string", required: false, input: true },
       welcomeEmailSent: { type: "boolean", default: false },
