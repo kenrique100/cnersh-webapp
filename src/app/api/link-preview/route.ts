@@ -24,11 +24,6 @@ function fallback(domain: string): CachedPreview {
     };
 }
 
-/**
- * Fetches a URL manually following redirects, re-validating each hop against
- * the SSRF guard (a redirect to an internal address is the classic bypass
- * for a naive "check the URL once" implementation).
- */
 async function safeFetchHtml(startUrl: string): Promise<{ html: string; finalUrl: string } | null> {
     let currentUrl = startUrl;
 
