@@ -515,6 +515,12 @@ export async function getProjectById(projectId: string) {
     return project;
 }
 
+/**
+ * Returns every protocol OWNED by the current user.
+ * Ownership is the only filter — no status filter, no role filter.
+ * This guarantees a user always sees their own protocol, including
+ * when it is UNDER_REVIEW, REVIEW_COMPLETE, APPROVED, REJECTED, etc.
+ */
 export async function getUserProjects() {
     const session = await authSession();
     if (!session) throw new Error("Unauthorized");
@@ -527,6 +533,49 @@ export async function getUserProjects() {
         });
     } catch (error) {
         console.error("Error fetching user projects:", error);
+        return [];
+    }
+}
+
+/** Alias kept for readability at call-sites that want the intent to be explicit. */
+export const getMyProtocols = getUserProjects;
+
+/**
+ * Returns protocols the current user is assigned to REVIEW (as an admin /
+ * super-admin). Always excludes the caller's own protocols, so an admin's
+ * own submission never leaks into their "Assigned for Review" list.
+ * Returns [] for non-admin users.
+ */
+export async function getProtocolsAssignedToMe() {
+    const session = await authSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const me = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (me?.role !== "admin" && me?.role !== "superadmin") return [];
+
+    try {
+        return await db.project.findMany({
+            where: {
+                deleted: false,
+                userId: { not: session.user.id },        // never own protocols
+                reviewAssignments: {
+                    some: {
+                        reviewerId: session.user.id,
+                        status: { in: ["PENDING_COI", "ACTIVE"] },
+                    },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+            include: {
+                user: { select: { id: true, name: true, email: true, image: true } },
+                statusHistory: { orderBy: { createdAt: "desc" }, take: 1 },
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching assigned review protocols:", error);
         return [];
     }
 }
