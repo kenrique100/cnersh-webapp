@@ -34,10 +34,10 @@ export default async function FeedsPage() {
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3F2EF] dark:bg-gray-900">
-            <div className="mx-auto max-w-[1200px] px-1 sm:px-4 py-3 sm:py-6">
+            <div className="mx-auto max-w-300 px-1 sm:px-4 py-3 sm:py-6">
                 <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">
                     {/* Left Sidebar - Profile Summary (hidden on mobile/tablet) */}
-                    <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
+                    <aside className="hidden lg:block w-56.25 shrink-0 sticky top-18 self-start">
                         <FeedLeftSidebar
                             userName={user?.name}
                             userImage={user?.image}

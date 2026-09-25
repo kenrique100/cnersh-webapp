@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReactionIcon, REACTION_COLORS, REACTION_ORDER, type ReactionType, isReactionType } from "@/components/reaction-icons";
+import { displayProfession } from "@/lib/user-display";
 
 export const REACTIONS: { label: ReactionType; color: string }[] = REACTION_ORDER.map((label) => ({ label, color: REACTION_COLORS[label] }));
 
@@ -55,8 +56,6 @@ export function PostCard({ children }: PostCardProps) { return <Card className="
 /* ---------------------------------------------------------------------- */
 /* PostContextBar - shown above a PostCard when there is recent activity  */
 /* (other users currently viewing / reacting / commenting on the post).   */
-/* This was previously imported by feed-client.tsx but never defined,     */
-/* which caused the "Export PostContextBar doesn't exist" build error.    */
 /* ---------------------------------------------------------------------- */
 interface PostContextBarUser { id: string; name: string | null; image: string | null; }
 interface PostContextBarProps { users: PostContextBarUser[]; likeCount: number; commentCount: number; }
@@ -85,8 +84,50 @@ export function PostContextBar({ users, likeCount, commentCount }: PostContextBa
   );
 }
 
-interface PostHeaderProps { userName: string | null; userImage: string | null; userProfession?: string | null; createdAt: Date; actions?: React.ReactNode; }
-export function PostHeader({ userName, userImage, userProfession, createdAt, actions }: PostHeaderProps) { return <div className="px-3 sm:px-4 py-3 flex items-start justify-between gap-3"><div className="flex items-center gap-3 min-w-0"><Avatar className="h-11 w-11 border border-gray-200 dark:border-gray-700"><AvatarImage src={userImage || undefined} alt={userName || ""} /><AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">{getInitials(userName)}</AvatarFallback></Avatar><div className="min-w-0"><div className="flex items-center gap-2"><p className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{userName || "Anonymous"}</p></div><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userProfession || "Community Member"}</p><p className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeDate(createdAt)}</p></div></div>{actions}</div>; }
+interface PostHeaderProps {
+  userName: string | null;
+  userImage: string | null;
+  userProfession?: string | null;
+  userProfessionOther?: string | null;
+  createdAt: Date;
+  actions?: React.ReactNode;
+}
+
+export function PostHeader({
+                             userName,
+                             userImage,
+                             userProfession,
+                             userProfessionOther,
+                             createdAt,
+                             actions,
+                           }: PostHeaderProps) {
+  const professionLabel =
+      displayProfession({ profession: userProfession, professionOther: userProfessionOther }) ??
+      "Community Member";
+
+  return (
+      <div className="px-3 sm:px-4 py-3 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar className="h-11 w-11 border border-gray-200 dark:border-gray-700">
+            <AvatarImage src={userImage || undefined} alt={userName || ""} />
+            <AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">
+              {getInitials(userName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                {userName || "Anonymous"}
+              </p>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{professionLabel}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeDate(createdAt)}</p>
+          </div>
+        </div>
+        {actions}
+      </div>
+  );
+}
 
 interface PostTextContentProps { content: string; customRender?: React.ReactNode; }
 const SEE_MORE_THRESHOLD = 280;

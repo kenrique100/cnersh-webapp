@@ -1,4 +1,3 @@
-// src/components/__tests__/post-card.test.tsx
 import React from "react";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -132,8 +131,6 @@ describe("Utility Functions", () => {
     });
 
     describe("renderPostContent", () => {
-        // renderPostContent returns an array of React nodes,
-        // so we render them and check the rendered output.
         it("renders plain text", () => {
             const result = renderPostContent("Hello world");
             const { container } = render(<div>{result}</div>);
@@ -210,6 +207,29 @@ describe("PostCard Components", () => {
         it("renders profession", () => {
             render(<PostHeader {...defaultProps} userProfession="Developer" />);
             expect(screen.getByText("Developer")).toBeInTheDocument();
+        });
+
+        it("renders 'Other' free-text profession when provided", () => {
+            render(
+                <PostHeader
+                    {...defaultProps}
+                    userProfession="Other"
+                    userProfessionOther="Biomedical Engineer"
+                />
+            );
+            expect(screen.getByText("Biomedical Engineer")).toBeInTheDocument();
+            expect(screen.queryByText("Other")).not.toBeInTheDocument();
+        });
+
+        it("falls back to 'Other' when the free-text profession is empty", () => {
+            render(
+                <PostHeader
+                    {...defaultProps}
+                    userProfession="Other"
+                    userProfessionOther=""
+                />
+            );
+            expect(screen.getByText("Other")).toBeInTheDocument();
         });
 
         it("renders default profession", () => {
@@ -338,6 +358,33 @@ describe("PostCard Components", () => {
             );
             expect(screen.getByText("Alice")).toBeInTheDocument();
         });
+
+        it("renders 'and N others' when multiple reactions exist", () => {
+            render(
+                <PostEngagementSummary
+                    likeCount={4}
+                    commentCount={0}
+                    reactionUsers={[
+                        { userId: "1", reactionType: "Like", userName: "Alice" },
+                        { userId: "2", reactionType: "Love", userName: "Bob" },
+                        { userId: "3", reactionType: "Funny", userName: "Cara" },
+                        { userId: "4", reactionType: "Like", userName: "Dan" },
+                    ]}
+                />
+            );
+            expect(screen.getByText(/and 3 others/i)).toBeInTheDocument();
+        });
+
+        it("renders share count when provided", () => {
+            render(
+                <PostEngagementSummary
+                    likeCount={0}
+                    commentCount={0}
+                    shareCount={2}
+                />
+            );
+            expect(screen.getByText(/2 reposts?/)).toBeInTheDocument();
+        });
     });
 
     describe("CommentReactionSummary", () => {
@@ -358,15 +405,15 @@ describe("PostCard Components", () => {
 });
 
 describe("REACTIONS constant", () => {
-    it("contains all 6 reaction types from REACTION_ORDER", () => {
+    it("contains all 6 reaction types in WhatsApp order", () => {
         expect(REACTIONS).toHaveLength(6);
         expect(REACTIONS.map((r) => r.label)).toEqual([
             "Like",
-            "Celebrate",
-            "Support",
             "Love",
-            "Insightful",
             "Funny",
+            "Celebrate",
+            "Insightful",
+            "Support",
         ]);
     });
 
@@ -375,11 +422,32 @@ describe("REACTIONS constant", () => {
             expect(r.color).toBe(REACTION_COLORS[r.label]);
         });
     });
+
+    it("contains every reaction type from REACTION_ORDER (order-independent safety net)", () => {
+        const labels = REACTIONS.map((r) => r.label).sort();
+        const expected = [
+            "Celebrate",
+            "Funny",
+            "Insightful",
+            "Like",
+            "Love",
+            "Support",
+        ];
+        expect(labels).toEqual(expected);
+    });
 });
 
 describe("getReactionColor", () => {
     it("returns correct color for Like", () => {
         expect(getReactionColor("Like")).toBe(REACTION_COLORS.Like);
+    });
+
+    it("returns correct color for Love", () => {
+        expect(getReactionColor("Love")).toBe(REACTION_COLORS.Love);
+    });
+
+    it("returns correct color for Funny", () => {
+        expect(getReactionColor("Funny")).toBe(REACTION_COLORS.Funny);
     });
 
     it("returns default color for unknown reaction", () => {

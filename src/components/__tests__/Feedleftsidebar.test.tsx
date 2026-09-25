@@ -140,15 +140,21 @@ describe('FeedLeftSidebar', () => {
             expect(screen.getByText('Our Pages')).toBeInTheDocument();
         });
 
-        it('does not render admin Community link for regular user', () => {
+        it('does not render admin Community nav link for regular user', () => {
             render(<FeedLeftSidebar {...userProps} />);
+            // "Community" (admin nav) must not appear, even though the
+            // collapsed "Our Pages" dropdown contains "Community Members".
+            // Exact-match on "Community" distinguishes them.
             expect(screen.queryByText('Community')).not.toBeInTheDocument();
         });
 
         it('does not render footer links for non-admin', () => {
             render(<FeedLeftSidebar {...userProps} />);
-            expect(screen.queryByText('About')).not.toBeInTheDocument();
+            // Footer-only labels — these must not appear anywhere in the DOM
+            // for a non-admin user.
+            expect(screen.queryByText('Accessibility')).not.toBeInTheDocument();
             expect(screen.queryByText('Privacy & Terms')).not.toBeInTheDocument();
+            expect(screen.queryByText('Support')).not.toBeInTheDocument();
         });
 
         it('renders reusable avatar component', () => {
@@ -165,9 +171,13 @@ describe('FeedLeftSidebar', () => {
 
         it('renders footer links for admin', () => {
             render(<FeedLeftSidebar {...adminProps} />);
-            expect(screen.getByText('About')).toBeInTheDocument();
+
+            expect(screen.getAllByText('About Us').length).toBeGreaterThan(0);
+
+            // The following labels are footer-only, so exact-match is safe.
             expect(screen.getByText('Accessibility')).toBeInTheDocument();
             expect(screen.getByText('Privacy & Terms')).toBeInTheDocument();
+            expect(screen.getByText('Support')).toBeInTheDocument();
         });
 
         it('renders copyright notice for admin', () => {
