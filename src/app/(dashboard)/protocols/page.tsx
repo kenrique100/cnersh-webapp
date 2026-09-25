@@ -1,13 +1,25 @@
 import { authIsRequired } from "@/lib/auth-utils";
-import { getUserProjects } from "@/app/actions/project";
+import { getUserProjects, getProtocolsAssignedToMe } from "@/app/actions/project";
+import { updateProfile } from "@/app/actions/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FolderIcon, CalendarIcon, MapPinIcon, TagIcon, HashIcon } from "lucide-react";
+import {
+    FolderIcon,
+    CalendarIcon,
+    MapPinIcon,
+    TagIcon,
+    HashIcon,
+    ClipboardListIcon,
+    UserIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ProtocolCardActions from "./protocol-card-actions";
 
 export const dynamic = "force-dynamic";
+
+type OwnerProject = Awaited<ReturnType<typeof getUserProjects>>[number];
+type AssignedProject = Awaited<ReturnType<typeof getProtocolsAssignedToMe>>[number];
 
 const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
     DRAFT: {
@@ -75,46 +87,184 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
         dot: "bg-gray-300",
     },
+    EXPIRED: {
+        label: "Expired",
+        color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200",
+        dot: "bg-red-600",
+    },
 };
+
+const statusOrder = [
+    "EXPIRED",              // surface expired protocols first — they need action
+    "PENDING_REVIEW",
+    "UNDER_REVIEW",
+    "REVIEW_COMPLETE",
+    "SESSION_SCHEDULED",
+    "SUBMITTED",
+    "RETURNED_INCOMPLETE",
+    "APPROVED",
+    "APPROVED_WITH_CONDITIONS",
+    "DRAFT",
+    "REJECTED",
+    "UNDER_APPEAL",
+    "APPEAL_RESOLVED",
+    "ARCHIVED",
+];
+
+function renderOwnerCard(project: OwnerProject) {
+    const cardConfig = statusConfig[project.status] ?? {
+        label: project.status,
+        color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+        dot: "bg-gray-400",
+    };
+    return (
+        <Card
+            key={project.id}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden"
+        >
+            <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">
+                        {project.title}
+                    </CardTitle>
+                    <Badge className={`${cardConfig.color} shrink-0 text-xs`}>
+                        {cardConfig.label}
+                    </Badge>
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                    <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
+                    <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                        {project.trackingCode}
+                    </code>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
+                    {project.description}
+                </p>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                        <TagIcon className="h-3 w-3" />
+                        {project.category}
+                    </span>
+                    {project.location && (
+                        <span className="flex items-center gap-1">
+                            <MapPinIcon className="h-3 w-3" />
+                            {project.location}
+                        </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {new Date(project.createdAt).toLocaleDateString()}
+                    </span>
+                </div>
+                {project.feedback && (
+                    <div className="mt-3 p-2.5 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
+                        <strong>Feedback:</strong> {project.feedback}
+                    </div>
+                )}
+
+                <ProtocolCardActions
+                    projectId={project.id}
+                    initialTitle={project.title}
+                    initialDescription={project.description}
+                />
+            </CardContent>
+        </Card>
+    );
+}
+
+function renderAssignedCard(project: AssignedProject) {
+    const cardConfig = statusConfig[project.status] ?? {
+        label: project.status,
+        color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+        dot: "bg-gray-400",
+    };
+    return (
+        <Card
+            key={project.id}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden"
+        >
+            <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">
+                        {project.title}
+                    </CardTitle>
+                    <Badge className={`${cardConfig.color} shrink-0 text-xs`}>
+                        {cardConfig.label}
+                    </Badge>
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                    <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
+                    <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                        {project.trackingCode}
+                    </code>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
+                    {project.description}
+                </p>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                        <UserIcon className="h-3 w-3" />
+                        {project.user?.name || project.user?.email || "Unknown owner"}
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <TagIcon className="h-3 w-3" />
+                        {project.category}
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {new Date(project.createdAt).toLocaleDateString()}
+                    </span>
+                </div>
+                <div className="mt-3">
+                    <Link href={`/protocols/${project.id}`}>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950"
+                        >
+                            Open Review
+                        </Button>
+                    </Link>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default async function ProjectsPage() {
     await authIsRequired();
 
-    const projects = await getUserProjects();
+    const [profile, myProjects, assignedProjects] = await Promise.all([
+        updateProfile(),
+        getUserProjects(),
+        getProtocolsAssignedToMe(),
+    ]);
 
-    // Group projects by status
-    const groupedProjects: Record<string, typeof projects> = {};
-    for (const project of projects) {
-        const status = project.status;
-        if (!groupedProjects[status]) groupedProjects[status] = [];
-        groupedProjects[status].push(project);
+    const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
+
+    // Group owner projects by status
+    const groupedProjects: Record<string, OwnerProject[]> = {};
+    for (const project of myProjects) {
+        if (!groupedProjects[project.status]) groupedProjects[project.status] = [];
+        groupedProjects[project.status].push(project);
     }
 
-    const statusOrder = [
-        "PENDING_REVIEW",
-        "UNDER_REVIEW",
-        "REVIEW_COMPLETE",
-        "SESSION_SCHEDULED",
-        "SUBMITTED",
-        "RETURNED_INCOMPLETE",
-        "APPROVED",
-        "APPROVED_WITH_CONDITIONS",
-        "DRAFT",
-        "REJECTED",
-        "UNDER_APPEAL",
-        "APPEAL_RESOLVED",
-        "ARCHIVED",
-    ];
     const orderedStatuses = [
         ...statusOrder,
-        ...Object.keys(groupedProjects).filter((status) => !statusOrder.includes(status)),
+        ...Object.keys(groupedProjects).filter((s) => !statusOrder.includes(s)),
     ];
-    const summaryStatuses = orderedStatuses.filter((status) => (groupedProjects[status]?.length || 0) > 0);
+    const summaryStatuses = orderedStatuses.filter(
+        (status) => (groupedProjects[status]?.length || 0) > 0
+    );
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
+                {/* ===================== MY PROTOCOLS ===================== */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 rounded-xl bg-violet-600 text-white shrink-0">
@@ -136,8 +286,8 @@ export default async function ProjectsPage() {
                     </Link>
                 </div>
 
-                {/* Status Summary */}
-                {projects.length > 0 && (
+                {/* Status Summary — owner projects only */}
+                {myProjects.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-8">
                         {summaryStatuses.map((status) => {
                             const config = statusConfig[status] ?? {
@@ -162,7 +312,7 @@ export default async function ProjectsPage() {
                     </div>
                 )}
 
-                {projects.length === 0 ? (
+                {myProjects.length === 0 ? (
                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                         <CardContent className="py-16 text-center">
                             <div className="flex flex-col items-center gap-3">
@@ -196,7 +346,6 @@ export default async function ProjectsPage() {
                                 const statusProjects = groupedProjects[status];
                                 return (
                                     <div key={status}>
-                                        {/* Section Header */}
                                         <div className="flex items-center gap-2 mb-4">
                                             <div className={`h-3 w-3 rounded-full ${config.dot}`} />
                                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -206,71 +355,53 @@ export default async function ProjectsPage() {
                                                 ({statusProjects.length})
                                             </span>
                                         </div>
-
-                                        {/* Projects Grid */}
                                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                            {statusProjects.map((project) => {
-                                                const cardConfig = statusConfig[project.status] ?? config;
-                                                return (
-                                                <Card
-                                                    key={project.id}
-                                                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg transition-all duration-200 rounded-xl overflow-hidden"
-                                                >
-                                                    <CardHeader className="pb-3">
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">
-                                                                {project.title}
-                                                            </CardTitle>
-                                                            <Badge className={`${cardConfig.color} shrink-0 text-xs`}>
-                                                                {cardConfig.label}
-                                                            </Badge>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 mt-1">
-                                                            <HashIcon className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                            <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-medium">
-                                                                {project.trackingCode}
-                                                            </code>
-                                                        </div>
-                                                    </CardHeader>
-                                                    <CardContent className="pt-0">
-                                                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
-                                                            {project.description}
-                                                        </p>
-                                                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                                                            <span className="flex items-center gap-1">
-                                                                <TagIcon className="h-3 w-3" />
-                                                                {project.category}
-                                                            </span>
-                                                            {project.location && (
-                                                                <span className="flex items-center gap-1">
-                                                                    <MapPinIcon className="h-3 w-3" />
-                                                                    {project.location}
-                                                                </span>
-                                                            )}
-                                                            <span className="flex items-center gap-1">
-                                                                <CalendarIcon className="h-3 w-3" />
-                                                                {new Date(project.createdAt).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                        {project.feedback && (
-                                                            <div className="mt-3 p-2.5 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
-                                                                <strong>Feedback:</strong> {project.feedback}
-                                                            </div>
-                                                        )}
-
-                                                        <ProtocolCardActions
-                                                            projectId={project.id}
-                                                            initialTitle={project.title}
-                                                            initialDescription={project.description}
-                                                        />
-                                                    </CardContent>
-                                                </Card>
-                                                );
-                                            })}
+                                            {statusProjects.map((project) => renderOwnerCard(project))}
                                         </div>
                                     </div>
                                 );
                             })}
+                    </div>
+                )}
+
+                {/* ===================== ASSIGNED FOR REVIEW ===================== */}
+                {isAdmin && (
+                    <div className="mt-14 pt-10 border-t border-gray-200 dark:border-gray-800">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2.5 rounded-xl bg-indigo-600 text-white shrink-0">
+                                <ClipboardListIcon className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                    Assigned for Review
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Protocols assigned to you as a reviewer
+                                </p>
+                            </div>
+                        </div>
+
+                        {assignedProjects.length === 0 ? (
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
+                                <CardContent className="py-12 text-center">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                            <ClipboardListIcon className="h-7 w-7 text-gray-400" />
+                                        </div>
+                                        <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                            No protocols assigned to you
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            When a protocol is assigned to you for review it will appear here.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {assignedProjects.map((project) => renderAssignedCard(project))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

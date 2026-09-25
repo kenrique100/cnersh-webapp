@@ -1,4 +1,6 @@
 import { redis } from "@/lib/redis";
+import { db } from "@/lib/db";
+import { Prisma } from "@/generated/prisma";
 
 export interface StoredResponse {
     status: number;
@@ -45,4 +47,65 @@ export async function releaseKey(key: string, claimValue?: string): Promise<void
         return;
     }
     await redis.del(`${LOCK}${key}`);
+}
+
+const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+
+export type ReserveResult<T> =
+    | { status: "reserved"; recordId: string }
+    | { status: "completed"; response: T }
+    | { status: "in-progress" };
+
+export async function reserveIdempotencyKey<T>(opts: {
+    key: string;
+    userId: string;
+    action: string;
+    ttlMs?: number;
+}): Promise<ReserveResult<T>> {
+    const ttlMs = opts.ttlMs ?? DEFAULT_TTL_MS;
+    const expiresAt = new Date(Date.now() + ttlMs);
+
+    db.idempotencyKey
+        .deleteMany({ where: { userId: opts.userId, expiresAt: { lt: new Date() } } })
+        .catch(() => {});
+
+    try {
+        const record = await db.idempotencyKey.create({
+            data: { key: opts.key, userId: opts.userId, action: opts.action, expiresAt },
+            select: { id: true },
+        });
+        return { status: "reserved", recordId: record.id };
+    } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+            const existing = await db.idempotencyKey.findFirst({
+                where: { key: opts.key, userId: opts.userId, action: opts.action },
+                select: { response: true },
+            });
+            if (!existing || existing.response === null) return { status: "in-progress" };
+            return { status: "completed", response: existing.response as T };
+        }
+        throw err;
+    }
+}
+
+export async function storeIdempotentResponse<T>(
+    key: string,
+    userId: string,
+    action: string,
+    response: T
+): Promise<void> {
+    await db.idempotencyKey.updateMany({
+        where: { key, userId, action },
+        data: { response: response as Prisma.InputJsonValue },
+    });
+}
+
+export async function releaseIdempotencyKey(
+    key: string,
+    userId: string,
+    action: string
+): Promise<void> {
+    await db.idempotencyKey.deleteMany({
+        where: { key, userId, action, response: { equals: Prisma.DbNull } },
+    });
 }

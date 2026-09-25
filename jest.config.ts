@@ -1,39 +1,42 @@
-import type { Config } from 'jest';
-import nextJest from 'next/jest.js';
+import type { Config } from "jest";
+import nextJest from "next/jest.js";
 
 const createJestConfig = nextJest({
-  dir: './',
+  dir: "./",
 });
 
 const config: Config = {
-  coverageProvider: 'v8',
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  coverageProvider: "v8",
+  testEnvironment: "jsdom",
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-    '^@/generated/prisma(.*)$': '<rootDir>/src/generated/prisma$1',
-    '^next/server$': '<rootDir>/src/__mocks__/next/server.ts',
-    '^next/navigation$': '<rootDir>/src/__mocks__/next/navigation.ts',
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@/generated/prisma(.*)$": "<rootDir>/src/generated/prisma$1",
+    "^next/server$": "<rootDir>/src/__mocks__/next/server.ts",
+    "^next/navigation$": "<rootDir>/src/__mocks__/next/navigation.ts",
   },
+  // Only transform the packages that ship ESM in their public entry point
+  // and are actually imported by runtime code (not mocked away).
+  // `better-auth` is intentionally omitted — jest.setup.ts mocks it globally.
   transformIgnorePatterns: [
-    '/node_modules/(?!(better-auth|sanitize-html|htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)/)',
+    "/node_modules/(?!(sanitize-html|htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)/)",
   ],
   testMatch: [
-    '<rootDir>/src/**/__tests__/**/*.[jt]s?(x)',
-    '<rootDir>/src/**/?(*.)+(spec|test).[jt]s?(x)',
+    "<rootDir>/src/**/__tests__/**/*.[jt]s?(x)",
+    "<rootDir>/src/**/?(*.)+(spec|test).[jt]s?(x)",
   ],
   testPathIgnorePatterns: [
-    '<rootDir>/.next/',
-    '<rootDir>/node_modules/',
-    '<rootDir>/e2e/',
-    '<rootDir>/tests/',
+    "<rootDir>/.next/",
+    "<rootDir>/node_modules/",
+    "<rootDir>/e2e/",
+    "<rootDir>/tests/",
   ],
   collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/*.stories.{js,jsx,ts,tsx}',
-    '!src/**/__tests__/**',
-    '!src/generated/**',
+    "src/**/*.{js,jsx,ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/*.stories.{js,jsx,ts,tsx}",
+    "!src/**/__tests__/**",
+    "!src/generated/**",
   ],
   coverageThreshold: {
     global: {
