@@ -241,6 +241,8 @@ model Project {
   formData          Json?
   status            ProjectStatus          @default(DRAFT)
   feedback          String?
+  expiresAt         DateTime?
+  reminderSentAt    DateTime?
   deleted           Boolean                @default(false)
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
@@ -262,6 +264,8 @@ model Project {
   @@index([userId, status])
   @@index([status, createdAt])
   @@index([category, status])
+  @@index([expiresAt])
+  @@index([status, expiresAt])
   @@map("project")
 }
 
@@ -292,6 +296,7 @@ enum ProjectStatus {
   UNDER_APPEAL
   APPEAL_RESOLVED
   ARCHIVED
+  EXPIRED
 
   @@map("project_status")
 }

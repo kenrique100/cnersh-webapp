@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import ProjectDetailActions from "./project-detail-actions";
 import TrackingCodeCopyButton from "./tracking-code-copy-button";
+import RenewProtocolButton from "./renew-protocol-button";
 
 function daysSinceDate(date: Date | string): number {
     return (new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
@@ -99,11 +100,16 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
         dot: "bg-gray-300",
     },
+    EXPIRED: {
+        label: "Expired",
+        color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200",
+        dot: "bg-red-600",
+    },
 };
 
 export default async function ProjectDetailPage({
-    params,
-}: {
+                                                    params,
+                                                }: {
     params: Promise<{ id: string }>;
 }) {
     const session = await authIsRequired();
@@ -158,6 +164,51 @@ export default async function ProjectDetailPage({
                     </code>
                     <TrackingCodeCopyButton trackingCode={project.trackingCode} />
                 </div>
+
+                {/* Expiry banner + Renew CTA (owner only) */}
+                {isOwner && project.expiresAt && (
+                    <div
+                        className={`mb-4 flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+                            project.status === "EXPIRED"
+                                ? "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40"
+                                : "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40"
+                        }`}
+                    >
+                        <div className="text-sm">
+                            <p
+                                className={`font-semibold ${
+                                    project.status === "EXPIRED"
+                                        ? "text-red-800 dark:text-red-200"
+                                        : "text-amber-800 dark:text-amber-200"
+                                }`}
+                            >
+                                {project.status === "EXPIRED"
+                                    ? "This protocol has expired"
+                                    : "Protocol validity"}
+                            </p>
+                            <p
+                                className={`text-xs ${
+                                    project.status === "EXPIRED"
+                                        ? "text-red-700 dark:text-red-300"
+                                        : "text-amber-700 dark:text-amber-300"
+                                }`}
+                            >
+                                Valid until{" "}
+                                {new Date(project.expiresAt).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                })}
+                                {project.status === "EXPIRED"
+                                    ? ". Renew it to continue using this protocol."
+                                    : "."}
+                            </p>
+                        </div>
+                        {project.status === "EXPIRED" && (
+                            <RenewProtocolButton projectId={project.id} />
+                        )}
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4 mb-8">
@@ -218,10 +269,10 @@ export default async function ProjectDetailPage({
                                 {myActiveAssignment.dueDate && (
                                     <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
                                         Due {new Date(myActiveAssignment.dueDate).toLocaleDateString("en-US", {
-                                            month: "long",
-                                            day: "numeric",
-                                            year: "numeric",
-                                        })}
+                                        month: "long",
+                                        day: "numeric",
+                                        year: "numeric",
+                                    })}
                                     </p>
                                 )}
                             </div>
@@ -825,9 +876,9 @@ export default async function ProjectDetailPage({
 
                                 {/* Uploaded Documents */}
                                 {(infoSheetEnglish?.url || infoSheetFrench?.url || consentFormEnglish?.url || consentFormFrench?.url ||
-                                  dataCollectionTools?.url || budgetDocument?.url || authorizationLetter?.url || paymentReceipt?.url ||
-                                  investigatorsBrochure?.url || participantInsurance?.url || protocolErrorInsurance?.url ||
-                                  endOfTrialAgreement?.url || foreignEthicsApproval?.url || materialTransferAgreement?.url || dataSharingAgreement?.url) && (
+                                    dataCollectionTools?.url || budgetDocument?.url || authorizationLetter?.url || paymentReceipt?.url ||
+                                    investigatorsBrochure?.url || participantInsurance?.url || protocolErrorInsurance?.url ||
+                                    endOfTrialAgreement?.url || foreignEthicsApproval?.url || materialTransferAgreement?.url || dataSharingAgreement?.url) && (
                                     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                                         <CardHeader className="pb-3">
                                             <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">

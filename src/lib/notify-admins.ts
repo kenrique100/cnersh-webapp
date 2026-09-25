@@ -1,7 +1,9 @@
 import * as Sentry from "@sentry/nextjs";
 import { randomUUID } from "crypto";
+import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import ProtocolRenewalReminder from "@/emails/protocol-renewal-reminder";
 
 /**
  * Sends a notification to all admin and superadmin users.
@@ -33,14 +35,10 @@ export async function notifyAdmins(data: {
         })),
     });
 
-    // Send email notifications to admins (fire-and-forget, dispatched concurrently)
     const emailPromises = admins
-        // Type guard (`admin is typeof admin & { email: string }`) narrows
-        // `email` from `string | null` to `string` for everything below -
-        // this is what fixes the TS2345 error.
         .filter((admin): admin is typeof admin & { email: string } => !!admin.email)
-        .map((admin) => {
-            return Sentry.startSpan(
+        .map((admin) =>
+            Sentry.startSpan(
                 {
                     name: "admin-notifications",
                     op: "queue.publish",
@@ -50,18 +48,83 @@ export async function notifyAdmins(data: {
                         "messaging.message.body.size": data.message.length,
                     },
                 },
-                () => {
-                    return sendNotificationEmail({
+                () =>
+                    sendNotificationEmail({
                         to: admin.email,
                         userName: admin.name || "Admin",
                         notificationMessage: data.message,
                         notificationType: data.type,
                         actionUrl: data.link,
-                    }).catch((err) => console.error("Error sending admin email notification:", err));
-                }
-            );
-        });
+                    }).catch((err) =>
+                        console.error("Error sending admin email notification:", err)
+                    )
+            )
+        );
 
-    // Dispatch concurrently without blocking the caller
     void Promise.allSettled(emailPromises);
+}
+
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+
+const APP_URL =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    "http://localhost:3000";
+
+const EMAIL_FROM =
+    process.env.EMAIL_FROM || "CNERSH <no-reply@cnersh.org>";
+
+export async function notifyOwnerRenewalDue(protocol: {
+    id: string;
+    title: string;
+    expiresAt: Date;
+    owner: { id: string; email: string; name: string | null };
+}) {
+    const resubmitUrl = `${APP_URL}/protocols/${protocol.id}`;
+    const expiresLabel = protocol.expiresAt.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+
+    // In-app notification
+    try {
+        await db.notification.create({
+            data: {
+                type: "SYSTEM",
+                message: `Your protocol "${protocol.title}" expires on ${expiresLabel}. Please renew it to continue.`,
+                link: `/protocols/${protocol.id}`,
+                userId: protocol.owner.id,
+            },
+        });
+    } catch (err) {
+        console.error("[notifyOwnerRenewalDue] failed to create in-app notification:", err);
+    }
+
+    if (!resend) {
+        console.error("[notifyOwnerRenewalDue] RESEND_API_KEY is not configured");
+        return;
+    }
+
+    try {
+        await resend.emails.send({
+            from: EMAIL_FROM,
+            to: protocol.owner.email,
+            subject: `Renewal reminder: "${protocol.title}" expires on ${expiresLabel}`,
+            react: ProtocolRenewalReminder({
+                ownerName: protocol.owner.name || "Researcher",
+                protocolTitle: protocol.title,
+                expiresAt: protocol.expiresAt,
+                resubmitUrl,
+            }),
+        });
+    } catch (err) {
+        console.error("[notifyOwnerRenewalDue] failed to send email:", err);
+        Sentry.captureException(err, {
+            tags: { notification: "protocol-renewal-reminder" },
+            extra: { projectId: protocol.id, userId: protocol.owner.id },
+        });
+        throw err;
+    }
 }

@@ -87,9 +87,15 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         color: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300",
         dot: "bg-gray-300",
     },
+    EXPIRED: {
+        label: "Expired",
+        color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200",
+        dot: "bg-red-600",
+    },
 };
 
 const statusOrder = [
+    "EXPIRED",              // surface expired protocols first — they need action
     "PENDING_REVIEW",
     "UNDER_REVIEW",
     "REVIEW_COMPLETE",
