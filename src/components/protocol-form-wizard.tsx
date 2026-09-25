@@ -10,7 +10,6 @@ import {
     SaveIcon,
     Trash2Icon,
 } from "lucide-react";
-import { submitProject } from "@/app/actions/project";
 import {
     ProtocolDocumentField,
     ProtocolSelectField,
@@ -47,6 +46,24 @@ export const STEP_LABELS = [
     "Payment Proof",
     "Review & Submit",
 ] as const;
+
+export interface ProtocolFormPayload {
+    title: string;
+    description: string;
+    objectives?: string;
+    category: string;
+    location?: string;
+    timeline?: string;
+    budget?: string;
+    document?: string;
+    formData?: Record<string, unknown>;
+}
+
+interface ProtocolFormWizardProps {
+    onSubmit: (payload: ProtocolFormPayload) => Promise<void> | void;
+    isSubmitting?: boolean;
+    disabled?: boolean;
+}
 
 interface CoInvestigator {
     name: string;
@@ -344,12 +361,7 @@ function validateStep(form: FormState, step: number): string[] {
             if (!hasText(form.expectedBenefits, 5)) errors.push("Describe expected benefits, including when there are no direct benefits.");
             break;
         case 11:
-            [
-                form.infoSheetEnglish,
-                form.infoSheetFrench,
-                form.consentFormEnglish,
-                form.consentFormFrench,
-            ].forEach((document) => {
+            [form.infoSheetEnglish, form.infoSheetFrench, form.consentFormEnglish, form.consentFormFrench].forEach((document) => {
                 if (!validUrl(document.url)) errors.push("Enter valid consent document URLs.");
             });
             break;
@@ -390,9 +402,12 @@ function validateStep(form: FormState, step: number): string[] {
     return [...new Set(errors)];
 }
 
-export default function ProtocolFormWizard() {
+export default function ProtocolFormWizard({
+                                               onSubmit,
+                                               isSubmitting = false,
+                                               disabled = false,
+                                           }: ProtocolFormWizardProps) {
     const [step, setStep] = React.useState(0);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [stepErrors, setStepErrors] = React.useState<string[]>([]);
     const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
     const [form, setForm] = React.useState<FormState>(() => {
@@ -413,6 +428,7 @@ export default function ProtocolFormWizard() {
             return initialProtocolFormState;
         }
     });
+
     const [draftLoaded, setDraftLoaded] = React.useState(() => {
         if (typeof window === "undefined") return false;
         try {
@@ -449,7 +465,7 @@ export default function ProtocolFormWizard() {
         try {
             window.localStorage.removeItem(AUTOSAVE_KEY);
         } catch {
-            // The submitted protocol is already stored by the server.
+            // Best-effort cleanup.
         }
         setDraftLoaded(false);
     };
@@ -477,6 +493,8 @@ export default function ProtocolFormWizard() {
     };
 
     const handleSubmit = async () => {
+        if (isSubmitting || disabled) return;
+
         const incompleteStep = completedSteps.findIndex((complete) => !complete);
         if (incompleteStep !== -1) {
             navigateTo(incompleteStep);
@@ -485,33 +503,25 @@ export default function ProtocolFormWizard() {
             return;
         }
 
-        setIsSubmitting(true);
-        try {
-            const specificObjectives = form.specificObjectives.filter((objective) => objective.trim());
-            const timeline =
-                form.studyStartDate && form.studyEndDate
-                    ? `${form.studyStartDate} to ${form.studyEndDate}`
-                    : undefined;
-            await submitProject({
-                title: form.protocolTitle,
-                description: form.projectDescription,
-                objectives: [form.generalObjective, ...specificObjectives].filter(Boolean).join("\n"),
-                category: form.studyType,
-                location: form.studyLocation || undefined,
-                timeline,
-                budget: form.totalBudget
-                    ? `${form.totalBudget} ${form.budgetCurrency}`
-                    : undefined,
-                document: form.protocolDocument.url || undefined,
-                formData: JSON.parse(JSON.stringify(form)) as Record<string, unknown>,
-            });
-            clearDraft();
-            toast.success("Protocol submitted successfully");
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Failed to submit protocol. Please try again.");
-        } finally {
-            setIsSubmitting(false);
-        }
+        const specificObjectives = form.specificObjectives.filter((objective) => objective.trim());
+        const timeline =
+            form.studyStartDate && form.studyEndDate
+                ? `${form.studyStartDate} to ${form.studyEndDate}`
+                : undefined;
+
+        const payload: ProtocolFormPayload = {
+            title: form.protocolTitle,
+            description: form.projectDescription,
+            objectives: [form.generalObjective, ...specificObjectives].filter(Boolean).join("\n"),
+            category: form.studyType,
+            location: form.studyLocation || undefined,
+            timeline,
+            budget: form.totalBudget ? `${form.totalBudget} ${form.budgetCurrency}` : undefined,
+            document: form.protocolDocument.url || undefined,
+            formData: JSON.parse(JSON.stringify(form)) as Record<string, unknown>,
+        };
+
+        await onSubmit(payload);
     };
 
     const text = (
@@ -1058,8 +1068,8 @@ export default function ProtocolFormWizard() {
                                             index === step
                                                 ? "border-blue-700 bg-blue-700 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-gray-950"
                                                 : completedSteps[index]
-                                                  ? "border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-200"
-                                                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900"
+                                                    ? "border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-200"
+                                                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900"
                                         }`}
                                     >
                                         {completedSteps[index] && index !== step ? (
@@ -1110,7 +1120,7 @@ export default function ProtocolFormWizard() {
                         type="button"
                         variant="outline"
                         onClick={() => navigateTo(step - 1)}
-                        disabled={step === 0}
+                        disabled={step === 0 || isSubmitting}
                         className="min-h-11"
                     >
                         <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
@@ -1120,6 +1130,7 @@ export default function ProtocolFormWizard() {
                         type="button"
                         variant="outline"
                         onClick={() => persistDraft(true)}
+                        disabled={isSubmitting}
                         className="min-h-11"
                     >
                         <SaveIcon className="h-4 w-4" aria-hidden="true" />
@@ -1130,7 +1141,12 @@ export default function ProtocolFormWizard() {
                     </span>
                 </div>
                 {step < STEP_LABELS.length - 1 ? (
-                    <Button type="button" onClick={goNext} className="min-h-11 bg-blue-700 text-white hover:bg-blue-800">
+                    <Button
+                        type="button"
+                        onClick={goNext}
+                        disabled={isSubmitting}
+                        className="min-h-11 bg-blue-700 text-white hover:bg-blue-800"
+                    >
                         Continue
                         <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -1138,7 +1154,8 @@ export default function ProtocolFormWizard() {
                     <Button
                         type="button"
                         onClick={() => void handleSubmit()}
-                        disabled={isSubmitting || !canSubmit}
+                        disabled={isSubmitting || disabled || !canSubmit}
+                        aria-busy={isSubmitting}
                         className="min-h-11 bg-green-700 px-6 text-white hover:bg-green-800"
                     >
                         {isSubmitting ? (

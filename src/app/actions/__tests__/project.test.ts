@@ -2,6 +2,11 @@
 jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
 jest.mock("@/lib/notify-admins", () => ({ notifyAdmins: jest.fn() }));
 jest.mock("@/lib/send-notification-email", () => ({ sendNotificationEmail: jest.fn() }));
+jest.mock("@/lib/idempotency-store", () => ({
+  reserveIdempotencyKey: jest.fn().mockResolvedValue({ status: "available" }),
+  storeIdempotentResponse: jest.fn().mockResolvedValue(undefined),
+  releaseIdempotencyKey: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock("@/lib/db", () => ({
   db: {
     $transaction: jest.fn(),
@@ -67,6 +72,7 @@ beforeEach(() => {
   mockDb.project = {
     findUnique: jest.fn(),
     findUniqueOrThrow: jest.fn(),
+    findFirst: jest.fn(), // <-- ADDED THIS LINE TO FIX THE ERROR
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -85,13 +91,23 @@ beforeEach(() => {
   emailMock.mockResolvedValue(undefined);
 });
 
+const MOCK_IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
+
 test("submission validates required fields before writing", async () => {
   login();
-  await expect(submitProject({
+  const result = await submitProject({
     title: " ",
     description: "Description",
     category: "Health",
-  })).rejects.toThrow("Protocol title is required");
+    idempotencyKey: MOCK_IDEMPOTENCY_KEY,
+  });
+
+  expect(result).toEqual({
+    success: false,
+    isDuplicate: false,
+    reason: "validation",
+    error: "Protocol title is required",
+  });
   expect(mockDb.$transaction).not.toHaveBeenCalled();
 });
 
@@ -110,9 +126,13 @@ test("admin submissions are never auto-approved", async () => {
     title: "Protocol",
     description: "Description",
     category: "Health",
+    idempotencyKey: MOCK_IDEMPOTENCY_KEY,
   });
 
-  expect(result.status).toBe("SUBMITTED");
+  expect(result.success).toBe(true);
+  if (result.success) {
+    expect(result.protocol.status).toBe("SUBMITTED");
+  }
   expect(mockDb.project.create).toHaveBeenCalledWith(expect.objectContaining({
     data: expect.objectContaining({
       status: "SUBMITTED",
@@ -138,8 +158,13 @@ test("available reviewer assignment excludes the submitting admin and is atomic"
     title: "Protocol",
     description: "Description",
     category: "Health",
+    idempotencyKey: MOCK_IDEMPOTENCY_KEY,
   });
-  expect(result.status).toBe("PENDING_REVIEW");
+
+  expect(result.success).toBe(true);
+  if (result.success) {
+    expect(result.protocol.status).toBe("PENDING_REVIEW");
+  }
   expect(mockDb.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
     where: expect.objectContaining({ id: { notIn: expect.arrayContaining(["owner-1"]) } }),
   }));
@@ -167,9 +192,13 @@ test("submission falls back to the queue when the selected reviewer becomes busy
     title: "Protocol",
     description: "Description",
     category: "Health",
+    idempotencyKey: MOCK_IDEMPOTENCY_KEY,
   });
 
-  expect(result.status).toBe("SUBMITTED");
+  expect(result.success).toBe(true);
+  if (result.success) {
+    expect(result.protocol.status).toBe("SUBMITTED");
+  }
   expect(mockDb.project.create).toHaveBeenCalledWith(expect.objectContaining({
     data: expect.objectContaining({ status: "SUBMITTED" }),
   }));
@@ -180,11 +209,11 @@ test("project status changes follow the legal source-state matrix and require fe
   login("admin-1", "admin");
   mockDb.project.findUnique.mockResolvedValue(project({ status: "SUBMITTED" }));
   await expect(updateProjectStatus("project-1", "APPROVED"))
-    .rejects.toThrow("Illegal protocol status transition");
+      .rejects.toThrow("Illegal protocol status transition");
 
   mockDb.project.findUnique.mockResolvedValue(project({ status: "REVIEW_COMPLETE" }));
   await expect(updateProjectStatus("project-1", "APPROVED_WITH_CONDITIONS"))
-    .rejects.toThrow("Feedback is required");
+      .rejects.toThrow("Feedback is required");
 });
 
 test("legal status transition, history, notification and audit commit together", async () => {
@@ -194,8 +223,8 @@ test("legal status transition, history, notification and audit commit together",
   mockDb.project.findUnique.mockResolvedValue(current);
   mockDb.project.findUniqueOrThrow.mockResolvedValue(updated);
   mockDb.user.findUnique
-    .mockResolvedValueOnce({ role: "admin" })
-    .mockResolvedValueOnce({ email: "owner@test.com", name: "Owner" });
+      .mockResolvedValueOnce({ role: "admin" })
+      .mockResolvedValueOnce({ email: "owner@test.com", name: "Owner" });
 
   await expect(updateProjectStatus("project-1", "APPROVED")).resolves.toBe(updated);
   expect(mockDb.project.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -211,13 +240,13 @@ test("only owners may edit or delete, and only before submission or after incomp
   login();
   mockDb.project.findUnique.mockResolvedValue(project({ status: "SUBMITTED" }));
   await expect(updateProject("project-1", { title: "Changed" }))
-    .rejects.toThrow("cannot be edited");
-  await expect(deleteProject("project-1")).rejects.toThrow("cannot be deleted");
+      .rejects.toThrow("Submitted protocols cannot be edited");
+  await expect(deleteProject("project-1")).rejects.toThrow("Submitted protocols cannot be deleted");
 
   mockDb.project.findUnique.mockResolvedValue(project({ status: "RETURNED_INCOMPLETE" }));
   mockDb.project.findUniqueOrThrow.mockResolvedValue(project({ title: "Changed" }));
   await expect(updateProject("project-1", { title: " Changed " }))
-    .resolves.toEqual(expect.objectContaining({ title: "Changed" }));
+      .resolves.toEqual(expect.objectContaining({ title: "Changed" }));
   expect(mockDb.project.updateMany).toHaveBeenCalledWith(expect.objectContaining({
     where: expect.objectContaining({ userId: "owner-1", deleted: false }),
     data: expect.objectContaining({ title: "Changed" }),
@@ -236,38 +265,38 @@ test("an excluded reviewer cannot regain project access through the admin role",
       evaluationReport: null,
     }],
   }));
-  await expect(getProjectById("project-1")).rejects.toThrow("Excluded reviewers");
+  await expect(getProjectById("project-1")).rejects.toThrow("Forbidden: Excluded reviewers cannot access this protocol");
 });
 
 test("manual assignment rejects owner, busy, banned, and previously excluded reviewers", async () => {
   login("president", "superadmin");
   mockDb.user.findUnique
-    .mockResolvedValueOnce({ role: "superadmin" })
-    .mockResolvedValueOnce({
-      id: "owner-1",
-      name: "Owner",
-      email: "owner@test.com",
-      role: "admin",
-      banned: false,
-    });
+      .mockResolvedValueOnce({ role: "superadmin" })
+      .mockResolvedValueOnce({
+        id: "owner-1",
+        name: "Owner",
+        email: "owner@test.com",
+        role: "admin",
+        banned: false,
+      });
   mockDb.project.findUnique.mockResolvedValue(project());
   await expect(assignProjectReviewer("project-1", "owner-1"))
-    .rejects.toThrow("owners cannot review");
+      .rejects.toThrow("Protocol owners cannot review their own protocols");
 
   mockDb.user.findUnique
-    .mockResolvedValueOnce({ role: "superadmin" })
-    .mockResolvedValueOnce({
-      id: "admin-2",
-      name: "Reviewer",
-      email: "reviewer@test.com",
-      role: "admin",
-      banned: false,
-    });
+      .mockResolvedValueOnce({ role: "superadmin" })
+      .mockResolvedValueOnce({
+        id: "admin-2",
+        name: "Reviewer",
+        email: "reviewer@test.com",
+        role: "admin",
+        banned: false,
+      });
   mockDb.project.findUnique.mockResolvedValue(project({
     reviewAssignments: [{ reviewerId: "admin-2", status: "EXCLUDED" }],
   }));
   await expect(assignProjectReviewer("project-1", "admin-2"))
-    .rejects.toThrow("already assigned or excluded");
+      .rejects.toThrow("This reviewer was already assigned or excluded from this protocol");
 });
 
 test("reassignment excludes every prior reviewer from replacement selection", async () => {
@@ -293,7 +322,7 @@ test("reassignment excludes every prior reviewer from replacement selection", as
   mockDb.reviewAssignment.findMany.mockResolvedValue([]);
   mockDb.user.findFirst.mockResolvedValue(null);
 
-  await expect(reassignProjectReviewer("project-1")).rejects.toThrow("No available admin");
+  await expect(reassignProjectReviewer("project-1")).rejects.toThrow("No available admin found for reassignment");
   expect(mockDb.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
     where: expect.objectContaining({
       id: {
@@ -308,5 +337,5 @@ test("excluded regular admin cannot list project review assignments", async () =
   mockDb.project.findUnique.mockResolvedValue({ id: "project-1" });
   mockDb.reviewAssignment.findFirst.mockResolvedValue({ id: "excluded-assignment" });
   await expect(getProjectReviewAssignments("project-1"))
-    .rejects.toThrow("Excluded reviewers");
+      .rejects.toThrow("Forbidden: Excluded reviewers cannot access review assignments");
 });

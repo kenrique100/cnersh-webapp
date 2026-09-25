@@ -51,6 +51,7 @@ model User {
   aarApplications     AARApplication[]
   appeals             Appeal[]
   files               File[]
+  idempotencyKeys     IdempotencyKey[]
 
   @@index([email])
   @@index([role])
@@ -125,18 +126,18 @@ enum FileType {
 }
 
 model File {
-  id        String   @id @default(uuid())
-  filename  String
-  mimeType  String
-  size      Int
-  url       String?
+  id         String   @id @default(uuid())
+  filename   String
+  mimeType   String
+  size       Int
+  url        String?
   storageKey String?  @unique
-  data      String?
-  type      FileType
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data       String?
+  type       FileType
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -691,4 +692,20 @@ enum SAEEventType {
   FATAL
 
   @@map("sae_event_type")
+}
+
+model IdempotencyKey {
+  id        String   @id @default(uuid())
+  key       String
+  userId    String
+  action    String
+  response  Json?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, action, key])
+  @@index([expiresAt])
+  @@map("idempotency_key")
 }
