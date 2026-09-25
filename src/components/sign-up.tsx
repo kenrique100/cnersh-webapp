@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -25,11 +25,19 @@ import {
     FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "./ui/separator";
 import { Spinner } from "./ui/spinner";
 import { authClient } from "@/lib/auth-client";
 import { authEmailClientSchema } from "@/lib/email-validation-client";
+import { PROFESSIONS } from "@/lib/user-display";
 import Image from "next/image";
 import {
     Dialog,
@@ -48,12 +56,11 @@ interface SignUpData {
     password: string;
     gender: string;
     profession?: string;
+    professionOther?: string;
 }
 
-// Email validation schema
 const emailSchema = authEmailClientSchema;
 
-// Password validation schema
 const passwordSchema = z
     .string()
     .min(1, "Password is required")
@@ -74,10 +81,9 @@ const formSchema = z
             message: "Please select a gender",
         }),
         profession: z.string().optional(),
+        professionOther: z.string().max(100).optional(),
         password: passwordSchema,
-        confirmPassword: z
-            .string()
-            .min(1, "Please confirm your password"),
+        confirmPassword: z.string().min(1, "Please confirm your password"),
         termsAccepted: z.boolean().refine((val) => val === true, {
             message: "You must accept the Terms and Conditions to sign up",
         }),
@@ -109,6 +115,7 @@ export function SignUpForm() {
             email: "",
             gender: "male",
             profession: "",
+            professionOther: "",
             password: "",
             confirmPassword: "",
             termsAccepted: false,
@@ -118,6 +125,7 @@ export function SignUpForm() {
 
     // eslint-disable-next-line react-hooks/incompatible-library
     const watchPassword = form.watch("password");
+    const watchProfession = form.watch("profession");
 
     useEffect(() => {
         setPassword(watchPassword || "");
@@ -166,6 +174,8 @@ export function SignUpForm() {
                     password: data.password,
                     gender: data.gender,
                     profession: data.profession || undefined,
+                    professionOther:
+                        data.profession === "Other" ? data.professionOther?.trim() || undefined : undefined,
                 } as SignUpData,
                 {
                     onSuccess: async () => {
@@ -175,6 +185,7 @@ export function SignUpForm() {
                             email: "",
                             gender: "male",
                             profession: "",
+                            professionOther: "",
                             password: "",
                             confirmPassword: "",
                             termsAccepted: false,
@@ -289,7 +300,9 @@ export function SignUpForm() {
                                 Gender <span className="text-red-500">*</span>
                             </FieldLabel>
                             <RadioGroup
-                                onValueChange={(value) => form.setValue("gender", value as "male" | "female")}
+                                onValueChange={(value) =>
+                                    form.setValue("gender", value as "male" | "female")
+                                }
                                 value={form.watch("gender")}
                                 className="flex flex-wrap gap-4 mt-1"
                                 defaultValue="male"
@@ -322,18 +335,72 @@ export function SignUpForm() {
                         </Field>
 
                         {/* Profession Field */}
-                        <Field className="gap-1.5">
+                        <Field data-invalid={!!form.formState.errors.profession} className="gap-1.5">
                             <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                                 <Briefcase className="w-4 h-4 text-gray-500" />
                                 Profession
                             </FieldLabel>
-                            <Input
-                                {...form.register("profession")}
-                                placeholder="e.g. Researcher, Doctor, Professor"
-                                autoComplete="organization-title"
-                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                            <Controller
+                                name="profession"
+                                control={form.control}
+                                render={({ field }) => (
+                                    <Select
+                                        value={field.value ?? ""}
+                                        onValueChange={(value) => {
+                                            field.onChange(value);
+                                            if (value !== "Other") {
+                                                form.setValue("professionOther", "");
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger
+                                            aria-invalid={!!form.formState.errors.profession}
+                                            className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                                        >
+                                            <SelectValue placeholder="Select your profession" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {PROFESSIONS.map((p) => (
+                                                <SelectItem key={p} value={p}>
+                                                    {p}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             />
+                            {form.formState.errors.profession && (
+                                <FieldError
+                                    errors={[form.formState.errors.profession]}
+                                    className="text-xs text-red-600 dark:text-red-400 mt-1"
+                                />
+                            )}
                         </Field>
+
+                        {/* Profession "Other" free-text — only when needed */}
+                        {watchProfession === "Other" && (
+                            <Field
+                                data-invalid={!!form.formState.errors.professionOther}
+                                className="gap-1.5"
+                            >
+                                <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Please specify your profession
+                                </FieldLabel>
+                                <Input
+                                    {...form.register("professionOther")}
+                                    placeholder="e.g. Biomedical Engineer"
+                                    maxLength={100}
+                                    aria-invalid={!!form.formState.errors.professionOther}
+                                    className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                                />
+                                {form.formState.errors.professionOther && (
+                                    <FieldError
+                                        errors={[form.formState.errors.professionOther]}
+                                        className="text-xs text-red-600 dark:text-red-400 mt-1"
+                                    />
+                                )}
+                            </Field>
+                        )}
 
                         {/* Password Field */}
                         <Field data-invalid={!!form.formState.errors.password} className="gap-1.5">
@@ -356,10 +423,7 @@ export function SignUpForm() {
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
                                     aria-label={showPassword ? "Hide password" : "Show password"}
                                 >
-                                    {showPassword ?
-                                        <EyeOff className="w-4 h-4" /> :
-                                        <Eye className="w-4 h-4" />
-                                    }
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
 
@@ -378,7 +442,9 @@ export function SignUpForm() {
                                     </div>
 
                                     <div className="space-y-1.5 bg-gray-50 dark:bg-gray-900 p-3 rounded-md">
-                                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Password must contain:</p>
+                                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                            Password must contain:
+                                        </p>
                                         {passwordRequirements.map((req, index) => (
                                             <div key={index} className="flex items-center gap-2 text-xs">
                                                 {req.met ? (
@@ -386,7 +452,13 @@ export function SignUpForm() {
                                                 ) : (
                                                     <X className="w-3.5 h-3.5 text-red-600 shrink-0" />
                                                 )}
-                                                <span className={req.met ? "text-green-700 dark:text-green-500" : "text-gray-600 dark:text-gray-400"}>
+                                                <span
+                                                    className={
+                                                        req.met
+                                                            ? "text-green-700 dark:text-green-500"
+                                                            : "text-gray-600 dark:text-gray-400"
+                                                    }
+                                                >
                                                     {req.label}
                                                 </span>
                                             </div>
@@ -424,10 +496,7 @@ export function SignUpForm() {
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
                                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                                 >
-                                    {showConfirmPassword ?
-                                        <EyeOff className="w-4 h-4" /> :
-                                        <Eye className="w-4 h-4" />
-                                    }
+                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
                             {form.formState.errors.confirmPassword && (
@@ -454,7 +523,7 @@ export function SignUpForm() {
                                     onCheckedChange={(checked) =>
                                         form.setValue("termsAccepted", checked as boolean, { shouldValidate: true })
                                     }
-                                    className="mt-0.5 border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                    className="mt-0.5 border-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 data-[state=checked]:text-white dark:data-[state=checked]:bg-gray-100 dark:data-[state=checked]:border-gray-100 dark:data-[state=checked]:text-gray-900"
                                 />
                                 <div className="grid gap-1.5 leading-none">
                                     <label
@@ -462,7 +531,6 @@ export function SignUpForm() {
                                         className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight cursor-pointer"
                                     >
                                         I have read and agree to the{" "}
-                                        {/* Terms and Conditions Dialog */}
                                         <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
                                             <DialogTrigger asChild>
                                                 <button
@@ -482,10 +550,8 @@ export function SignUpForm() {
                                                         Cameroon National Ethics Committee (CNERSH) - Research Ethics Framework
                                                     </DialogDescription>
                                                 </DialogHeader>
-                                                {/* ScrollArea - ONLY the terms content, no button */}
                                                 <ScrollArea className="flex-1 min-h-0 px-6 bg-white dark:bg-gray-950">
                                                     <div className="space-y-6 text-sm py-4">
-                                                        {/* Foreword Section */}
                                                         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
                                                                 <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
@@ -501,7 +567,6 @@ export function SignUpForm() {
                                                             </p>
                                                         </div>
 
-                                                        {/* Preamble */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
                                                                 <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
@@ -533,7 +598,6 @@ export function SignUpForm() {
                                                             </p>
                                                         </div>
 
-                                                        {/* Official Languages */}
                                                         <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-100 dark:border-blue-900">
                                                             <h3 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">OFFICIAL LANGUAGES</h3>
                                                             <p className="text-gray-700 dark:text-gray-300">
@@ -542,7 +606,6 @@ export function SignUpForm() {
                                                             </p>
                                                         </div>
 
-                                                        {/* PART ONE: INTERPRETATION OF KEY TERMS */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
                                                                 PART ONE: INTERPRETATION OF KEY TERMS
@@ -597,7 +660,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* Mission and Objectives */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">1.2. MISSION STATEMENT</h3>
                                                             <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-3 rounded-md border-l-4 border-blue-600">
@@ -643,13 +705,11 @@ export function SignUpForm() {
                                                             </ol>
                                                         </div>
 
-                                                        {/* PART TWO: CORE ETHICAL VALUES */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
                                                                 PART TWO: CORE ETHICAL VALUES
                                                             </h3>
 
-                                                            {/* 2.1 Integrity */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.1. INTEGRITY</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Being honest, having strong moral principles and standing consistently for what is right.</p>
@@ -668,7 +728,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Honesty, Trust, Fairness, Loyalty and Confidentiality.</p>
                                                             </div>
 
-                                                            {/* 2.2 Excellence */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.2. EXCELLENCE</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Striving to be as good as one can, that is, being diligent, committed, well informed and well prepared to do a job properly and honestly.</p>
@@ -686,7 +745,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Honesty, Selflessness, Collaboration, Accountability, Impartiality, Responsibility and Integrity.</p>
                                                             </div>
 
-                                                            {/* 2.3 Accountability */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.3. ACCOUNTABILITY</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Accepting and reporting on one&#39;s decisions, actions and outcomes.</p>
@@ -703,7 +761,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Responsibility, Excellence, Loyalty, Responsible Citizenship, Integrity.</p>
                                                             </div>
 
-                                                            {/* 2.4 Respect */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.4. RESPECT</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Being courteous and decent in word and action, recognizing and accepting our differences, as well as acknowledging each other&#39;s rights to dignity and privacy.</p>
@@ -722,7 +779,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Honesty, Fairness, Loyalty, Confidentiality, and Integrity.</p>
                                                             </div>
 
-                                                            {/* 2.5 Confidentiality */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.5. CONFIDENTIALITY</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Discretion in handling official information and limiting disclosures only to a formal need-to-know basis.</p>
@@ -739,7 +795,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Trust, Integrity, Loyalty, Accountability, Responsibility and Discretion.</p>
                                                             </div>
 
-                                                            {/* 2.6 Collaboration */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.6. COLLABORATION</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Working together as a team to achieve set goals.</p>
@@ -754,7 +809,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Respect, Trust, Fairness, Responsibility and Integrity.</p>
                                                             </div>
 
-                                                            {/* 2.7 Impartiality */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.7. IMPARTIALITY</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Being just, unbiased and avoiding prejudices in decision-making.</p>
@@ -770,7 +824,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Equity, Sincerity, Respect, Responsibility and Integrity.</p>
                                                             </div>
 
-                                                            {/* 2.8 Loyalty */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.8. LOYALTY</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Being faithful and committed to an ideal, a cause, person, community, country, and to those with whom one interacts, while avoiding any conflict of interest.</p>
@@ -786,7 +839,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Faithfulness, Honesty, Integrity, Respect, Responsibility, and Citizenship.</p>
                                                             </div>
 
-                                                            {/* 2.9 Responsibility */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.9. RESPONSIBILITY</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Having the capacity to take or implement ethical decisions without fear or favour.</p>
@@ -802,7 +854,6 @@ export function SignUpForm() {
                                                                 <p className="text-gray-700 dark:text-gray-300">Prudence, Accountability, Integrity, Honesty, Probity, and Impartiality.</p>
                                                             </div>
 
-                                                            {/* 2.10 Patriotism */}
                                                             <div className="mb-4 p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
                                                                 <h4 className="font-bold text-gray-900 dark:text-gray-100">2.10. PATRIOTISM</h4>
                                                                 <p className="text-gray-700 dark:text-gray-300 italic">Allegiance to the State and its Institutions.</p>
@@ -819,7 +870,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* PART THREE: IMPLEMENTATION */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
                                                                 PART THREE: IMPLEMENTATION
@@ -859,7 +909,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* PART FOUR: ETHICS COMMITTEE */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
                                                                 PART FOUR: ETHICS COMMITTEE (CEC)
@@ -940,7 +989,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* CNERSH SPECIFIC ETHICAL FRAMEWORK */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
                                                                 CAMEROON NATIONAL ETHICS COMMITTEE (CNERSH) FRAMEWORK
@@ -1030,7 +1078,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* COMMITMENT STATEMENT AND INTEGRITY PACT */}
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-base border-b border-gray-200 dark:border-gray-800 pb-2">
                                                                 COMMITMENT AND ACKNOWLEDGMENT
@@ -1053,7 +1100,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* CONTACT INFORMATION */}
                                                         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
                                                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                                                                 CONTACT INFORMATION
@@ -1097,7 +1143,6 @@ export function SignUpForm() {
                                                             </div>
                                                         </div>
 
-                                                        {/* ACKNOWLEDGMENT */}
                                                         <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                                                             <p className="text-xs text-gray-600 dark:text-gray-400 font-medium text-center">
                                                                 This Code of Ethics was developed drawing inspiration from existing Codes of Ethics of sister-agencies:
@@ -1114,7 +1159,6 @@ export function SignUpForm() {
                                                         </p>
                                                     </div>
                                                 </ScrollArea>
-                                                {/* Bottom Left Button Footer */}
                                                 <div className="flex justify-between items-center px-6 py-4 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 shrink-0">
                                                     <Button
                                                         onClick={() => {
@@ -1161,11 +1205,7 @@ export function SignUpForm() {
                         disabled={form.formState.isSubmitting || !form.watch("termsAccepted")}
                         className="w-full h-11 text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {form.formState.isSubmitting ? (
-                            <Spinner className="size-4" />
-                        ) : (
-                            "Create Account"
-                        )}
+                        {form.formState.isSubmitting ? <Spinner className="size-4" /> : "Create Account"}
                     </Button>
 
                     <p className="text-sm text-center text-gray-600 dark:text-gray-400">
@@ -1197,27 +1237,11 @@ export function SignUpForm() {
                         onClick={signInWithGoogle}
                         className="w-full h-11 text-sm border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-md transition-colors dark:border-gray-700 dark:hover:bg-gray-900 dark:text-gray-300"
                     >
-                        <svg
-                            className="w-5 h-5 mr-2"
-                            viewBox="0 0 48 48"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                fill="#EA4335"
-                                d="M24 9.5c3.54 0 6.73 1.22 9.24 3.6l6.9-6.9C35.68 2.4 30.2 0 24 0 14.64 0 6.4 5.4 2.44 13.24l8.04 6.24C12.6 13.02 17.76 9.5 24 9.5z"
-                            />
-                            <path
-                                fill="#4285F4"
-                                d="M46.5 24.5c0-1.64-.14-3.2-.4-4.7H24v9h12.7c-.55 2.96-2.2 5.47-4.7 7.16l7.2 5.6C43.9 37.8 46.5 31.7 46.5 24.5z"
-                            />
-                            <path
-                                fill="#FBBC05"
-                                d="M10.48 28.48A14.5 14.5 0 019.5 24c0-1.56.27-3.07.75-4.48l-8.04-6.24A23.96 23.96 0 000 24c0 3.8.9 7.4 2.48 10.72l8-6.24z"
-                            />
-                            <path
-                                fill="#34A853"
-                                d="M24 48c6.2 0 11.68-2.05 15.58-5.6l-7.2-5.6c-2 1.35-4.55 2.15-8.38 2.15-6.24 0-11.4-3.52-13.52-8.98l-8 6.24C6.4 42.6 14.64 48 24 48z"
-                            />
+                        <svg className="w-5 h-5 mr-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.24 3.6l6.9-6.9C35.68 2.4 30.2 0 24 0 14.64 0 6.4 5.4 2.44 13.24l8.04 6.24C12.6 13.02 17.76 9.5 24 9.5z" />
+                            <path fill="#4285F4" d="M46.5 24.5c0-1.64-.14-3.2-.4-4.7H24v9h12.7c-.55 2.96-2.2 5.47-4.7 7.16l7.2 5.6C43.9 37.8 46.5 31.7 46.5 24.5z" />
+                            <path fill="#FBBC05" d="M10.48 28.48A14.5 14.5 0 019.5 24c0-1.56.27-3.07.75-4.48l-8.04-6.24A23.96 23.96 0 000 24c0 3.8.9 7.4 2.48 10.72l8-6.24z" />
+                            <path fill="#34A853" d="M24 48c6.2 0 11.68-2.05 15.58-5.6l-7.2-5.6c-2 1.35-4.55 2.15-8.38 2.15-6.24 0-11.4-3.52-13.52-8.98l-8 6.24C6.4 42.6 14.64 48 24 48z" />
                         </svg>
                         Continue with Google
                     </Button>

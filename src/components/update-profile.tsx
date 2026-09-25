@@ -12,16 +12,25 @@ import {
     FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import ImageUpload from "./image-upload";
 import { Spinner } from "./ui/spinner";
+import { PROFESSIONS } from "@/lib/user-display";
 
 interface ProfileFormProps {
     email: string;
     name: string;
     image: string;
     profession: string;
+    professionOther?: string;
 }
 
 const formSchema = z.object({
@@ -29,9 +38,16 @@ const formSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters"),
     image: z.string().optional(),
     profession: z.string().optional(),
+    professionOther: z.string().max(100).optional(),
 });
 
-export function UpdateProfile({ name, email, image, profession}: ProfileFormProps) {
+export function UpdateProfile({
+                                  name,
+                                  email,
+                                  image,
+                                  profession,
+                                  professionOther,
+                              }: ProfileFormProps) {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -39,8 +55,11 @@ export function UpdateProfile({ name, email, image, profession}: ProfileFormProp
             email,
             image: image || "",
             profession: profession || "",
+            professionOther: professionOther || "",
         },
     });
+
+    const watchProfession = form.watch("profession");
 
     const onSubmit = async (data: z.infer<typeof formSchema>) => {
         try {
@@ -49,6 +68,8 @@ export function UpdateProfile({ name, email, image, profession}: ProfileFormProp
                     name: data.name,
                     image: data.image || "",
                     profession: data.profession || "",
+                    professionOther:
+                        data.profession === "Other" ? data.professionOther?.trim() || "" : "",
                 } as Parameters<typeof authClient.updateUser>[0],
                 {
                     onSuccess: async () => {
@@ -80,14 +101,15 @@ export function UpdateProfile({ name, email, image, profession}: ProfileFormProp
                                 Profile Picture
                             </FieldLabel>
                             <ImageUpload
+                                variant="profile"
                                 defaultUrl={field.value ?? null}
                                 onChange={(url) => {
                                     field.onChange(url);
                                 }}
                             />
                             {fieldState.invalid && (
-                                <FieldError 
-                                    errors={[fieldState.error]} 
+                                <FieldError
+                                    errors={[fieldState.error]}
                                     className="text-xs text-red-600 dark:text-red-400 mt-1"
                                 />
                             )}
@@ -111,31 +133,83 @@ export function UpdateProfile({ name, email, image, profession}: ProfileFormProp
                                 className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
                             />
                             {fieldState.invalid && (
-                                <FieldError 
-                                    errors={[fieldState.error]} 
+                                <FieldError
+                                    errors={[fieldState.error]}
                                     className="text-xs text-red-600 dark:text-red-400 mt-1"
                                 />
                             )}
                         </Field>
                     )}
                 />
+
                 <Controller
                     name="profession"
                     control={form.control}
-                    render={({ field }) => (
-                        <Field className="gap-1.5">
+                    render={({ field, fieldState }) => (
+                        <Field data-invalid={fieldState.invalid} className="gap-1.5">
                             <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Profession
                             </FieldLabel>
-                            <Input
-                                {...field}
-                                autoComplete="organization-title"
-                                placeholder="e.g. Researcher, Doctor, Professor"
-                                className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
-                            />
+                            <Select
+                                value={field.value ?? ""}
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    if (value !== "Other") {
+                                        form.setValue("professionOther", "");
+                                    }
+                                }}
+                            >
+                                <SelectTrigger
+                                    aria-invalid={fieldState.invalid}
+                                    className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                                >
+                                    <SelectValue placeholder="Select your profession" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PROFESSIONS.map((p) => (
+                                        <SelectItem key={p} value={p}>
+                                            {p}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {fieldState.invalid && (
+                                <FieldError
+                                    errors={[fieldState.error]}
+                                    className="text-xs text-red-600 dark:text-red-400 mt-1"
+                                />
+                            )}
                         </Field>
                     )}
                 />
+
+                {watchProfession === "Other" && (
+                    <Controller
+                        name="professionOther"
+                        control={form.control}
+                        render={({ field, fieldState }) => (
+                            <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                                <FieldLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Please specify your profession
+                                </FieldLabel>
+                                <Input
+                                    {...field}
+                                    placeholder="e.g. Biomedical Engineer"
+                                    maxLength={100}
+                                    aria-invalid={fieldState.invalid}
+                                    className="h-11 text-sm px-4 rounded-md border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-900"
+                                />
+                                {fieldState.invalid && (
+                                    <FieldError
+                                        errors={[fieldState.error]}
+                                        className="text-xs text-red-600 dark:text-red-400 mt-1"
+                                    />
+                                )}
+                            </Field>
+                        )}
+                    />
+                )}
+
                 <Controller
                     name="email"
                     control={form.control}
@@ -157,8 +231,8 @@ export function UpdateProfile({ name, email, image, profession}: ProfileFormProp
                                 Email address cannot be changed
                             </p>
                             {fieldState.invalid && (
-                                <FieldError 
-                                    errors={[fieldState.error]} 
+                                <FieldError
+                                    errors={[fieldState.error]}
                                     className="text-xs text-red-600 dark:text-red-400 mt-1"
                                 />
                             )}
@@ -173,11 +247,7 @@ export function UpdateProfile({ name, email, image, profession}: ProfileFormProp
                 className="w-full h-11 text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-700"
                 form="update-profile"
             >
-                {form.formState.isSubmitting ? (
-                    <Spinner className="size-4" />
-                ) : (
-                    "Update Profile"
-                )}
+                {form.formState.isSubmitting ? <Spinner className="size-4" /> : "Update Profile"}
             </Button>
         </form>
     );

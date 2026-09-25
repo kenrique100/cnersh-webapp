@@ -200,14 +200,74 @@ describe('ChatBox', () => {
     // ── message submission ─────────────────────────────────────────────────
 
     describe('message submission', () => {
-        it('calls submitSupportMessage with the message text', async () => {
+        it('calls submitSupportMessage with the structured payload', async () => {
             mockSubmitSupportMessage.mockResolvedValueOnce(undefined);
             render(<ChatBox />);
             const user = userEvent.setup();
             await openPanel(user);
             await submitMessage(user, 'Test message');
             await waitFor(() => {
-                expect(mockSubmitSupportMessage).toHaveBeenCalledWith('Test message');
+                expect(mockSubmitSupportMessage).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        category: 'other',
+                        message: 'Test message',
+                        subject: 'Test message',
+                    })
+                );
+            });
+        });
+
+        it('derives the subject from the first line of the message', async () => {
+            mockSubmitSupportMessage.mockResolvedValueOnce(undefined);
+            render(<ChatBox />);
+            const user = userEvent.setup();
+            await openPanel(user);
+            await submitMessage(user, 'First line{enter}Second line');
+            await waitFor(() => {
+                expect(mockSubmitSupportMessage).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        subject: 'First line',
+                    })
+                );
+            });
+        });
+
+        it('sends category "other" for the free-form chat box', async () => {
+            mockSubmitSupportMessage.mockResolvedValueOnce(undefined);
+            render(<ChatBox />);
+            const user = userEvent.setup();
+            await openPanel(user);
+            await submitMessage(user, 'Anything');
+            await waitFor(() => {
+                expect(mockSubmitSupportMessage).toHaveBeenCalledWith(
+                    expect.objectContaining({ category: 'other' })
+                );
+            });
+        });
+
+        it('includes the current pageUrl in the payload', async () => {
+            mockSubmitSupportMessage.mockResolvedValueOnce(undefined);
+            render(<ChatBox />);
+            const user = userEvent.setup();
+            await openPanel(user);
+            await submitMessage(user, 'Report this');
+            await waitFor(() => {
+                const call = mockSubmitSupportMessage.mock.calls[0][0];
+                expect(typeof call.pageUrl).toBe('string');
+                expect(call.pageUrl).toContain('http');
+            });
+        });
+
+        it('trims leading/trailing whitespace before sending', async () => {
+            mockSubmitSupportMessage.mockResolvedValueOnce(undefined);
+            render(<ChatBox />);
+            const user = userEvent.setup();
+            await openPanel(user);
+            await submitMessage(user, '   spaced out   ');
+            await waitFor(() => {
+                expect(mockSubmitSupportMessage).toHaveBeenCalledWith(
+                    expect.objectContaining({ message: 'spaced out' })
+                );
             });
         });
 

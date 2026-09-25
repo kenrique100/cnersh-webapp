@@ -54,7 +54,7 @@ export function ResourcesDesktopDropdown() {
                     <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Law &amp; Research in Cameroon</p>
                     <a href="/LAW ON RESEARCH ON HUMAN SUBJECTS.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
-                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Law on Human Subjects
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Law on Research on Human Subjects
                     </a>
                     <a href="/LOI RECHERCHE MEDICALE-OCR.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">

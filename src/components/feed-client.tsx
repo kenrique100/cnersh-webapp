@@ -117,6 +117,7 @@ interface PostUser {
     image: string | null;
     role?: string | null;
     profession?: string | null;
+    professionOther?: string | null;
 }
 
 interface CommentLikeData {
@@ -267,16 +268,16 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-6 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-5 flex flex-col items-center justify-center gap-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isUploading ? (
                     <>
-                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                        <Loader2 className="h-7 w-7 text-blue-600 animate-spin" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Uploading video...</span>
                     </>
                 ) : (
                     <>
-                        <VideoIcon className="h-8 w-8 text-gray-400" />
+                        <VideoIcon className="h-7 w-7 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Drop or click to upload a video</span>
                         <span className="text-xs text-gray-400 dark:text-gray-500">Videos up to 64MB</span>
                     </>
@@ -822,19 +823,19 @@ export default function FeedClient({
     };
 
     return (
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-3">
             {/* Create Post Card */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
-                <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start gap-3">
+                <CardContent className="p-2.5 sm:p-3">
+                    <div className="flex items-start gap-2.5">
                         <UserAvatar
                             name={currentUserName}
                             image={currentUserImage}
                             gender={currentUserGender}
-                            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border border-gray-200 dark:border-gray-700"
+                            className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 border border-gray-200 dark:border-gray-700"
                             fallbackClassName="text-sm font-semibold"
                         />
-                        <div className="flex-1 space-y-3">
+                        <div className="flex-1 space-y-2.5">
                             <div className="relative">
                                 <Textarea
                                     placeholder="Share an update with your community... (use @ to mention users)"
@@ -843,7 +844,7 @@ export default function FeedClient({
                                         setNewPostContent(e.target.value);
                                         handleMentionSearch(e.target.value, "new-post");
                                     }}
-                                    className="min-h-[60px] sm:min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm sm:text-base"
+                                    className="min-h-[56px] sm:min-h-[72px] resize-none border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-950 transition-colors text-sm sm:text-base"
                                 />
                                 {showMentionDropdown === "new-post" && mentionResults.length > 0 && (
                                     <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
@@ -865,39 +866,39 @@ export default function FeedClient({
                                 )}
                             </div>
                             {(newPostImages.length > 0 || newPostImage) && (
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1.5">
                                     {newPostImage && (
-                                        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-4px)]">
-                                            <Image src={newPostImage} alt="Upload preview" width={300} height={200} className="w-full h-[120px] sm:h-[150px] object-cover" unoptimized />
+                                        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-3px)]">
+                                            <Image src={newPostImage} alt="Upload preview" width={300} height={200} className="w-full h-[110px] sm:h-[140px] object-cover" unoptimized />
                                             <button type="button" onClick={() => { if (newPostImage) void deleteBlobUrl(newPostImage); setNewPostImage(null); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove image"><XIcon className="h-3 w-3" /></button>
                                         </div>
                                     )}
                                     {newPostImages.map((img, idx) => (
-                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-4px)]">
-                                            <Image src={img} alt={`Upload preview ${idx + 1}`} width={300} height={200} className="w-full h-[120px] sm:h-[150px] object-cover" unoptimized />
+                                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-full sm:w-[calc(50%-3px)]">
+                                            <Image src={img} alt={`Upload preview ${idx + 1}`} width={300} height={200} className="w-full h-[110px] sm:h-[140px] object-cover" unoptimized />
                                             <button type="button" onClick={() => { void deleteBlobUrl(img); setNewPostImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove image"><XIcon className="h-3 w-3" /></button>
                                         </div>
                                     ))}
                                 </div>
                             )}
                             {(newPostVideos.length > 0 || newPostVideo) && (
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     {newPostVideo && (
                                         <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                            <video src={newPostVideo} controls className="w-full max-h-[150px] sm:max-h-[200px] object-contain bg-black" />
+                                            <video src={newPostVideo} controls className="w-full max-h-[140px] sm:max-h-[180px] object-contain bg-black" />
                                             <button type="button" onClick={() => setNewPostVideo(null)} className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove video"><XIcon className="h-4 w-4" /></button>
                                         </div>
                                     )}
                                     {newPostVideos.map((vid, idx) => (
                                         <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                            <video src={vid} controls className="w-full max-h-[150px] sm:max-h-[200px] object-contain bg-black" />
+                                            <video src={vid} controls className="w-full max-h-[140px] sm:max-h-[180px] object-contain bg-black" />
                                             <button type="button" onClick={() => { void deleteBlobUrl(vid); setNewPostVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors cursor-pointer" title="Remove video"><XIcon className="h-4 w-4" /></button>
                                         </div>
                                     ))}
                                 </div>
                             )}
                             {showImageUpload && (
-                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
+                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2.5 bg-gray-50 dark:bg-gray-900">
                                     <ImageUpload
                                         variant="feed"
                                         onChange={(url) => {
@@ -910,7 +911,7 @@ export default function FeedClient({
                                 </div>
                             )}
                             {showVideoUpload && (
-                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900">
+                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2.5 bg-gray-50 dark:bg-gray-900">
                                     <VideoUploadInput
                                         onUpload={(url) => {
                                             setNewPostVideos((prev) => [...prev, url]);
@@ -920,10 +921,10 @@ export default function FeedClient({
                                 </div>
                             )}
                             {showLinkInput && (
-                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2 sm:p-3 bg-gray-50 dark:bg-gray-900 space-y-2">
+                                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900 space-y-1.5">
                                     <div className="flex items-center gap-2">
                                         <LinkIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                                        <input type="url" placeholder="Paste a link URL (e.g. https://example.com)" value={newPostLinkUrl} onChange={(e) => setNewPostLinkUrl(e.target.value)} className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                        <input type="url" placeholder="Paste a link URL (e.g. https://example.com)" value={newPostLinkUrl} onChange={(e) => setNewPostLinkUrl(e.target.value)} className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                                         <button type="button" onClick={() => { setShowLinkInput(false); setNewPostLinkUrl(""); setNewPostLinkType(DEFAULT_LINK_TYPE); }} className="p-1 text-gray-400 hover:text-red-500"><XIcon className="h-4 w-4" /></button>
                                     </div>
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -934,15 +935,15 @@ export default function FeedClient({
                                     </div>
                                 </div>
                             )}
-                            <div className="flex items-center justify-between pt-1">
-                                <div className="flex items-center gap-0.5 sm:gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => { setShowVideoUpload(false); setShowImageUpload(!showImageUpload); }} className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-9 px-2 sm:px-3 rounded-lg"><ImageIcon className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline text-sm font-medium">Photo</span></Button>
-                                    <Button variant="ghost" size="sm" onClick={() => { setShowImageUpload(false); setShowVideoUpload(!showVideoUpload); }} className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 h-9 px-2 sm:px-3 rounded-lg"><VideoIcon className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline text-sm font-medium">Video</span></Button>
-                                    <Button variant="ghost" size="sm" onClick={() => setShowLinkInput(!showLinkInput)} className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 h-9 px-2 sm:px-3 rounded-lg"><LinkIcon className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline text-sm font-medium">Link</span></Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleMentionAll("new-post")} className="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-orange-400 h-9 px-2 sm:px-3 rounded-lg" title="Mention all users"><UsersIcon className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline text-sm font-medium">@All</span></Button>
+                            <div className="flex items-center justify-between pt-0.5">
+                                <div className="flex items-center gap-0 sm:gap-0.5">
+                                    <Button variant="ghost" size="sm" onClick={() => { setShowVideoUpload(false); setShowImageUpload(!showImageUpload); }} className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 h-8 px-1.5 sm:px-2.5 rounded-lg"><ImageIcon className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline text-sm font-medium">Photo</span></Button>
+                                    <Button variant="ghost" size="sm" onClick={() => { setShowImageUpload(false); setShowVideoUpload(!showVideoUpload); }} className="text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 h-8 px-1.5 sm:px-2.5 rounded-lg"><VideoIcon className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline text-sm font-medium">Video</span></Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setShowLinkInput(!showLinkInput)} className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 h-8 px-1.5 sm:px-2.5 rounded-lg"><LinkIcon className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline text-sm font-medium">Link</span></Button>
+                                    <Button variant="ghost" size="sm" onClick={() => handleMentionAll("new-post")} className="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-orange-400 h-8 px-1.5 sm:px-2.5 rounded-lg" title="Mention all users"><UsersIcon className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline text-sm font-medium">@All</span></Button>
                                 </div>
-                                <Button onClick={handleCreatePost} disabled={isSubmitting || (!newPostContent.trim() && !newPostImage && !newPostVideo && newPostImages.length === 0 && newPostVideos.length === 0)} size="sm" className="h-9 rounded-md bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50">
-                                    {isSubmitting ? (<span className="flex items-center gap-1.5"><span className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Posting...</span>) : (<><SendIcon className="h-3.5 w-3.5 mr-1.5" />Post</>)}
+                                <Button onClick={handleCreatePost} disabled={isSubmitting || (!newPostContent.trim() && !newPostImage && !newPostVideo && newPostImages.length === 0 && newPostVideos.length === 0)} size="sm" className="h-8 rounded-md bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50">
+                                    {isSubmitting ? (<span className="flex items-center gap-1.5"><span className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Posting...</span>) : (<><SendIcon className="h-3.5 w-3.5 mr-1" />Post</>)}
                                 </Button>
                             </div>
                         </div>
@@ -951,7 +952,7 @@ export default function FeedClient({
             </Card>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 px-2">
+            <div className="flex items-center gap-2 px-2">
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Recent Activity</span>
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
@@ -960,9 +961,9 @@ export default function FeedClient({
             {/* Posts Feed */}
             {posts.length === 0 ? (
                 <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
-                    <CardContent className="py-10 sm:py-16 text-center">
-                        <div className="flex flex-col items-center gap-2 sm:gap-3">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><PenIcon className="h-5 w-5 sm:h-7 sm:w-7 text-gray-400" /></div>
+                    <CardContent className="py-10 sm:py-14 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><PenIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" /></div>
                             <div><p className="text-gray-800 dark:text-gray-200 font-semibold">No posts yet</p><p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Be the first to share an update with the community!</p></div>
                         </div>
                     </CardContent>
@@ -980,47 +981,48 @@ export default function FeedClient({
                                     userName={post.user.name}
                                     userImage={post.user.image}
                                     userProfession={post.user.profession}
+                                    userProfessionOther={post.user.professionOther}
                                     createdAt={post.createdAt}
                                     actions={
-                                        <>
+                                        <div className="flex items-center gap-0.5 -mr-1">
                                             {post.user.id !== currentUserId && (
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-full" onClick={() => setReportingPostId(post.id)} title="Report post"><FlagIcon className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-full" onClick={() => setReportingPostId(post.id)} title="Report post"><FlagIcon className="h-3.5 w-3.5" /></Button>
                                             )}
                                             {post.user.id === currentUserId && (
-                                                <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-full", post.commentsEnabled === false ? "text-orange-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950" : "text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950")} onClick={() => handleTogglePostComments(post.id)} title={post.commentsEnabled === false ? "Enable comments" : "Disable comments"}>
-                                                    {post.commentsEnabled === false ? <MessageCircleOffIcon className="h-4 w-4" /> : <MessageCircleIcon className="h-4 w-4" />}
+                                                <Button variant="ghost" size="icon" className={cn("h-7 w-7 rounded-full", post.commentsEnabled === false ? "text-orange-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950" : "text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950")} onClick={() => handleTogglePostComments(post.id)} title={post.commentsEnabled === false ? "Enable comments" : "Disable comments"}>
+                                                    {post.commentsEnabled === false ? <MessageCircleOffIcon className="h-3.5 w-3.5" /> : <MessageCircleIcon className="h-3.5 w-3.5" />}
                                                 </Button>
                                             )}
                                             {post.user.id === currentUserId && (
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-full" onClick={() => { setEditingPostId(post.id); setEditingPostContent(post.content); setEditingPostImages(post.images || []); setEditingPostVideos(post.videos || []); setEditingPostTags(post.tags || []); setEditingPostLinkUrl(post.linkUrl || ""); setEditingPostLinkType(post.linkType || DEFAULT_LINK_TYPE); setEditingShowImageUpload(false); setEditingShowVideoUpload(false); setEditingShowLinkInput(false); }} title="Edit post"><PencilIcon className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-full" onClick={() => { setEditingPostId(post.id); setEditingPostContent(post.content); setEditingPostImages(post.images || []); setEditingPostVideos(post.videos || []); setEditingPostTags(post.tags || []); setEditingPostLinkUrl(post.linkUrl || ""); setEditingPostLinkType(post.linkType || DEFAULT_LINK_TYPE); setEditingShowImageUpload(false); setEditingShowVideoUpload(false); setEditingShowLinkInput(false); }} title="Edit post"><PencilIcon className="h-3.5 w-3.5" /></Button>
                                             )}
                                             {(post.user.id === currentUserId || isAdmin) && (
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-full" onClick={() => handleDelete(post.id)} title="Delete post"><TrashIcon className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-full" onClick={() => handleDelete(post.id)} title="Delete post"><TrashIcon className="h-3.5 w-3.5" /></Button>
                                             )}
-                                        </>
+                                        </div>
                                     }
                                 />
                                 {(post.content || editingPostId === post.id) && (
                                     <PostTextContent
                                         content={post.content}
                                         customRender={editingPostId === post.id ? (
-                                            <div className="space-y-3">
-                                                <Textarea value={editingPostContent} onChange={(e) => setEditingPostContent(e.target.value)} className="min-h-[80px] resize-none border-gray-200 dark:border-gray-700 rounded-xl text-base" />
+                                            <div className="space-y-2.5">
+                                                <Textarea value={editingPostContent} onChange={(e) => setEditingPostContent(e.target.value)} className="min-h-[72px] resize-none border-gray-200 dark:border-gray-700 rounded-xl text-base" />
                                                 {editingPostImages.length > 0 && (
-                                                    <div className="grid grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-2 gap-1.5">
                                                         {editingPostImages.map((img, idx) => (
                                                             <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                                <Image src={img} alt="" width={200} height={120} className="w-full h-[120px] object-cover" />
+                                                                <Image src={img} alt="" width={200} height={120} className="w-full h-[110px] object-cover" />
                                                                 <button type="button" onClick={() => { void deleteBlobUrl(img); setEditingPostImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Remove image"><XIcon className="h-3 w-3" /></button>
                                                             </div>
                                                         ))}
                                                     </div>
                                                 )}
                                                 {editingPostVideos.length > 0 && (
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-1.5">
                                                         {editingPostVideos.map((vid, idx) => (
                                                             <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                                <video src={vid} controls className="w-full max-h-[120px] sm:max-h-[150px] object-contain bg-black" />
+                                                                <video src={vid} controls className="w-full max-h-[110px] sm:max-h-[140px] object-contain bg-black" />
                                                                 <button type="button" onClick={() => { void deleteBlobUrl(vid); setEditingPostVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Remove video"><XIcon className="h-3 w-3" /></button>
                                                             </div>
                                                         ))}
@@ -1037,7 +1039,7 @@ export default function FeedClient({
                                                     </div>
                                                 )}
                                                 {editingShowLinkInput && (
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-1.5">
                                                         <div className="flex items-center gap-2">
                                                             <input type="url" placeholder="Enter URL..." value={editingPostLinkUrl} onChange={(e) => setEditingPostLinkUrl(e.target.value)} className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm" />
                                                             <button type="button" onClick={() => setEditingShowLinkInput(false)} className="text-gray-400 hover:text-gray-600"><XIcon className="h-4 w-4" /></button>
@@ -1063,14 +1065,14 @@ export default function FeedClient({
                                                 <div className="flex items-center gap-2">
                                                     <input type="text" placeholder="Add tag..." value={editingPostTagInput} onChange={(e) => setEditingPostTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && editingPostTagInput.trim()) { e.preventDefault(); const tag = editingPostTagInput.trim().replace(/^#/, ""); if (tag && !editingPostTags.includes(tag)) setEditingPostTags((prev) => [...prev, tag]); setEditingPostTagInput(""); } }} className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1 text-xs" />
                                                 </div>
-                                                <div className="flex items-center gap-1 border-t border-gray-100 dark:border-gray-800 pt-2">
-                                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingShowImageUpload(!editingShowImageUpload); setEditingShowVideoUpload(false); }} className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600"><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
-                                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingShowVideoUpload(!editingShowVideoUpload); setEditingShowImageUpload(false); }} className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600"><VideoIcon className="h-3.5 w-3.5 mr-1" /> Video</Button>
-                                                    <Button type="button" variant="ghost" size="sm" onClick={() => setEditingShowLinkInput(!editingShowLinkInput)} className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600"><LinkIcon className="h-3.5 w-3.5 mr-1" /> Link</Button>
+                                                <div className="flex items-center gap-0.5 border-t border-gray-100 dark:border-gray-800 pt-1.5">
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingShowImageUpload(!editingShowImageUpload); setEditingShowVideoUpload(false); }} className="h-7 px-1.5 text-xs text-gray-500 hover:text-blue-600"><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingShowVideoUpload(!editingShowVideoUpload); setEditingShowImageUpload(false); }} className="h-7 px-1.5 text-xs text-gray-500 hover:text-blue-600"><VideoIcon className="h-3.5 w-3.5 mr-1" /> Video</Button>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => setEditingShowLinkInput(!editingShowLinkInput)} className="h-7 px-1.5 text-xs text-gray-500 hover:text-blue-600"><LinkIcon className="h-3.5 w-3.5 mr-1" /> Link</Button>
                                                 </div>
-                                                <div className="flex items-center gap-2 justify-end">
-                                                    <Button variant="outline" size="sm" onClick={() => { setEditingPostId(null); setEditingPostContent(""); setEditingPostImages([]); setEditingPostVideos([]); setEditingPostTags([]); setEditingPostTagInput(""); setEditingPostLinkUrl(""); setEditingShowImageUpload(false); setEditingShowVideoUpload(false); setEditingShowLinkInput(false); }} className="rounded-lg">Cancel</Button>
-                                                    <Button size="sm" onClick={() => handleEditPost(post.id)} disabled={!editingPostContent.trim()} className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg">Save</Button>
+                                                <div className="flex items-center gap-1.5 justify-end">
+                                                    <Button variant="outline" size="sm" onClick={() => { setEditingPostId(null); setEditingPostContent(""); setEditingPostImages([]); setEditingPostVideos([]); setEditingPostTags([]); setEditingPostTagInput(""); setEditingPostLinkUrl(""); setEditingShowImageUpload(false); setEditingShowVideoUpload(false); setEditingShowLinkInput(false); }} className="rounded-lg h-8">Cancel</Button>
+                                                    <Button size="sm" onClick={() => handleEditPost(post.id)} disabled={!editingPostContent.trim()} className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg h-8">Save</Button>
                                                 </div>
                                             </div>
                                         ) : undefined}
@@ -1081,7 +1083,7 @@ export default function FeedClient({
                                     <PostMediaContent image={post.image} images={post.images} video={post.video} videos={post.videos} onImageClick={(idx) => openImageModal(post, idx)} />
                                 )}
                                 {editingPostId !== post.id && post.linkUrl && (
-                                    <div className="px-3 sm:px-4 py-2"><LinkPreviewCard url={post.linkUrl ?? undefined} linkType={post.linkType ?? undefined} hasMedia={postHasMedia(post)} /></div>
+                                    <div className="px-3 sm:px-4 py-1.5"><LinkPreviewCard url={post.linkUrl ?? undefined} linkType={post.linkType ?? undefined} hasMedia={postHasMedia(post)} /></div>
                                 )}
                                 <PostEngagementSummary
                                     likeCount={post._count.likes}
@@ -1093,15 +1095,16 @@ export default function FeedClient({
                                     onCommentCountClick={() => toggleComments(post.id)}
                                 />
                                 <PostActionBar>
-                                    <ReactionsPicker postId={post.id} initialReaction={userReaction || null} initialCount={post._count.likes} onReact={(pid, reaction) => handleLike(pid, reaction ?? 'Like')} />                                    <button onClick={() => post.commentsEnabled !== false && toggleComments(post.id)} className={cn("flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center", post.commentsEnabled === false ? "text-gray-400 dark:text-gray-600 cursor-not-allowed" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800")} disabled={post.commentsEnabled === false} title={post.commentsEnabled === false ? "Comments are disabled for this post" : "Comment"}>
+                                    <ReactionsPicker postId={post.id} initialReaction={userReaction || null} initialCount={post._count.likes} onReact={(pid, reaction) => handleLike(pid, reaction ?? 'Like')} />
+                                    <button onClick={() => post.commentsEnabled !== false && toggleComments(post.id)} className={cn("flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors w-full justify-center", post.commentsEnabled === false ? "text-gray-400 dark:text-gray-600 cursor-not-allowed" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800")} disabled={post.commentsEnabled === false} title={post.commentsEnabled === false ? "Comments are disabled for this post" : "Comment"}>
                                         {post.commentsEnabled === false ? <MessageCircleOffIcon className="h-4 w-4" /> : <MessageCircleIcon className="h-4 w-4" />}
                                         <span className="hidden sm:inline">Comment</span>
                                     </button>
-                                    <button className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center" onClick={() => handleShare(post)}>
+                                    <button className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center" onClick={() => handleShare(post)}>
                                         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
                                         <span className="hidden sm:inline">Repost</span>
                                     </button>
-                                    <button className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center" onClick={() => {
+                                    <button className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center" onClick={() => {
                                         const postUrl = typeof window !== "undefined" ? `${window.location.origin}/feeds#post-${post.id}` : "";
                                         navigator.clipboard.writeText(postUrl);
                                         toast.success("Link copied - share it anywhere!");
@@ -1133,10 +1136,10 @@ export default function FeedClient({
                                                         const userCommentReactionEmoji = userCommentReactionType ? getReactionEmoji(userCommentReactionType) : null;
                                                         return (
                                                             <div key={comment.id} className="space-y-1">
-                                                                <div className="flex gap-2.5">
+                                                                <div className="flex gap-2">
                                                                     <Avatar className="h-8 w-8 shrink-0 mt-0.5"><AvatarImage src={comment.user.image ?? undefined} /><AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{commentInitials}</AvatarFallback></Avatar>
                                                                     <div className="flex-1 min-w-0">
-                                                                        <div className="relative bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
+                                                                        <div className="relative bg-gray-50 dark:bg-gray-900 rounded-xl px-2.5 py-1.5 border border-gray-100 dark:border-gray-800">
                                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{comment.user.name || "Anonymous"}</p>
                                                                                 {comment.user.profession && (<span className="text-xs text-gray-500 dark:text-gray-400">· {comment.user.profession}</span>)}
@@ -1160,7 +1163,7 @@ export default function FeedClient({
                                                                                 </span>
                                                                             )}
                                                                         </div>
-                                                                        <div className="flex items-center gap-2 sm:gap-3 mt-1 px-1 flex-wrap">
+                                                                        <div className="flex items-center gap-2 sm:gap-2.5 mt-0.5 px-1 flex-wrap">
                                                                             <div className="relative" onMouseEnter={() => handleCommentReactionEnter(comment.id)} onMouseLeave={handleCommentReactionLeave}>
                                                                                 {commentReactionHoverId === comment.id && (
                                                                                     <div className="absolute bottom-full left-0 mb-1 flex items-center gap-0.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-full shadow-xl px-2 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }} onMouseEnter={() => handleCommentReactionEnter(comment.id)} onMouseLeave={handleCommentReactionLeave}>
@@ -1184,7 +1187,7 @@ export default function FeedClient({
                                                                             {!isCommentAuthor && (<><span className="text-gray-300 dark:text-gray-600">|</span><button onClick={() => setReportingCommentId(comment.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-orange-600 transition-colors"><FlagIcon className="h-3 w-3" />Report</button></>)}
                                                                         </div>
                                                                         {(comment.replies || []).length > 0 && (
-                                                                            <div className="relative mt-2 ml-2 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                                                            <div className="relative mt-1.5 ml-2 pl-3.5 border-l-2 border-gray-200 dark:border-gray-700">
                                                                                 {(comment.replies || []).map((reply) => {
                                                                                     const replyInitials = getInitials(reply.user.name);
                                                                                     const isReplyAuthor = reply.user.id === currentUserId;
@@ -1196,7 +1199,7 @@ export default function FeedClient({
                                                                                     const rUserReactionType = rUserReaction?.reactionType;
                                                                                     const rUserReactionEmoji = rUserReactionType ? getReactionEmoji(rUserReactionType) : null;
                                                                                     return (
-                                                                                        <div key={reply.id} className="flex gap-2 mb-2">
+                                                                                        <div key={reply.id} className="flex gap-2 mb-1.5">
                                                                                             <Avatar className="h-6 w-6 shrink-0 mt-0.5"><AvatarImage src={reply.user.image ?? undefined} /><AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700 font-medium">{replyInitials}</AvatarFallback></Avatar>
                                                                                             <div className="flex-1 min-w-0">
                                                                                                 <div className="relative bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5 border border-gray-100 dark:border-gray-800">
@@ -1269,7 +1272,7 @@ export default function FeedClient({
                                                 <button onClick={() => setReplyingTo((prev) => ({ ...prev, [post.id]: null }))} className="ml-auto text-gray-400 hover:text-gray-600"><XIcon className="h-3 w-3" /></button>
                                             </div>
                                         )}
-                                        <div className="flex gap-2.5 pt-1">
+                                        <div className="flex gap-2 pt-0.5">
                                             <UserAvatar
                                                 name={currentUserName}
                                                 image={currentUserImage}
@@ -1337,14 +1340,14 @@ export default function FeedClient({
             <Dialog open={sharePostId !== null} onOpenChange={(open) => { if (!open) setSharePostId(null); }}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>Repost</DialogTitle><DialogDescription>Choose a platform to share this post.</DialogDescription></DialogHeader>
-                    <div className="grid grid-cols-2 gap-3 py-4">
+                    <div className="grid grid-cols-2 gap-2 py-3">
                         {(() => { const post = posts.find(p => p.id === sharePostId); if (!post) return null; return (
                             <>
-                                <button onClick={() => handleShareTo("whatsapp", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-950 transition-colors"><div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white text-lg font-bold">W</div><span className="text-sm font-medium">WhatsApp</span></button>
-                                <button onClick={() => handleShareTo("facebook", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"><div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold">f</div><span className="text-sm font-medium">Facebook</span></button>
-                                <button onClick={() => handleShareTo("x", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-lg font-bold">𝕏</div><span className="text-sm font-medium">X (Twitter)</span></button>
-                                <button onClick={() => handleShareTo("instagram", post)} className="flex items-center gap-3 rounded-md border border-gray-200 p-3 transition-colors hover:bg-pink-50 dark:border-gray-700 dark:hover:bg-pink-950"><div className="flex h-10 w-10 items-center justify-center rounded-md bg-pink-600 text-lg font-bold text-white">I</div><span className="text-sm font-medium">Instagram</span></button>
-                                <button onClick={() => handleShareTo("copy", post)} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors col-span-2"><div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white"><ShareIcon className="h-5 w-5" /></div><span className="text-sm font-medium">Copy Link</span></button>
+                                <button onClick={() => handleShareTo("whatsapp", post)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-950 transition-colors"><div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center text-white text-lg font-bold">W</div><span className="text-sm font-medium">WhatsApp</span></button>
+                                <button onClick={() => handleShareTo("facebook", post)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"><div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold">f</div><span className="text-sm font-medium">Facebook</span></button>
+                                <button onClick={() => handleShareTo("x", post)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-lg font-bold">𝕏</div><span className="text-sm font-medium">X (Twitter)</span></button>
+                                <button onClick={() => handleShareTo("instagram", post)} className="flex items-center gap-2.5 rounded-md border border-gray-200 p-2.5 transition-colors hover:bg-pink-50 dark:border-gray-700 dark:hover:bg-pink-950"><div className="flex h-9 w-9 items-center justify-center rounded-md bg-pink-600 text-lg font-bold text-white">I</div><span className="text-sm font-medium">Instagram</span></button>
+                                <button onClick={() => handleShareTo("copy", post)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors col-span-2"><div className="w-9 h-9 rounded-full bg-gray-500 flex items-center justify-center text-white"><ShareIcon className="h-4.5 w-4.5" /></div><span className="text-sm font-medium">Copy Link</span></button>
                             </>
                         ); })()}
                     </div>
@@ -1420,24 +1423,24 @@ export default function FeedClient({
                                     )}
                                 </div>
                                 <div className="w-full md:w-[280px] lg:w-[320px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-y-auto max-h-[35vh] sm:max-h-[40vh] md:max-h-none">
-                                    <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                                        <div className="flex items-center gap-3">
+                                    <div className="p-3.5 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="flex items-center gap-2.5">
                                             <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700"><AvatarImage src={imageModalPost.user.image ?? undefined} alt={imageModalPost.user.name || ""} /><AvatarFallback className="bg-blue-700 text-white text-sm font-semibold">{getInitials(imageModalPost.user.name)}</AvatarFallback></Avatar>
                                             <div><p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{imageModalPost.user.name || "Anonymous"}</p><p className="text-xs text-gray-500 dark:text-gray-400">{imageModalPost.user.profession || "Community Member"}</p><p className="text-xs text-gray-400 dark:text-gray-500">{formatDate(imageModalPost.createdAt)}</p></div>
                                         </div>
                                     </div>
                                     {imageModalPost.content && (
-                                        <div className="p-4 border-b border-gray-100 dark:border-gray-800"><p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{renderPostContent(imageModalPost.content)}</p></div>
+                                        <div className="p-3.5 border-b border-gray-100 dark:border-gray-800"><p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{renderPostContent(imageModalPost.content)}</p></div>
                                     )}
                                     {imageModalPost.tags && imageModalPost.tags.length > 0 && (
-                                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800 flex flex-wrap gap-1.5">
+                                        <div className="px-3.5 py-1.5 border-b border-gray-100 dark:border-gray-800 flex flex-wrap gap-1.5">
                                             {imageModalPost.tags.map((tag, idx) => (<span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-medium">#{tag}</span>))}
                                         </div>
                                     )}
                                     {imageModalPost.linkUrl && (
-                                        <div className="p-4 border-b border-gray-100 dark:border-gray-800"><LinkPreviewCard url={imageModalPost.linkUrl ?? undefined} linkType={imageModalPost.linkType ?? undefined} hasMedia={postHasMedia(imageModalPost)} /></div>
+                                        <div className="p-3.5 border-b border-gray-100 dark:border-gray-800"><LinkPreviewCard url={imageModalPost.linkUrl ?? undefined} linkType={imageModalPost.linkType ?? undefined} hasMedia={postHasMedia(imageModalPost)} /></div>
                                     )}
-                                    <div className="p-4 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="p-3.5 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                                         {imageModalPost._count.likes > 0 && (<span className="flex items-center gap-1"><ThumbsUpIcon className="h-3.5 w-3.5 text-blue-600" />{imageModalPost._count.likes} {imageModalPost._count.likes === 1 ? "like" : "likes"}</span>)}
                                         {imageModalPost._count.comments > 0 && (<span>{imageModalPost._count.comments} comment{imageModalPost._count.comments !== 1 ? "s" : ""}</span>)}
                                     </div>

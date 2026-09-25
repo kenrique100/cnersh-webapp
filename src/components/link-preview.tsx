@@ -24,6 +24,16 @@ function getDomain(url: string): string {
     }
 }
 
+/**
+ * The link-preview API falls back to a small Google favicon when the target
+ * page has no og:image. That image is a 128px square — rendering it as a
+ * full-width banner stretches it into a blurry mess, so we detect it and
+ * render it as a small inline icon instead.
+ */
+function isFaviconUrl(image: string): boolean {
+    return image.includes("s2/favicons");
+}
+
 export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
     const [preview, setPreview] = React.useState<PreviewData | null>(null);
     const [imageError, setImageError] = React.useState(false);
@@ -33,14 +43,13 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
     React.useEffect(() => {
         if (!safeUrl) return;
 
-        // Narrow safeUrl to string
-        const url = safeUrl;
+        const target = safeUrl;
         let cancelled = false;
 
         async function fetchPreview() {
             try {
                 const res = await fetch(
-                    `/api/link-preview?url=${encodeURIComponent(url)}`
+                    `/api/link-preview?url=${encodeURIComponent(target)}`
                 );
                 if (res.ok) {
                     const data = await res.json();
@@ -64,6 +73,10 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
     const image = preview?.image || "";
     const displayDomain = preview?.domain || domain;
 
+    const hasFavicon = image && isFaviconUrl(image);
+    const hasBanner = image && !isFaviconUrl(image) && !imageError;
+    const showFavicon = hasFavicon || (image && imageError);
+
     return (
         <a
             href={safeUrl}
@@ -71,13 +84,13 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
             rel="noopener noreferrer"
             className={`mt-2 block rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group overflow-hidden ${className}`}
         >
-            {image && !imageError && (
+            {hasBanner && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                     src={image}
                     alt=""
                     referrerPolicy="no-referrer"
-                    className="w-full h-[160px] object-cover bg-gray-100 dark:bg-gray-800"
+                    className="w-full aspect-[1.91/1] object-cover bg-gray-100 dark:bg-gray-800"
                     onError={() => setImageError(true)}
                 />
             )}
@@ -90,10 +103,28 @@ export default function LinkPreview({ url, className = "" }: LinkPreviewProps) {
                         {description}
                     </p>
                 )}
+
+                {/* Domain row */}
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400 dark:text-gray-500">
-                    <GlobeIcon className="h-3 w-3 shrink-0" />
+                    {showFavicon && hasFavicon ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                            src={image}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-3.5 w-3.5 shrink-0 rounded-sm"
+                            onError={() => setImageError(true)}
+                        />
+                    ) : (
+                        <GlobeIcon className="h-3 w-3 shrink-0" />
+                    )}
                     <span className="truncate">{displayDomain}</span>
                     <ExternalLinkIcon className="h-3 w-3 shrink-0 ml-auto" />
+                </div>
+
+                {/* Full URL — matches the reference images */}
+                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 truncate group-hover:underline">
+                    {safeUrl}
                 </div>
             </div>
         </a>
