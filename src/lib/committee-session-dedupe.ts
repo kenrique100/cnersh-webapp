@@ -1,18 +1,3 @@
-/**
- * Deterministic merge planning for duplicate committee sessions.
- *
- * Migration `20260909223000_unique_committee_session_schedule` adds a unique
- * index on ("sessionType", "sessionDate"). Databases written before that
- * migration may contain duplicate rows created by retried or racing calls to
- * `createCommitteeSession`, and the index cannot be created until they are
- * resolved.
- *
- * `CommitteeSession` has no dependent relations, so collapsing a duplicate
- * group cannot orphan child records. The planning below is intentionally
- * conservative: it merges only when the duplicates do not disagree, and it
- * reports a conflict for human resolution when they do. It performs no I/O so
- * it can be unit tested exhaustively.
- */
 
 export type CommitteeSessionStatus =
     | "SCHEDULED"
