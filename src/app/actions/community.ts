@@ -2,10 +2,9 @@
 
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { notifyAdmins } from "@/lib/notify-admins";
+import { notifyCommunityActivity } from "@/lib/community-notifications";
 import { isAdminRole, canManageRole } from "@/lib/permissions";
 import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
-import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { z } from "zod";
 
 const idSchema = z.string().trim().min(1).max(128);
@@ -48,9 +47,12 @@ function cleanOptionalUrl(value: string | null | undefined): string | null | und
 
 function cleanUrls(values: string[] | undefined, max: number) {
     if (values === undefined) return undefined;
-    return z.array(z.string()).max(max).parse(values).map((value) => cleanOptionalUrl(value)).filter(
-        (value): value is string => Boolean(value),
-    );
+    return z
+        .array(z.string())
+        .max(max)
+        .parse(values)
+        .map((value) => cleanOptionalUrl(value))
+        .filter((value): value is string => Boolean(value));
 }
 
 export async function createTopic(data: {
@@ -95,40 +97,15 @@ export async function createTopic(data: {
         },
     });
 
-    if (category === "Announcements") {
-        try {
-            const communityUsers = await db.user.findMany({
-                where: {
-                    id: { not: session.user.id },
-                    role: { in: ["admin", "superadmin"] },
-                    banned: { not: true },
-                },
-                select: { id: true, email: true, name: true },
-            });
-            const message = `New announcement: ${title}`;
-            if (communityUsers.length) {
-                await db.notification.createMany({
-                    data: communityUsers.map((user) => ({
-                        type: "ANNOUNCEMENT" as const,
-                        message,
-                        link: "/community",
-                        userId: user.id,
-                    })),
-                });
-                void Promise.allSettled(communityUsers.filter((user) => user.email).map((user) =>
-                    sendNotificationEmail({
-                        to: user.email,
-                        userName: user.name || "User",
-                        notificationMessage: message,
-                        notificationType: "ANNOUNCEMENT",
-                        actionUrl: "/community",
-                    }),
-                ));
-            }
-        } catch (error) {
-            console.error("Error sending announcement notifications:", error);
-        }
-    }
+    void notifyCommunityActivity({
+        type: category === "Announcements" ? "ANNOUNCEMENT" : "NEW_TOPIC",
+        actor: { id: session.user.id, name: session.user.name ?? null },
+        topic: { id: topic.id, title: topic.title, category: topic.category },
+        preview: topic.content,
+    }).catch((error) => {
+        console.error("[createTopic] community notification failed:", error);
+    });
+
     return topic;
 }
 
@@ -222,7 +199,9 @@ export async function addReply(data: {
     const content = contentText.parse(data.content);
     const topic = await db.communityTopic.findUnique({
         where: { id: topicId },
-        select: { chatEnabled: true, deleted: true },
+        // `title` and `category` are required to compose the community
+        // activity email payload downstream.
+        select: { chatEnabled: true, deleted: true, title: true, category: true },
     });
     if (!topic || topic.deleted) throw new Error("Topic not found");
     if (!topic.chatEnabled) throw new Error("Topic is closed");
@@ -230,7 +209,12 @@ export async function addReply(data: {
     const parentReply = parentId
         ? await db.communityReply.findUnique({
             where: { id: parentId },
-            select: { userId: true, topicId: true, deleted: true, user: { select: { email: true, name: true } } },
+            select: {
+                userId: true,
+                topicId: true,
+                deleted: true,
+                user: { select: { email: true, name: true } },
+            },
         })
         : null;
     if (parentId && (!parentReply || parentReply.deleted || parentReply.topicId !== topicId)) {
@@ -238,9 +222,14 @@ export async function addReply(data: {
     }
 
     const pollQuestion = cleanOptionalText(data.pollQuestion, 300);
-    const pollOptions = data.pollOptions === undefined
-        ? []
-        : z.array(z.string().trim().min(1).max(200).transform(sanitizeText)).min(2).max(10).parse(data.pollOptions);
+    const pollOptions =
+        data.pollOptions === undefined
+            ? []
+            : z
+                .array(z.string().trim().min(1).max(200).transform(sanitizeText))
+                .min(2)
+                .max(10)
+                .parse(data.pollOptions);
     if (Boolean(pollQuestion) !== (pollOptions.length > 0)) throw new Error("Invalid poll");
     const eventDate = data.eventDate ? new Date(data.eventDate) : null;
     if (eventDate && Number.isNaN(eventDate.getTime())) throw new Error("Invalid event date");
@@ -273,9 +262,17 @@ export async function addReply(data: {
         },
     });
 
+    // 1. Mentions and parent-reply notifications (in-app only — unchanged).
     try {
-        const notifications: { type: "MENTION" | "COMMENT"; message: string; link: string; userId: string }[] = [];
-        const names = [...content.matchAll(/@(\w+(?:\s\w+)?)/g)].map((match) => match[1].trim()).slice(0, 20);
+        const notifications: {
+            type: "MENTION" | "COMMENT";
+            message: string;
+            link: string;
+            userId: string;
+        }[] = [];
+        const names = [...content.matchAll(/@(\w+(?:\s\w+)?)/g)]
+            .map((match) => match[1].trim())
+            .slice(0, 20);
         if (names.length) {
             const mentionedUsers = await db.user.findMany({
                 where: {
@@ -286,31 +283,39 @@ export async function addReply(data: {
                 },
                 select: { id: true },
             });
-            notifications.push(...mentionedUsers.map((user) => ({
-                type: "MENTION" as const,
-                message: `${session.user.name || "Someone"} mentioned you in the community`,
-                link: "/community",
-                userId: user.id,
-            })));
+            notifications.push(
+                ...mentionedUsers.map((user) => ({
+                    type: "MENTION" as const,
+                    message: `${session.user.name || "Someone"} mentioned you in the community`,
+                    link: `/community?topic=${topicId}`,
+                    userId: user.id,
+                }))
+            );
         }
         if (parentReply && parentReply.userId !== session.user.id) {
             notifications.push({
                 type: "COMMENT",
                 message: `${session.user.name || "Someone"} replied to your message in the community`,
-                link: "/community",
+                link: `/community?topic=${topicId}`,
                 userId: parentReply.userId,
             });
         }
-        if (notifications.length) await db.notification.createMany({ data: notifications });
-        await notifyAdmins({
-            type: "COMMENT",
-            message: `${session.user.name || "An administrator"} posted a reply in the community`,
-            link: "/community",
-            excludeUserId: session.user.id,
-        });
+        if (notifications.length) {
+            await db.notification.createMany({ data: notifications });
+        }
     } catch (error) {
-        console.error("Error creating community notifications:", error);
+        console.error("Error creating reply notifications:", error);
     }
+
+    void notifyCommunityActivity({
+        type: "NEW_REPLY",
+        actor: { id: session.user.id, name: session.user.name ?? null },
+        topic: { id: topicId, title: topic.title, category: topic.category },
+        preview: reply.content,
+    }).catch((error) => {
+        console.error("[addReply] community notification failed:", error);
+    });
+
     return reply;
 }
 
@@ -335,7 +340,7 @@ export async function getCommunityUsers() {
 async function canDeleteCommunityContent(
     actor: CommunityActor,
     ownerId: string,
-    ownerRole: string | null,
+    ownerRole: string | null
 ) {
     return ownerId === actor.session.user.id || canManageRole(actor.role, ownerRole);
 }
@@ -348,7 +353,8 @@ export async function deleteTopic(topicId: string) {
         select: { userId: true, deleted: true, user: { select: { role: true } } },
     });
     if (!topic || topic.deleted) throw new Error("Topic not found");
-    if (!await canDeleteCommunityContent(actor, topic.userId, topic.user.role)) throw new Error("Forbidden");
+    if (!(await canDeleteCommunityContent(actor, topic.userId, topic.user.role)))
+        throw new Error("Forbidden");
     await db.communityTopic.update({ where: { id }, data: { deleted: true } });
     await db.auditLog.create({
         data: {
@@ -374,7 +380,8 @@ export async function deleteReply(replyId: string) {
         },
     });
     if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
-    if (!await canDeleteCommunityContent(actor, reply.userId, reply.user.role)) throw new Error("Forbidden");
+    if (!(await canDeleteCommunityContent(actor, reply.userId, reply.user.role)))
+        throw new Error("Forbidden");
     await db.communityReply.update({ where: { id }, data: { deleted: true } });
     await db.auditLog.create({
         data: {
@@ -393,7 +400,11 @@ export async function editReply(replyId: string, content: string) {
     const safeContent = contentText.parse(content);
     const reply = await db.communityReply.findUnique({
         where: { id },
-        select: { userId: true, deleted: true, topic: { select: { chatEnabled: true, deleted: true } } },
+        select: {
+            userId: true,
+            deleted: true,
+            topic: { select: { chatEnabled: true, deleted: true } },
+        },
     });
     if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
     if (!reply.topic.chatEnabled) throw new Error("Topic is closed");
@@ -401,16 +412,19 @@ export async function editReply(replyId: string, content: string) {
     return db.communityReply.update({ where: { id }, data: { content: safeContent } });
 }
 
-export async function editTopic(topicId: string, data: {
-    title?: string;
-    content?: string;
-    image?: string | null;
-    images?: string[];
-    video?: string | null;
-    videos?: string[];
-    documents?: string[];
-    linkUrl?: string | null;
-}) {
+export async function editTopic(
+    topicId: string,
+    data: {
+        title?: string;
+        content?: string;
+        image?: string | null;
+        images?: string[];
+        video?: string | null;
+        videos?: string[];
+        documents?: string[];
+        linkUrl?: string | null;
+    }
+) {
     const { session } = await requireCommunityAccess();
     const id = idSchema.parse(topicId);
     const topic = await db.communityTopic.findUnique({
@@ -469,7 +483,10 @@ export async function toggleTopicLike(topicId: string, isDislike = false) {
         return { action: "removed" };
     }
     if (existing) {
-        await db.communityTopicLike.update({ where: { id: existing.id }, data: { isDislike } });
+        await db.communityTopicLike.update({
+            where: { id: existing.id },
+            data: { isDislike },
+        });
     } else {
         await db.communityTopicLike.create({
             data: { topicId: id, userId: session.user.id, isDislike },
@@ -491,8 +508,15 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
             topic: { select: { deleted: true, chatEnabled: true } },
         },
     });
-    if (!reply || reply.deleted || reply.topic.deleted || !reply.topic.chatEnabled ||
-        !reply.pollOptions.length || optionIndex < 0 || optionIndex >= reply.pollOptions.length) {
+    if (
+        !reply ||
+        reply.deleted ||
+        reply.topic.deleted ||
+        !reply.topic.chatEnabled ||
+        !reply.pollOptions.length ||
+        optionIndex < 0 ||
+        optionIndex >= reply.pollOptions.length
+    ) {
         throw new Error("Poll not found");
     }
     const votes = { ...((reply.pollVotes as Record<string, number>) || {}) };
