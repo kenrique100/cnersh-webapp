@@ -1,4 +1,3 @@
-// src/components/chat-box.tsx
 "use client";
 
 import React from "react";
@@ -14,7 +13,6 @@ export default function ChatBox() {
     const [isSending, setIsSending] = React.useState(false);
     const [sent, setSent] = React.useState(false);
 
-    // Keep track of timer so we can clear it on unmount
     const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     React.useEffect(() => {
@@ -35,22 +33,35 @@ export default function ChatBox() {
 
         setIsSending(true);
         try {
-            await submitSupportMessage(message);
+            const trimmed = message.trim();
+
+            const firstLine = trimmed.split(/\r?\n/)[0].trim();
+            const subject =
+                firstLine.length > 0 ? firstLine.slice(0, 80) : "Support request";
+
+            const pageUrl =
+                typeof window !== "undefined" ? window.location.href : undefined;
+
+            await submitSupportMessage({
+                category: "other",
+                subject,
+                message: trimmed,
+                pageUrl,
+            });
+
             toast.success("Message sent to admin successfully");
             setMessage("");
             setSent(true);
 
-            // clear any previous timer
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
-
+            if (timerRef.current) clearTimeout(timerRef.current);
             timerRef.current = setTimeout(() => {
                 setSent(false);
                 timerRef.current = null;
             }, 3000);
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Failed to send message");
+            toast.error(
+                error instanceof Error ? error.message : "Failed to send message"
+            );
         } finally {
             setIsSending(false);
         }
@@ -97,14 +108,14 @@ export default function ChatBox() {
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit}>
-                <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Describe your problem or question..."
-                    className="w-full h-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    disabled={isSending}
-                    maxLength={1000}
-                />
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    placeholder="Describe your problem or question..."
+                                    className="w-full h-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    disabled={isSending}
+                                    maxLength={1000}
+                                />
                                 <div className="flex items-center justify-between mt-3">
                                     <span className="text-xs text-gray-400">{message.length}/1000</span>
                                     <Button

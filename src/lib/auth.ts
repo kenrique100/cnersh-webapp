@@ -16,7 +16,9 @@ export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: authBaseUrl,
-  trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean) : [authBaseUrl],
+  trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
+      ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean)
+      : [authBaseUrl],
   session: { expiresIn: 60 * 60 * 24, updateAge: 60 * 60 * 24 },
   emailAndPassword: {
     enabled: true,
@@ -35,19 +37,38 @@ export const auth = betterAuth({
       if (!user?.email) throw new Error("User email is required for verification");
       const verificationUrl = new URL(url);
       verificationUrl.searchParams.set("callbackURL", "/");
-      await sendVerificationEmail({ to: user.email, verificationUrl: verificationUrl.toString(), userName: user.name ?? undefined });
+      await sendVerificationEmail({
+        to: user.email,
+        verificationUrl: verificationUrl.toString(),
+        userName: user.name ?? undefined,
+      });
     },
   },
   user: {
     additionalFields: {
-      gender: { type: "string", required: false, input: true, validate: (value: string) => value ? (["male", "female"].includes(value) || "Invalid gender value") : true },
+      gender: {
+        type: "string",
+        required: false,
+        input: true,
+        validate: (value: string) =>
+            value ? (["male", "female"].includes(value) || "Invalid gender value") : true,
+      },
       profession: { type: "string", required: false, input: true },
+      professionOther: { type: "string", required: false, input: true },
       title: { type: "string", required: false, input: true },
       welcomeEmailSent: { type: "boolean", default: false },
     },
   },
   socialProviders: {
-    google: { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, prompt: "select_account", redirectUri: `${authBaseUrl}/api/auth/callback/google` },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      prompt: "select_account",
+      redirectUri: `${authBaseUrl}/api/auth/callback/google`,
+    },
   },
-  plugins: [admin({ ac, roles, defaultRole: "user", adminRoles: ["admin", "superadmin"] }), nextCookies()],
+  plugins: [
+    admin({ ac, roles, defaultRole: "user", adminRoles: ["admin", "superadmin"] }),
+    nextCookies(),
+  ],
 });
