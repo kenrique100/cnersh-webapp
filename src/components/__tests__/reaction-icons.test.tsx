@@ -10,7 +10,10 @@ import {
     FunnyIcon,
     ReactionIcon,
     REACTION_ICONS,
-    REACTION_COLORS,
+    REACTION_EMOJI,
+    REACTION_ORDER,
+    isReactionType,
+    getReactionEmojiChar,
 } from "../reaction-icons";
 
 describe("ReactionIcons", () => {
@@ -21,7 +24,9 @@ describe("ReactionIcons", () => {
         });
     });
 
-    it("renders an accessible SVG circle icon for each reaction", () => {
+    /* ─── Basic rendering ─────────────────────────────────────────── */
+
+    it("renders a span with role=img and the emoji for each reaction", () => {
         const { getByRole } = render(
             <div>
                 <LikeIcon />
@@ -33,15 +38,16 @@ describe("ReactionIcons", () => {
             </div>
         );
 
-        (
-            ["Like", "Celebrate", "Support", "Love", "Insightful", "Funny"] as const
-        ).forEach((label) => {
-            const icon = getByRole("img", { name: label });
-            expect(icon.tagName.toLowerCase()).toBe("svg");
-        });
+        (Object.keys(REACTION_EMOJI) as (keyof typeof REACTION_EMOJI)[]).forEach(
+            (label) => {
+                const el = getByRole("img", { name: label });
+                expect(el.tagName.toLowerCase()).toBe("span");
+                expect(el.textContent).toBe(REACTION_EMOJI[label]);
+            }
+        );
     });
 
-    it("fills each icon's background circle with its designated color", () => {
+    it("renders each specific emoji character", () => {
         const { getByRole } = render(
             <div>
                 <LikeIcon />
@@ -53,33 +59,53 @@ describe("ReactionIcons", () => {
             </div>
         );
 
-        (
-            Object.keys(REACTION_ICONS) as (keyof typeof REACTION_ICONS)[]
-        ).forEach((type) => {
-            const icon = getByRole("img", { name: type });
-            const bgCircle = icon.querySelector("circle");
-            expect(bgCircle).toHaveAttribute("fill", REACTION_COLORS[type]);
-        });
+        expect(getByRole("img", { name: "Like" })).toHaveTextContent("👍");
+        expect(getByRole("img", { name: "Celebrate" })).toHaveTextContent("🎉");
+        expect(getByRole("img", { name: "Support" })).toHaveTextContent("🙏");
+        expect(getByRole("img", { name: "Love" })).toHaveTextContent("❤️");
+        expect(getByRole("img", { name: "Insightful" })).toHaveTextContent("💡");
+        expect(getByRole("img", { name: "Funny" })).toHaveTextContent("😂");
     });
 
-    it("applies custom size to the svg width/height", () => {
+    /* ─── Size handling ───────────────────────────────────────────── */
+
+    it("maps the size prop to font-size in pixels", () => {
         const { getByRole } = render(<LikeIcon size={48} />);
         const el = getByRole("img", { name: "Like" });
-        expect(el).toHaveAttribute("width", "48");
-        expect(el).toHaveAttribute("height", "48");
+        expect(el).toHaveStyle({ fontSize: "48px" });
     });
 
-    it("defaults to size 40 when not specified", () => {
+    it("defaults to size 24 when not specified", () => {
         const { getByRole } = render(<LoveIcon />);
         const el = getByRole("img", { name: "Love" });
-        expect(el).toHaveAttribute("width", "40");
-        expect(el).toHaveAttribute("height", "40");
+        expect(el).toHaveStyle({ fontSize: "24px" });
     });
 
-    it("applies custom className to the svg element", () => {
+    it("applies line-height 1 so emoji don't inflate the layout", () => {
+        const { getByRole } = render(<FunnyIcon />);
+        const el = getByRole("img", { name: "Funny" });
+        expect(el).toHaveStyle({ lineHeight: "1" });
+    });
+
+    /* ─── ClassName / style forwarding ────────────────────────────── */
+
+    it("applies custom className to the emoji span", () => {
         const { getByRole } = render(<FunnyIcon className="test-class" />);
         expect(getByRole("img", { name: "Funny" })).toHaveClass("test-class");
     });
+
+    it("always includes the shrink-0 and inline-flex utility classes", () => {
+        const { getByRole } = render(<LikeIcon />);
+        const el = getByRole("img", { name: "Like" });
+        expect(el).toHaveClass("inline-flex");
+        expect(el).toHaveClass("shrink-0");
+        expect(el).toHaveClass("items-center");
+        expect(el).toHaveClass("justify-center");
+        expect(el).toHaveClass("leading-none");
+        expect(el).toHaveClass("select-none");
+    });
+
+    /* ─── ReactionIcon wrapper ────────────────────────────────────── */
 
     it("renders all reaction types through the ReactionIcon wrapper", () => {
         const { getByRole } = render(
@@ -93,15 +119,15 @@ describe("ReactionIcons", () => {
             </div>
         );
 
-        (
-            ["Like", "Celebrate", "Support", "Love", "Insightful", "Funny"] as const
-        ).forEach((label) => {
-            expect(getByRole("img", { name: label })).toBeInTheDocument();
-        });
+        (Object.keys(REACTION_EMOJI) as (keyof typeof REACTION_EMOJI)[]).forEach(
+            (label) => {
+                expect(getByRole("img", { name: label })).toBeInTheDocument();
+            }
+        );
     });
 
-    it("wraps the icon in a span and forwards size/className/style", () => {
-        const { container, getByRole } = render(
+    it("forwards size, className and style through ReactionIcon", () => {
+        const { getByRole } = render(
             <ReactionIcon
                 type="Love"
                 size={32}
@@ -109,19 +135,20 @@ describe("ReactionIcons", () => {
                 style={{ opacity: 0.5 }}
             />
         );
-        const wrapper = container.querySelector(".wrapper-class");
-        expect(wrapper).toBeInTheDocument();
-        expect(wrapper).toHaveStyle({ opacity: "0.5" });
-        expect(getByRole("img", { name: "Love" })).toHaveAttribute("width", "32");
+        const el = getByRole("img", { name: "Love" });
+        expect(el).toHaveClass("wrapper-class");
+        expect(el).toHaveStyle({ opacity: "0.5", fontSize: "32px" });
     });
 
-    it("renders a fallback glyph when type does not exist in REACTION_ICONS", () => {
-        const { getByText } = render(
-            // @ts-expect-error testing invalid type for fallback coverage
+    it("renders a fallback 👍 when the type is not a known reaction", () => {
+        const { getByRole } = render(
             <ReactionIcon type="Nonexistent" />
         );
-        expect(getByText("❓")).toBeInTheDocument();
+        const el = getByRole("img", { name: "Nonexistent" });
+        expect(el).toHaveTextContent("👍");
     });
+
+    /* ─── Registry ────────────────────────────────────────────────── */
 
     it("contains all reaction mappings", () => {
         expect(REACTION_ICONS).toHaveProperty("Like");
@@ -139,5 +166,44 @@ describe("ReactionIcons", () => {
         expect(REACTION_ICONS.Love).toBe(LoveIcon);
         expect(REACTION_ICONS.Insightful).toBe(InsightfulIcon);
         expect(REACTION_ICONS.Funny).toBe(FunnyIcon);
+    });
+
+    /* ─── REACTION_EMOJI map ──────────────────────────────────────── */
+
+    it("exposes an emoji for every reaction type", () => {
+        (REACTION_ORDER).forEach((type) => {
+            expect(REACTION_EMOJI[type]).toBeTruthy();
+            expect(typeof REACTION_EMOJI[type]).toBe("string");
+        });
+    });
+
+    /* ─── isReactionType guard ────────────────────────────────────── */
+
+    it("isReactionType returns true for known labels and false otherwise", () => {
+        expect(isReactionType("Like")).toBe(true);
+        expect(isReactionType("Love")).toBe(true);
+        expect(isReactionType("Funny")).toBe(true);
+        expect(isReactionType("Celebrate")).toBe(true);
+        expect(isReactionType("Insightful")).toBe(true);
+        expect(isReactionType("Support")).toBe(true);
+        expect(isReactionType("Nonexistent")).toBe(false);
+        expect(isReactionType("")).toBe(false);
+    });
+
+    /* ─── getReactionEmojiChar helper ─────────────────────────────── */
+
+    it("getReactionEmojiChar returns the emoji for valid labels", () => {
+        expect(getReactionEmojiChar("Like")).toBe("👍");
+        expect(getReactionEmojiChar("Love")).toBe("❤️");
+        expect(getReactionEmojiChar("Funny")).toBe("😂");
+        expect(getReactionEmojiChar("Celebrate")).toBe("🎉");
+        expect(getReactionEmojiChar("Insightful")).toBe("💡");
+        expect(getReactionEmojiChar("Support")).toBe("🙏");
+    });
+
+    it("getReactionEmojiChar returns empty string for null/undefined/unknown", () => {
+        expect(getReactionEmojiChar(null)).toBe("");
+        expect(getReactionEmojiChar(undefined)).toBe("");
+        expect(getReactionEmojiChar("Nonexistent")).toBe("");
     });
 });

@@ -114,7 +114,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
                         {/* Link Preview Card */}
                         {post.linkUrl && (
-                            <div className="px-3 sm:px-4 py-2">
+                            <div className="px-2 sm:px-3 py-s2">
                                 <LinkPreviewCard
                                     url={post.linkUrl}
                                     linkType={post.linkType}
