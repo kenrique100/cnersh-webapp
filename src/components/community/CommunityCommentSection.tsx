@@ -204,6 +204,15 @@ export function CommunityCommentSection({
     const [showScrollButton, setShowScrollButton] = React.useState(false);
     const [unseenCount, setUnseenCount] = React.useState(0);
     const prevRepliesLengthRef = React.useRef(selectedTopic.replies.length);
+    const prevTopicIdRef = React.useRef(selectedTopic.id);
+
+    // Reset state during render when the topic changes (avoids setState-in-effect).
+    if (prevTopicIdRef.current !== selectedTopic.id) {
+        prevTopicIdRef.current = selectedTopic.id;
+        prevRepliesLengthRef.current = selectedTopic.replies.length;
+        setUnseenCount(0);
+        setShowScrollButton(false);
+    }
 
     const filteredUsers = users.filter(
         (u) =>
@@ -239,19 +248,16 @@ export function CommunityCommentSection({
         inputRef.current?.focus();
     };
 
+    // Pure DOM side-effect on topic change — no setState here.
     React.useEffect(() => {
-        prevRepliesLengthRef.current = selectedTopic.replies.length;
-        setUnseenCount(0);
-        setShowScrollButton(false);
         const el = scrollContainerRef.current;
-        if (el) {
-            requestAnimationFrame(() => {
-                el.scrollTop = el.scrollHeight;
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (!el) return;
+        requestAnimationFrame(() => {
+            el.scrollTop = el.scrollHeight;
+        });
     }, [selectedTopic.id]);
 
+    // New-reply handling — setState is inside a guarded branch, not the effect body.
     React.useEffect(() => {
         const prev = prevRepliesLengthRef.current;
         const current = selectedTopic.replies.length;
