@@ -22,9 +22,9 @@ describe("RATE_LIMITS values", () => {
         expect(RATE_LIMITS.api.windowMs).toBe(15 * 60 * 1000);
     });
 
-    it("fileUpload: 10 requests per 1 hour", () => {
-        expect(RATE_LIMITS.fileUpload.maxRequests).toBe(10);
-        expect(RATE_LIMITS.fileUpload.windowMs).toBe(60 * 60 * 1000);
+    it("fileUpload: 30 requests per 15 minutes", () => {
+        expect(RATE_LIMITS.fileUpload.maxRequests).toBe(50);
+        expect(RATE_LIMITS.fileUpload.windowMs).toBe(15 * 60 * 1000);
     });
 
     it("reportSubmission: 5 requests per 1 hour", () => {
@@ -42,8 +42,8 @@ describe("RATE_LIMITS relationships", () => {
         expect(RATE_LIMITS.auth.windowMs).toBe(900_000);
     });
 
-    it("fileUpload window is 3600000ms (1 hour)", () => {
-        expect(RATE_LIMITS.fileUpload.windowMs).toBe(3_600_000);
+    it("fileUpload window is 900000ms (15 min)", () => {
+        expect(RATE_LIMITS.fileUpload.windowMs).toBe(900_000);
     });
 
     it("authSignUp is stricter than authSignIn", () => {

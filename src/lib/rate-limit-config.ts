@@ -33,8 +33,8 @@ export const RATE_LIMITS = Object.freeze({
         maxRequests: 80,
     }),
     fileUpload: Object.freeze({
-        windowMs: 60 * 60 * 1000,
-        maxRequests: 10,
+        windowMs: 15 * 60 * 1000,
+        maxRequests: 50,
     }),
     reportSubmission: Object.freeze({
         windowMs: 60 * 60 * 1000,
