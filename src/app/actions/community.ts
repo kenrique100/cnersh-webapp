@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { notifyCommunityActivity } from "@/lib/community-notifications";
 import { isAdminRole, canManageRole } from "@/lib/permissions";
 import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
+import { Prisma } from "@/generated/prisma";
 import { z } from "zod";
 
 const idSchema = z.string().trim().min(1).max(128);
@@ -54,6 +55,35 @@ function cleanUrls(values: string[] | undefined, max: number) {
         .parse(values)
         .map((value) => cleanOptionalUrl(value))
         .filter((value): value is string => Boolean(value));
+}
+
+async function getUnreadCountsForTopics(
+    viewerId: string,
+    topicIds: string[]
+): Promise<Record<string, number>> {
+    if (topicIds.length === 0) return {};
+
+    const rows = await db.$queryRaw<Array<{ topicId: string; unread: bigint }>>(
+        Prisma.sql`
+            SELECT t.id AS "topicId", COUNT(r.id)::bigint AS "unread"
+            FROM "community_topic" t
+            LEFT JOIN "community_topic_read_status" rs
+                ON rs."topicId" = t.id AND rs."userId" = ${viewerId}
+            LEFT JOIN "community_reply" r
+                ON r."topicId" = t.id
+                AND r.deleted = false
+                AND r."userId" <> ${viewerId}
+                AND (rs."lastReadAt" IS NULL OR r."createdAt" > rs."lastReadAt")
+            WHERE t.id IN (${Prisma.join(topicIds)})
+            GROUP BY t.id
+        `
+    );
+
+    const map: Record<string, number> = {};
+    for (const row of rows) {
+        map[row.topicId] = Number(row.unread);
+    }
+    return map;
 }
 
 export async function createTopic(data: {
@@ -107,17 +137,19 @@ export async function createTopic(data: {
         console.error("[createTopic] community notification failed:", error);
     });
 
-    return topic;
+    // The author is implicitly up-to-date on their own topic.
+    return { ...topic, unreadCount: 0 };
 }
 
 export async function getTopics(category?: string, page = 1, limit = 10) {
-    await requireCommunityAccess();
+    const { session } = await requireCommunityAccess();
     const safePage = pageSchema.parse(page);
     const safeLimit = limitSchema.parse(limit);
     const safeCategory = category
         ? z.string().trim().min(1).max(80).transform(sanitizeText).parse(category)
         : undefined;
     const where = { deleted: false, ...(safeCategory ? { category: safeCategory } : {}) };
+
     try {
         const [topics, total] = await Promise.all([
             db.communityTopic.findMany({
@@ -133,7 +165,20 @@ export async function getTopics(category?: string, page = 1, limit = 10) {
             }),
             db.communityTopic.count({ where }),
         ]);
-        return { topics, total, pages: Math.ceil(total / safeLimit) };
+
+        const unreadByTopic = await getUnreadCountsForTopics(
+            session.user.id,
+            topics.map((t) => t.id)
+        );
+
+        return {
+            topics: topics.map((t) => ({
+                ...t,
+                unreadCount: unreadByTopic[t.id] ?? 0,
+            })),
+            total,
+            pages: Math.ceil(total / safeLimit),
+        };
     } catch (error) {
         console.error("Error fetching topics:", error);
         return { topics: [], total: 0, pages: 0 };
@@ -172,6 +217,21 @@ export async function getTopicWithReplies(topicId: string) {
         },
     });
     return topic?.deleted ? null : topic;
+}
+
+export async function markTopicRead(topicId: string): Promise<{ unreadCount: number }> {
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
+    const now = new Date();
+
+    await db.communityTopicReadStatus.upsert({
+        where: { userId_topicId: { userId: session.user.id, topicId: id } },
+        create: { userId: session.user.id, topicId: id, lastReadAt: now },
+        update: { lastReadAt: now },
+    });
+
+    const map = await getUnreadCountsForTopics(session.user.id, [id]);
+    return { unreadCount: map[id] ?? 0 };
 }
 
 export async function addReply(data: {
@@ -261,6 +321,15 @@ export async function addReply(data: {
         },
     });
 
+    // The author just wrote a reply — treat their per-topic cursor as current.
+    void db.communityTopicReadStatus
+        .upsert({
+            where: { userId_topicId: { userId: session.user.id, topicId } },
+            create: { userId: session.user.id, topicId, lastReadAt: new Date() },
+            update: { lastReadAt: new Date() },
+        })
+        .catch((error) => console.error("[addReply] failed to bump topic cursor:", error));
+
     try {
         const notifications: {
             type: "MENTION" | "COMMENT";
@@ -334,6 +403,7 @@ export async function getCommunityUsers() {
         return [];
     }
 }
+
 
 async function canDeleteCommunityContent(
     actor: CommunityActor,
@@ -524,7 +594,6 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
     return { success: true, votes };
 }
 
-/** Default cursor when a user has never opened the community. */
 const COMMUNITY_EPOCH = new Date(0);
 
 export async function getCommunityUnreadCount(): Promise<number> {

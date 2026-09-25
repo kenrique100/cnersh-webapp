@@ -1,19 +1,11 @@
 import React from "react";
-import {
-    render,
-    screen,
-    fireEvent,
-    waitFor,
-    act,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import CommunityClient from "../community-client";
 import * as communityActions from "@/app/actions/community";
 import * as adminActions from "@/app/actions/admin";
 import { toast } from "sonner";
 
 type CommunityClientProps = React.ComponentProps<typeof CommunityClient>;
-
-// ─── Mocks ──────────────────────────────────────────────────────────
 
 jest.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: jest.fn() }),
@@ -32,6 +24,7 @@ jest.mock("@/app/actions/community", () => ({
     toggleTopicLike: jest.fn(),
     toggleTopicChat: jest.fn(),
     voteOnPoll: jest.fn(),
+    markTopicRead: jest.fn(),
 }));
 jest.mock("@/app/actions/admin", () => ({
     createReport: jest.fn(),
@@ -41,8 +34,6 @@ jest.mock("@/app/actions/admin", () => ({
 jest.mock("@/lib/client-image-upload", () => ({
     prepareImageForUpload: jest.fn((file: File) => Promise.resolve(file)),
 }));
-
-// ─── Prop Types for Mocked Components ────────────────────────────────
 
 interface MembersListProps {
     topics: CommunityClientProps["initialTopics"];
@@ -147,29 +138,16 @@ interface CreatePostProps {
     onFileUpload: (file: File, type: string) => void;
 }
 
-// ─── Component Mocks ─────────────────────────────────────────────────
-
 jest.mock("../community/CommunityMembersList", () => ({
-    CommunityMembersList: ({
-                               topics,
-                               onSelectTopic,
-                               onDeleteTopic,
-                               onShowCreate,
-                           }: MembersListProps) => (
+    CommunityMembersList: ({ topics, onSelectTopic, onDeleteTopic, onShowCreate }: MembersListProps) => (
         <div data-testid="members-list">
             {topics.map((t) => (
-                <button
-                    key={t.id}
-                    data-testid={`topic-${t.id}`}
-                    onClick={() => onSelectTopic(t.id)}
-                >
+                <button key={t.id} data-testid={`topic-${t.id}`} onClick={() => onSelectTopic(t.id)}>
                     {t.title}
+                    <span data-testid={`unread-${t.id}`}>{t.unreadCount ?? 0}</span>
                 </button>
             ))}
-            <button
-                data-testid="delete-topic-btn"
-                onClick={() => onDeleteTopic(topics[0]?.id)}
-            />
+            <button data-testid="delete-topic-btn" onClick={() => onDeleteTopic(topics[0]?.id)} />
             <button data-testid="show-create-btn" onClick={onShowCreate}>
                 New Channel
             </button>
@@ -239,10 +217,7 @@ jest.mock("../community/CommunityCommentSection", () => ({
             <button data-testid="dislike-btn" onClick={() => onToggleTopicLike(selectedTopic.id, true)}>Dislike</button>
             <button data-testid="edit-topic-btn" onClick={() => onEditTopic(selectedTopic.id, { title: "Updated" })}>Edit Topic</button>
             <button data-testid="vote-poll-btn" onClick={() => onVotePoll("reply-1", 0)}>Vote</button>
-            <button
-                data-testid="reply-to-btn"
-                onClick={() => onReplyTo({ id: "reply-1", user: { id: "u1", name: "Test" }, content: "hi" })}
-            >Reply To</button>
+            <button data-testid="reply-to-btn" onClick={() => onReplyTo({ id: "reply-1", user: { id: "u1", name: "Test" }, content: "hi" })}>Reply To</button>
             <button data-testid="start-edit-reply-btn" onClick={() => onStartEditReply("reply-1", "old content")}>Start Edit</button>
             <button data-testid="edit-reply-btn" onClick={() => onEditReply("reply-1")}>Edit Reply</button>
             <button data-testid="report-chat-btn" onClick={() => onReportChat("reply-1")}>Report</button>
@@ -260,22 +235,14 @@ jest.mock("../community/CommunityCommentSection", () => ({
             <button data-testid="toggle-attachment-panel" onClick={() => setShowAttachmentPanel((p) => !p)}>Attach</button>
             <button data-testid="toggle-emoji-picker" onClick={() => setShowEmojiPicker((p) => !p)}>Emoji</button>
             <button data-testid="toggle-mentions" onClick={() => setShowMentions((p) => !p)}>Mentions</button>
-            <input
-                data-testid="message-input"
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-            />
+            <input data-testid="message-input" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
             <div data-testid="replying-to">{replyingTo?.id}</div>
             <div data-testid="pending-images">{pendingImages.length}</div>
             <div data-testid="pending-videos">{pendingVideos.length}</div>
             <div data-testid="pending-audios">{pendingAudios.length}</div>
             <div data-testid="pending-documents">{pendingDocuments.length}</div>
             <div data-testid="pending-voice-note">{pendingVoiceNote ?? "none"}</div>
-            <input
-                data-testid="pending-link-url"
-                value={pendingLinkUrl}
-                onChange={(e) => setPendingLinkUrl(e.target.value)}
-            />
+            <input data-testid="pending-link-url" value={pendingLinkUrl} onChange={(e) => setPendingLinkUrl(e.target.value)} />
             <div data-testid="poll-question">{pendingPollQuestion}</div>
             <div data-testid="poll-options">{pendingPollOptions.join(",")}</div>
             <div data-testid="event-title">{pendingEventTitle}</div>
@@ -302,14 +269,8 @@ jest.mock("../community/CommunityCommentSection", () => ({
                     setPendingEventLocation("Room 1");
                 }}
             >Set Event Data</button>
-            <button
-                data-testid="set-voice-note"
-                onClick={() => setPendingVoiceNote("https://cdn.test/voice.webm")}
-            >Set Voice Note</button>
-            <button
-                data-testid="click-user"
-                onClick={() => onUserClick("user-2")}
-            >Click User</button>
+            <button data-testid="set-voice-note" onClick={() => setPendingVoiceNote("https://cdn.test/voice.webm")}>Set Voice Note</button>
+            <button data-testid="click-user" onClick={() => onUserClick("user-2")}>Click User</button>
         </div>
     ),
 }));
@@ -338,43 +299,24 @@ jest.mock("../community/CommunityPostModal", () => ({
             <div data-testid="post-modal">
                 {reportingReplyId && (
                     <>
-                        <button
-                            data-testid="set-category-btn"
-                            onClick={() => setReportCategory("Spam")}
-                        >Set Category</button>
+                        <button data-testid="set-category-btn" onClick={() => setReportCategory("Spam")}>Set Category</button>
                         <button data-testid="submit-report-btn" onClick={onSubmitReport}>Submit Report</button>
                         <button data-testid="close-report-btn" onClick={onCloseReport}>Close Report</button>
                     </>
                 )}
                 {userProfileId && (
                     <>
-                        <button
-                            data-testid="show-warning-dialog"
-                            onClick={() => setShowWarningDialog(true)}
-                        >Show Warning</button>
-                        <button
-                            data-testid="show-ban-dialog"
-                            onClick={() => setShowBanDialog(true)}
-                        >Show Ban</button>
+                        <button data-testid="show-warning-dialog" onClick={() => setShowWarningDialog(true)}>Show Warning</button>
+                        <button data-testid="show-ban-dialog" onClick={() => setShowBanDialog(true)}>Show Ban</button>
                         {showWarningDialog && (
                             <>
-                                <input
-                                    data-testid="warning-input"
-                                    value={warningMessage}
-                                    onChange={(e) => setWarningMessage(e.target.value)}
-                                />
-                                <button data-testid="send-warning-btn" onClick={onSendWarning}>
-                                    Send Warning
-                                </button>
+                                <input data-testid="warning-input" value={warningMessage} onChange={(e) => setWarningMessage(e.target.value)} />
+                                <button data-testid="send-warning-btn" onClick={onSendWarning}>Send Warning</button>
                             </>
                         )}
                         {showBanDialog && (
                             <>
-                                <input
-                                    data-testid="ban-input"
-                                    value={banReason}
-                                    onChange={(e) => setBanReason(e.target.value)}
-                                />
+                                <input data-testid="ban-input" value={banReason} onChange={(e) => setBanReason(e.target.value)} />
                                 <button data-testid="ban-user-btn" onClick={onBanUser}>Ban User</button>
                             </>
                         )}
@@ -387,13 +329,7 @@ jest.mock("../community/CommunityPostModal", () => ({
 }));
 
 jest.mock("../community/CommunityCreatePost", () => ({
-    CommunityCreatePost: ({
-                              open,
-                              onOpenChange,
-                              onCreateTopic,
-                              setNewTopic,
-                              onFileUpload,
-                          }: CreatePostProps) =>
+    CommunityCreatePost: ({ open, onOpenChange, onCreateTopic, setNewTopic, onFileUpload }: CreatePostProps) =>
         open ? (
             <div data-testid="create-post-modal">
                 <button
@@ -430,18 +366,9 @@ jest.mock("../community/CommunityCreatePost", () => ({
                 >Fill Announcement</button>
                 <button data-testid="create-topic-btn" onClick={onCreateTopic}>Create</button>
                 <button data-testid="close-create-btn" onClick={() => onOpenChange(false)}>Close</button>
-                <button
-                    data-testid="upload-topic-image"
-                    onClick={() => onFileUpload(new File([], "img.jpg"), "image")}
-                >Upload Image</button>
-                <button
-                    data-testid="upload-topic-video"
-                    onClick={() => onFileUpload(new File([], "vid.mp4"), "video")}
-                >Upload Video</button>
-                <button
-                    data-testid="upload-topic-doc"
-                    onClick={() => onFileUpload(new File([], "doc.pdf"), "document")}
-                >Upload Doc</button>
+                <button data-testid="upload-topic-image" onClick={() => onFileUpload(new File([], "img.jpg"), "image")}>Upload Image</button>
+                <button data-testid="upload-topic-video" onClick={() => onFileUpload(new File([], "vid.mp4"), "video")}>Upload Video</button>
+                <button data-testid="upload-topic-doc" onClick={() => onFileUpload(new File([], "doc.pdf"), "document")}>Upload Doc</button>
             </div>
         ) : null,
 }));
@@ -450,19 +377,14 @@ jest.mock("../community/utils", () => ({
     getDisplayName: (user: { name?: string | null }) => user?.name ?? "Anonymous",
 }));
 
-// ─── mediaDevices Helper ──────────────────────────────────────────────
-
 function mockMediaDevices(getUserMedia: jest.Mock): void {
     Object.defineProperty(navigator, "mediaDevices", {
         configurable: true,
-        // writable must NOT be set when using get/set
         get() {
             return { getUserMedia };
         },
     });
 }
-
-// ─── Test Data ──────────────────────────────────────────────────────
 
 const mockUsers: CommunityClientProps["users"] = [
     { id: "user-1", name: "Test User", image: null, role: "member" },
@@ -486,6 +408,7 @@ const mockTopics: CommunityClientProps["initialTopics"] = [
         chatEnabled: true,
         likes: [],
         _count: { replies: 0 },
+        unreadCount: 0,
         user: { id: "user-1", name: "Test User", image: null, role: "member" },
     },
 ];
@@ -545,13 +468,9 @@ const defaultProps: CommunityClientProps = {
     currentUserRole: "member",
 };
 
-// ─── Tests ──────────────────────────────────────────────────────────
-
 describe("CommunityClient Integration", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-
-        // scrollIntoView is not implemented in jsdom
         window.HTMLElement.prototype.scrollIntoView = jest.fn();
 
         (communityActions.getTopicWithReplies as jest.Mock).mockResolvedValue(mockTopicDetail);
@@ -570,6 +489,7 @@ describe("CommunityClient Integration", () => {
         (communityActions.editReply as jest.Mock).mockResolvedValue({});
         (communityActions.voteOnPoll as jest.Mock).mockResolvedValue({ votes: { "0": 1 } });
         (communityActions.deleteTopic as jest.Mock).mockResolvedValue({});
+        (communityActions.markTopicRead as jest.Mock).mockResolvedValue({ unreadCount: 0 });
         (adminActions.createReport as jest.Mock).mockResolvedValue({});
         (adminActions.sendWarning as jest.Mock).mockResolvedValue({});
         (adminActions.banUserById as jest.Mock).mockResolvedValue({});
@@ -586,12 +506,8 @@ describe("CommunityClient Integration", () => {
     const selectTopic = async () => {
         (communityActions.getTopicWithReplies as jest.Mock).mockResolvedValueOnce(mockTopicDetail);
         fireEvent.click(screen.getByTestId("topic-topic-1"));
-        await waitFor(() =>
-            expect(screen.getByTestId("comment-section")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("comment-section")).toBeInTheDocument());
     };
-
-    // ── Basic rendering ───────────────────────────────────────────────
 
     it("renders initial state with welcome screen and topic list", () => {
         renderComponent();
@@ -606,32 +522,54 @@ describe("CommunityClient Integration", () => {
         expect(screen.getByTestId("topic-title")).toHaveTextContent("General");
     });
 
-    it("handles load topic error", async () => {
-        (communityActions.getTopicWithReplies as jest.Mock).mockRejectedValueOnce(
-            new Error("x")
+    it("calls markTopicRead on topic selection", async () => {
+        renderComponent();
+        await selectTopic();
+        await waitFor(() =>
+            expect(communityActions.markTopicRead).toHaveBeenCalledWith("topic-1")
         );
+    });
+
+    it("clears the unread badge optimistically when selecting a topic", async () => {
+        renderComponent({
+            initialTopics: [{ ...mockTopics[0], unreadCount: 5 }],
+        });
+        expect(screen.getByTestId("unread-topic-1")).toHaveTextContent("5");
+        await selectTopic();
+        await waitFor(() =>
+            expect(screen.getByTestId("unread-topic-1")).toHaveTextContent("0")
+        );
+    });
+
+    it("reapplies the unread count when the cursor race returns > 0", async () => {
+        (communityActions.markTopicRead as jest.Mock).mockResolvedValueOnce({ unreadCount: 2 });
+        renderComponent({
+            initialTopics: [{ ...mockTopics[0], unreadCount: 5 }],
+        });
+        await selectTopic();
+        await waitFor(() =>
+            expect(screen.getByTestId("unread-topic-1")).toHaveTextContent("2")
+        );
+    });
+
+    it("handles load topic error", async () => {
+        (communityActions.getTopicWithReplies as jest.Mock).mockRejectedValueOnce(new Error("x"));
         renderComponent();
         fireEvent.click(screen.getByTestId("topic-topic-1"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to load channel")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to load channel"));
     });
 
     it("handles null topic from getTopicWithReplies", async () => {
         (communityActions.getTopicWithReplies as jest.Mock).mockResolvedValueOnce(null);
         renderComponent();
         fireEvent.click(screen.getByTestId("topic-topic-1"));
-        await waitFor(() =>
-            expect(screen.queryByTestId("comment-section")).toBeNull()
-        );
+        await waitFor(() => expect(screen.queryByTestId("comment-section")).toBeNull());
     });
 
     it("renders in admin mode", () => {
         renderComponent({ isAdmin: true, currentUserRole: "admin" });
         expect(screen.getByTestId("members-list")).toBeInTheDocument();
     });
-
-    // ── Create topic ──────────────────────────────────────────────────
 
     it("opens create modal, fills fields and submits", async () => {
         renderComponent();
@@ -654,9 +592,7 @@ describe("CommunityClient Integration", () => {
         renderComponent();
         fireEvent.click(screen.getByTestId("show-create-btn"));
         fireEvent.click(screen.getByTestId("create-topic-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Please fill in all fields")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Please fill in all fields"));
         expect(communityActions.createTopic).not.toHaveBeenCalled();
     });
 
@@ -666,9 +602,7 @@ describe("CommunityClient Integration", () => {
         fireEvent.click(screen.getByTestId("fill-announcement-btn"));
         fireEvent.click(screen.getByTestId("create-topic-btn"));
         await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith(
-                "Only admins can create announcements"
-            )
+            expect(toast.error).toHaveBeenCalledWith("Only admins can create announcements")
         );
         expect(communityActions.createTopic).not.toHaveBeenCalled();
     });
@@ -689,16 +623,12 @@ describe("CommunityClient Integration", () => {
     });
 
     it("shows error when createTopic fails", async () => {
-        (communityActions.createTopic as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.createTopic as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         fireEvent.click(screen.getByTestId("show-create-btn"));
         fireEvent.click(screen.getByTestId("fill-topic-btn"));
         fireEvent.click(screen.getByTestId("create-topic-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to create channel")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to create channel"));
     });
 
     it("closes create modal", async () => {
@@ -707,8 +637,6 @@ describe("CommunityClient Integration", () => {
         fireEvent.click(screen.getByTestId("close-create-btn"));
         expect(screen.queryByTestId("create-post-modal")).toBeNull();
     });
-
-    // ── Topic file uploads ────────────────────────────────────────────
 
     it("uploads topic image and updates state", async () => {
         const mockFetch = jest.fn().mockResolvedValue({
@@ -728,9 +656,7 @@ describe("CommunityClient Integration", () => {
         renderComponent();
         fireEvent.click(screen.getByTestId("show-create-btn"));
         fireEvent.click(screen.getByTestId("upload-topic-image"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("upload fail")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("upload fail"));
     });
 
     it("uploads topic video and doc", async () => {
@@ -747,8 +673,6 @@ describe("CommunityClient Integration", () => {
         await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
     });
 
-    // ── Messaging ─────────────────────────────────────────────────────
-
     it("does not send when message empty and no attachments", async () => {
         renderComponent();
         await selectTopic();
@@ -759,9 +683,7 @@ describe("CommunityClient Integration", () => {
     it("sends a message without replying", async () => {
         renderComponent();
         await selectTopic();
-        fireEvent.change(screen.getByTestId("message-input"), {
-            target: { value: "Hello" },
-        });
+        fireEvent.change(screen.getByTestId("message-input"), { target: { value: "Hello" } });
         fireEvent.click(screen.getByTestId("send-message-btn"));
         await waitFor(() =>
             expect(communityActions.addReply).toHaveBeenCalledWith(
@@ -784,32 +706,22 @@ describe("CommunityClient Integration", () => {
     });
 
     it("shows error when addReply fails", async () => {
-        (communityActions.addReply as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.addReply as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
-        fireEvent.change(screen.getByTestId("message-input"), {
-            target: { value: "Hello" },
-        });
+        fireEvent.change(screen.getByTestId("message-input"), { target: { value: "Hello" } });
         fireEvent.click(screen.getByTestId("send-message-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to send message")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to send message"));
     });
 
     it("shows error toast when send fails (reply-to path)", async () => {
-        (communityActions.addReply as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.addReply as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("reply-to-btn"));
         await act(async () => {});
         fireEvent.click(screen.getByTestId("send-message-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to send message")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to send message"));
     });
 
     it("sends message with image attachment", async () => {
@@ -830,7 +742,6 @@ describe("CommunityClient Integration", () => {
         );
     });
 
-    // ── 1 file each → singular fields (component logic) ──────────────
     it("sends message with video, audio, document, voice note, link", async () => {
         const mockFetch = jest.fn().mockResolvedValue({
             ok: true,
@@ -857,14 +768,14 @@ describe("CommunityClient Integration", () => {
         await waitFor(() =>
             expect(communityActions.addReply).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    video:     "https://cdn.test/file.mp4",
-                    videos:    undefined,
-                    audio:     "https://cdn.test/file.mp4",
-                    audios:    undefined,
-                    document:  "https://cdn.test/file.mp4",
+                    video: "https://cdn.test/file.mp4",
+                    videos: undefined,
+                    audio: "https://cdn.test/file.mp4",
+                    audios: undefined,
+                    document: "https://cdn.test/file.mp4",
                     documents: undefined,
                     voiceNote: "https://cdn.test/voice.webm",
-                    linkUrl:   "https://example.com",
+                    linkUrl: "https://example.com",
                 })
             )
         );
@@ -880,7 +791,7 @@ describe("CommunityClient Integration", () => {
             expect(communityActions.addReply).toHaveBeenCalledWith(
                 expect.objectContaining({
                     pollQuestion: "Favorite color?",
-                    pollOptions:  ["Red", "Blue", "Green"],
+                    pollOptions: ["Red", "Blue", "Green"],
                 })
             )
         );
@@ -895,8 +806,8 @@ describe("CommunityClient Integration", () => {
         await waitFor(() =>
             expect(communityActions.addReply).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    eventTitle:    "Meeting",
-                    eventDate:     "2025-01-01",
+                    eventTitle: "Meeting",
+                    eventDate: "2025-01-01",
                     eventLocation: "Room 1",
                 })
             )
@@ -908,12 +819,8 @@ describe("CommunityClient Integration", () => {
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("upload-image-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("upload fail")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("upload fail"));
     });
-
-    // ── Reply / edit / delete ─────────────────────────────────────────
 
     it("deletes a reply and shows success toast", async () => {
         renderComponent();
@@ -926,15 +833,11 @@ describe("CommunityClient Integration", () => {
     });
 
     it("shows error when deleteReply fails", async () => {
-        (communityActions.deleteReply as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.deleteReply as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("delete-reply-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to delete message")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to delete message"));
     });
 
     it("edits a reply and shows success toast", async () => {
@@ -943,28 +846,19 @@ describe("CommunityClient Integration", () => {
         fireEvent.click(screen.getByTestId("start-edit-reply-btn"));
         fireEvent.click(screen.getByTestId("edit-reply-btn"));
         await waitFor(() =>
-            expect(communityActions.editReply).toHaveBeenCalledWith(
-                "reply-1",
-                "old content"
-            )
+            expect(communityActions.editReply).toHaveBeenCalledWith("reply-1", "old content")
         );
         expect(toast.success).toHaveBeenCalledWith("Message updated");
     });
 
     it("shows error when editReply fails", async () => {
-        (communityActions.editReply as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.editReply as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("start-edit-reply-btn"));
         fireEvent.click(screen.getByTestId("edit-reply-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to edit message")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to edit message"));
     });
-
-    // ── Topic actions ─────────────────────────────────────────────────
 
     it("toggles chat", async () => {
         renderComponent();
@@ -976,15 +870,11 @@ describe("CommunityClient Integration", () => {
     });
 
     it("shows error when toggleTopicChat fails", async () => {
-        (communityActions.toggleTopicChat as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.toggleTopicChat as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("toggle-chat-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to toggle chat")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to toggle chat"));
     });
 
     it("likes a topic", async () => {
@@ -992,10 +882,7 @@ describe("CommunityClient Integration", () => {
         await selectTopic();
         fireEvent.click(screen.getByTestId("like-btn"));
         await waitFor(() =>
-            expect(communityActions.toggleTopicLike).toHaveBeenCalledWith(
-                "topic-1",
-                false
-            )
+            expect(communityActions.toggleTopicLike).toHaveBeenCalledWith("topic-1", false)
         );
     });
 
@@ -1004,23 +891,16 @@ describe("CommunityClient Integration", () => {
         await selectTopic();
         fireEvent.click(screen.getByTestId("dislike-btn"));
         await waitFor(() =>
-            expect(communityActions.toggleTopicLike).toHaveBeenCalledWith(
-                "topic-1",
-                true
-            )
+            expect(communityActions.toggleTopicLike).toHaveBeenCalledWith("topic-1", true)
         );
     });
 
     it("shows error when toggleTopicLike fails", async () => {
-        (communityActions.toggleTopicLike as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.toggleTopicLike as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("like-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to react")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to react"));
     });
 
     it("edits a topic and shows success toast", async () => {
@@ -1028,23 +908,17 @@ describe("CommunityClient Integration", () => {
         await selectTopic();
         fireEvent.click(screen.getByTestId("edit-topic-btn"));
         await waitFor(() =>
-            expect(communityActions.editTopic).toHaveBeenCalledWith("topic-1", {
-                title: "Updated",
-            })
+            expect(communityActions.editTopic).toHaveBeenCalledWith("topic-1", { title: "Updated" })
         );
         expect(toast.success).toHaveBeenCalledWith("Updated successfully");
     });
 
     it("shows error when editTopic fails", async () => {
-        (communityActions.editTopic as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.editTopic as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("edit-topic-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to update")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to update"));
     });
 
     it("deletes a topic", async () => {
@@ -1056,113 +930,81 @@ describe("CommunityClient Integration", () => {
     });
 
     it("shows error when deleteTopic fails", async () => {
-        (communityActions.deleteTopic as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.deleteTopic as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         fireEvent.click(screen.getByTestId("delete-topic-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to delete channel")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to delete channel"));
     });
 
     it("votes on a poll", async () => {
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("vote-poll-btn"));
-        await waitFor(() =>
-            expect(communityActions.voteOnPoll).toHaveBeenCalledWith("reply-1", 0)
-        );
+        await waitFor(() => expect(communityActions.voteOnPoll).toHaveBeenCalledWith("reply-1", 0));
     });
 
     it("shows error when voteOnPoll fails", async () => {
-        (communityActions.voteOnPoll as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (communityActions.voteOnPoll as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("vote-poll-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to vote")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to vote"));
     });
 
     it("mentions all users and shows toast", async () => {
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("mention-all-btn"));
-        expect(
-            (screen.getByTestId("message-input") as HTMLInputElement).value
-        ).toContain("@Other User");
+        expect((screen.getByTestId("message-input") as HTMLInputElement).value).toContain(
+            "@Other User"
+        );
         expect(toast.success).toHaveBeenCalledWith("Mentioned 1 users");
     });
-
-    // ── Report ────────────────────────────────────────────────────────
 
     it("reports a chat after setting category", async () => {
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("report-chat-btn"));
-        await waitFor(() =>
-            expect(screen.getByTestId("set-category-btn")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("set-category-btn")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("set-category-btn"));
         fireEvent.click(screen.getByTestId("submit-report-btn"));
-        await waitFor(() =>
-            expect(adminActions.createReport).toHaveBeenCalled()
-        );
+        await waitFor(() => expect(adminActions.createReport).toHaveBeenCalled());
     });
 
     it("does not submit report without category", async () => {
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("report-chat-btn"));
-        await waitFor(() =>
-            expect(screen.getByTestId("submit-report-btn")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("submit-report-btn")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("submit-report-btn"));
         expect(adminActions.createReport).not.toHaveBeenCalled();
     });
 
     it("shows error when createReport fails", async () => {
-        (adminActions.createReport as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (adminActions.createReport as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("report-chat-btn"));
-        await waitFor(() =>
-            expect(screen.getByTestId("set-category-btn")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("set-category-btn")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("set-category-btn"));
         fireEvent.click(screen.getByTestId("submit-report-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to report chat")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to report chat"));
     });
 
     it("closes report modal", async () => {
         renderComponent();
         await selectTopic();
         fireEvent.click(screen.getByTestId("report-chat-btn"));
-        await waitFor(() =>
-            expect(screen.getByTestId("close-report-btn")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("close-report-btn")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("close-report-btn"));
-        await waitFor(() =>
-            expect(screen.queryByTestId("post-modal")).toBeNull()
-        );
+        await waitFor(() => expect(screen.queryByTestId("post-modal")).toBeNull());
     });
-
-    // ── Admin – warning ───────────────────────────────────────────────
 
     it("does not send empty warning", async () => {
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("show-warning-dialog"));
         fireEvent.click(screen.getByTestId("send-warning-btn"));
         expect(adminActions.sendWarning).not.toHaveBeenCalled();
@@ -1172,64 +1014,41 @@ describe("CommunityClient Integration", () => {
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("show-warning-dialog"));
         fireEvent.change(screen.getByTestId("warning-input"), {
             target: { value: "Warning message" },
         });
         fireEvent.click(screen.getByTestId("send-warning-btn"));
         await waitFor(() =>
-            expect(adminActions.sendWarning).toHaveBeenCalledWith(
-                "user-2",
-                "Warning message"
-            )
+            expect(adminActions.sendWarning).toHaveBeenCalledWith("user-2", "Warning message")
         );
         expect(toast.success).toHaveBeenCalledWith("Warning sent successfully");
     });
 
     it("shows error when sendWarning fails", async () => {
-        (adminActions.sendWarning as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (adminActions.sendWarning as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("show-warning-dialog"));
-        fireEvent.change(screen.getByTestId("warning-input"), {
-            target: { value: "Warning" },
-        });
+        fireEvent.change(screen.getByTestId("warning-input"), { target: { value: "Warning" } });
         fireEvent.click(screen.getByTestId("send-warning-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to send warning")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to send warning"));
     });
 
-    // ── Admin – ban ──────────────────────────────────────────────────
     it("admin can ban user", async () => {
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("show-ban-dialog"));
-        await waitFor(() =>
-            expect(screen.getByTestId("ban-input")).toBeInTheDocument()
-        );
-        fireEvent.change(screen.getByTestId("ban-input"), {
-            target: { value: "Ban reason" },
-        });
+        await waitFor(() => expect(screen.getByTestId("ban-input")).toBeInTheDocument());
+        fireEvent.change(screen.getByTestId("ban-input"), { target: { value: "Ban reason" } });
         fireEvent.click(screen.getByTestId("ban-user-btn"));
         await waitFor(() =>
-            expect(adminActions.banUserById).toHaveBeenCalledWith(
-                "user-2",
-                "Ban reason"
-            )
+            expect(adminActions.banUserById).toHaveBeenCalledWith("user-2", "Ban reason")
         );
         expect(toast.success).toHaveBeenCalledWith("User banned successfully");
     });
@@ -1238,51 +1057,33 @@ describe("CommunityClient Integration", () => {
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("show-ban-dialog"));
-        await waitFor(() =>
-            expect(screen.getByTestId("ban-user-btn")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("ban-user-btn")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("ban-user-btn"));
         expect(adminActions.banUserById).not.toHaveBeenCalled();
     });
 
     it("shows error when banUserById fails", async () => {
-        (adminActions.banUserById as jest.Mock).mockRejectedValueOnce(
-            new Error("fail")
-        );
+        (adminActions.banUserById as jest.Mock).mockRejectedValueOnce(new Error("fail"));
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("show-ban-dialog"));
-        await waitFor(() =>
-            expect(screen.getByTestId("ban-input")).toBeInTheDocument()
-        );
-        fireEvent.change(screen.getByTestId("ban-input"), {
-            target: { value: "Reason" },
-        });
+        await waitFor(() => expect(screen.getByTestId("ban-input")).toBeInTheDocument());
+        fireEvent.change(screen.getByTestId("ban-input"), { target: { value: "Reason" } });
         fireEvent.click(screen.getByTestId("ban-user-btn"));
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Failed to ban user")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to ban user"));
     });
 
     it("closes user profile modal", async () => {
         renderComponent({ isAdmin: true });
         await selectTopic();
         fireEvent.click(screen.getByTestId("click-user"));
-        await waitFor(() =>
-            expect(screen.getByTestId("post-modal")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByTestId("post-modal")).toBeInTheDocument());
         fireEvent.click(screen.getByTestId("close-user-profile"));
-        await waitFor(() =>
-            expect(screen.queryByTestId("post-modal")).toBeNull()
-        );
+        await waitFor(() => expect(screen.queryByTestId("post-modal")).toBeNull());
     });
 
     it("non-admin does not open user profile", async () => {
@@ -1292,20 +1093,14 @@ describe("CommunityClient Integration", () => {
         expect(screen.queryByTestId("post-modal")).toBeNull();
     });
 
-    // ── Recording ─────────────────────────────────────────────────────
-
     it("starts and stops recording", async () => {
         const mockStop = jest.fn();
         let savedOnStop: (() => void) | undefined;
 
         const mockMediaRecorder = {
             start: jest.fn(),
-            stop: jest.fn(() => {
-                savedOnStop?.();
-            }),
-            ondataavailable: undefined as
-                | ((e: { data: Blob }) => void)
-                | undefined,
+            stop: jest.fn(() => savedOnStop?.()),
+            ondataavailable: undefined as ((e: { data: Blob }) => void) | undefined,
             set onstop(fn: () => void) {
                 savedOnStop = fn;
             },
@@ -1335,16 +1130,12 @@ describe("CommunityClient Integration", () => {
         await act(async () => {
             fireEvent.click(screen.getByTestId("start-record-btn"));
         });
-        await waitFor(() =>
-            expect(screen.getByTestId("is-recording")).toHaveTextContent("true")
-        );
+        await waitFor(() => expect(screen.getByTestId("is-recording")).toHaveTextContent("true"));
 
         await act(async () => {
             fireEvent.click(screen.getByTestId("stop-record-btn"));
         });
-        await waitFor(() =>
-            expect(screen.getByTestId("is-recording")).toHaveTextContent("false")
-        );
+        await waitFor(() => expect(screen.getByTestId("is-recording")).toHaveTextContent("false"));
     });
 
     it("handles recording error (getUserMedia denied)", async () => {
@@ -1356,9 +1147,7 @@ describe("CommunityClient Integration", () => {
         await act(async () => {
             fireEvent.click(screen.getByTestId("start-record-btn"));
         });
-        await waitFor(() =>
-            expect(toast.error).toHaveBeenCalledWith("Microphone access denied")
-        );
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Microphone access denied"));
     });
 
     it("shows mobile channels overlay button", async () => {

@@ -16,6 +16,7 @@ import {
     toggleTopicLike,
     toggleTopicChat,
     voteOnPoll,
+    markTopicRead,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 
@@ -36,7 +37,6 @@ import { getDisplayName } from "./community/utils";
 import { prepareImageForUpload } from "@/lib/client-image-upload";
 import { validatePDFPageCount } from "@/lib/pdf-validation";
 
-/* ─── Props Interface ─────────────────────────────────── */
 
 interface CommunityClientProps {
     initialTopics: TopicData[];
@@ -161,7 +161,7 @@ export default function CommunityClient({
                 documents: newTopic.documents.length > 0 ? newTopic.documents : undefined,
                 linkUrl: newTopic.linkUrl || undefined,
             });
-            setTopics((prev) => [JSON.parse(JSON.stringify(createdTopic)), ...prev]);
+            setTopics((prev) => [JSON.parse(JSON.stringify({createdTopic, unreadCount: 0})), ...prev]);
             setShowCreate(false);
             setNewTopic({ title: "", content: "", category: "", image: "", images: [], video: "", videos: [], documents: [], linkUrl: "" });
             toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
@@ -214,11 +214,23 @@ export default function CommunityClient({
     const handleSelectTopic = async (topicId: string) => {
         try {
             const topic = await getTopicWithReplies(topicId);
-            if (topic) {
-                setSelectedTopic(JSON.parse(JSON.stringify(topic)));
-                setShowMobileChannels(false);
-                scrollToBottom();
+            if (!topic) return;
+
+            setSelectedTopic(JSON.parse(JSON.stringify(topic)));
+            setShowMobileChannels(false);
+
+            setTopics((prev) =>
+                prev.map((t) => (t.id === topicId ? { ...t, unreadCount: 0 } : t))
+            );
+
+            const { unreadCount } = await markTopicRead(topicId);
+            if (unreadCount > 0) {
+                setTopics((prev) =>
+                    prev.map((t) => (t.id === topicId ? { ...t, unreadCount } : t))
+                );
             }
+
+            scrollToBottom();
         } catch {
             toast.error("Failed to load channel");
         }

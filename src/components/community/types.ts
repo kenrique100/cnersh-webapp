@@ -29,6 +29,7 @@ export interface TopicData {
     user: TopicUser;
     _count: { replies: number; likes?: number };
     likes?: { userId: string; isDislike: boolean }[];
+    unreadCount?: number;
 }
 
 export interface ReplyData {
