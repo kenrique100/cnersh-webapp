@@ -11,12 +11,25 @@ import {
     Hr,
 } from "@react-email/components";
 
+/**
+ * Optional payload used to render a richer community-activity email.
+ * When absent, the generic notification layout is used.
+ */
+export interface CommunityActivityEmailPayload {
+    activityType: string;
+    actorName: string;
+    topicTitle: string;
+    contentPreview: string;
+}
+
 interface NotificationEmailProps {
     userName: string;
     notificationMessage: string;
     notificationType: string;
     actionUrl?: string;
     appName?: string;
+    /** Optional community activity block — renders in place of the generic message. */
+    communityActivity?: CommunityActivityEmailPayload;
 }
 
 export const NotificationEmail = ({
@@ -25,6 +38,7 @@ export const NotificationEmail = ({
                                       notificationType,
                                       actionUrl,
                                       appName = "National Ethics Committee for Health Research on Humans",
+                                      communityActivity,
                                   }: NotificationEmailProps) => (
     <Html>
         <Head />
@@ -38,7 +52,15 @@ export const NotificationEmail = ({
                             <tbody>
                             <tr>
                                 <td className="text-center">
-                                    <div style={{ display: 'inline-block', background: 'linear-gradient(135deg, #5F51E8 0%, #7C6CF0 100%)', padding: '12px 24px', borderRadius: '8px' }}>
+                                    <div
+                                        style={{
+                                            display: "inline-block",
+                                            background:
+                                                "linear-gradient(135deg, #5F51E8 0%, #7C6CF0 100%)",
+                                            padding: "12px 24px",
+                                            borderRadius: "8px",
+                                        }}
+                                    >
                                         <Text className="text-[22px] font-bold text-white m-0 tracking-wide">
                                             {appName}
                                         </Text>
@@ -54,17 +76,41 @@ export const NotificationEmail = ({
 
                     <Hr className="border border-solid border-gray-200 my-6" />
 
-                    <Text className="text-[16px] leading-6.5 text-gray-800">Hi {userName},</Text>
-
-                    <Text className="text-[16px] leading-6.5 text-gray-700">
-                        You have a new <strong>{notificationType.toLowerCase().replace("_", " ")}</strong> notification:
+                    <Text className="text-[16px] leading-6.5 text-gray-800">
+                        Hi {userName},
                     </Text>
 
-                    <Section className="my-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <Text className="text-[15px] text-gray-800 m-0">
-                            {notificationMessage}
-                        </Text>
-                    </Section>
+                    <Text className="text-[16px] leading-6.5 text-gray-700">
+                        You have a new{" "}
+                        <strong>{notificationType.toLowerCase().replace("_", " ")}</strong>{" "}
+                        notification:
+                    </Text>
+
+                    {communityActivity ? (
+                        <Section className="my-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <Text className="text-[12px] uppercase tracking-wide text-gray-500 m-0 mb-3">
+                                Community activity
+                            </Text>
+                            <Text className="text-[14px] text-gray-800 m-0">
+                                <strong>Activity:</strong> {communityActivity.activityType}
+                            </Text>
+                            <Text className="text-[14px] text-gray-800 m-0 mt-1">
+                                <strong>Actor:</strong> {communityActivity.actorName}
+                            </Text>
+                            <Text className="text-[14px] text-gray-800 m-0 mt-3">
+                                <strong>Topic:</strong> {communityActivity.topicTitle}
+                            </Text>
+                            <Text className="text-[14px] text-gray-800 m-0 mt-1">
+                                <strong>Preview:</strong> {communityActivity.contentPreview}
+                            </Text>
+                        </Section>
+                    ) : (
+                        <Section className="my-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <Text className="text-[15px] text-gray-800 m-0">
+                                {notificationMessage}
+                            </Text>
+                        </Section>
+                    )}
 
                     {actionUrl && (
                         <Section className="text-center my-8">
@@ -72,7 +118,7 @@ export const NotificationEmail = ({
                                 className="bg-[#5F51E8] rounded-md text-white text-[16px] font-medium no-underline text-center px-6 py-3"
                                 href={actionUrl}
                             >
-                                View Details
+                                {communityActivity ? "View Community Topic" : "View Details"}
                             </Button>
                         </Section>
                     )}

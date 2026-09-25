@@ -133,4 +133,29 @@ describe('NotificationEmail', () => {
         });
         expect(screen.getByText(new RegExp(String(new Date().getFullYear())))).toBeInTheDocument();
     });
+
+    it("renders the community activity block when provided", async () => {
+        await act(async () => {
+            render(
+                <NotificationEmail
+                    userName="Ada"
+                    notificationMessage="Dr. John posted a reply"
+                    notificationType="COMMENT"
+                    actionUrl="https://app.example.com/community?topic=t1"
+                    communityActivity={{
+                        activityType: "New Reply",
+                        actorName: "Dr. John",
+                        topicTitle: "Ethics Committee Meeting",
+                        contentPreview: "We should review the updated submission requirements...",
+                    }}
+                />
+            );
+        });
+
+        expect(screen.getByText(/Community activity/)).toBeInTheDocument();
+        expect(screen.getByText(/New Reply/)).toBeInTheDocument();
+        expect(screen.getByText(/Dr. John/)).toBeInTheDocument();
+        expect(screen.getByText(/Ethics Committee Meeting/)).toBeInTheDocument();
+        expect(screen.getByText('View Community Topic')).toBeInTheDocument();
+    });
 });

@@ -1,26 +1,29 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { updateProfile } from "@/app/actions/user";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
+import { getCommunityUnreadCount } from "@/app/actions/community";
 import { getPages } from "@/app/actions/page-actions";
 import Navbar from "@/components/navbar";
 import DashboardShell from "@/components/dashboard-shell";
 import React from "react";
 
 export default async function DashboardLayout({
-                                            children,
-                                        }: Readonly<{
+                                                  children,
+                                              }: Readonly<{
     children: React.ReactNode;
 }>) {
     await authIsRequired();
 
     let user: Awaited<ReturnType<typeof updateProfile>> = null;
     let unreadCount = 0;
+    let communityUnreadCount = 0;
     let pages: Awaited<ReturnType<typeof getPages>> = [];
 
     try {
-        [user, unreadCount, pages] = await Promise.all([
+        [user, unreadCount, communityUnreadCount, pages] = await Promise.all([
             updateProfile(),
             getUnreadNotificationCount(),
+            getCommunityUnreadCount(),
             getPages(),
         ]);
     } catch (error) {
@@ -29,14 +32,25 @@ export default async function DashboardLayout({
 
     return (
         <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
-            <Navbar user={user ? {
-                name: user.name,
-                email: user.email,
-                image: user.image,
-                gender: user.gender,
-                role: user.role,
-            } : null} notificationCount={unreadCount} pages={pages} />
-            <DashboardShell role={user?.role}>
+            <Navbar
+                user={
+                    user
+                        ? {
+                            name: user.name,
+                            email: user.email,
+                            image: user.image,
+                            gender: user.gender,
+                            role: user.role,
+                        }
+                        : null
+                }
+                notificationCount={unreadCount}
+                pages={pages}
+            />
+            <DashboardShell
+                role={user?.role}
+                communityUnreadCount={communityUnreadCount}
+            >
                 {children}
             </DashboardShell>
         </div>

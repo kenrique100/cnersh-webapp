@@ -1,11 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { notifyAdmins } from "@/lib/notify-admins";
+import { notifyCommunityActivity } from "@/lib/community-notifications";
 import { isAdminRole, canManageRole } from "@/lib/permissions";
 import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
-import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { Prisma } from "@/generated/prisma";
 import { z } from "zod";
 
 const idSchema = z.string().trim().min(1).max(128);
@@ -48,9 +49,41 @@ function cleanOptionalUrl(value: string | null | undefined): string | null | und
 
 function cleanUrls(values: string[] | undefined, max: number) {
     if (values === undefined) return undefined;
-    return z.array(z.string()).max(max).parse(values).map((value) => cleanOptionalUrl(value)).filter(
-        (value): value is string => Boolean(value),
+    return z
+        .array(z.string())
+        .max(max)
+        .parse(values)
+        .map((value) => cleanOptionalUrl(value))
+        .filter((value): value is string => Boolean(value));
+}
+
+async function getUnreadCountsForTopics(
+    viewerId: string,
+    topicIds: string[]
+): Promise<Record<string, number>> {
+    if (topicIds.length === 0) return {};
+
+    const rows = await db.$queryRaw<Array<{ topicId: string; unread: bigint }>>(
+        Prisma.sql`
+            SELECT t.id AS "topicId", COUNT(r.id)::bigint AS "unread"
+            FROM "community_topic" t
+            LEFT JOIN "community_topic_read_status" rs
+                ON rs."topicId" = t.id AND rs."userId" = ${viewerId}
+            LEFT JOIN "community_reply" r
+                ON r."topicId" = t.id
+                AND r.deleted = false
+                AND r."userId" <> ${viewerId}
+                AND (rs."lastReadAt" IS NULL OR r."createdAt" > rs."lastReadAt")
+            WHERE t.id IN (${Prisma.join(topicIds)})
+            GROUP BY t.id
+        `
     );
+
+    const map: Record<string, number> = {};
+    for (const row of rows) {
+        map[row.topicId] = Number(row.unread);
+    }
+    return map;
 }
 
 export async function createTopic(data: {
@@ -95,51 +128,28 @@ export async function createTopic(data: {
         },
     });
 
-    if (category === "Announcements") {
-        try {
-            const communityUsers = await db.user.findMany({
-                where: {
-                    id: { not: session.user.id },
-                    role: { in: ["admin", "superadmin"] },
-                    banned: { not: true },
-                },
-                select: { id: true, email: true, name: true },
-            });
-            const message = `New announcement: ${title}`;
-            if (communityUsers.length) {
-                await db.notification.createMany({
-                    data: communityUsers.map((user) => ({
-                        type: "ANNOUNCEMENT" as const,
-                        message,
-                        link: "/community",
-                        userId: user.id,
-                    })),
-                });
-                void Promise.allSettled(communityUsers.filter((user) => user.email).map((user) =>
-                    sendNotificationEmail({
-                        to: user.email,
-                        userName: user.name || "User",
-                        notificationMessage: message,
-                        notificationType: "ANNOUNCEMENT",
-                        actionUrl: "/community",
-                    }),
-                ));
-            }
-        } catch (error) {
-            console.error("Error sending announcement notifications:", error);
-        }
-    }
-    return topic;
+    void notifyCommunityActivity({
+        type: category === "Announcements" ? "ANNOUNCEMENT" : "NEW_TOPIC",
+        actor: { id: session.user.id, name: session.user.name ?? null },
+        topic: { id: topic.id, title: topic.title, category: topic.category },
+        preview: topic.content,
+    }).catch((error) => {
+        console.error("[createTopic] community notification failed:", error);
+    });
+
+    // The author is implicitly up-to-date on their own topic.
+    return { ...topic, unreadCount: 0 };
 }
 
 export async function getTopics(category?: string, page = 1, limit = 10) {
-    await requireCommunityAccess();
+    const { session } = await requireCommunityAccess();
     const safePage = pageSchema.parse(page);
     const safeLimit = limitSchema.parse(limit);
     const safeCategory = category
         ? z.string().trim().min(1).max(80).transform(sanitizeText).parse(category)
         : undefined;
     const where = { deleted: false, ...(safeCategory ? { category: safeCategory } : {}) };
+
     try {
         const [topics, total] = await Promise.all([
             db.communityTopic.findMany({
@@ -155,7 +165,20 @@ export async function getTopics(category?: string, page = 1, limit = 10) {
             }),
             db.communityTopic.count({ where }),
         ]);
-        return { topics, total, pages: Math.ceil(total / safeLimit) };
+
+        const unreadByTopic = await getUnreadCountsForTopics(
+            session.user.id,
+            topics.map((t) => t.id)
+        );
+
+        return {
+            topics: topics.map((t) => ({
+                ...t,
+                unreadCount: unreadByTopic[t.id] ?? 0,
+            })),
+            total,
+            pages: Math.ceil(total / safeLimit),
+        };
     } catch (error) {
         console.error("Error fetching topics:", error);
         return { topics: [], total: 0, pages: 0 };
@@ -196,6 +219,21 @@ export async function getTopicWithReplies(topicId: string) {
     return topic?.deleted ? null : topic;
 }
 
+export async function markTopicRead(topicId: string): Promise<{ unreadCount: number }> {
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(topicId);
+    const now = new Date();
+
+    await db.communityTopicReadStatus.upsert({
+        where: { userId_topicId: { userId: session.user.id, topicId: id } },
+        create: { userId: session.user.id, topicId: id, lastReadAt: now },
+        update: { lastReadAt: now },
+    });
+
+    const map = await getUnreadCountsForTopics(session.user.id, [id]);
+    return { unreadCount: map[id] ?? 0 };
+}
+
 export async function addReply(data: {
     topicId: string;
     content: string;
@@ -222,7 +260,7 @@ export async function addReply(data: {
     const content = contentText.parse(data.content);
     const topic = await db.communityTopic.findUnique({
         where: { id: topicId },
-        select: { chatEnabled: true, deleted: true },
+        select: { chatEnabled: true, deleted: true, title: true, category: true },
     });
     if (!topic || topic.deleted) throw new Error("Topic not found");
     if (!topic.chatEnabled) throw new Error("Topic is closed");
@@ -230,7 +268,12 @@ export async function addReply(data: {
     const parentReply = parentId
         ? await db.communityReply.findUnique({
             where: { id: parentId },
-            select: { userId: true, topicId: true, deleted: true, user: { select: { email: true, name: true } } },
+            select: {
+                userId: true,
+                topicId: true,
+                deleted: true,
+                user: { select: { email: true, name: true } },
+            },
         })
         : null;
     if (parentId && (!parentReply || parentReply.deleted || parentReply.topicId !== topicId)) {
@@ -238,9 +281,14 @@ export async function addReply(data: {
     }
 
     const pollQuestion = cleanOptionalText(data.pollQuestion, 300);
-    const pollOptions = data.pollOptions === undefined
-        ? []
-        : z.array(z.string().trim().min(1).max(200).transform(sanitizeText)).min(2).max(10).parse(data.pollOptions);
+    const pollOptions =
+        data.pollOptions === undefined
+            ? []
+            : z
+                .array(z.string().trim().min(1).max(200).transform(sanitizeText))
+                .min(2)
+                .max(10)
+                .parse(data.pollOptions);
     if (Boolean(pollQuestion) !== (pollOptions.length > 0)) throw new Error("Invalid poll");
     const eventDate = data.eventDate ? new Date(data.eventDate) : null;
     if (eventDate && Number.isNaN(eventDate.getTime())) throw new Error("Invalid event date");
@@ -273,9 +321,25 @@ export async function addReply(data: {
         },
     });
 
+    // The author just wrote a reply — treat their per-topic cursor as current.
+    void db.communityTopicReadStatus
+        .upsert({
+            where: { userId_topicId: { userId: session.user.id, topicId } },
+            create: { userId: session.user.id, topicId, lastReadAt: new Date() },
+            update: { lastReadAt: new Date() },
+        })
+        .catch((error) => console.error("[addReply] failed to bump topic cursor:", error));
+
     try {
-        const notifications: { type: "MENTION" | "COMMENT"; message: string; link: string; userId: string }[] = [];
-        const names = [...content.matchAll(/@(\w+(?:\s\w+)?)/g)].map((match) => match[1].trim()).slice(0, 20);
+        const notifications: {
+            type: "MENTION" | "COMMENT";
+            message: string;
+            link: string;
+            userId: string;
+        }[] = [];
+        const names = [...content.matchAll(/@(\w+(?:\s\w+)?)/g)]
+            .map((match) => match[1].trim())
+            .slice(0, 20);
         if (names.length) {
             const mentionedUsers = await db.user.findMany({
                 where: {
@@ -286,31 +350,39 @@ export async function addReply(data: {
                 },
                 select: { id: true },
             });
-            notifications.push(...mentionedUsers.map((user) => ({
-                type: "MENTION" as const,
-                message: `${session.user.name || "Someone"} mentioned you in the community`,
-                link: "/community",
-                userId: user.id,
-            })));
+            notifications.push(
+                ...mentionedUsers.map((user) => ({
+                    type: "MENTION" as const,
+                    message: `${session.user.name || "Someone"} mentioned you in the community`,
+                    link: `/community?topic=${topicId}`,
+                    userId: user.id,
+                }))
+            );
         }
         if (parentReply && parentReply.userId !== session.user.id) {
             notifications.push({
                 type: "COMMENT",
                 message: `${session.user.name || "Someone"} replied to your message in the community`,
-                link: "/community",
+                link: `/community?topic=${topicId}`,
                 userId: parentReply.userId,
             });
         }
-        if (notifications.length) await db.notification.createMany({ data: notifications });
-        await notifyAdmins({
-            type: "COMMENT",
-            message: `${session.user.name || "An administrator"} posted a reply in the community`,
-            link: "/community",
-            excludeUserId: session.user.id,
-        });
+        if (notifications.length) {
+            await db.notification.createMany({ data: notifications });
+        }
     } catch (error) {
-        console.error("Error creating community notifications:", error);
+        console.error("Error creating reply notifications:", error);
     }
+
+    void notifyCommunityActivity({
+        type: "NEW_REPLY",
+        actor: { id: session.user.id, name: session.user.name ?? null },
+        topic: { id: topicId, title: topic.title, category: topic.category },
+        preview: reply.content,
+    }).catch((error) => {
+        console.error("[addReply] community notification failed:", error);
+    });
+
     return reply;
 }
 
@@ -332,10 +404,11 @@ export async function getCommunityUsers() {
     }
 }
 
+
 async function canDeleteCommunityContent(
     actor: CommunityActor,
     ownerId: string,
-    ownerRole: string | null,
+    ownerRole: string | null
 ) {
     return ownerId === actor.session.user.id || canManageRole(actor.role, ownerRole);
 }
@@ -348,7 +421,8 @@ export async function deleteTopic(topicId: string) {
         select: { userId: true, deleted: true, user: { select: { role: true } } },
     });
     if (!topic || topic.deleted) throw new Error("Topic not found");
-    if (!await canDeleteCommunityContent(actor, topic.userId, topic.user.role)) throw new Error("Forbidden");
+    if (!(await canDeleteCommunityContent(actor, topic.userId, topic.user.role)))
+        throw new Error("Forbidden");
     await db.communityTopic.update({ where: { id }, data: { deleted: true } });
     await db.auditLog.create({
         data: {
@@ -374,7 +448,8 @@ export async function deleteReply(replyId: string) {
         },
     });
     if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
-    if (!await canDeleteCommunityContent(actor, reply.userId, reply.user.role)) throw new Error("Forbidden");
+    if (!(await canDeleteCommunityContent(actor, reply.userId, reply.user.role)))
+        throw new Error("Forbidden");
     await db.communityReply.update({ where: { id }, data: { deleted: true } });
     await db.auditLog.create({
         data: {
@@ -393,7 +468,11 @@ export async function editReply(replyId: string, content: string) {
     const safeContent = contentText.parse(content);
     const reply = await db.communityReply.findUnique({
         where: { id },
-        select: { userId: true, deleted: true, topic: { select: { chatEnabled: true, deleted: true } } },
+        select: {
+            userId: true,
+            deleted: true,
+            topic: { select: { chatEnabled: true, deleted: true } },
+        },
     });
     if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
     if (!reply.topic.chatEnabled) throw new Error("Topic is closed");
@@ -401,16 +480,19 @@ export async function editReply(replyId: string, content: string) {
     return db.communityReply.update({ where: { id }, data: { content: safeContent } });
 }
 
-export async function editTopic(topicId: string, data: {
-    title?: string;
-    content?: string;
-    image?: string | null;
-    images?: string[];
-    video?: string | null;
-    videos?: string[];
-    documents?: string[];
-    linkUrl?: string | null;
-}) {
+export async function editTopic(
+    topicId: string,
+    data: {
+        title?: string;
+        content?: string;
+        image?: string | null;
+        images?: string[];
+        video?: string | null;
+        videos?: string[];
+        documents?: string[];
+        linkUrl?: string | null;
+    }
+) {
     const { session } = await requireCommunityAccess();
     const id = idSchema.parse(topicId);
     const topic = await db.communityTopic.findUnique({
@@ -469,7 +551,10 @@ export async function toggleTopicLike(topicId: string, isDislike = false) {
         return { action: "removed" };
     }
     if (existing) {
-        await db.communityTopicLike.update({ where: { id: existing.id }, data: { isDislike } });
+        await db.communityTopicLike.update({
+            where: { id: existing.id },
+            data: { isDislike },
+        });
     } else {
         await db.communityTopicLike.create({
             data: { topicId: id, userId: session.user.id, isDislike },
@@ -491,8 +576,15 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
             topic: { select: { deleted: true, chatEnabled: true } },
         },
     });
-    if (!reply || reply.deleted || reply.topic.deleted || !reply.topic.chatEnabled ||
-        !reply.pollOptions.length || optionIndex < 0 || optionIndex >= reply.pollOptions.length) {
+    if (
+        !reply ||
+        reply.deleted ||
+        reply.topic.deleted ||
+        !reply.topic.chatEnabled ||
+        !reply.pollOptions.length ||
+        optionIndex < 0 ||
+        optionIndex >= reply.pollOptions.length
+    ) {
         throw new Error("Poll not found");
     }
     const votes = { ...((reply.pollVotes as Record<string, number>) || {}) };
@@ -500,4 +592,71 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
     else votes[session.user.id] = optionIndex;
     await db.communityReply.update({ where: { id }, data: { pollVotes: votes } });
     return { success: true, votes };
+}
+
+const COMMUNITY_EPOCH = new Date(0);
+
+export async function getCommunityUnreadCount(): Promise<number> {
+    const session = await authSession();
+    if (!session) return 0;
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (!isAdminRole(user?.role)) return 0;
+
+    try {
+        const status = await db.communityReadStatus.findUnique({
+            where: { userId: session.user.id },
+            select: { lastReadAt: true },
+        });
+        const lastReadAt = status?.lastReadAt ?? COMMUNITY_EPOCH;
+
+        const [topicCount, replyCount] = await Promise.all([
+            db.communityTopic.count({
+                where: {
+                    deleted: false,
+                    createdAt: { gt: lastReadAt },
+                    userId: { not: session.user.id },
+                },
+            }),
+            db.communityReply.count({
+                where: {
+                    deleted: false,
+                    createdAt: { gt: lastReadAt },
+                    userId: { not: session.user.id },
+                    topic: { deleted: false },
+                },
+            }),
+        ]);
+
+        return topicCount + replyCount;
+    } catch (error) {
+        console.error("Error fetching community unread count:", error);
+        return 0;
+    }
+}
+
+export async function markCommunityRead(): Promise<void> {
+    const session = await authSession();
+    if (!session) return;
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (!isAdminRole(user?.role)) return;
+
+    const now = new Date();
+    try {
+        await db.communityReadStatus.upsert({
+            where: { userId: session.user.id },
+            create: { userId: session.user.id, lastReadAt: now },
+            update: { lastReadAt: now },
+        });
+        revalidatePath("/dashboard", "layout");
+    } catch (error) {
+        console.error("Error marking community as read:", error);
+    }
 }

@@ -1,5 +1,7 @@
 import { Resend } from "resend";
-import NotificationEmail from "@/emails/notification-email";
+import NotificationEmail, {
+    type CommunityActivityEmailPayload,
+} from "@/emails/notification-email";
 
 const DEFAULT_EMAIL_FROM = "CNERSH <info@cameroon-national-ethics-com.net>";
 
@@ -21,23 +23,29 @@ type SendNotificationEmailProps = {
     notificationMessage: string;
     notificationType: string;
     actionUrl?: string;
+    communityActivity?: CommunityActivityEmailPayload;
 };
 
 export async function sendNotificationEmail({
-    to,
-    userName,
-    notificationMessage,
-    notificationType,
-    actionUrl,
-}: SendNotificationEmailProps) {
+                                                to,
+                                                userName,
+                                                notificationMessage,
+                                                notificationType,
+                                                actionUrl,
+                                                communityActivity,
+                                            }: SendNotificationEmailProps) {
     try {
         if (!process.env.RESEND_API_KEY) {
-            console.warn("Resend API key not configured. Set RESEND_API_KEY environment variable to enable email notifications.");
+            console.warn(
+                "Resend API key not configured. Set RESEND_API_KEY environment variable to enable email notifications."
+            );
             return;
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "";
-        const fullActionUrl = actionUrl && baseUrl ? `${baseUrl}${actionUrl}` : undefined;
+        const baseUrl =
+            process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || "";
+        const fullActionUrl =
+            actionUrl && baseUrl ? `${baseUrl}${actionUrl}` : undefined;
 
         await getResend().emails.send({
             from: process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
@@ -49,6 +57,7 @@ export async function sendNotificationEmail({
                     notificationMessage={notificationMessage}
                     notificationType={notificationType}
                     actionUrl={fullActionUrl}
+                    communityActivity={communityActivity}
                 />
             ),
         });

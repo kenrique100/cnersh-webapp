@@ -9,7 +9,6 @@ export const dynamic = "force-dynamic";
 export default async function CommunityPage() {
     const session = await authIsRequired();
 
-    // Only admins and superadmins can access the community
     const currentUser = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
@@ -35,14 +34,16 @@ export default async function CommunityPage() {
     }
 
     return (
-        <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3F2EF] dark:bg-gray-900 px-0 sm:px-4 lg:px-6 py-0 sm:py-4">
-            <CommunityClient
-                initialTopics={JSON.parse(JSON.stringify(topics))}
-                users={JSON.parse(JSON.stringify(users))}
-                isAdmin={true}
-                currentUserId={session.user.id}
-                currentUserRole={currentUser?.role || "admin"}
-            />
+        <div className="w-full h-[calc(100dvh-4rem)] bg-[#F3F2EF] dark:bg-gray-900 flex overflow-hidden sm:p-4 lg:p-6">
+            <div className="flex-1 min-w-0 sm:rounded-xl overflow-hidden border-0 sm:border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
+                <CommunityClient
+                    initialTopics={JSON.parse(JSON.stringify(topics))}
+                    users={JSON.parse(JSON.stringify(users))}
+                    isAdmin={true}
+                    currentUserId={session.user.id}
+                    currentUserRole={currentUser?.role || "admin"}
+                />
+            </div>
         </div>
     );
 }
