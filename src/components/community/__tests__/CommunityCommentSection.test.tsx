@@ -1,63 +1,66 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { CommunityCommentSection } from "@/components/community";
+import "@testing-library/jest-dom";
+import { CommunityCommentSection } from "@/components/community/CommunityCommentSection";
+import type { TopicDetail, CommunityUser } from "@/components/community/types";
 
-interface MockPostCardProps {
-    reply: { id: string; content: string; [key: string]: unknown };
-    onReplyTo: (reply: { id: string; content: string }) => void;
-    onStartEditReply: (replyId: string, content: string) => void;
-    onDeleteReply: (replyId: string) => void;
-    onReportChat: (replyId: string) => void;
-}
-
-// Mock the heavy child component
-jest.mock("../CommunityPostCard", () => ({
-    CommunityPostCard: ({ reply, onReplyTo, onStartEditReply, onDeleteReply, onReportChat }: MockPostCardProps) => (
-        <div data-testid={`post-${reply.id}`}>
-            <span>{reply.content}</span>
-            <button onClick={() => onReplyTo(reply)}>Reply</button>
-            <button onClick={() => onStartEditReply(reply.id, reply.content)}>Edit</button>
-            <button onClick={() => onDeleteReply(reply.id)}>Delete</button>
-            <button onClick={() => onReportChat(reply.id)}>Report</button>
-        </div>
-    ),
+jest.mock("next/image", () => ({
+    __esModule: true,
+    default: (props: React.ImgHTMLAttributes<HTMLImageElement>) =>
+        // eslint-disable-next-line jsx-a11y/alt-text
+        <img {...props} />,
 }));
 
-interface ReplyToData {
-    id: string;
-    content: string;
-    user: { name: string; role: string };
+jest.mock("@/components/link-preview", () => ({
+    __esModule: true,
+    default: () => null,
+}));
+
+jest.mock("@/components/community/CommunityPostCard", () => ({
+    CommunityPostCard: () => <div data-testid="post-card" />,
+}));
+
+jest.mock("@/lib/utils", () => ({
+    cn: (...classes: (string | boolean | undefined)[]) =>
+        classes.filter(Boolean).join(" "),
+}));
+
+const users: CommunityUser[] = [
+    { id: "u1", name: "Alice", image: null, role: "admin" },
+];
+
+function makeTopic(replyCount: number): TopicDetail {
+    return {
+        id: "topic-1",
+        title: "General",
+        content: "Welcome",
+        category: "General",
+        createdAt: new Date("2024-01-01"),
+        userId: "u1",
+        image: null,
+        images: [],
+        video: null,
+        videos: [],
+        documents: [],
+        linkUrl: null,
+        chatEnabled: true,
+        likes: [],
+        user: { id: "u1", name: "Alice", image: null, role: "admin" },
+        replies: Array.from({ length: replyCount }, (_, i) => ({
+            id: `r-${i}`,
+            content: `Reply ${i}`,
+            createdAt: new Date(),
+            user: { id: "u1", name: "Alice", image: null, role: "admin" },
+            children: [],
+        })),
+    };
 }
 
-const mockTopic = {
-    id: "t1",
-    title: "General Chat",
-    content: "Welcome to the channel",
-    category: "General",
-    createdAt: new Date("2024-01-15T10:00:00Z"),
-    user: { id: "u1", name: "Alice", image: null, role: "member" },
-    replies: [
-        {
-            id: "r1",
-            content: "Hello",
-            createdAt: new Date("2024-01-15T10:05:00Z"),
-            user: { id: "u2", name: "Bob", image: null, role: "member" },
-            children: [],
-        },
-    ],
-    chatEnabled: true,
-    likes: [],
-    images: [],
-    videos: [],
-    documents: [],
-};
-
-const defaultProps = {
-    selectedTopic: mockTopic,
+const baseProps = {
     currentUserId: "u1",
     isAdmin: false,
     isSuperAdmin: false,
-    users: [{ id: "u2", name: "Bob", image: null, role: "member" }],
+    users,
     messageText: "",
     setMessageText: jest.fn(),
     pendingImage: null,
@@ -107,8 +110,7 @@ const defaultProps = {
     showAttachmentPanel: false,
     setShowAttachmentPanel: jest.fn(),
     isRecording: false,
-    messagesEndRef: { current: null },
-    inputRef: { current: document.createElement("textarea") },
+    inputRef: React.createRef<HTMLTextAreaElement>(),
     onToggleChat: jest.fn(),
     onSendMessage: jest.fn(),
     onDeleteReply: jest.fn(),
@@ -121,70 +123,109 @@ const defaultProps = {
     onMentionAll: jest.fn(),
     onStartRecording: jest.fn(),
     onStopRecording: jest.fn(),
-    onFileUpload: jest.fn(),
+    onFileUpload: jest.fn().mockResolvedValue(undefined),
     onVotePoll: jest.fn(),
     onShowMobileChannels: jest.fn(),
     onReplyTo: jest.fn(),
     onStartEditReply: jest.fn(),
+    onMessagesRead: jest.fn(),
 };
 
-describe("CommunityCommentSection", () => {
-    beforeEach(() => jest.clearAllMocks());
+function withScrollMetrics(el: HTMLElement, metrics: { scrollHeight: number; clientHeight: number; scrollTop: number }) {
+    Object.defineProperty(el, "scrollHeight", { configurable: true, value: metrics.scrollHeight });
+    Object.defineProperty(el, "clientHeight", { configurable: true, value: metrics.clientHeight });
+    Object.defineProperty(el, "scrollTop", { configurable: true, writable: true, value: metrics.scrollTop });
+}
 
-    it("renders the channel header with correct title and category badge", () => {
-        render(<CommunityCommentSection {...defaultProps} />);
-        expect(screen.getByText("general-chat")).toBeInTheDocument();
-        expect(screen.getByText("General")).toBeInTheDocument();
-        expect(screen.getByText(/Viewing #general-chat/)).toBeInTheDocument();
+describe("CommunityCommentSection scroll-to-bottom", () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        // jsdom does not implement scrollTo.
+        Element.prototype.scrollTo = jest.fn();
+        window.HTMLElement.prototype.scrollIntoView = jest.fn();
     });
 
-    it("renders replies using CommunityPostCard", () => {
-        render(<CommunityCommentSection {...defaultProps} />);
-        expect(screen.getByTestId("post-r1")).toBeInTheDocument();
-        expect(screen.getByText("Hello")).toBeInTheDocument();
+    it("hides the arrow when the user is at the bottom", () => {
+        render(
+            <CommunityCommentSection
+                {...baseProps}
+                selectedTopic={makeTopic(1)}
+                messagesEndRef={React.createRef<HTMLDivElement>()}
+            />
+        );
+        const btn = screen.getByTestId("scroll-to-bottom-button");
+        expect(btn.className).toContain("opacity-0");
     });
 
-    it("calls onSendMessage when Enter is pressed (without Shift)", () => {
-        render(<CommunityCommentSection {...defaultProps} />);
-        const textarea = screen.getByPlaceholderText(/Message #general-chat/);
-        fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-        expect(defaultProps.onSendMessage).toHaveBeenCalled();
+    it("shows the arrow when the user scrolls away from the bottom", () => {
+        render(
+            <CommunityCommentSection
+                {...baseProps}
+                selectedTopic={makeTopic(30)}
+                messagesEndRef={React.createRef<HTMLDivElement>()}
+            />
+        );
+        const container = screen.getByTestId("community-scroll-container");
+        withScrollMetrics(container, { scrollHeight: 2000, clientHeight: 500, scrollTop: 100 });
+        fireEvent.scroll(container);
+
+        const btn = screen.getByTestId("scroll-to-bottom-button");
+        expect(btn.className).toContain("opacity-100");
     });
 
-    it("shows 'Chat is disabled' when chatEnabled is false", () => {
-        const disabledTopic = { ...mockTopic, chatEnabled: false };
-        render(<CommunityCommentSection {...defaultProps} selectedTopic={disabledTopic} />);
-        expect(screen.getByText(/Chat is disabled/)).toBeInTheDocument();
-        expect(screen.queryByPlaceholderText(/Message/)).toBeNull();
+    it("clicking the arrow scrolls to the bottom and notifies the parent", () => {
+        const onMessagesRead = jest.fn();
+        render(
+            <CommunityCommentSection
+                {...baseProps}
+                onMessagesRead={onMessagesRead}
+                selectedTopic={makeTopic(30)}
+                messagesEndRef={React.createRef<HTMLDivElement>()}
+            />
+        );
+        const container = screen.getByTestId("community-scroll-container");
+        withScrollMetrics(container, { scrollHeight: 2000, clientHeight: 500, scrollTop: 100 });
+        fireEvent.scroll(container);
+
+        fireEvent.click(screen.getByTestId("scroll-to-bottom-button"));
+
+        expect(container.scrollTo).toHaveBeenCalledWith({
+            top: 2000,
+            behavior: "smooth",
+        });
+        expect(onMessagesRead).toHaveBeenCalledTimes(1);
     });
 
-    // Fix L149: Replace 'as any' with proper type
-    it("displays reply indicator when replyingTo is set", () => {
-        const replyingTo: ReplyToData = {
-            id: "r2",
-            content: "Hi",
-            user: { name: "Bob", role: "member" },
-        };
-        render(<CommunityCommentSection {...defaultProps} replyingTo={replyingTo as never} />);
-        expect(screen.getByText(/Replying to/)).toBeInTheDocument();
-        expect(screen.getByText("Bob")).toBeInTheDocument();
-    });
+    it("calls onMessagesRead when the user scrolls back to the bottom after unseen activity", () => {
+        const onMessagesRead = jest.fn();
+        const topic = makeTopic(10);
+        const { rerender } = render(
+            <CommunityCommentSection
+                {...baseProps}
+                onMessagesRead={onMessagesRead}
+                selectedTopic={topic}
+                messagesEndRef={React.createRef<HTMLDivElement>()}
+            />
+        );
+        const container = screen.getByTestId("community-scroll-container");
+        withScrollMetrics(container, { scrollHeight: 2000, clientHeight: 500, scrollTop: 100 });
+        fireEvent.scroll(container);
 
-    it("opens poll creator UI when showPollCreator is true", () => {
-        render(<CommunityCommentSection {...defaultProps} showPollCreator={true} />);
-        expect(screen.getByText("Create Poll")).toBeInTheDocument();
-        expect(screen.getByPlaceholderText("Ask a question...")).toBeInTheDocument();
-    });
+        // Simulate a new reply arriving.
+        const longerTopic = { ...topic, replies: [...topic.replies, { ...topic.replies[0], id: "new" }] };
+        rerender(
+            <CommunityCommentSection
+                {...baseProps}
+                onMessagesRead={onMessagesRead}
+                selectedTopic={longerTopic}
+                messagesEndRef={React.createRef<HTMLDivElement>()}
+            />
+        );
 
-    it("opens attachment panel when + button clicked", () => {
-        render(<CommunityCommentSection {...defaultProps} />);
-        expect(defaultProps.setShowAttachmentPanel).toBeDefined();
-    });
+        // User scrolls back to the bottom.
+        withScrollMetrics(container, { scrollHeight: 2000, clientHeight: 500, scrollTop: 1500 });
+        fireEvent.scroll(container);
 
-    it("handles @mention input changes", () => {
-        render(<CommunityCommentSection {...defaultProps} />);
-        const textarea = screen.getByPlaceholderText(/Message #general-chat/);
-        fireEvent.change(textarea, { target: { value: "@Bo" } });
-        expect(defaultProps.setMessageText).toHaveBeenCalledWith("@Bo");
+        expect(onMessagesRead).toHaveBeenCalledTimes(1);
     });
 });

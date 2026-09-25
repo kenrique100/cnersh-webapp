@@ -37,7 +37,6 @@ import { getDisplayName } from "./community/utils";
 import { prepareImageForUpload } from "@/lib/client-image-upload";
 import { validatePDFPageCount } from "@/lib/pdf-validation";
 
-
 interface CommunityClientProps {
     initialTopics: TopicData[];
     users: CommunityUser[];
@@ -47,20 +46,19 @@ interface CommunityClientProps {
 }
 
 export default function CommunityClient({
-    initialTopics,
-    users,
-    isAdmin = false,
-    currentUserId,
-    currentUserRole,
-}: CommunityClientProps) {
+                                            initialTopics,
+                                            users,
+                                            isAdmin = false,
+                                            currentUserId,
+                                            currentUserRole,
+                                        }: CommunityClientProps) {
     const router = useRouter();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const isSuperAdmin = currentUserRole === "superadmin";
 
     const [topics, setTopics] = React.useState(initialTopics);
-    const [selectedTopic, setSelectedTopic] =
-        React.useState<TopicDetail | null>(null);
+    const [selectedTopic, setSelectedTopic] = React.useState<TopicDetail | null>(null);
     const [messageText, setMessageText] = React.useState("");
     const [pendingImage, setPendingImage] = React.useState<string | null>(null);
     const [replyingTo, setReplyingTo] = React.useState<ReplyData | null>(null);
@@ -120,8 +118,6 @@ export default function CommunityClient({
         }, 100);
     }, []);
 
-    /* ─── Upload Helper ────────────────────────────────── */
-
     const uploadFileToVercelBlob = async (file: File): Promise<string> => {
         const formData = new FormData();
         formData.append("file", file);
@@ -134,14 +130,8 @@ export default function CommunityClient({
         return result.url;
     };
 
-    /* ─── Handlers ──────────────────────────────────────── */
-
     const handleCreateTopic = async () => {
-        if (
-            !newTopic.title.trim() ||
-            !newTopic.content.trim() ||
-            !newTopic.category
-        ) {
+        if (!newTopic.title.trim() || !newTopic.content.trim() || !newTopic.category) {
             toast.error("Please fill in all fields");
             return;
         }
@@ -161,7 +151,10 @@ export default function CommunityClient({
                 documents: newTopic.documents.length > 0 ? newTopic.documents : undefined,
                 linkUrl: newTopic.linkUrl || undefined,
             });
-            setTopics((prev) => [JSON.parse(JSON.stringify({createdTopic, unreadCount: 0})), ...prev]);
+            setTopics((prev) => [
+                JSON.parse(JSON.stringify({ ...createdTopic, unreadCount: 0 })),
+                ...prev,
+            ]);
             setShowCreate(false);
             setNewTopic({ title: "", content: "", category: "", image: "", images: [], video: "", videos: [], documents: [], linkUrl: "" });
             toast.success(newTopic.category === "Announcements" ? "Announcement published! All users have been notified." : "Channel created!");
@@ -173,7 +166,6 @@ export default function CommunityClient({
     const handleTopicFileUpload = async (file: File, type: "image" | "video" | "document") => {
         setTopicUploading(true);
         try {
-            // PDF validation for documents
             if (type === "document" && file.type === "application/pdf") {
                 const validation = await validatePDFPageCount(file);
                 if (!validation.valid) {
@@ -181,7 +173,6 @@ export default function CommunityClient({
                     return;
                 }
             }
-
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
                 const url = await uploadFileToVercelBlob(normalizedFile);
@@ -210,6 +201,18 @@ export default function CommunityClient({
             toast.error("Failed to toggle chat");
         }
     };
+
+    const handleMessagesRead = useCallback(() => {
+        if (!selectedTopic) return;
+
+        setTopics((prev) =>
+            prev.map((t) => (t.id === selectedTopic.id ? { ...t, unreadCount: 0 } : t))
+        );
+
+        markTopicRead(selectedTopic.id).catch((err) =>
+            console.error("[CommunityClient] markTopicRead failed:", err)
+        );
+    }, [selectedTopic]);
 
     const handleSelectTopic = async (topicId: string) => {
         try {
@@ -279,10 +282,7 @@ export default function CommunityClient({
                         ),
                     };
                 }
-                return {
-                    ...prev,
-                    replies: [...prev.replies, replyData],
-                };
+                return { ...prev, replies: [...prev.replies, replyData] };
             });
             setMessageText("");
             setPendingImage(null);
@@ -478,15 +478,9 @@ export default function CommunityClient({
     const handleEditTopic = async (topicId: string, data: { title?: string; content?: string }) => {
         try {
             await editTopic(topicId, data);
-            setTopics((prev) =>
-                prev.map((t) =>
-                    t.id === topicId ? { ...t, ...data } : t
-                )
-            );
+            setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, ...data } : t));
             if (selectedTopic?.id === topicId) {
-                setSelectedTopic((prev) =>
-                    prev ? { ...prev, ...data } : prev
-                );
+                setSelectedTopic((prev) => prev ? { ...prev, ...data } : prev);
             }
             toast.success("Updated successfully");
         } catch {
@@ -542,7 +536,6 @@ export default function CommunityClient({
 
     const handleFileUpload = async (file: File, type: "image" | "video" | "audio" | "document") => {
         try {
-            // PDF validation for documents
             if (type === "document" && file.type === "application/pdf") {
                 const validation = await validatePDFPageCount(file);
                 if (!validation.valid) {
@@ -550,7 +543,6 @@ export default function CommunityClient({
                     return;
                 }
             }
-
             if (type === "image") {
                 const normalizedFile = await prepareImageForUpload(file);
                 const url = await uploadFileToVercelBlob(normalizedFile);
@@ -602,8 +594,6 @@ export default function CommunityClient({
         setActiveMessageId(null);
     };
 
-    /* ─── Channel Sidebar ──────────────────────────────── */
-
     const channelSidebar = (
         <CommunityMembersList
             topics={topics}
@@ -616,16 +606,12 @@ export default function CommunityClient({
         />
     );
 
-    /* ─── Main Layout ──────────────────────────────────── */
-
     return (
         <div className="h-[calc(100dvh-4rem)] sm:h-[calc(100vh-6rem)] flex overflow-hidden sm:rounded-xl border-0 sm:border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
-            {/* Desktop Sidebar */}
             <div className="hidden md:block w-60 shrink-0 border-r border-gray-200 dark:border-gray-800">
                 {channelSidebar}
             </div>
 
-            {/* Mobile Sidebar Overlay */}
             {showMobileChannels && (
                 <div className="fixed inset-0 z-50 md:hidden">
                     <div
@@ -638,7 +624,6 @@ export default function CommunityClient({
                 </div>
             )}
 
-            {/* Message Area */}
             <div className="flex-1 min-w-0 relative">
                 {selectedTopic ? (
                     <CommunityCommentSection
@@ -715,6 +700,7 @@ export default function CommunityClient({
                         onShowMobileChannels={() => setShowMobileChannels(true)}
                         onReplyTo={handleReplyTo}
                         onStartEditReply={handleStartEditReply}
+                        onMessagesRead={handleMessagesRead}
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full bg-white dark:bg-gray-950 text-center">
@@ -745,7 +731,6 @@ export default function CommunityClient({
                 )}
             </div>
 
-            {/* Create Topic Dialog */}
             <CommunityCreatePost
                 open={showCreate}
                 onOpenChange={setShowCreate}
@@ -760,7 +745,6 @@ export default function CommunityClient({
                 topicDocRef={topicDocRef as React.RefObject<HTMLInputElement>}
             />
 
-            {/* Admin Dialogs */}
             <CommunityPostModal
                 userProfileId={userProfileId}
                 selectedUser={selectedUser}
