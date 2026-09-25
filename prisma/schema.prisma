@@ -29,6 +29,7 @@ model User {
   expertiseTags       String[]  @default([])
   pendingActivation   Boolean   @default(false)
   activationExpiresAt DateTime?
+  communityReadStatus CommunityReadStatus?
 
   sessions            Session[]
   accounts            Account[]
@@ -52,6 +53,7 @@ model User {
   appeals             Appeal[]
   files               File[]
   idempotencyKeys     IdempotencyKey[]
+
 
   @@index([email])
   @@index([role])
@@ -713,4 +715,16 @@ model IdempotencyKey {
   @@unique([userId, action, key])
   @@index([expiresAt])
   @@map("idempotency_key")
+}
+
+model CommunityReadStatus {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  lastReadAt     DateTime @default(now())
+  lastTopicReads Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("community_read_status")
 }

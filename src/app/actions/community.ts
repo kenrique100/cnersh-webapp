@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyCommunityActivity } from "@/lib/community-notifications";
@@ -199,8 +200,6 @@ export async function addReply(data: {
     const content = contentText.parse(data.content);
     const topic = await db.communityTopic.findUnique({
         where: { id: topicId },
-        // `title` and `category` are required to compose the community
-        // activity email payload downstream.
         select: { chatEnabled: true, deleted: true, title: true, category: true },
     });
     if (!topic || topic.deleted) throw new Error("Topic not found");
@@ -262,7 +261,6 @@ export async function addReply(data: {
         },
     });
 
-    // 1. Mentions and parent-reply notifications (in-app only — unchanged).
     try {
         const notifications: {
             type: "MENTION" | "COMMENT";
@@ -524,4 +522,72 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
     else votes[session.user.id] = optionIndex;
     await db.communityReply.update({ where: { id }, data: { pollVotes: votes } });
     return { success: true, votes };
+}
+
+/** Default cursor when a user has never opened the community. */
+const COMMUNITY_EPOCH = new Date(0);
+
+export async function getCommunityUnreadCount(): Promise<number> {
+    const session = await authSession();
+    if (!session) return 0;
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (!isAdminRole(user?.role)) return 0;
+
+    try {
+        const status = await db.communityReadStatus.findUnique({
+            where: { userId: session.user.id },
+            select: { lastReadAt: true },
+        });
+        const lastReadAt = status?.lastReadAt ?? COMMUNITY_EPOCH;
+
+        const [topicCount, replyCount] = await Promise.all([
+            db.communityTopic.count({
+                where: {
+                    deleted: false,
+                    createdAt: { gt: lastReadAt },
+                    userId: { not: session.user.id },
+                },
+            }),
+            db.communityReply.count({
+                where: {
+                    deleted: false,
+                    createdAt: { gt: lastReadAt },
+                    userId: { not: session.user.id },
+                    topic: { deleted: false },
+                },
+            }),
+        ]);
+
+        return topicCount + replyCount;
+    } catch (error) {
+        console.error("Error fetching community unread count:", error);
+        return 0;
+    }
+}
+
+export async function markCommunityRead(): Promise<void> {
+    const session = await authSession();
+    if (!session) return;
+
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (!isAdminRole(user?.role)) return;
+
+    const now = new Date();
+    try {
+        await db.communityReadStatus.upsert({
+            where: { userId: session.user.id },
+            create: { userId: session.user.id, lastReadAt: now },
+            update: { lastReadAt: now },
+        });
+        revalidatePath("/dashboard", "layout");
+    } catch (error) {
+        console.error("Error marking community as read:", error);
+    }
 }

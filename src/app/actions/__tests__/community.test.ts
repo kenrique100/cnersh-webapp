@@ -11,6 +11,10 @@ import {
     voteOnPoll,
 } from "@/app/actions/community";
 
+/* ------------------------------------------------------------------------- */
+/* Module mocks                                                              */
+/* ------------------------------------------------------------------------- */
+
 jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
 
 jest.mock("@/lib/permissions", () => ({
@@ -34,6 +38,17 @@ jest.mock("@/lib/db", () => ({
 jest.mock("@/lib/community-notifications", () => ({
     notifyCommunityActivity: jest.fn().mockResolvedValue(undefined),
 }));
+
+// `next/cache` transitively requires `next/server`, which expects the Web
+// Fetch globals (`Request`, `Response`, `Headers`) to exist. jsdom doesn't
+// provide them, so we mock the module out for this test file.
+jest.mock("next/cache", () => ({
+    revalidatePath: jest.fn(),
+}));
+
+/* ------------------------------------------------------------------------- */
+/* Typed handles to mocked modules                                           */
+/* ------------------------------------------------------------------------- */
 
 import { authSession as _authSession } from "@/lib/auth-utils";
 import { db as _db } from "@/lib/db";
@@ -130,6 +145,10 @@ beforeEach(() => {
     });
     syncDb();
 });
+
+/* ------------------------------------------------------------------------- */
+/* createTopic                                                               */
+/* ------------------------------------------------------------------------- */
 
 describe("createTopic", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -250,6 +269,10 @@ describe("createTopic", () => {
     });
 });
 
+/* ------------------------------------------------------------------------- */
+/* getTopics                                                                 */
+/* ------------------------------------------------------------------------- */
+
 describe("getTopics", () => {
     it("rejects ordinary users before reading community data", async () => {
         mockSession("user-1");
@@ -319,6 +342,10 @@ describe("getTopics", () => {
     });
 });
 
+/* ------------------------------------------------------------------------- */
+/* getTopicWithReplies                                                       */
+/* ------------------------------------------------------------------------- */
+
 describe("getTopicWithReplies", () => {
     it("returns the topic with nested replies", async () => {
         mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
@@ -345,6 +372,10 @@ describe("getTopicWithReplies", () => {
         expect(result).toBeNull();
     });
 });
+
+/* ------------------------------------------------------------------------- */
+/* addReply                                                                  */
+/* ------------------------------------------------------------------------- */
 
 describe("addReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -452,6 +483,10 @@ describe("addReply", () => {
     });
 });
 
+/* ------------------------------------------------------------------------- */
+/* getCommunityUsers                                                         */
+/* ------------------------------------------------------------------------- */
+
 describe("getCommunityUsers", () => {
     it("returns list of users", async () => {
         mockedDb.user.findMany = jest.fn().mockResolvedValue([
@@ -479,6 +514,10 @@ describe("getCommunityUsers", () => {
         consoleErrorSpy.mockRestore();
     });
 });
+
+/* ------------------------------------------------------------------------- */
+/* deleteTopic                                                               */
+/* ------------------------------------------------------------------------- */
 
 describe("deleteTopic", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -529,6 +568,10 @@ describe("deleteTopic", () => {
         expect(mockedDb.communityTopic.update).not.toHaveBeenCalled();
     });
 });
+
+/* ------------------------------------------------------------------------- */
+/* deleteReply                                                               */
+/* ------------------------------------------------------------------------- */
 
 describe("deleteReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -585,6 +628,10 @@ describe("deleteReply", () => {
         );
     });
 });
+
+/* ------------------------------------------------------------------------- */
+/* editReply                                                                 */
+/* ------------------------------------------------------------------------- */
 
 describe("editReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -649,6 +696,10 @@ describe("editReply", () => {
     });
 });
 
+/* ------------------------------------------------------------------------- */
+/* toggleTopicLike                                                           */
+/* ------------------------------------------------------------------------- */
+
 describe("toggleTopicLike", () => {
     it("throws Unauthorized when not authenticated", async () => {
         mockedAuthSession.mockResolvedValue(null);
@@ -707,6 +758,10 @@ describe("toggleTopicLike", () => {
         expect(mockedDb.communityTopicLike.update).toHaveBeenCalled();
     });
 });
+
+/* ------------------------------------------------------------------------- */
+/* voteOnPoll                                                                */
+/* ------------------------------------------------------------------------- */
 
 describe("voteOnPoll", () => {
     it("throws Unauthorized when not authenticated", async () => {
