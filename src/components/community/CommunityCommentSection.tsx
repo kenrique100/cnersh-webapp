@@ -133,12 +133,10 @@ function isNearBottom(el: HTMLDivElement): boolean {
 
 function DateSeparator({ date }: { date: Date | string }) {
     return (
-        <div className="flex items-center justify-center my-4" data-testid="date-separator">
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-            <span className="px-3 py-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 rounded-full uppercase tracking-wider">
+        <div className="flex justify-center my-3" data-testid="date-separator">
+            <span className="px-3 py-1 text-[11px] font-medium text-gray-600 bg-white/90 shadow-sm rounded-md uppercase tracking-wide">
                 {formatDateSeparator(date)}
             </span>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
         </div>
     );
 }
@@ -362,7 +360,12 @@ function TopicView({
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
                     data-testid="community-scroll-container"
-                    className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-3"
+                    className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-2"
+                    style={{
+                        backgroundColor: "#efeae2",
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d3cab8' fill-opacity='0.35'%3E%3Cpath d='M30 15a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM15 30a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM45 30a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM30 45a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/g%3E%3C/svg%3E")`,
+                        backgroundSize: "40px 40px",
+                    }}
                 >
                     <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                         <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 ${selectedTopic.category === "Announcements" ? "bg-yellow-500" : "bg-indigo-500"}`}>

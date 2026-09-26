@@ -58,27 +58,39 @@ describe("utils", () => {
     });
 
     describe("formatTime", () => {
-        it("returns a 24-hour HH:MM string with hour and minute", () => {
+        it("returns a WhatsApp-style 12-hour time string with AM/PM", () => {
             const d = new Date("2024-01-15T14:30:00");
-            expect(formatTime(d)).toMatch(/^\d{2}:\d{2}$/);
+            const result = formatTime(d);
+            // Format: "2:30 PM" — no leading zero on the hour, uppercase AM/PM
+            expect(result).toMatch(/^\d{1,2}:\d{2}\s?(AM|PM)$/i);
         });
 
-        it("zero-pads single-digit hours and minutes", () => {
+        it("includes the minutes zero-padded", () => {
             const d = new Date("2024-01-15T09:05:00");
-            // Verify padding without assuming a specific timezone.
             const result = formatTime(d);
-            expect(result).toMatch(/^0\d:0\d$/);
+            // Minutes must always be two digits, e.g. "9:05 AM"
+            expect(result).toMatch(/\d{1,2}:05\s?(AM|PM)/i);
         });
 
-        it("produces exactly HH:MM with no AM/PM suffix", () => {
+        it("uses AM for morning times and PM for afternoon/evening times", () => {
+            const morning = new Date("2024-01-15T09:00:00");
+            const afternoon = new Date("2024-01-15T15:00:00");
+            expect(formatTime(morning)).toMatch(/AM$/i);
+            expect(formatTime(afternoon)).toMatch(/PM$/i);
+        });
+
+        it("uses 12-hour hour values (no 13–23 hour numbers)", () => {
+            // 14:30 should render as "2:30 PM", not "14:30"
             const d = new Date("2024-01-15T14:30:00");
-            const result = formatTime(d);
-            expect(result).not.toMatch(/AM|PM/i);
-            expect(result.length).toBe(5);
+            const hour = parseInt(formatTime(d).split(":")[0], 10);
+            expect(hour).toBeGreaterThanOrEqual(1);
+            expect(hour).toBeLessThanOrEqual(12);
         });
 
         it("accepts a string date", () => {
-            expect(formatTime("2024-01-15T14:30:00")).toMatch(/^\d{2}:\d{2}$/);
+            expect(formatTime("2024-01-15T14:30:00")).toMatch(
+                /^\d{1,2}:\d{2}\s?(AM|PM)$/i
+            );
         });
     });
 
