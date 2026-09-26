@@ -20,16 +20,43 @@ export async function deleteBlobUrl(url: string) {
     }
 }
 
-export function formatTime(date: Date) {
-    return new Date(date).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
+/** Format a timestamp as 24-hour HH:MM (e.g. "14:33"). */
+export function formatTime(date: Date | string) {
+    const d = new Date(date);
+    const h = d.getHours().toString().padStart(2, "0");
+    const m = d.getMinutes().toString().padStart(2, "0");
+    return `${h}:${m}`;
+}
+
+/** Full human-readable date, e.g. "Monday, September 24, 2026". */
+export function formatDate(date: Date | string) {
+    return new Date(date).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
     });
 }
 
-export function formatDate(date: Date) {
-    return new Date(date).toLocaleDateString("en-US", {
-        weekday: "long",
+function startOfDay(d: Date): number {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+export function isSameDay(a: Date | string, b: Date | string): boolean {
+    return startOfDay(new Date(a)) === startOfDay(new Date(b));
+}
+
+
+export function formatDateSeparator(date: Date | string): string {
+    const d = new Date(date);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (isSameDay(d, today)) return "Today";
+    if (isSameDay(d, yesterday)) return "Yesterday";
+
+    return d.toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric",

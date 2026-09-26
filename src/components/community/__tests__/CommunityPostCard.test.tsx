@@ -57,8 +57,11 @@ jest.mock("@/components/link-preview", () => ({
 }));
 
 jest.mock("../utils", () => ({
-    getDisplayName: (user: { name?: string | null }) => user?.name ?? "Anonymous",
-    formatTime: jest.fn(() => "12:00 PM"),
+    getDisplayName: (user: { name?: string | null; role?: string }) => {
+        if (user?.role === "admin" || user?.role === "superadmin") return "CNERSH Admin";
+        return user?.name ?? "Anonymous";
+    },
+    formatTime: jest.fn(() => "12:00"),
     formatDate: jest.fn(() => "Jan 15, 2024"),
 }));
 
@@ -103,17 +106,68 @@ describe("CommunityPostCard", () => {
         expect(screen.getByText("Hello world")).toBeInTheDocument();
     });
 
-    it("shows avatar and name when first message of a group", () => {
+    it("renders each message as its own bubble with sender name and avatar", () => {
         render(<CommunityPostCard {...defaultProps} />);
         expect(screen.getByText("Alice")).toBeInTheDocument();
         expect(screen.getByTestId("avatar-fallback")).toHaveTextContent("A");
     });
 
-    it("hides avatar when same user sent previous message within threshold", () => {
-        const prev = createReply({ createdAt: new Date("2024-01-15T11:59:30Z") });
-        render(<CommunityPostCard {...defaultProps} prevReply={prev} />);
-        expect(screen.queryByText("Alice")).not.toBeInTheDocument();
-        expect(screen.getByText("12:00 PM")).toBeInTheDocument();
+    it("shows the timestamp on the bubble", () => {
+        render(<CommunityPostCard {...defaultProps} />);
+        // formatTime is mocked to return "12:00"
+        expect(screen.getAllByText("12:00").length).toBeGreaterThan(0);
+    });
+
+    it("shows the timestamp on every consecutive bubble from the same user", () => {
+        // Two messages from the same user, rendered as separate bubbles.
+        const first = createReply({ id: "r1", content: "First" });
+        const second = createReply({ id: "r2", content: "Second" });
+
+        const { container } = render(
+            <div>
+                <CommunityPostCard
+                    {...defaultProps}
+                    reply={first}
+                />
+                <CommunityPostCard
+                    {...defaultProps}
+                    reply={second}
+                    prevReply={first}
+                />
+            </div>
+        );
+
+        // Two separate bubbles.
+        const posts = container.querySelectorAll(
+            '[data-testid^="community-post-"]'
+        );
+        expect(posts.length).toBe(2);
+
+        // The sender name appears on BOTH bubbles (no merging/grouping).
+        expect(screen.getAllByText("Alice").length).toBe(2);
+
+        // Each bubble shows its own time.
+        expect(screen.getAllByText("12:00").length).toBe(2);
+    });
+
+    it("aligns the current user's message to the right", () => {
+        const { container } = render(
+            <CommunityPostCard {...defaultProps} currentUserId="u1" />
+        );
+        const wrapper = container.querySelector(
+            '[data-testid="community-post-r1"]'
+        );
+        expect(wrapper?.className).toContain("justify-end");
+    });
+
+    it("aligns other users' messages to the left", () => {
+        const { container } = render(
+            <CommunityPostCard {...defaultProps} currentUserId="u999" />
+        );
+        const wrapper = container.querySelector(
+            '[data-testid="community-post-r1"]'
+        );
+        expect(wrapper?.className).toContain("justify-start");
     });
 
     it("renders reply reference when parentId is set", () => {

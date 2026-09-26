@@ -43,10 +43,16 @@ jest.mock("@/lib/utils", () => ({
         classes.filter(Boolean).join(" "),
 }));
 
+// NOTE: `formatDateSeparator` and `isSameDay` are required by the new
+// CommunityCommentSection implementation. Returning `true` from `isSameDay`
+// means no date separators are inserted between same-day replies, which
+// keeps the existing assertions stable.
 jest.mock("@/components/community/utils", () => ({
     getDisplayName: (user: { name?: string | null }) => user?.name ?? "Anonymous",
     formatDate: () => "Jan 1, 2024",
-    formatTime: () => "12:00 PM",
+    formatTime: () => "12:00",
+    formatDateSeparator: () => "Today",
+    isSameDay: () => true,
     deleteBlobUrl: jest.fn(),
 }));
 
@@ -539,8 +545,6 @@ describe("CommunityCommentSection — composer", () => {
         const buttons = Array.from(
             getComposer(textarea).querySelectorAll("button")
         );
-        // The emoji button is the one right before the @-mention button.
-        // We click until we find the one that calls setShowEmojiPicker.
         for (const btn of buttons) {
             fireEvent.click(btn);
             if (setShowEmojiPicker.mock.calls.length > 0) break;

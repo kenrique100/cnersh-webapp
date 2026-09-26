@@ -38,7 +38,13 @@ import {
 import { toast } from "sonner";
 import { CommunityUser, TopicDetail, ReplyData } from "./types";
 import { EMOJI_LIST, CATEGORY_COLORS } from "./constants";
-import { deleteBlobUrl, formatDate, getDisplayName } from "./utils";
+import {
+    deleteBlobUrl,
+    formatDate,
+    formatDateSeparator,
+    getDisplayName,
+    isSameDay,
+} from "./utils";
 import { CommunityPostCard } from "./CommunityPostCard";
 
 interface CommunityCommentSectionProps {
@@ -116,7 +122,6 @@ interface CommunityCommentSectionProps {
     onReplyTo: (reply: ReplyData) => void;
     onStartEditReply: (replyId: string, content: string) => void;
     onMessagesRead: () => void;
-    /** NEW: toggles an emoji reaction on a message. */
     onReactToReply: (replyId: string, emoji: string) => void;
 }
 
@@ -124,6 +129,18 @@ const NEAR_BOTTOM_THRESHOLD_PX = 80;
 
 function isNearBottom(el: HTMLDivElement): boolean {
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD_PX;
+}
+
+function DateSeparator({ date }: { date: Date | string }) {
+    return (
+        <div className="flex items-center justify-center my-4" data-testid="date-separator">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+            <span className="px-3 py-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 rounded-full uppercase tracking-wider">
+                {formatDateSeparator(date)}
+            </span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+        </div>
+    );
 }
 
 export function CommunityCommentSection(props: CommunityCommentSectionProps) {
@@ -345,7 +362,7 @@ function TopicView({
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
                     data-testid="community-scroll-container"
-                    className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-1"
+                    className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-3"
                 >
                     <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                         <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 ${selectedTopic.category === "Announcements" ? "bg-yellow-500" : "bg-indigo-500"}`}>
@@ -476,29 +493,34 @@ function TopicView({
 
                     {selectedTopic.replies.map((reply, idx) => {
                         const prevReply = idx > 0 ? selectedTopic.replies[idx - 1] : null;
+                        const showDateSeparator =
+                            !prevReply || !isSameDay(reply.createdAt, prevReply.createdAt);
+
                         return (
-                            <CommunityPostCard
-                                key={reply.id}
-                                reply={reply}
-                                prevReply={prevReply}
-                                allReplies={selectedTopic.replies}
-                                currentUserId={currentUserId}
-                                isAdmin={isAdmin}
-                                editingReplyId={editingReplyId}
-                                editingContent={editingContent}
-                                activeMessageId={activeMessageId}
-                                onSetEditingContent={setEditingContent}
-                                onEditReply={onEditReply}
-                                onCancelEdit={() => { setEditingReplyId(null); setEditingContent(""); }}
-                                onMessageTap={onMessageTap}
-                                onUserClick={onUserClick}
-                                onDeleteReply={(replyId) => { onDeleteReply(replyId); setActiveMessageId(null); }}
-                                onReportChat={(replyId) => { onReportChat(replyId); setActiveMessageId(null); }}
-                                onReplyTo={onReplyTo}
-                                onStartEditReply={onStartEditReply}
-                                onVotePoll={onVotePoll}
-                                onReactToReply={onReactToReply}
-                            />
+                            <React.Fragment key={reply.id}>
+                                {showDateSeparator && <DateSeparator date={reply.createdAt} />}
+                                <CommunityPostCard
+                                    reply={reply}
+                                    prevReply={prevReply}
+                                    allReplies={selectedTopic.replies}
+                                    currentUserId={currentUserId}
+                                    isAdmin={isAdmin}
+                                    editingReplyId={editingReplyId}
+                                    editingContent={editingContent}
+                                    activeMessageId={activeMessageId}
+                                    onSetEditingContent={setEditingContent}
+                                    onEditReply={onEditReply}
+                                    onCancelEdit={() => { setEditingReplyId(null); setEditingContent(""); }}
+                                    onMessageTap={onMessageTap}
+                                    onUserClick={onUserClick}
+                                    onDeleteReply={(replyId) => { onDeleteReply(replyId); setActiveMessageId(null); }}
+                                    onReportChat={(replyId) => { onReportChat(replyId); setActiveMessageId(null); }}
+                                    onReplyTo={onReplyTo}
+                                    onStartEditReply={onStartEditReply}
+                                    onVotePoll={onVotePoll}
+                                    onReactToReply={onReactToReply}
+                                />
+                            </React.Fragment>
                         );
                     })}
                     <div ref={messagesEndRef} />
