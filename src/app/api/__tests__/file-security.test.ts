@@ -5,7 +5,7 @@
 import type { NextRequest } from "next/server";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { utapi } from "@/lib/uploadthing";
 import { DELETE } from "@/app/api/delete-blob/route";
@@ -13,7 +13,7 @@ import { GET as getFile } from "@/app/api/files/[fileId]/route";
 import { GET as viewFile } from "@/app/api/files/view/route";
 
 jest.mock("@/lib/auth-utils", () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock("@/lib/db", () => ({
@@ -31,13 +31,44 @@ jest.mock("@/lib/uploadthing", () => ({
     },
 }));
 
-const mockedAuthSession = jest.mocked(authSession);
+const mockedVerifiedAuthSession = jest.mocked(verifiedAuthSession);
 const mockedDb = db as jest.Mocked<typeof db>;
 const mockedUtapi = utapi as jest.Mocked<typeof utapi>;
 
+/**
+ * Full session shape returned by `verifiedAuthSession()`.
+ * The routes read `session.user.id` and `session.user.role`.
+ */
 const ownerSession = {
-    user: { id: "owner-1", role: "user" },
-} as Awaited<ReturnType<typeof authSession>>;
+    session: {
+        id: "session-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userId: "owner-1",
+        expiresAt: new Date(Date.now() + 86_400_000),
+        token: "token",
+        ipAddress: null,
+        userAgent: null,
+        impersonatedBy: null,
+    },
+    user: {
+        id: "owner-1",
+        email: "owner@test.com",
+        emailVerified: true,
+        name: "Owner",
+        image: null,
+        role: "user",
+        banned: false,
+        banReason: null,
+        banExpires: null,
+        welcomeEmailSent: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        gender: "male",
+        profession: null,
+        title: null,
+    },
+} as Awaited<ReturnType<typeof verifiedAuthSession>>;
 
 describe("file API authorization", () => {
     beforeEach(() => {
@@ -45,7 +76,7 @@ describe("file API authorization", () => {
     });
 
     it("rejects anonymous file reads before querying the database", async () => {
-        mockedAuthSession.mockResolvedValueOnce(null);
+        mockedVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
 
         const response = await getFile(
             {} as NextRequest,
@@ -57,7 +88,7 @@ describe("file API authorization", () => {
     });
 
     it("does not let an authenticated user read another user's file", async () => {
-        mockedAuthSession.mockResolvedValueOnce(ownerSession);
+        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
             data: Buffer.from("secret").toString("base64"),
             url: null,
@@ -75,7 +106,7 @@ describe("file API authorization", () => {
     });
 
     it("marks an owner's file response private and non-cacheable", async () => {
-        mockedAuthSession.mockResolvedValueOnce(ownerSession);
+        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
             data: Buffer.from("content").toString("base64"),
             url: null,
@@ -106,7 +137,8 @@ describe("file API authorization", () => {
     });
 
     it("rejects anonymous storage-key redirects", async () => {
-        mockedAuthSession.mockResolvedValueOnce(null);
+        mockedVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
+
         const request = {
             nextUrl: new URL("https://app.example/api/files/view?storageKey=secret"),
         } as NextRequest;
@@ -118,7 +150,7 @@ describe("file API authorization", () => {
     });
 
     it("rejects anonymous deletion before parsing or storage access", async () => {
-        mockedAuthSession.mockResolvedValueOnce(null);
+        mockedVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
 
         const response = await DELETE(new Request("https://app.example/api/delete-blob", {
             method: "DELETE",
@@ -131,7 +163,7 @@ describe("file API authorization", () => {
     });
 
     it("deletes storage and the database record only for the owner", async () => {
-        mockedAuthSession.mockResolvedValueOnce(ownerSession);
+        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
             id: "file-1",
             userId: "owner-1",

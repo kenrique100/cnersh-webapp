@@ -1,7 +1,7 @@
-import type { authSession } from '@/lib/auth-utils';
+import type { verifiedAuthSession } from '@/lib/auth-utils';
 
 jest.mock('@/lib/auth-utils', () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock('@/lib/permissions', () => ({
@@ -16,12 +16,14 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-import { authSession as _authSession } from '@/lib/auth-utils';
+import { verifiedAuthSession as _verifiedAuthSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
 
 import { updateProfile, getUserActivity } from '@/app/actions/dashboard';
 
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
+const mockedVerifiedAuthSession = _verifiedAuthSession as jest.MockedFunction<
+    typeof verifiedAuthSession
+>;
 
 type MockTable = Record<string, jest.Mock>;
 
@@ -41,7 +43,7 @@ function syncDb(): void {
 }
 
 function mockSession(userId = 'user-1', name = 'Test User'): void {
-    mockedAuthSession.mockResolvedValue({
+    mockedVerifiedAuthSession.mockResolvedValue({
         session: {
             id: 'session-id',
             createdAt: new Date(),
@@ -70,7 +72,11 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
             profession: null,
             title: null,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
+}
+
+function mockUnauthorized(): void {
+    mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 }
 
 /**
@@ -92,17 +98,18 @@ beforeEach(() => {
     mockedDb.project = {};
 
     syncDb();
+
+    // Default to "no session" — individual tests opt in with mockSession().
+    mockUnauthorized();
 });
 
 // ── updateProfile ─────────────────────────────────────────────────────
 
 describe('updateProfile', () => {
-    it('returns null when not authenticated (no throw)', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+    it('throws Unauthorized when not authenticated', async () => {
+        mockUnauthorized();
 
-        const result = await updateProfile();
-
-        expect(result).toBeNull();
+        await expect(updateProfile()).rejects.toThrow('Unauthorized');
         expect(mockedDb.user.findUnique).toBeUndefined();
     });
 
@@ -256,7 +263,7 @@ describe('getUserActivity', () => {
     }
 
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockUnauthorized();
 
         await expect(getUserActivity()).rejects.toThrow('Unauthorized');
     });
@@ -504,6 +511,7 @@ describe('getUserActivity', () => {
 
         // Now run the real assertion with the correct number of items
         jest.clearAllMocks();
+        mockSession('user-1');
 
         mockedDb.post.findMany = jest
             .fn()

@@ -1,14 +1,13 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { isAdminRole } from "@/lib/permissions";
 import { z } from "zod";
 
 /** Dashboard stats for normal users */
 export async function getUserDashboardData() {
-    const session = await authSession();
-    if (!session) return null;
+    const session = await verifiedAuthSession();
 
     try {
         const userId = session.user.id;
@@ -78,7 +77,6 @@ export async function getUserDashboardData() {
                 ...p,
                 createdAt: p.createdAt.toISOString(),
             })),
-            // Community membership is restricted to administrators.
             recentCommunityTopics: [] as Array<{
                 id: string;
                 title: string;
@@ -96,8 +94,7 @@ export async function getUserDashboardData() {
 
 /** Dashboard stats for admin and super admin */
 export async function getAdminDashboardData() {
-    const session = await authSession();
-    if (!session) return null;
+    const session = await verifiedAuthSession();
 
     try {
         const user = await db.user.findUnique({
@@ -216,13 +213,8 @@ export async function getAdminDashboardData() {
     }
 }
 
-/**
- * Returns the current user's profile fields.
- * Returns null when not authenticated.
- */
 export async function updateProfile() {
-    const session = await authSession();
-    if (!session) return null;
+    const session = await verifiedAuthSession();
 
     try {
         const user = await db.user.findUnique({
@@ -245,14 +237,8 @@ export async function updateProfile() {
     }
 }
 
-/**
- * Returns paginated posts and projects for the current user,
- * plus their total counts.
- * Throws "Unauthorized" when not authenticated.
- */
 export async function getUserActivity(page = 1, limit = 10) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     try {
         const userId = session.user.id;

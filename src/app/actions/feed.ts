@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
@@ -31,8 +31,7 @@ const reactionSchema = z.string().trim().min(1).max(64).transform(sanitizeText);
 const postIdsSchema = z.array(idSchema).min(1).max(200);
 
 export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string; linkType?: string }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     await enforceActionRateLimit(session.user.id, RATE_LIMITS.postCreate, "post-create", "You're posting too quickly.");
 
     const parsed = postPayloadSchema.safeParse(data);
@@ -91,7 +90,6 @@ export async function createPost(data: { content: string; image?: string; video?
         throw new Error("Failed to save post. Please try again.");
     }
 
-    // Notify mentioned users in the post content
     try {
         const mentions = [...normalizedContent.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
@@ -110,7 +108,6 @@ export async function createPost(data: { content: string; image?: string; video?
                     })),
                 });
 
-                // Send mention emails concurrently
                 const emailPromises = mentionedUsers
                     .filter(u => u.email)
                     .map(u =>
@@ -130,7 +127,6 @@ export async function createPost(data: { content: string; image?: string; video?
         console.error("Error creating post mention notifications:", error);
     }
 
-    // Return a plain serializable object
     return {
         ...post,
         createdAt: post.createdAt.toISOString(),
@@ -138,18 +134,18 @@ export async function createPost(data: { content: string; image?: string; video?
     };
 }
 
-export async function getPosts(page: number = 1, limit: number = 10, userId?: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+/**
+ * Community-wide feed. The session is used only to enrich each post
+ * with the viewer's read state. There is deliberately NO `userId` parameter.
+ */
+export async function getPosts(page: number = 1, limit: number = 10) {
+    const session = await verifiedAuthSession();
     const safePage = pageSchema.parse(page);
     const safeLimit = limitSchema.parse(limit);
-    const safeUserId = userId ? idSchema.parse(userId) : undefined;
     const skip = (safePage - 1) * safeLimit;
 
     try {
-        const whereClause = safeUserId
-            ? { deleted: false, userId: safeUserId }
-            : { deleted: false };
+        const whereClause = { deleted: false } as const;
 
         const [posts, total] = await Promise.all([
             db.post.findMany({
@@ -198,7 +194,6 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
             db.post.count({ where: whereClause }),
         ]);
 
-        // Fetch this user's read state for the current page in a single query.
         const postIds = posts.map((p) => p.id);
         const readRows = postIds.length
             ? await db.postReadStatus.findMany({
@@ -248,27 +243,16 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
     }
 }
 
-/**
- * Explicit refresh entry point used by the client's pull-to-refresh / Refresh button.
- * Kept as its own action for clarity (and so it can be rate-limited independently later).
- */
 export async function refreshFeed(page: number = 1, limit: number = 20) {
     return getPosts(page, limit);
 }
 
-/**
- * Mark a batch of posts as read for the current user. Idempotent thanks to the
- * unique (userId, postId) constraint and `skipDuplicates`.
- * The user's own posts are skipped so the table only stores "someone else's post I saw".
- */
 export async function markPostsAsRead(postIds: string[]) {
-    const session = await authSession();
-    if (!session) return { count: 0 };
+    const session = await verifiedAuthSession();
 
     const parsed = postIdsSchema.safeParse(postIds);
     if (!parsed.success) return { count: 0 };
 
-    // Don't store rows for the user's own posts.
     const ownPosts = await db.post.findMany({
         where: { id: { in: parsed.data }, userId: session.user.id },
         select: { id: true },
@@ -290,12 +274,11 @@ export async function markPostsAsRead(postIds: string[]) {
 }
 
 export async function getUnreadPostCount(days: number = 30) {
-    const session = await authSession();
-    if (!session) return 0;
-    const safeDays = z.number().int().min(1).max(365).catch(30).parse(days);
-    const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
-
     try {
+        const session = await verifiedAuthSession();
+        const safeDays = z.number().int().min(1).max(365).catch(30).parse(days);
+        const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+
         return await db.post.count({
             where: {
                 deleted: false,
@@ -304,8 +287,7 @@ export async function getUnreadPostCount(days: number = 30) {
                 readStatuses: { none: { userId: session.user.id } },
             },
         });
-    } catch (error) {
-        console.error("Error counting unread posts:", error);
+    } catch {
         return 0;
     }
 }
@@ -354,8 +336,7 @@ export async function getPublicPosts(limit: number = 10) {
 }
 
 export async function toggleLike(postId: string, reactionType: string = "Like") {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     await enforceActionRateLimit(session.user.id, RATE_LIMITS.likeToggle, "post-like", "You're reacting too quickly.");
     const safePostId = idSchema.parse(postId);
     const normalizedReactionType = reactionSchema.parse(reactionType);
@@ -371,11 +352,9 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
 
     if (existing) {
         if (existing.reactionType === normalizedReactionType) {
-            // Same reaction - remove it (toggle off)
             await db.like.delete({ where: { id: existing.id } });
             return { liked: false, reactionType: null };
         } else {
-            // Different reaction - update it
             await db.like.update({
                 where: { id: existing.id },
                 data: { reactionType: normalizedReactionType },
@@ -387,7 +366,6 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
             data: { postId: safePostId, userId: session.user.id, reactionType: normalizedReactionType },
         });
 
-        // Notify post owner of the like
         try {
             if (post.userId !== session.user.id) {
                 const likeMessage = `${session.user.name || "Someone"} liked your post`;
@@ -399,7 +377,6 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
                         userId: post.userId,
                     },
                 });
-                // Send email notification
                 if (post.user?.email) {
                     sendNotificationEmail({
                         to: post.user.email,
@@ -410,7 +387,6 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
                     }).catch((err) => console.error("Error sending like email:", err));
                 }
             }
-            // Also notify admins if the post is not by an admin
             if (!isAdminRole(post.user?.role)) {
                 await notifyAdmins({
                     type: "LIKE",
@@ -428,8 +404,7 @@ export async function toggleLike(postId: string, reactionType: string = "Like") 
 }
 
 export async function addComment(postId: string, content: string, parentId?: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     await enforceActionRateLimit(session.user.id, RATE_LIMITS.commentCreate, "post-comment", "You're commenting too quickly.");
     const parsedContent = commentContentSchema.safeParse(content);
     if (!parsedContent.success) {
@@ -471,7 +446,6 @@ export async function addComment(postId: string, content: string, parentId?: str
         },
     });
 
-    // Notify post owner of the comment
     try {
         if (post.userId !== session.user.id) {
             const commentMessage = `${session.user.name || "Someone"} commented on your post`;
@@ -493,28 +467,26 @@ export async function addComment(postId: string, content: string, parentId?: str
                 }).catch((err) => console.error("Error sending comment email:", err));
             }
         }
-        // Notify parent comment owner if it's a reply
         if (parentComment && parentComment.userId !== session.user.id) {
-                const replyMessage = `${session.user.name || "Someone"} replied to your comment`;
-                await db.notification.create({
-                    data: {
-                        type: "COMMENT",
-                        message: replyMessage,
-                        link: "/feeds",
-                        userId: parentComment.userId,
-                    },
-                });
-                if (parentComment.user?.email) {
-                    sendNotificationEmail({
-                        to: parentComment.user.email,
-                        userName: parentComment.user.name || "User",
-                        notificationMessage: replyMessage,
-                        notificationType: "COMMENT",
-                        actionUrl: "/feeds",
-                    }).catch((err) => console.error("Error sending reply email:", err));
-                }
+            const replyMessage = `${session.user.name || "Someone"} replied to your comment`;
+            await db.notification.create({
+                data: {
+                    type: "COMMENT",
+                    message: replyMessage,
+                    link: "/feeds",
+                    userId: parentComment.userId,
+                },
+            });
+            if (parentComment.user?.email) {
+                sendNotificationEmail({
+                    to: parentComment.user.email,
+                    userName: parentComment.user.name || "User",
+                    notificationMessage: replyMessage,
+                    notificationType: "COMMENT",
+                    actionUrl: "/feeds",
+                }).catch((err) => console.error("Error sending reply email:", err));
+            }
         }
-        // Notify mentioned users (@username) - matches @Name patterns, stopping at next @ or end of string
         const mentions = [...safeContent.matchAll(MENTION_REGEX)].map((m) => m[1].trim());
         if (mentions.length > 0) {
             const mentionedUsers = await db.user.findMany({
@@ -544,7 +516,6 @@ export async function addComment(postId: string, content: string, parentId?: str
                 }
             }
         }
-        // Also notify admins if the post is not by an admin
         if (!isAdminRole(post.user?.role)) {
             await notifyAdmins({
                 type: "COMMENT",
@@ -561,8 +532,7 @@ export async function addComment(postId: string, content: string, parentId?: str
 }
 
 export async function getPostComments(postId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    await verifiedAuthSession();
     const safePostId = idSchema.parse(postId);
     const post = await db.post.findUnique({
         where: { id: safePostId },
@@ -595,8 +565,7 @@ export async function getPostComments(postId: string) {
 }
 
 export async function deletePost(postId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const safePostId = idSchema.parse(postId);
 
     const post = await db.post.findUnique({
@@ -622,8 +591,7 @@ export async function deletePost(postId: string) {
 }
 
 export async function updatePost(postId: string, data: { content: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string | null; linkType?: string | null }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const parsedContent = z.string().max(5000).safeParse(data.content);
     if (!parsedContent.success) throw new Error("Post content is too long.");
     const safeContent = sanitizeText(parsedContent.data).trim();
@@ -654,8 +622,7 @@ export async function updatePost(postId: string, data: { content: string; images
 }
 
 export async function togglePostComments(postId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const safePostId = idSchema.parse(postId);
     const post = await db.post.findUnique({ where: { id: safePostId } });
@@ -670,42 +637,31 @@ export async function togglePostComments(postId: string) {
     return { commentsEnabled: updated.commentsEnabled };
 }
 
-export async function getUserActivity(userId: string, limit: number = 10) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
-    const safeUserId = idSchema.parse(userId);
+/**
+ * Activity for the CURRENT authenticated user only.
+ * Identity comes exclusively from the session — no `userId` parameter.
+ */
+export async function getUserActivity(limit: number = 10) {
+    const session = await verifiedAuthSession();
+    const userId = session.user.id;
     const safeLimit = limitSchema.parse(limit);
-    if (safeUserId !== session.user.id) {
-        const [actor, target] = await Promise.all([
-            db.user.findUnique({
-                where: { id: session.user.id },
-                select: { role: true },
-            }),
-            db.user.findUnique({
-                where: { id: safeUserId },
-                select: { role: true },
-            }),
-        ]);
-        if (!target || !canManageRole(actor?.role, target.role)) {
-            throw new Error("Forbidden");
-        }
-    }
+
     try {
         const [recentPosts, recentComments, recentLikes] = await Promise.all([
             db.post.findMany({
-                where: { userId: safeUserId, deleted: false },
+                where: { userId, deleted: false },
                 select: { id: true, content: true, createdAt: true },
                 orderBy: { createdAt: "desc" },
                 take: safeLimit,
             }),
             db.comment.findMany({
-                where: { userId: safeUserId, deleted: false, post: { deleted: false } },
+                where: { userId, deleted: false, post: { deleted: false } },
                 select: { id: true, content: true, createdAt: true, post: { select: { id: true, content: true } } },
                 orderBy: { createdAt: "desc" },
                 take: safeLimit,
             }),
             db.like.findMany({
-                where: { userId: safeUserId, post: { deleted: false } },
+                where: { userId, post: { deleted: false } },
                 select: { id: true, reactionType: true, createdAt: true, post: { select: { id: true, content: true } } },
                 orderBy: { createdAt: "desc" },
                 take: safeLimit,
@@ -742,8 +698,7 @@ export async function getUserActivity(userId: string, limit: number = 10) {
 }
 
 export async function toggleCommentLike(commentId: string, isDislike: boolean = false, reactionType: string = "Like") {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     await enforceActionRateLimit(session.user.id, RATE_LIMITS.likeToggle, "comment-like", "You're reacting too quickly.");
     const safeCommentId = idSchema.parse(commentId);
     const normalizedReactionType = reactionSchema.parse(reactionType);
@@ -764,11 +719,9 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
 
     if (existing) {
         if (existing.reactionType === normalizedReactionType) {
-            // Same reaction - remove
             await db.commentLike.delete({ where: { id: existing.id } });
             return { action: "removed", reactionType: null };
         } else {
-            // Different reaction - update
             await db.commentLike.update({ where: { id: existing.id }, data: { reactionType: normalizedReactionType, isDislike: false } });
             return { action: "reacted", reactionType: normalizedReactionType };
         }
@@ -777,7 +730,6 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
             data: { commentId: safeCommentId, userId: session.user.id, isDislike, reactionType: normalizedReactionType },
         });
 
-        // Notify comment owner
         try {
             if (comment.userId !== session.user.id) {
                 const likeMessage = `${session.user.name || "Someone"} ${isDislike ? "disliked" : "liked"} your comment`;
@@ -808,8 +760,7 @@ export async function toggleCommentLike(commentId: string, isDislike: boolean = 
 }
 
 export async function editComment(commentId: string, content: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const safeCommentId = idSchema.parse(commentId);
     const parsedContent = commentContentSchema.safeParse(content);
@@ -829,8 +780,7 @@ export async function editComment(commentId: string, content: string) {
 }
 
 export async function deleteComment(commentId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const safeCommentId = idSchema.parse(commentId);
     const comment = await db.comment.findUnique({
@@ -861,43 +811,48 @@ export async function deleteComment(commentId: string) {
 }
 
 export async function searchUsers(query: string) {
-    const session = await authSession();
-    if (!session) return [];
+    try {
+        const session = await verifiedAuthSession();
 
-    const safeQuery = z.string().trim().max(100).transform(sanitizeText).parse(query || "");
-    const users = await db.user.findMany({
-        where: {
-            ...(safeQuery ? { name: { contains: safeQuery, mode: "insensitive" as const } } : {}),
-            id: { not: session.user.id },
-            banned: { not: true },
-        },
-        select: { id: true, name: true, image: true },
-        take: 8,
-    });
+        const safeQuery = z.string().trim().max(100).transform(sanitizeText).parse(query || "");
+        const users = await db.user.findMany({
+            where: {
+                ...(safeQuery ? { name: { contains: safeQuery, mode: "insensitive" as const } } : {}),
+                id: { not: session.user.id },
+                banned: { not: true },
+            },
+            select: { id: true, name: true, image: true },
+            take: 8,
+        });
 
-    return users;
+        return users;
+    } catch {
+        return [];
+    }
 }
 
 export async function getAllUsers() {
-    const session = await authSession();
-    if (!session) return [];
+    try {
+        const session = await verifiedAuthSession();
 
-    const users = await db.user.findMany({
-        where: {
-            id: { not: session.user.id },
-            banned: { not: true },
-        },
-        select: { id: true, name: true, image: true },
-        orderBy: { name: "asc" },
-        take: 500,
-    });
+        const users = await db.user.findMany({
+            where: {
+                id: { not: session.user.id },
+                banned: { not: true },
+            },
+            select: { id: true, name: true, image: true },
+            orderBy: { name: "asc" },
+            take: 500,
+        });
 
-    return users;
+        return users;
+    } catch {
+        return [];
+    }
 }
 
 export async function getPostLikers(postId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    await verifiedAuthSession();
 
     const safePostId = idSchema.parse(postId);
     const post = await db.post.findUnique({

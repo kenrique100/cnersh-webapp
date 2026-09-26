@@ -14,12 +14,29 @@ export const authSession = async () => {
     }
 };
 
+/**
+ * Server-action / API guard for authenticated AND email-verified users.
+ * Throws instead of redirecting so it can be used inside actions/routes.
+ */
+export const verifiedAuthSession = async () => {
+    const session = await authSession();
+
+    if (!session) {
+        throw new Error("Unauthorized");
+    }
+
+    if (!session.user.emailVerified) {
+        throw new Error("EMAIL_NOT_VERIFIED");
+    }
+
+    return session;
+};
+
 export const authIsRequired = async () => {
     const session = await authSession();
     if (!session) redirect("/sign-in");
     if (!session.user.emailVerified) redirect("/sign-in?unverified=1");
 
-    // Send welcome email only once, atomically
     await sendWelcomeEmailIfNeeded(session.user.id);
 
     return session;
@@ -35,23 +52,15 @@ export const authIsNotRequired = async () => {
 
 async function sendWelcomeEmailIfNeeded(userId: string) {
     try {
-        // 1. Fetch user details (no lock)
         const user = await db.user.findUnique({
             where: { id: userId },
-            select: {
-                email: true,
-                name: true,
-                emailVerified: true,
-            },
+            select: { email: true, name: true, emailVerified: true },
         });
 
         if (!user || !user.emailVerified || !user.email) return;
 
         const result = await db.user.updateMany({
-            where: {
-                id: userId,
-                welcomeEmailSent: false,
-            },
+            where: { id: userId, welcomeEmailSent: false },
             data: { welcomeEmailSent: true },
         });
 

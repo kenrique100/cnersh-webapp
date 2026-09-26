@@ -1,6 +1,20 @@
 "use client";
 
-import { Newspaper, SearchIcon, PenLineIcon, MessageCircleIcon, HeartIcon } from "lucide-react";
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Newspaper,
+  SearchIcon,
+  PenLineIcon,
+  MessageCircleIcon,
+  HeartIcon,
+  FileTextIcon,
+  ChevronDownIcon,
+  Users,
+  FolderIcon,
+  DownloadIcon,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import ProjectTracker from "@/components/project-tracker";
@@ -17,6 +31,20 @@ interface FeedRightSidebarProps {
   userActivity?: UserActivityItem[];
   isLoggedIn?: boolean;
 }
+
+interface OurPagesItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  external?: boolean;
+}
+
+const ourPagesItems: OurPagesItem[] = [
+  { href: "/pages/about", label: "About Us", icon: Users },
+  { href: "/pages/contract-rex", label: "Contract Rex Org", icon: FolderIcon },
+  { href: "/pages/article", label: "Article", icon: Users },
+  { href: "/membership.pdf", label: "Community Members", icon: DownloadIcon, external: true },
+];
 
 function formatActivityDate(date: Date) {
   const d = new Date(date);
@@ -44,9 +72,86 @@ const activityColors = {
   reaction: "text-blue-600 dark:text-blue-400",
 };
 
-export default function FeedRightSidebar({ userActivity = [], isLoggedIn = false }: FeedRightSidebarProps) {
+export default function FeedRightSidebar({
+                                           userActivity = [],
+                                           isLoggedIn = false,
+                                         }: FeedRightSidebarProps) {
+  const pathname = usePathname();
+  const isOurPagesRoute = pathname.startsWith("/pages/");
+  const [isOurPagesExpanded, setIsOurPagesExpanded] = React.useState(false);
+  const isOurPagesOpen = isOurPagesRoute || isOurPagesExpanded;
+
   return (
       <div className="flex flex-col gap-4">
+        {/* Our Pages Card — PUBLIC, rendered for everyone (guest + logged-in) */}
+        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg overflow-hidden">
+          <button
+              type="button"
+              onClick={() => setIsOurPagesExpanded((prev) => !prev)}
+              className={cn(
+                  "flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold",
+                  "transition-colors",
+                  isOurPagesOpen
+                      ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                      : "text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              )}
+              aria-expanded={isOurPagesOpen}
+          >
+            <FileTextIcon className="size-4 shrink-0 text-blue-600" />
+            <span className="flex-1 text-left">Our Pages</span>
+            <ChevronDownIcon
+                className={cn(
+                    "size-4 shrink-0 transition-transform duration-300",
+                    isOurPagesOpen && "rotate-180"
+                )}
+            />
+          </button>
+          <div
+              className={cn(
+                  "grid transition-all duration-300 ease-in-out",
+                  isOurPagesOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+              )}
+          >
+            <div className="overflow-hidden">
+              <div className="px-3 pb-3 pt-1 space-y-0.5">
+                {ourPagesItems.map(({ href, label, icon: Icon, external }) => {
+                  const isActive = !external && pathname === href;
+                  const classes = cn(
+                      "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      isActive
+                          ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                          : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  );
+
+                  if (external) {
+                    return (
+                        <a
+                            key={href}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={classes}
+                        >
+                          <Icon className="size-3.5 shrink-0" />
+                          {label}
+                        </a>
+                    );
+                  }
+
+                  return (
+                      <Link key={href} href={href} className={classes}>
+                        <Icon className="size-3.5 shrink-0" />
+                        {label}
+                      </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </Card>
+
         {/* Protocol Tracker Card */}
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
           <CardHeader className="pb-2">
@@ -119,7 +224,7 @@ export default function FeedRightSidebar({ userActivity = [], isLoggedIn = false
               <div className="mb-3 flex items-center gap-2">
                 <Newspaper className="size-4 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                Public community updates
+                  Public community updates
                 </h3>
               </div>
 

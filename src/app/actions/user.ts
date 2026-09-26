@@ -1,18 +1,14 @@
 "use server";
 
-import {authSession} from "@/lib/auth-utils";
-import {db} from "@/lib/db";
+import { verifiedAuthSession } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
 
 export async function updateProfile() {
-    const session = await authSession();
-
-    if (!session) {
-        return null;
-    }
+    const session = await verifiedAuthSession();
 
     try {
         return await db.user.findUnique({
-            where: {id: session.user.id},
+            where: { id: session.user.id },
             select: {
                 email: true,
                 name: true,
@@ -30,13 +26,13 @@ export async function updateProfile() {
 }
 
 export async function getUserActivity() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     try {
+        const userId = session.user.id;
         const [posts, projects, totalPosts, totalProjects] = await Promise.all([
             db.post.findMany({
-                where: { userId: session.user.id, deleted: false },
+                where: { userId, deleted: false },
                 select: {
                     id: true,
                     content: true,
@@ -53,7 +49,7 @@ export async function getUserActivity() {
                 take: 20,
             }),
             db.project.findMany({
-                where: { userId: session.user.id, deleted: false },
+                where: { userId, deleted: false },
                 select: {
                     id: true,
                     title: true,
@@ -67,8 +63,8 @@ export async function getUserActivity() {
                 orderBy: { createdAt: "desc" },
                 take: 20,
             }),
-            db.post.count({ where: { userId: session.user.id, deleted: false } }),
-            db.project.count({ where: { userId: session.user.id, deleted: false } }),
+            db.post.count({ where: { userId, deleted: false } }),
+            db.project.count({ where: { userId, deleted: false } }),
         ]);
 
         return { posts, projects, totalPosts, totalProjects };

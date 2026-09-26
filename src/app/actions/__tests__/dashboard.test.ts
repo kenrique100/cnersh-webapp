@@ -1,7 +1,7 @@
-import type { authSession } from "@/lib/auth-utils";
+import type { verifiedAuthSession } from "@/lib/auth-utils";
 
 jest.mock("@/lib/auth-utils", () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock("@/lib/permissions", () => ({
@@ -21,7 +21,7 @@ jest.mock("@/lib/db", () => ({
     },
 }));
 
-import { authSession as importedAuthSession } from "@/lib/auth-utils";
+import { verifiedAuthSession as importedVerifiedAuthSession } from "@/lib/auth-utils";
 import { db as importedDb } from "@/lib/db";
 
 import {
@@ -31,9 +31,10 @@ import {
     updateProfile,
 } from "@/app/actions/dashboard";
 
-const mockedAuthSession = importedAuthSession as jest.MockedFunction<
-    typeof authSession
->;
+const mockedVerifiedAuthSession =
+    importedVerifiedAuthSession as jest.MockedFunction<
+        typeof verifiedAuthSession
+    >;
 
 type MockTable = Record<string, jest.Mock>;
 
@@ -80,7 +81,7 @@ function mockSession(
     name = "Test User",
     role: "user" | "admin" | "superadmin" = "user"
 ): void {
-    mockedAuthSession.mockResolvedValue({
+    mockedVerifiedAuthSession.mockResolvedValue({
         session: {
             id: "session-id",
             createdAt: new Date("2024-01-01T00:00:00.000Z"),
@@ -109,7 +110,7 @@ function mockSession(
             profession: "researcher",
             title: null,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
 }
 
 function mockUserDashboardQueries(): void {
@@ -150,6 +151,8 @@ function mockAdminDashboardQueries(): void {
 beforeEach(() => {
     jest.clearAllMocks();
     resetMockDb();
+    // Default to "no session" — individual tests opt in with mockSession().
+    mockedVerifiedAuthSession.mockRejectedValue(new Error("Unauthorized"));
 });
 
 afterEach(() => {
@@ -157,12 +160,8 @@ afterEach(() => {
 });
 
 describe("updateProfile", () => {
-    it("returns null when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
-
-        const result = await updateProfile();
-
-        expect(result).toBeNull();
+    it("throws Unauthorized when not authenticated", async () => {
+        await expect(updateProfile()).rejects.toThrow("Unauthorized");
         expect(mockedDb.user.findUnique).not.toHaveBeenCalled();
     });
 
@@ -241,8 +240,6 @@ describe("updateProfile", () => {
 
 describe("getUserActivity", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
-
         await expect(getUserActivity()).rejects.toThrow("Unauthorized");
     });
 
@@ -506,12 +503,8 @@ describe("getUserActivity", () => {
 });
 
 describe("getUserDashboardData", () => {
-    it("returns null when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
-
-        const result = await getUserDashboardData();
-
-        expect(result).toBeNull();
+    it("throws Unauthorized when not authenticated", async () => {
+        await expect(getUserDashboardData()).rejects.toThrow("Unauthorized");
     });
 
     it("returns dashboard statistics for the authenticated user", async () => {
@@ -578,12 +571,8 @@ describe("getUserDashboardData", () => {
 });
 
 describe("getAdminDashboardData", () => {
-    it("returns null when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
-
-        const result = await getAdminDashboardData();
-
-        expect(result).toBeNull();
+    it("throws Unauthorized when not authenticated", async () => {
+        await expect(getAdminDashboardData()).rejects.toThrow("Unauthorized");
     });
 
     it("returns null when the user is not an administrator", async () => {

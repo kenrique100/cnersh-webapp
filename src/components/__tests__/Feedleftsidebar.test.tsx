@@ -52,9 +52,6 @@ jest.mock('lucide-react', () => {
         ShieldCheckIcon: icon('ShieldCheck'),
         UsersIcon: icon('Users'),
         FolderIcon: icon('Folder'),
-        FileTextIcon: icon('FileText'),
-        ChevronDownIcon: icon('ChevronDown'),
-        DownloadIcon: icon('Download'),
     };
 });
 
@@ -137,21 +134,20 @@ describe('FeedLeftSidebar', () => {
             expect(screen.getByText('Feeds')).toBeInTheDocument();
             expect(screen.getByText('My Protocols')).toBeInTheDocument();
             expect(screen.getByText('Settings')).toBeInTheDocument();
-            expect(screen.getByText('Our Pages')).toBeInTheDocument();
+        });
+
+        it('does NOT render Our Pages (moved to right sidebar)', () => {
+            render(<FeedLeftSidebar {...userProps} />);
+            expect(screen.queryByText('Our Pages')).not.toBeInTheDocument();
         });
 
         it('does not render admin Community nav link for regular user', () => {
             render(<FeedLeftSidebar {...userProps} />);
-            // "Community" (admin nav) must not appear, even though the
-            // collapsed "Our Pages" dropdown contains "Community Members".
-            // Exact-match on "Community" distinguishes them.
             expect(screen.queryByText('Community')).not.toBeInTheDocument();
         });
 
         it('does not render footer links for non-admin', () => {
             render(<FeedLeftSidebar {...userProps} />);
-            // Footer-only labels — these must not appear anywhere in the DOM
-            // for a non-admin user.
             expect(screen.queryByText('Accessibility')).not.toBeInTheDocument();
             expect(screen.queryByText('Privacy & Terms')).not.toBeInTheDocument();
             expect(screen.queryByText('Support')).not.toBeInTheDocument();
@@ -171,10 +167,7 @@ describe('FeedLeftSidebar', () => {
 
         it('renders footer links for admin', () => {
             render(<FeedLeftSidebar {...adminProps} />);
-
             expect(screen.getAllByText('About Us').length).toBeGreaterThan(0);
-
-            // The following labels are footer-only, so exact-match is safe.
             expect(screen.getByText('Accessibility')).toBeInTheDocument();
             expect(screen.getByText('Privacy & Terms')).toBeInTheDocument();
             expect(screen.getByText('Support')).toBeInTheDocument();

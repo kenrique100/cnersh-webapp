@@ -7,7 +7,6 @@ const mockFindUnique = jest.fn();
 const mockUpdateMany = jest.fn();
 const mockSendWelcomeEmail = jest.fn();
 
-// Replaced : any with : unknown to satisfy the ESLint rule completely
 jest.mock('next/headers', () => ({
     headers: jest.fn(() => mockHeaders()),
 }));
@@ -39,6 +38,7 @@ jest.mock('@/lib/send-welcome-email', () => ({
 
 import {
     authSession,
+    verifiedAuthSession,
     authIsRequired,
     authIsNotRequired,
     getDashboardPath,
@@ -79,6 +79,38 @@ describe('authSession', () => {
         expect(result).toBeNull();
         expect(consoleError).toHaveBeenCalledWith('Session fetch failed:', error);
         consoleError.mockRestore();
+    });
+});
+
+describe('verifiedAuthSession', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockHeaders.mockResolvedValue({ cookie: 'session=abc' });
+    });
+
+    it('throws "Unauthorized" when there is no session', async () => {
+        mockGetSession.mockResolvedValueOnce(null);
+
+        await expect(verifiedAuthSession()).rejects.toThrow('Unauthorized');
+    });
+
+    it('throws "EMAIL_NOT_VERIFIED" for an authenticated but unverified user', async () => {
+        mockGetSession.mockResolvedValueOnce({
+            user: { id: 'user-1', role: 'user', emailVerified: false },
+        });
+
+        await expect(verifiedAuthSession()).rejects.toThrow('EMAIL_NOT_VERIFIED');
+    });
+
+    it('returns the session for an authenticated verified user', async () => {
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
+        mockGetSession.mockResolvedValueOnce(session);
+
+        const result = await verifiedAuthSession();
+
+        expect(result).toBe(session);
+        expect(mockFindUnique).not.toHaveBeenCalled();
+        expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
     });
 });
 

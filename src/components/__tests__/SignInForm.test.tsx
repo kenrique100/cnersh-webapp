@@ -41,6 +41,13 @@ jest.mock("next/image", () => ({
 describe("SignInForm", () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        // Make sure each test starts with a clean URL.
+        window.history.replaceState({}, "", "/sign-in");
+    });
+
+    afterEach(() => {
+        // Restore the default URL after tests that changed it.
+        window.history.replaceState({}, "", "/");
     });
 
     const fillForm = (email: string, password: string) => {
@@ -55,10 +62,8 @@ describe("SignInForm", () => {
     it("renders all the important parts without ambiguity", () => {
         render(<SignInForm />);
 
-        // Fix: Use Alt text for logo
         expect(screen.getByAltText("CNERSH logo")).toBeInTheDocument();
 
-        // Fix: Disambiguate "Sign In" title from button using role/selector
         expect(screen.getByText("Sign In", { selector: "div" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /^sign in$/i })).toBeInTheDocument();
 
@@ -142,6 +147,26 @@ describe("SignInForm", () => {
                 "Please verify your email before signing in."
             );
         });
+    });
+
+    it("shows the unverified banner toast when ?unverified=1 is present", async () => {
+        window.history.replaceState({}, "", "/sign-in?unverified=1");
+
+        render(<SignInForm />);
+
+        await waitFor(() => {
+            expect(mockToastError).toHaveBeenCalledWith(
+                "Email verification required. Please verify your email address before accessing CNERSH."
+            );
+        });
+    });
+
+    it("does not show the unverified toast on a clean sign-in page", () => {
+        window.history.replaceState({}, "", "/sign-in");
+
+        render(<SignInForm />);
+
+        expect(mockToastError).not.toHaveBeenCalled();
     });
 
     it("shows a generic error toast if the auth request crashes", async () => {
