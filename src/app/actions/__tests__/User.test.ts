@@ -1,9 +1,9 @@
 import { updateProfile, getUserActivity } from '@/app/actions/user';
 
 // ── Mock auth-utils ───────────────────────────────────────────────
-const mockAuthSession = jest.fn();
+const mockVerifiedAuthSession = jest.fn();
 jest.mock('@/lib/auth-utils', () => ({
-    authSession: () => mockAuthSession(),
+    verifiedAuthSession: () => mockVerifiedAuthSession(),
 }));
 
 // ── Mock db ───────────────────────────────────────────────────────
@@ -27,7 +27,36 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-const SESSION = { user: { id: 'user-1', email: 'test@example.com' } };
+const SESSION = {
+    session: {
+        id: 'session-id',
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+        userId: 'user-1',
+        expiresAt: new Date('2025-01-01T00:00:00.000Z'),
+        token: 'test-token',
+        ipAddress: null,
+        userAgent: null,
+        impersonatedBy: null,
+    },
+    user: {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        emailVerified: true,
+        image: null,
+        role: 'user',
+        banned: false,
+        banReason: null,
+        banExpires: null,
+        welcomeEmailSent: false,
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+        gender: 'male',
+        profession: 'Researcher',
+        title: 'Dr.',
+    },
+};
 
 const PROFILE = {
     email: 'test@example.com',
@@ -58,17 +87,19 @@ const PROJECTS = [
 describe('updateProfile', () => {
     beforeEach(() => jest.clearAllMocks());
 
-    it('returns null when session is missing', async () => {
-        mockAuthSession.mockResolvedValueOnce(null);
-        const result = await updateProfile();
-        expect(result).toBeNull();
+    it('throws Unauthorized when session is missing', async () => {
+        mockVerifiedAuthSession.mockRejectedValueOnce(new Error('Unauthorized'));
+
+        await expect(updateProfile()).rejects.toThrow('Unauthorized');
         expect(mockUserFindUnique).not.toHaveBeenCalled();
     });
 
     it('queries db with correct where/select when session exists', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockUserFindUnique.mockResolvedValueOnce(PROFILE);
+
         const result = await updateProfile();
+
         expect(mockUserFindUnique).toHaveBeenCalledWith({
             where: { id: 'user-1' },
             select: {
@@ -80,7 +111,7 @@ describe('updateProfile', () => {
     });
 
     it('returns null (and logs error) when db throws', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockUserFindUnique.mockRejectedValueOnce(new Error('DB error'));
         const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
         const result = await updateProfile();
@@ -93,7 +124,7 @@ describe('updateProfile', () => {
     });
 
     it('returns null when findUnique returns null (user not found)', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockUserFindUnique.mockResolvedValueOnce(null);
         const result = await updateProfile();
         expect(result).toBeNull();
@@ -105,12 +136,12 @@ describe('getUserActivity', () => {
     beforeEach(() => jest.clearAllMocks());
 
     it('throws Unauthorized when session is missing', async () => {
-        mockAuthSession.mockResolvedValueOnce(null);
+        mockVerifiedAuthSession.mockRejectedValueOnce(new Error('Unauthorized'));
         await expect(getUserActivity()).rejects.toThrow('Unauthorized');
     });
 
     it('returns posts, projects, and counts on success', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockPostFindMany.mockResolvedValueOnce(POSTS);
         mockProjectFindMany.mockResolvedValueOnce(PROJECTS);
         mockPostCount.mockResolvedValueOnce(42);
@@ -127,7 +158,7 @@ describe('getUserActivity', () => {
     });
 
     it('passes correct query args for posts', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockPostFindMany.mockResolvedValueOnce([]);
         mockProjectFindMany.mockResolvedValueOnce([]);
         mockPostCount.mockResolvedValueOnce(0);
@@ -152,7 +183,7 @@ describe('getUserActivity', () => {
     });
 
     it('passes correct query args for projects', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockPostFindMany.mockResolvedValueOnce([]);
         mockProjectFindMany.mockResolvedValueOnce([]);
         mockPostCount.mockResolvedValueOnce(0);
@@ -173,7 +204,7 @@ describe('getUserActivity', () => {
     });
 
     it('returns empty fallback (and logs error) when db throws', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockPostFindMany.mockRejectedValueOnce(new Error('DB failure'));
         const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -190,7 +221,7 @@ describe('getUserActivity', () => {
     });
 
     it('uses Promise.all to run all four queries concurrently', async () => {
-        mockAuthSession.mockResolvedValueOnce(SESSION);
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         const order: string[] = [];
         mockPostFindMany.mockImplementation(async () => { order.push('postFindMany'); return []; });
         mockProjectFindMany.mockImplementation(async () => { order.push('projectFindMany'); return []; });
@@ -199,7 +230,6 @@ describe('getUserActivity', () => {
 
         await getUserActivity();
 
-        // All four were called
         expect(order).toHaveLength(4);
         expect(order).toContain('postFindMany');
         expect(order).toContain('projectFindMany');

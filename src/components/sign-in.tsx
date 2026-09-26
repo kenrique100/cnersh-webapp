@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { Separator } from "./ui/separator";
 import { Spinner } from "./ui/spinner";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const formSchema = z.object({
@@ -40,6 +40,16 @@ const formSchema = z.object({
 export function SignInForm() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("unverified") === "1") {
+            toast.error(
+                "Email verification required. Please verify your email address before accessing CNERSH."
+            );
+        }
+    }, []);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

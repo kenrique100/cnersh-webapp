@@ -22,7 +22,7 @@ export default async function FeedsPage() {
                 select: { role: true, name: true, image: true, email: true, gender: true },
             }),
             getPosts(1, 20),
-            getUserActivity(session.user.id, 8),
+            getUserActivity(8),
             getUnreadPostCount(),
         ]);
         user = userData;

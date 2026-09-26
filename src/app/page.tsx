@@ -19,9 +19,16 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
     const session = await authSession();
+    const isVerifiedSession = Boolean(session?.user?.emailVerified);
 
     // If authenticated, get user data and full interactive posts
-    let navUser = null;
+    let navUser: {
+        name: string | null;
+        email: string;
+        image: string | null;
+        gender: string | null;
+        role: string | null;
+    } | null = null;
     let userGender: string | null = null;
     let notificationCount = 0;
     let authPosts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
@@ -42,7 +49,7 @@ export default async function Home() {
     // User activity for sidebar
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
 
-    if (session) {
+    if (isVerifiedSession && session) {
         try {
             const [user, unreadCount, postsResult, activity] = await Promise.all([
                 db.user.findUnique({
@@ -51,10 +58,17 @@ export default async function Home() {
                 }),
                 getUnreadNotificationCount(),
                 getPosts(1, 20),
-                getUserActivity(session.user.id, 8),
+                getUserActivity(8),
             ]);
+
             if (user) {
-                navUser = { name: user.name, email: user.email, image: user.image, gender: user.gender, role: user.role };
+                navUser = {
+                    name: user.name,
+                    email: user.email,
+                    image: user.image,
+                    gender: user.gender,
+                    role: user.role,
+                };
                 userGender = user.gender;
                 isAdmin = user.role === "admin" || user.role === "superadmin";
             }
@@ -70,6 +84,7 @@ export default async function Home() {
     if (!navUser) {
         publicPosts = await getPublicPosts(20);
     }
+
     return (
         <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
             {/* Navbar */}
@@ -79,7 +94,7 @@ export default async function Home() {
                 <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">
                     {/* Left Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
-                        {session && navUser ? (
+                        {isVerifiedSession && session && navUser ? (
                             <FeedLeftSidebar
                                 userName={navUser.name}
                                 userImage={navUser.image}
@@ -96,7 +111,7 @@ export default async function Home() {
                     {/* Main Feed Column */}
                     <main className="w-full max-w-none sm:max-w-[600px] min-w-0">
                         {/* Mobile introduction for unauthenticated users */}
-                        {!session && (
+                        {!isVerifiedSession && (
                             <div className="lg:hidden mb-4">
                                 <Card className="border border-blue-900 bg-blue-800 rounded-lg overflow-hidden">
                                     <CardContent className="py-5 text-left">
@@ -158,8 +173,8 @@ export default async function Home() {
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
                         </div>
 
-                        {/* Feed: Interactive for authenticated users, read-only for guests */}
-                        {session && navUser ? (
+                        {/* Feed: Interactive for verified users, read-only for guests/unverified */}
+                        {isVerifiedSession && session && navUser ? (
                             <FeedClient
                                 initialPosts={JSON.parse(JSON.stringify(authPosts))}
                                 currentUserId={session.user.id}
@@ -175,13 +190,13 @@ export default async function Home() {
 
                     {/* Right Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
-                        <FeedRightSidebar userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn={!!session} />
+                        <FeedRightSidebar
+                            userActivity={JSON.parse(JSON.stringify(userActivity))}
+                            isLoggedIn={isVerifiedSession}
+                        />
                     </aside>
                 </div>
-
             </div>
-
-
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 
 const PRIVATE_HEADERS = {
     "Cache-Control": "private, no-store, max-age=0",
@@ -12,8 +12,12 @@ function jsonError(error: string, status: number): NextResponse {
 }
 
 export async function GET(request: NextRequest) {
-    const session = await authSession();
-    if (!session) return jsonError("Unauthorized", 401);
+    let session;
+    try {
+        session = await verifiedAuthSession();
+    } catch {
+        return jsonError("Unauthorized", 401);
+    }
 
     const { searchParams } = request.nextUrl;
 

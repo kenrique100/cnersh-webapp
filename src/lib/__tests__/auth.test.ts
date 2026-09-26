@@ -96,7 +96,6 @@ describe('auth', () => {
         await import('@/lib/auth');
         const config = await getConfig();
 
-        // The fallback is [authBaseUrl] from the source code
         expect(config.trustedOrigins).toEqual(['https://app.example.com']);
     });
 
@@ -319,7 +318,7 @@ describe('auth', () => {
         expect(sendVerificationEmail).not.toHaveBeenCalled();
     });
 
-    it('sendVerificationEmail calls sendVerificationEmail with callbackURL set', async () => {
+    it('sendVerificationEmail calls sendVerificationEmail with callbackURL set to /feeds', async () => {
         const { sendVerificationEmail } = await import('@/lib/send-verification-email');
         const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
         mockedSendVerificationEmail.mockResolvedValueOnce(undefined as never);
@@ -344,7 +343,9 @@ describe('auth', () => {
         expect(call.userName).toBe('Ada');
 
         const parsed = new URL(call.verificationUrl);
-        expect(parsed.searchParams.get('callbackURL')).toBe('/');
+        // Verification link must send the user to /feeds after successful verification.
+        expect(parsed.searchParams.get('callbackURL')).toBe('/feeds');
+        // The original token must be preserved.
         expect(parsed.searchParams.get('token')).toBe('xyz');
     });
 

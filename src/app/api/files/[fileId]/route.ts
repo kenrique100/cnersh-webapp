@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 
 const PRIVATE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -15,8 +15,12 @@ export async function GET(
     _req: NextRequest,
     { params }: { params: Promise<{ fileId: string }> }
 ) {
-  const session = await authSession();
-  if (!session) return jsonError("Unauthorized", 401);
+  let session;
+  try {
+    session = await verifiedAuthSession();
+  } catch {
+    return jsonError("Unauthorized", 401);
+  }
 
   const { fileId } = await params;
 
@@ -74,8 +78,8 @@ export async function GET(
   return new NextResponse(buffer, {
     status: 200,
     headers: {
-      "Content-Type":        file.mimeType,
-      "Content-Length":      String(buffer.byteLength),
+      "Content-Type": file.mimeType,
+      "Content-Length": String(buffer.byteLength),
       "Content-Disposition": disposition,
       ...PRIVATE_HEADERS,
       "X-Content-Type-Options": "nosniff",

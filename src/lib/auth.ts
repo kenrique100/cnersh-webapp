@@ -36,7 +36,7 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       if (!user?.email) throw new Error("User email is required for verification");
       const verificationUrl = new URL(url);
-      verificationUrl.searchParams.set("callbackURL", "/");
+      verificationUrl.searchParams.set("callbackURL", "/feeds");
       await sendVerificationEmail({
         to: user.email,
         verificationUrl: verificationUrl.toString(),
