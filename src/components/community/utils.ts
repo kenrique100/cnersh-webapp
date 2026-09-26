@@ -16,7 +16,6 @@ export async function deleteBlobUrl(url: string) {
             body: JSON.stringify({ url }),
         });
     } catch {
-        // Best-effort deletion; do not surface errors to the user
     }
 }
 
@@ -42,10 +41,10 @@ function startOfDay(d: Date): number {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
+/** Returns true when both timestamps fall on the same calendar day. */
 export function isSameDay(a: Date | string, b: Date | string): boolean {
     return startOfDay(new Date(a)) === startOfDay(new Date(b));
 }
-
 
 export function formatDateSeparator(date: Date | string): string {
     const d = new Date(date);

@@ -43,6 +43,8 @@ jest.mock("@/components/ui/avatar", () => ({
     ),
 }));
 
+// The shadcn Popover is mocked to render its content inline so reaction
+// buttons are queryable without simulating actual popover opening.
 jest.mock("@/components/ui/popover", () => ({
     Popover: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     PopoverContent: ({ children }: { children?: React.ReactNode }) => (
@@ -119,16 +121,12 @@ describe("CommunityPostCard", () => {
     });
 
     it("shows the timestamp on every consecutive bubble from the same user", () => {
-        // Two messages from the same user, rendered as separate bubbles.
         const first = createReply({ id: "r1", content: "First" });
         const second = createReply({ id: "r2", content: "Second" });
 
         const { container } = render(
             <div>
-                <CommunityPostCard
-                    {...defaultProps}
-                    reply={first}
-                />
+                <CommunityPostCard {...defaultProps} reply={first} />
                 <CommunityPostCard
                     {...defaultProps}
                     reply={second}
@@ -233,13 +231,80 @@ describe("CommunityPostCard", () => {
         expect(audioEl).toHaveAttribute("src", "blob:audio");
     });
 
-    it("shows and triggers reaction buttons", () => {
+    it("shows the reaction picker with the six quick reactions", () => {
         render(<CommunityPostCard {...defaultProps} />);
         const popoverContents = screen.getAllByTestId("popover-content");
         expect(popoverContents.length).toBeGreaterThan(0);
+
+        // All six quick reactions are rendered inside the popover content.
+        const firstPopover = popoverContents[0];
+        expect(within(firstPopover).getByText("👍")).toBeInTheDocument();
+        expect(within(firstPopover).getByText("❤️")).toBeInTheDocument();
+        expect(within(firstPopover).getByText("😂")).toBeInTheDocument();
+        expect(within(firstPopover).getByText("😮")).toBeInTheDocument();
+        expect(within(firstPopover).getByText("😢")).toBeInTheDocument();
+        expect(within(firstPopover).getByText("🙏")).toBeInTheDocument();
+    });
+
+    it("triggers onReactToReply when a reaction emoji is clicked", () => {
+        render(<CommunityPostCard {...defaultProps} />);
+        const popoverContents = screen.getAllByTestId("popover-content");
         const thumbsUpBtn = within(popoverContents[0]).getByText("👍");
         fireEvent.click(thumbsUpBtn);
         expect(defaultProps.onReactToReply).toHaveBeenCalledWith("r1", "👍");
+    });
+
+    it("uses 😮 (U+1F62E) not 😲 for the surprised reaction", () => {
+        render(<CommunityPostCard {...defaultProps} />);
+        const popoverContents = screen.getAllByTestId("popover-content");
+        const popover = popoverContents[0];
+        expect(within(popover).getByText("😮")).toBeInTheDocument();
+        // The wrong codepoint must not be present.
+        expect(within(popover).queryByText("😲")).toBeNull();
+    });
+
+    it("renders the floating reaction row when reactions exist", () => {
+        const reply = createReply({
+            reactions: { "👍": ["u1", "u2"], "❤️": ["u1"] },
+        });
+        render(<CommunityPostCard {...defaultProps} reply={reply} />);
+        const bar = screen.getByTestId("reaction-bar");
+        expect(bar).toBeInTheDocument();
+        expect(within(bar).getByText("👍")).toBeInTheDocument();
+        expect(within(bar).getByText("❤️")).toBeInTheDocument();
+    });
+
+    it("does not render the floating reaction row when there are no reactions", () => {
+        render(<CommunityPostCard {...defaultProps} />);
+        expect(screen.queryByTestId("reaction-bar")).toBeNull();
+    });
+
+    it("anchors the floating reaction row to the right for the current user", () => {
+        const reply = createReply({ reactions: { "👍": ["u1"] } });
+        render(
+            <CommunityPostCard
+                {...defaultProps}
+                reply={reply}
+                currentUserId="u1"
+            />
+        );
+        const bar = screen.getByTestId("reaction-bar");
+        expect(bar.className).toContain("right-3");
+        expect(bar.className).toContain("absolute");
+    });
+
+    it("anchors the floating reaction row to the left for other users", () => {
+        const reply = createReply({ reactions: { "👍": ["u1"] } });
+        render(
+            <CommunityPostCard
+                {...defaultProps}
+                reply={reply}
+                currentUserId="u999"
+            />
+        );
+        const bar = screen.getByTestId("reaction-bar");
+        expect(bar.className).toContain("left-3");
+        expect(bar.className).toContain("absolute");
     });
 
     it("renders child replies recursively", () => {
