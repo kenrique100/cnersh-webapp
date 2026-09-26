@@ -1,20 +1,68 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import { CommunityPostCard } from "../CommunityPostCard";
 import { ReplyData, TopicUser } from "../types";
 
-// Mock the popover so its content is always visible for testing.
-// Avoid `any` by typing the children prop.
+jest.mock("next/image", () => ({
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+        const { unoptimized, ...rest } = props as {
+            unoptimized?: boolean;
+        } & Record<string, unknown>;
+        void unoptimized;
+        // eslint-disable-next-line jsx-a11y/alt-text
+        return <img {...(rest as React.ImgHTMLAttributes<HTMLImageElement>)} />;
+    },
+}));
+
+jest.mock("@/components/ui/avatar", () => ({
+    Avatar: ({
+                 children,
+                 className,
+             }: {
+        children?: React.ReactNode;
+        className?: string;
+    }) => (
+        <div data-testid="avatar" className={className}>
+            {children}
+        </div>
+    ),
+    AvatarImage: ({ src, alt }: { src?: string; alt?: string }) =>
+        src ? <img src={src} alt={alt} data-testid="avatar-image" /> : null,
+    AvatarFallback: ({
+                         children,
+                         className,
+                     }: {
+        children?: React.ReactNode;
+        className?: string;
+    }) => (
+        <span data-testid="avatar-fallback" className={className}>
+            {children}
+        </span>
+    ),
+}));
+
 jest.mock("@/components/ui/popover", () => ({
     Popover: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-    PopoverContent: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    PopoverContent: ({ children }: { children?: React.ReactNode }) => (
+        <div data-testid="popover-content">{children}</div>
+    ),
     PopoverTrigger: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
-// Mock formatTime to avoid timezone flakiness in tests
+jest.mock("@/components/link-preview", () => ({
+    __esModule: true,
+    default: ({ url }: { url: string }) => <div data-testid="link-preview">{url}</div>,
+}));
+
 jest.mock("../utils", () => ({
-    ...jest.requireActual("../utils"),
-    formatTime: jest.fn((date: Date) => "12:00 PM"),
+    getDisplayName: (user: { name?: string | null; role?: string }) => {
+        if (user?.role === "admin" || user?.role === "superadmin") return "CNERSH Admin";
+        return user?.name ?? "Anonymous";
+    },
+    formatTime: jest.fn(() => "12:00"),
+    formatDate: jest.fn(() => "Jan 15, 2024"),
 }));
 
 const mockUser: TopicUser = { id: "u1", name: "Alice", image: null, role: "member" };
@@ -30,13 +78,13 @@ const createReply = (overrides: Partial<ReplyData> = {}): ReplyData => ({
 
 const defaultProps = {
     reply: createReply(),
-    prevReply: null,
+    prevReply: null as ReplyData | null,
     allReplies: [] as ReplyData[],
     currentUserId: "u1",
     isAdmin: false,
-    editingReplyId: null,
+    editingReplyId: null as string | null,
     editingContent: "",
-    activeMessageId: null,
+    activeMessageId: null as string | null,
     onSetEditingContent: jest.fn(),
     onEditReply: jest.fn(),
     onCancelEdit: jest.fn(),
@@ -58,25 +106,84 @@ describe("CommunityPostCard", () => {
         expect(screen.getByText("Hello world")).toBeInTheDocument();
     });
 
-    it("shows avatar and name when first message of a group", () => {
+    it("renders each message as its own bubble with sender name and avatar", () => {
         render(<CommunityPostCard {...defaultProps} />);
         expect(screen.getByText("Alice")).toBeInTheDocument();
-        // Avatar fallback shows initial 'A'
-        expect(screen.getByText("A")).toBeInTheDocument();
+        expect(screen.getByTestId("avatar-fallback")).toHaveTextContent("A");
     });
 
-    it("hides avatar when same user sent previous message within threshold", () => {
-        const prev = createReply({ createdAt: new Date("2024-01-15T12:00:30Z") });
-        render(<CommunityPostCard {...defaultProps} prevReply={prev} />);
-        expect(screen.queryByText("Alice")).toBeNull();
-        // Time stamp appears on hover, check that the time string is present
-        expect(screen.getByText("12:00 PM")).toBeInTheDocument();
+    it("shows the timestamp on the bubble", () => {
+        render(<CommunityPostCard {...defaultProps} />);
+        // formatTime is mocked to return "12:00"
+        expect(screen.getAllByText("12:00").length).toBeGreaterThan(0);
+    });
+
+    it("shows the timestamp on every consecutive bubble from the same user", () => {
+        // Two messages from the same user, rendered as separate bubbles.
+        const first = createReply({ id: "r1", content: "First" });
+        const second = createReply({ id: "r2", content: "Second" });
+
+        const { container } = render(
+            <div>
+                <CommunityPostCard
+                    {...defaultProps}
+                    reply={first}
+                />
+                <CommunityPostCard
+                    {...defaultProps}
+                    reply={second}
+                    prevReply={first}
+                />
+            </div>
+        );
+
+        // Two separate bubbles.
+        const posts = container.querySelectorAll(
+            '[data-testid^="community-post-"]'
+        );
+        expect(posts.length).toBe(2);
+
+        // The sender name appears on BOTH bubbles (no merging/grouping).
+        expect(screen.getAllByText("Alice").length).toBe(2);
+
+        // Each bubble shows its own time.
+        expect(screen.getAllByText("12:00").length).toBe(2);
+    });
+
+    it("aligns the current user's message to the right", () => {
+        const { container } = render(
+            <CommunityPostCard {...defaultProps} currentUserId="u1" />
+        );
+        const wrapper = container.querySelector(
+            '[data-testid="community-post-r1"]'
+        );
+        expect(wrapper?.className).toContain("justify-end");
+    });
+
+    it("aligns other users' messages to the left", () => {
+        const { container } = render(
+            <CommunityPostCard {...defaultProps} currentUserId="u999" />
+        );
+        const wrapper = container.querySelector(
+            '[data-testid="community-post-r1"]'
+        );
+        expect(wrapper?.className).toContain("justify-start");
     });
 
     it("renders reply reference when parentId is set", () => {
-        const parent = createReply({ id: "parent", content: "Parent text", user: { ...mockUser, name: "Bob" } });
+        const parent = createReply({
+            id: "parent",
+            content: "Parent text",
+            user: { ...mockUser, name: "Bob" },
+        });
         const reply = createReply({ parentId: "parent" });
-        render(<CommunityPostCard {...defaultProps} reply={reply} allReplies={[parent, reply]} />);
+        render(
+            <CommunityPostCard
+                {...defaultProps}
+                reply={reply}
+                allReplies={[parent, reply]}
+            />
+        );
         expect(screen.getByText("Parent text")).toBeInTheDocument();
         expect(screen.getByText("Bob")).toBeInTheDocument();
     });
@@ -106,7 +213,11 @@ describe("CommunityPostCard", () => {
     });
 
     it("renders poll and calls onVotePoll on option click", () => {
-        const pollReply = createReply({ pollQuestion: "Q?", pollOptions: ["Yes", "No"], pollVotes: {} });
+        const pollReply = createReply({
+            pollQuestion: "Q?",
+            pollOptions: ["Yes", "No"],
+            pollVotes: {},
+        });
         render(<CommunityPostCard {...defaultProps} reply={pollReply} />);
         fireEvent.click(screen.getByText("Yes"));
         expect(defaultProps.onVotePoll).toHaveBeenCalledWith("r1", 0);
@@ -114,26 +225,37 @@ describe("CommunityPostCard", () => {
 
     it("renders voice note with audio element", () => {
         const vnReply = createReply({ voiceNote: "blob:audio" });
-        // use container.querySelector to find the <audio> element directly
-        const { container } = render(<CommunityPostCard {...defaultProps} reply={vnReply} />);
+        const { container } = render(
+            <CommunityPostCard {...defaultProps} reply={vnReply} />
+        );
         const audioEl = container.querySelector("audio");
         expect(audioEl).toBeInTheDocument();
-        // optional: assert src attr to be sure it's the right audio
         expect(audioEl).toHaveAttribute("src", "blob:audio");
     });
 
     it("shows and triggers reaction buttons", () => {
         render(<CommunityPostCard {...defaultProps} />);
-        // Popover is mocked, so the quick reaction buttons are directly visible
-        const thumbsUpBtn = screen.getByText("👍");
+        const popoverContents = screen.getAllByTestId("popover-content");
+        expect(popoverContents.length).toBeGreaterThan(0);
+        const thumbsUpBtn = within(popoverContents[0]).getByText("👍");
         fireEvent.click(thumbsUpBtn);
         expect(defaultProps.onReactToReply).toHaveBeenCalledWith("r1", "👍");
     });
 
     it("renders child replies recursively", () => {
-        const childReply: ReplyData = createReply({ id: "c1", content: "Child content", user: { ...mockUser, name: "Charlie" } });
+        const childReply: ReplyData = createReply({
+            id: "c1",
+            content: "Child content",
+            user: { ...mockUser, name: "Charlie" },
+        });
         const parent = createReply({ children: [childReply] });
-        render(<CommunityPostCard {...defaultProps} reply={parent} allReplies={[parent, childReply]} />);
+        render(
+            <CommunityPostCard
+                {...defaultProps}
+                reply={parent}
+                allReplies={[parent, childReply]}
+            />
+        );
         expect(screen.getByText("Child content")).toBeInTheDocument();
         expect(screen.getByText("Charlie")).toBeInTheDocument();
     });

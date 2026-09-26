@@ -17,6 +17,7 @@ import {
     toggleTopicChat,
     voteOnPoll,
     markTopicRead,
+    toggleReplyReaction,
 } from "@/app/actions/community";
 import { createReport, sendWarning, banUserById } from "@/app/actions/admin";
 
@@ -25,6 +26,7 @@ import {
     TopicDetail,
     CommunityUser,
     ReplyData,
+    ReplyReactions,
     NewTopicState,
 } from "./community/types";
 import {
@@ -43,6 +45,29 @@ interface CommunityClientProps {
     isAdmin?: boolean;
     currentUserId?: string;
     currentUserRole?: string;
+}
+
+/**
+ * Recursively update the `reactions` map of the reply whose id matches
+ * `targetId`. Works for both top-level replies and any depth of children.
+ */
+function applyReactionsToReply(
+    reply: ReplyData,
+    targetId: string,
+    reactions: ReplyReactions
+): ReplyData {
+    if (reply.id === targetId) {
+        return { ...reply, reactions };
+    }
+    if (reply.children && reply.children.length > 0) {
+        return {
+            ...reply,
+            children: reply.children.map((child) =>
+                applyReactionsToReply(child, targetId, reactions)
+            ),
+        };
+    }
+    return reply;
 }
 
 export default function CommunityClient({
@@ -262,7 +287,12 @@ export default function CommunityClient({
                 eventDate: pendingEventDate || undefined,
                 eventLocation: pendingEventLocation.trim() || undefined,
             });
-            const replyData = { ...reply, children: [], pollVotes: (reply.pollVotes as Record<string, number> | null) || null } as ReplyData;
+            const replyData = {
+                ...reply,
+                children: [],
+                pollVotes: (reply.pollVotes as Record<string, number> | null) || null,
+                reactions: reply.reactions ?? {},
+            } as ReplyData;
             setSelectedTopic((prev) => {
                 if (!prev) return prev;
                 if (replyingTo?.id) {
@@ -387,6 +417,33 @@ export default function CommunityClient({
             toast.error("Failed to edit message");
         }
     };
+
+    /**
+     * Toggle an emoji reaction on a message. The server returns the full
+     * updated reaction map for that reply; we then patch the local state
+     * tree so the UI reflects the change immediately.
+     */
+    const handleReactToReply = useCallback(
+        async (replyId: string, emoji: string) => {
+            if (!selectedTopic) return;
+            try {
+                const result = await toggleReplyReaction(replyId, emoji);
+                setSelectedTopic((prev) => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        replies: prev.replies.map((reply) =>
+                            applyReactionsToReply(reply, replyId, result.reactions)
+                        ),
+                    };
+                });
+            } catch (err) {
+                console.error("[CommunityClient] reaction failed:", err);
+                toast.error("Failed to react to message");
+            }
+        },
+        [selectedTopic]
+    );
 
     const handleMessageTap = (replyId: string) => {
         setActiveMessageId(activeMessageId === replyId ? null : replyId);
@@ -701,6 +758,7 @@ export default function CommunityClient({
                         onReplyTo={handleReplyTo}
                         onStartEditReply={handleStartEditReply}
                         onMessagesRead={handleMessagesRead}
+                        onReactToReply={handleReactToReply}
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full bg-white dark:bg-gray-950 text-center">

@@ -4,7 +4,7 @@ import ProjectSubmitClient from "@/components/project-submit-client";
 export const dynamic = "force-dynamic";
 
 export default async function SubmitProjectPage() {
-    await authIsRequired();
+    const session = await authIsRequired();
 
     return (
         <main className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
@@ -17,7 +17,7 @@ export default async function SubmitProjectPage() {
                         Submit your research protocol for ethical review and approval by the National Ethics Committee for Human Health Research (CNERSH)
                     </p>
                 </div>
-                <ProjectSubmitClient />
+                <ProjectSubmitClient userId={session.user.id} />
             </div>
         </main>
     );

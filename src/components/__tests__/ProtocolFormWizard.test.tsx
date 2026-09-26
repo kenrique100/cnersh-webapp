@@ -1,10 +1,13 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ProtocolFormWizard, {
-    AUTOSAVE_KEY,
+    getAutosaveKey,
     initialProtocolFormState,
     STEP_LABELS,
     type ProtocolFormPayload,
 } from "@/components/protocol-form-wizard";
+
+const USER_ID = "user-a-1111";
+const AUTOSAVE_KEY = getAutosaveKey(USER_ID);
 
 const mockToastSuccess = jest.fn();
 const mockToastError = jest.fn();
@@ -22,6 +25,7 @@ function renderWizard(
 ) {
     return render(
         <ProtocolFormWizard
+            userId={USER_ID}
             onSubmit={mockOnSubmit}
             isSubmitting={false}
             disabled={false}
@@ -37,8 +41,6 @@ describe("ProtocolFormWizard", () => {
         window.scrollTo = jest.fn();
         mockOnSubmit.mockResolvedValue(undefined);
     });
-
-    // ── initial render ────────────────────────────────────────────────
 
     it("renders the first step with accessible required controls", () => {
         renderWizard();
@@ -71,8 +73,6 @@ describe("ProtocolFormWizard", () => {
         ).toBeInTheDocument();
     });
 
-    // ── validation ────────────────────────────────────────────────────
-
     it("validates the current step before continuing", () => {
         renderWizard();
 
@@ -90,14 +90,11 @@ describe("ProtocolFormWizard", () => {
         fireEvent.click(
             screen.getByRole("button", { name: /Step 18: Review & Submit/ })
         );
-        // The submit button is present but disabled because the form is incomplete.
         expect(
             screen.getByRole("button", { name: "Submit protocol" })
         ).toBeDisabled();
         expect(mockOnSubmit).not.toHaveBeenCalled();
     });
-
-    // ── dynamic list controls ─────────────────────────────────────────
 
     it("supports multiple specific objectives", () => {
         renderWizard();
@@ -134,8 +131,6 @@ describe("ProtocolFormWizard", () => {
         );
         expect(screen.getByText("No co-investigators added")).toBeInTheDocument();
     });
-
-    // ── draft persistence ─────────────────────────────────────────────
 
     it("saves manually and autosaves every 30 seconds", () => {
         jest.useFakeTimers();
@@ -175,7 +170,18 @@ describe("ProtocolFormWizard", () => {
         expect(window.localStorage.getItem(AUTOSAVE_KEY)).toBeNull();
     });
 
-    // ── document upload ───────────────────────────────────────────────
+    it("scopes the autosave key to the current user id", () => {
+        renderWizard();
+        fireEvent.change(screen.getByLabelText("Protocol title"), {
+            target: { value: "Scoped draft" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+        const stored = window.localStorage.getItem(AUTOSAVE_KEY);
+        expect(stored).not.toBeNull();
+        expect(JSON.parse(stored!).protocolTitle).toBe("Scoped draft");
+        expect(window.localStorage.getItem("cnersh-protocol-draft")).toBeNull();
+    });
 
     it("uploads a protocol document through the existing upload endpoint", async () => {
         const fetchMock = jest.fn().mockResolvedValue({
@@ -205,8 +211,6 @@ describe("ProtocolFormWizard", () => {
             expect.objectContaining({ method: "POST" })
         );
     });
-
-    // ── submission via onSubmit prop ──────────────────────────────────
 
     it("calls onSubmit with a normalized payload when the form is complete", async () => {
         const completeDraft = {
@@ -286,8 +290,6 @@ describe("ProtocolFormWizard", () => {
             })
         );
     });
-
-    // ── controlled submitting state ───────────────────────────────────
 
     it("disables the submit button and shows a spinner while isSubmitting", () => {
         const completeDraft = {
@@ -381,5 +383,21 @@ describe("ProtocolFormWizard", () => {
         expect(
             screen.getByRole("button", { name: "Submit protocol" })
         ).toBeDisabled();
+    });
+
+    it("does not load another user's draft", () => {
+        window.localStorage.setItem(
+            getAutosaveKey("user-b-2222"),
+            JSON.stringify({
+                ...initialProtocolFormState,
+                protocolTitle: "User B's protocol",
+            })
+        );
+        renderWizard();
+
+        expect(screen.getByLabelText("Protocol title")).toHaveValue("");
+        expect(
+            screen.queryByText("A saved draft has been restored.")
+        ).not.toBeInTheDocument();
     });
 });

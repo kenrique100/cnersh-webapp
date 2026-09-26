@@ -18,6 +18,12 @@ const mockUpdatePost = jest.fn();
 const mockTogglePostComments = jest.fn();
 const mockCreateReport = jest.fn();
 
+// === NEW: refresh/unread action mocks ===
+const mockGetPosts = jest.fn();
+const mockGetUnreadPostCount = jest.fn();
+const mockMarkPostsAsRead = jest.fn();
+const mockRefreshFeed = jest.fn();
+
 jest.mock('@/app/actions/feed', () => ({
     createPost: (...a: unknown[]) => mockCreatePost(...a),
     toggleLike: (...a: unknown[]) => mockToggleLike(...a),
@@ -32,6 +38,11 @@ jest.mock('@/app/actions/feed', () => ({
     getPostLikers: (...a: unknown[]) => mockGetPostLikers(...a),
     updatePost: (...a: unknown[]) => mockUpdatePost(...a),
     togglePostComments: (...a: unknown[]) => mockTogglePostComments(...a),
+    // === NEW ===
+    getPosts: (...a: unknown[]) => mockGetPosts(...a),
+    getUnreadPostCount: (...a: unknown[]) => mockGetUnreadPostCount(...a),
+    markPostsAsRead: (...a: unknown[]) => mockMarkPostsAsRead(...a),
+    refreshFeed: (...a: unknown[]) => mockRefreshFeed(...a),
 }));
 
 jest.mock('@/app/actions/admin', () => ({
@@ -125,8 +136,6 @@ jest.mock('lucide-react', () => {
             if (prop === '__esModule') return true;
             if (typeof prop !== 'string') return undefined;
             if (!cache.has(prop)) {
-                // Strip trailing "Icon" so `XIcon` → `icon-X`,
-                // `ChevronLeftIcon` → `icon-ChevronLeft`, etc.
                 const label = prop.endsWith('Icon') ? prop.slice(0, -4) : prop;
                 cache.set(prop, icon(label));
             }
@@ -153,8 +162,18 @@ jest.mock('@/components/cta-link-button', () => ({
     CTA_LINK_TYPES: [{ value: 'learn_more', label: 'Learn More' }],
     DEFAULT_LINK_TYPE: 'learn_more',
 }));
+
+// === Updated PostCard mock to surface isUnread via a data attribute ===
 jest.mock('@/components/post-card', () => ({
-    PostCard: ({ children }: { children: React.ReactNode }) => <div data-testid="post-card">{children}</div>,
+    PostCard: ({ children, isUnread }: { children: React.ReactNode; isUnread?: boolean }) => (
+        <div
+            data-testid="post-card"
+            data-unread={isUnread ? 'true' : 'false'}
+        >
+            {isUnread && <span data-testid="unread-badge">New</span>}
+            {children}
+        </div>
+    ),
     PostContextBar: () => null,
     PostHeader: ({ userName, actions }: { userName?: string | null; actions?: React.ReactNode }) => (
         <div data-testid="post-header">{userName}<div data-testid="post-actions">{actions}</div></div>
@@ -187,6 +206,7 @@ jest.mock('@/components/post-card', () => ({
     getReactionBg: () => 'bg-blue-100',
     postHasMedia: () => false,
 }));
+
 jest.mock('@/components/reactions-picker', () => ({
     ReactionsPicker: ({ onReact, postId }: { onReact: (pid: string, r: string) => void; postId: string }) => (
         <button data-testid="like-btn" onClick={() => onReact(postId, 'Like')}>Like</button>
@@ -195,6 +215,17 @@ jest.mock('@/components/reactions-picker', () => ({
 jest.mock('@/lib/utils', () => ({
     cn: (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(' '),
 }));
+
+// === Mock IntersectionObserver for JSDOM ===
+class MockIntersectionObserver {
+    observe = jest.fn();
+    unobserve = jest.fn();
+    disconnect = jest.fn();
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds: number[] = [];
+    takeRecords = jest.fn().mockReturnValue([]);
+}
 
 // ── Test data ──────────────────────────────────────────────────────
 const basePost = {
@@ -212,10 +243,12 @@ const basePost = {
     user: { id: 'user-1', name: 'Alice', image: null, role: 'user', profession: 'Researcher' },
     _count: { comments: 2, likes: 3 },
     likes: [] as { userId: string; reactionType: string; userName?: string | null }[],
+    isUnread: false as boolean | undefined,
 };
 
 const defaultProps = {
     initialPosts: [basePost],
+    initialUnreadCount: 0,                        // === NEW ===
     currentUserId: 'current-user',
     currentUserName: 'Current User',
     currentUserImage: null as string | null,
@@ -236,6 +269,13 @@ async function openComments(user: ReturnType<typeof userEvent.setup>) {
 // Import FeedClient after all mocks are set up
 import FeedClient from '@/components/feed-client';
 
+// ── Global test setup ──────────────────────────────────────────────
+beforeAll(() => {
+    // JSDOM does not ship IntersectionObserver
+    (global as unknown as { IntersectionObserver: typeof MockIntersectionObserver }).IntersectionObserver =
+        MockIntersectionObserver;
+});
+
 // ── VideoUploadInput (via FeedClient) ──────────────────────────────
 describe('VideoUploadInput (via FeedClient)', () => {
     const originalConsoleError = console.error;
@@ -243,12 +283,13 @@ describe('VideoUploadInput (via FeedClient)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchUsers.mockResolvedValue([]);
+        mockGetUnreadPostCount.mockResolvedValue(0);
+        mockMarkPostsAsRead.mockResolvedValue({ count: 0 });
+        mockGetPosts.mockResolvedValue({ posts: [], total: 0, pages: 0 });
 
         jest.spyOn(console, 'error').mockImplementation((...args) => {
             const firstArg = String(args[0]);
-            if (firstArg.includes('Video upload error:')) {
-                return;
-            }
+            if (firstArg.includes('Video upload error:')) return;
             originalConsoleError(...args);
         });
     });
@@ -266,19 +307,11 @@ describe('VideoUploadInput (via FeedClient)', () => {
 
     it('shows error toast for non-video file', async () => {
         const { user } = setup();
-
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
         const file = new File(['content'], 'test.txt', { type: 'text/plain' });
-
-        Object.defineProperty(input, 'files', {
-            value: [file],
-            configurable: true,
-        });
-
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
         fireEvent.change(input);
-
         await waitFor(() => {
             expect(mockToastError).toHaveBeenCalledWith('Please select a video file');
         });
@@ -288,13 +321,10 @@ describe('VideoUploadInput (via FeedClient)', () => {
         const { user } = setup();
         await user.click(screen.getByRole('button', { name: /video/i }));
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
-
         const file = new File([''], 'big.mp4', { type: 'video/mp4' });
-        Object.defineProperty(file, 'size', { value: 65 * 1024 * 1024 }); // 65 MB
+        Object.defineProperty(file, 'size', { value: 65 * 1024 * 1024 });
         Object.defineProperty(input, 'files', { value: [file], configurable: true });
-
         fireEvent.change(input);
-
         await waitFor(() => {
             expect(mockToastError).toHaveBeenCalledWith('Video must be less than 65MB');
         });
@@ -309,17 +339,12 @@ describe('VideoUploadInput (via FeedClient)', () => {
 
         const { user } = setup();
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
         const file = new File(['v'], 'borderline.mp4', { type: 'video/mp4' });
-        Object.defineProperty(file, 'size', { value: 64 * 1024 * 1024 }); // exactly 64 MB
+        Object.defineProperty(file, 'size', { value: 64 * 1024 * 1024 });
         Object.defineProperty(input, 'files', { value: [file], configurable: true });
-
         fireEvent.change(input);
-
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalled();
-        });
+        await waitFor(() => expect(mockFetch).toHaveBeenCalled());
         expect(mockToastError).not.toHaveBeenCalledWith('Video must be less than 65MB');
     });
 
@@ -328,30 +353,19 @@ describe('VideoUploadInput (via FeedClient)', () => {
             ok: true,
             json: async () => ({ url: 'https://cdn.test/video.mp4' }),
         });
-
         (global as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
-
         const { user } = setup();
-
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
         const file = new File(['v'.repeat(1024)], 'video.mp4', { type: 'video/mp4' });
-
-        Object.defineProperty(input, 'files', {
-            value: [file],
-            configurable: true,
-        });
-
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
         fireEvent.change(input);
-
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('/api/upload'),
                 expect.objectContaining({ method: 'POST' })
             );
         });
-
         await waitFor(() => {
             expect(screen.queryByText(/drop or click to upload a video/i)).not.toBeInTheDocument();
         });
@@ -362,23 +376,13 @@ describe('VideoUploadInput (via FeedClient)', () => {
             ok: false,
             json: async () => ({ error: 'Upload failed' }),
         });
-
         (global as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
-
         const { user } = setup();
-
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
         const file = new File(['v'.repeat(1024)], 'video.mp4', { type: 'video/mp4' });
-
-        Object.defineProperty(input, 'files', {
-            value: [file],
-            configurable: true,
-        });
-
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
         fireEvent.change(input);
-
         await waitFor(() => {
             expect(mockToastError).toHaveBeenCalledWith('Upload failed');
         });
@@ -386,44 +390,22 @@ describe('VideoUploadInput (via FeedClient)', () => {
 
     it('shows uploading spinner during upload', async () => {
         let resolveUpload!: (v: unknown) => void;
-
-        const pendingFetch = new Promise((resolve) => {
-            resolveUpload = resolve;
-        });
-
+        const pendingFetch = new Promise((resolve) => { resolveUpload = resolve; });
         const mockFetch = jest.fn().mockReturnValueOnce(pendingFetch);
-
         (global as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
-
         const { user } = setup();
-
         await user.click(screen.getByRole('button', { name: /video/i }));
-
         const input = document.querySelector('input[type="file"][accept="video/*"]') as HTMLInputElement;
         const file = new File(['v'.repeat(1024)], 'video.mp4', { type: 'video/mp4' });
-
-        Object.defineProperty(input, 'files', {
-            value: [file],
-            configurable: true,
-        });
-
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
         fireEvent.change(input);
-
         await waitFor(() => {
             expect(screen.getByText(/uploading video/i)).toBeInTheDocument();
         });
-
         await act(async () => {
-            resolveUpload({
-                ok: false,
-                json: async () => ({ error: 'fail' }),
-            });
+            resolveUpload({ ok: false, json: async () => ({ error: 'fail' }) });
         });
-
-        await waitFor(() => {
-            expect(mockToastError).toHaveBeenCalledWith('fail');
-        });
-
+        await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('fail'));
         await waitFor(() => {
             expect(screen.queryByText(/uploading video/i)).not.toBeInTheDocument();
         });
@@ -435,6 +417,8 @@ describe('deleteBlobUrl (via image removal in create-post)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchUsers.mockResolvedValue([]);
+        mockGetUnreadPostCount.mockResolvedValue(0);
+        mockGetPosts.mockResolvedValue({ posts: [], total: 0, pages: 0 });
     });
 
     it('does not call DELETE /api/delete-blob for non-UploadThing URLs', async () => {
@@ -459,6 +443,11 @@ describe('FeedClient', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchUsers.mockResolvedValue([]);
+        // Default happy-path mocks for the new actions
+        mockGetPosts.mockResolvedValue({ posts: [], total: 0, pages: 0 });
+        mockGetUnreadPostCount.mockResolvedValue(0);
+        mockMarkPostsAsRead.mockResolvedValue({ count: 0 });
+        mockRefreshFeed.mockResolvedValue({ posts: [], total: 0, pages: 0 });
     });
 
     // ── initial render ──────────────────────────────────────────────
@@ -497,6 +486,92 @@ describe('FeedClient', () => {
         });
     });
 
+    // ── unread & refresh (NEW) ──────────────────────────────────────
+    describe('unread & refresh', () => {
+        it('renders the unread badge when initialUnreadCount > 0', () => {
+            setup({ initialUnreadCount: 5 });
+            expect(screen.getByText(/5 new/i)).toBeInTheDocument();
+        });
+
+        it('does not render the unread badge when initialUnreadCount is 0', () => {
+            setup({ initialUnreadCount: 0 });
+            expect(screen.queryByText(/new$/i)).not.toBeInTheDocument();
+        });
+
+        it('passes isUnread=true to PostCard for unread posts', () => {
+            setup({ initialPosts: [{ ...basePost, isUnread: true }] });
+            expect(screen.getByTestId('post-card')).toHaveAttribute('data-unread', 'true');
+            expect(screen.getByTestId('unread-badge')).toBeInTheDocument();
+        });
+
+        it('passes isUnread=false to PostCard for read posts', () => {
+            setup({ initialPosts: [{ ...basePost, isUnread: false }] });
+            expect(screen.getByTestId('post-card')).toHaveAttribute('data-unread', 'false');
+            expect(screen.queryByTestId('unread-badge')).not.toBeInTheDocument();
+        });
+
+        it('calls getPosts and getUnreadPostCount when Refresh is clicked', async () => {
+            mockGetPosts.mockResolvedValueOnce({ posts: [], total: 0, pages: 0 });
+            mockGetUnreadPostCount.mockResolvedValueOnce(3);
+
+            const { user } = setup();
+            await user.click(screen.getByLabelText(/refresh feed/i));
+
+            await waitFor(() => {
+                expect(mockGetPosts).toHaveBeenCalledWith(1, 20);
+                expect(mockGetUnreadPostCount).toHaveBeenCalled();
+            });
+        });
+
+        it('replaces posts after refresh', async () => {
+            mockGetPosts.mockResolvedValueOnce({
+                posts: [
+                    {
+                        ...basePost,
+                        id: 'new-post-id',
+                        content: 'Fresh post from refresh',
+                        createdAt: new Date().toISOString(),
+                    },
+                ],
+                total: 1,
+                pages: 1,
+            });
+            mockGetUnreadPostCount.mockResolvedValueOnce(0);
+
+            const { user } = setup();
+            await user.click(screen.getByLabelText(/refresh feed/i));
+
+            await waitFor(() => {
+                expect(screen.getByText('Fresh post from refresh')).toBeInTheDocument();
+            });
+        });
+
+        it('shows error toast when refresh fails', async () => {
+            mockGetPosts.mockRejectedValueOnce(new Error('boom'));
+
+            const { user } = setup();
+            await user.click(screen.getByLabelText(/refresh feed/i));
+
+            await waitFor(() => {
+                expect(mockToastError).toHaveBeenCalledWith('Failed to refresh feed');
+            });
+        });
+
+        it('updates the unread badge after refresh', async () => {
+            mockGetPosts.mockResolvedValueOnce({ posts: [], total: 0, pages: 0 });
+            mockGetUnreadPostCount.mockResolvedValueOnce(12);
+
+            const { user } = setup({ initialUnreadCount: 5 });
+            expect(screen.getByText(/5 new/i)).toBeInTheDocument();
+
+            await user.click(screen.getByLabelText(/refresh feed/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/12 new/i)).toBeInTheDocument();
+            });
+        });
+    });
+
     // ── create post ─────────────────────────────────────────────────
     describe('create post', () => {
         it('enables Post button when content is typed', async () => {
@@ -511,21 +586,10 @@ describe('FeedClient', () => {
             mockCreatePost.mockResolvedValueOnce({
                 id: 'new-post-id',
                 content: 'My post',
-                image: null,
-                video: null,
-                images: [],
-                videos: [],
-                tags: [],
-                linkUrl: null,
-                linkType: null,
+                image: null, video: null, images: [], videos: [], tags: [],
+                linkUrl: null, linkType: null,
                 createdAt: new Date().toISOString(),
-                user: {
-                    id: 'user-1',
-                    name: 'Test User',
-                    image: null,
-                    role: 'user',
-                    profession: 'Tester',
-                },
+                user: { id: 'user-1', name: 'Test User', image: null, role: 'user', profession: 'Tester' },
                 _count: { comments: 0, likes: 0 },
                 likes: [],
                 recentActivity: { users: [], likeCount: 0, commentCount: 0 },
@@ -533,8 +597,7 @@ describe('FeedClient', () => {
             });
 
             const { user } = setup({ initialPosts: [] });
-            const textarea = screen.getByPlaceholderText(/share an update/i);
-            await user.type(textarea, 'My post');
+            await user.type(screen.getByPlaceholderText(/share an update/i), 'My post');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
 
             await waitFor(() => {
@@ -556,8 +619,7 @@ describe('FeedClient', () => {
             });
 
             const { user } = setup({ initialPosts: [] });
-            const textarea = screen.getByPlaceholderText(/share an update/i);
-            await user.type(textarea, 'My post');
+            await user.type(screen.getByPlaceholderText(/share an update/i), 'My post');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
 
             await waitFor(() => {
@@ -596,7 +658,6 @@ describe('FeedClient', () => {
                 likes: [],
                 recentActivity: { users: [], likeCount: 0, commentCount: 0 },
             });
-
             const { user } = setup({ initialPosts: [] });
             const textarea = screen.getByPlaceholderText(/share an update/i);
             await user.type(textarea, 'My post');
@@ -655,14 +716,11 @@ describe('FeedClient', () => {
                 likes: [],
                 recentActivity: { users: [], likeCount: 0, commentCount: 0 },
             });
-
             const { user } = setup({ initialPosts: [] });
             await user.click(screen.getByRole('button', { name: /link/i }));
-            const linkInput = screen.getByPlaceholderText(/paste a link url/i);
-            await user.type(linkInput, 'https://example.com');
+            await user.type(screen.getByPlaceholderText(/paste a link url/i), 'https://example.com');
             await user.type(screen.getByPlaceholderText(/share an update/i), 'Post with link');
             await user.click(screen.getByRole('button', { name: /^post$/i }));
-
             await waitFor(() => {
                 expect(mockCreatePost).toHaveBeenCalledWith(
                     expect.objectContaining({ linkUrl: 'https://example.com' })
@@ -857,8 +915,7 @@ describe('FeedClient', () => {
             const { user } = setup({ currentUserId: 'user-1' });
             const postCard = screen.getByTestId('post-card');
             await user.click(within(postCard).getByTitle('Edit post'));
-            const imageBtn = within(postCard).getByRole('button', { name: /image/i });
-            await user.click(imageBtn);
+            await user.click(within(postCard).getByRole('button', { name: /image/i }));
             expect(within(postCard).getByRole('button', { name: /upload image/i })).toBeInTheDocument();
         });
 
@@ -866,8 +923,7 @@ describe('FeedClient', () => {
             const { user } = setup({ currentUserId: 'user-1' });
             const postCard = screen.getByTestId('post-card');
             await user.click(within(postCard).getByTitle('Edit post'));
-            const videoBtn = within(postCard).getByRole('button', { name: /video/i });
-            await user.click(videoBtn);
+            await user.click(within(postCard).getByRole('button', { name: /video/i }));
             expect(within(postCard).getByText(/drop or click to upload a video/i)).toBeInTheDocument();
         });
 
@@ -875,8 +931,7 @@ describe('FeedClient', () => {
             const { user } = setup({ currentUserId: 'user-1' });
             const postCard = screen.getByTestId('post-card');
             await user.click(within(postCard).getByTitle('Edit post'));
-            const linkBtn = within(postCard).getByRole('button', { name: /link/i });
-            await user.click(linkBtn);
+            await user.click(within(postCard).getByRole('button', { name: /link/i }));
             expect(within(postCard).getByPlaceholderText(/enter url/i)).toBeInTheDocument();
         });
 
@@ -1030,8 +1085,7 @@ describe('FeedClient', () => {
         });
 
         it('submits reply with parentId', async () => {
-            const replyComment = { ...comment, replies: [] };
-            mockGetPostComments.mockResolvedValue([replyComment]);
+            mockGetPostComments.mockResolvedValue([comment]);
             mockAddComment.mockResolvedValueOnce({
                 id: 'r1', content: 'Reply text', createdAt: new Date(),
                 user: { id: 'current-user', name: 'Current User', image: null, role: 'user' },
@@ -1203,8 +1257,7 @@ describe('FeedClient', () => {
             mockGetPostComments.mockResolvedValue(manyComments);
             const { user } = setup();
             await openComments(user);
-            const loadMoreBtn = screen.getByText(/load more comments/i);
-            await user.click(loadMoreBtn);
+            await user.click(screen.getByText(/load more comments/i));
             await waitFor(() => {
                 expect(screen.queryByText(/load more comments/i)).not.toBeInTheDocument();
             });
@@ -1220,8 +1273,7 @@ describe('FeedClient', () => {
                 createdAt: new Date(),
                 user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
                 _count: { commentLikes: 0, replies: 0 },
-                commentLikes: [],
-                replies: [],
+                commentLikes: [], replies: [],
             };
             mockGetPostComments.mockResolvedValue([longComment]);
             const { user } = setup();
@@ -1236,8 +1288,7 @@ describe('FeedClient', () => {
                 createdAt: new Date(),
                 user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
                 _count: { commentLikes: 0, replies: 0 },
-                commentLikes: [],
-                replies: [],
+                commentLikes: [], replies: [],
             };
             mockGetPostComments.mockResolvedValue([longComment]);
             const { user } = setup();
@@ -1659,15 +1710,13 @@ describe('FeedClient', () => {
     // ── disabled comments post ───────────────────────────────────────
     describe('disabled comments post', () => {
         it('shows MessageCircleOff icon when comments disabled', () => {
-            const disabledPost = { ...basePost, commentsEnabled: false };
-            setup({ initialPosts: [disabledPost] });
+            setup({ initialPosts: [{ ...basePost, commentsEnabled: false }] });
             const postCard = screen.getByTestId('post-card');
             expect(within(postCard).getByTestId('icon-MessageCircleOff')).toBeInTheDocument();
         });
 
         it('comment button is disabled when comments are disabled', () => {
-            const disabledPost = { ...basePost, commentsEnabled: false };
-            setup({ initialPosts: [disabledPost] });
+            setup({ initialPosts: [{ ...basePost, commentsEnabled: false }] });
             const postCard = screen.getByTestId('post-card');
             const commentBtn = within(postCard).getByRole('button', { name: /^comment$/i });
             expect(commentBtn).toBeDisabled();

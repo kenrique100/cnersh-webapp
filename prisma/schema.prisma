@@ -30,6 +30,7 @@ model User {
   pendingActivation   Boolean   @default(false)
   activationExpiresAt DateTime?
   communityReadStatus CommunityReadStatus?
+  postReadStatuses    PostReadStatus[]
   communityTopicReadStatuses CommunityTopicReadStatus[]
 
 
@@ -42,6 +43,7 @@ model User {
   assignedProjects    Project[]            @relation("ProjectReviewer")
   communityTopics     CommunityTopic[]
   communityReplies    CommunityReply[]
+  communityReplyReactions CommunityReplyReaction[]
   reports             Report[]             @relation("ReportAuthor")
   notifications       Notification[]
   auditLogs           AuditLog[]
@@ -168,6 +170,7 @@ model Post {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments        Comment[]
   likes           Like[]
+  readStatuses    PostReadStatus[]
 
   @@index([userId])
   @@index([createdAt])
@@ -362,6 +365,7 @@ model CommunityReply {
   linkUrl       String?
   pollQuestion  String?
   pollOptions   String[]         @default([])
+  reactions     CommunityReplyReaction[]
   pollVotes     Json?
   eventTitle    String?
   eventDate     DateTime?
@@ -747,4 +751,36 @@ model CommunityTopicReadStatus {
   @@index([topicId])
   @@index([topicId, lastReadAt])
   @@map("community_topic_read_status")
+}
+model PostReadStatus {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  readAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@index([userId, readAt])
+  @@map("post_read_status")
+}
+model CommunityReplyReaction {
+  id        String   @id @default(uuid())
+  replyId   String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reply     CommunityReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([replyId, userId, emoji])
+  @@index([replyId])
+  @@index([userId])
+  @@map("community_reply_reaction")
 }

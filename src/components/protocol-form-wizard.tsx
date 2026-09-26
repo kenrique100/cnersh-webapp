@@ -23,8 +23,22 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 
-export const AUTOSAVE_KEY = "cnersh-protocol-draft";
+export const AUTOSAVE_KEY_PREFIX = "cnersh-protocol-draft";
+
 const AUTOSAVE_INTERVAL = 30_000;
+
+export function getAutosaveKey(userId: string): string {
+    return `${AUTOSAVE_KEY_PREFIX}:${userId}`;
+}
+
+export function clearProtocolDraft(userId: string): void {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.removeItem(getAutosaveKey(userId));
+    } catch {
+        // best-effort cleanup
+    }
+}
 
 export const STEP_LABELS = [
     "Protocol Info",
@@ -60,6 +74,8 @@ export interface ProtocolFormPayload {
 }
 
 interface ProtocolFormWizardProps {
+    /** Authenticated user id. Required so the autosave key is user-scoped. */
+    userId: string;
     onSubmit: (payload: ProtocolFormPayload) => Promise<void> | void;
     isSubmitting?: boolean;
     disabled?: boolean;
@@ -403,17 +419,21 @@ function validateStep(form: FormState, step: number): string[] {
 }
 
 export default function ProtocolFormWizard({
+                                               userId,
                                                onSubmit,
                                                isSubmitting = false,
                                                disabled = false,
                                            }: ProtocolFormWizardProps) {
+
+    const autosaveKey = getAutosaveKey(userId);
+
     const [step, setStep] = React.useState(0);
     const [stepErrors, setStepErrors] = React.useState<string[]>([]);
     const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
     const [form, setForm] = React.useState<FormState>(() => {
         if (typeof window === "undefined") return initialProtocolFormState;
         try {
-            const saved = window.localStorage.getItem(AUTOSAVE_KEY);
+            const saved = window.localStorage.getItem(autosaveKey);
             if (!saved) return initialProtocolFormState;
             const parsed = JSON.parse(saved) as Partial<FormState>;
             return {
@@ -432,7 +452,7 @@ export default function ProtocolFormWizard({
     const [draftLoaded, setDraftLoaded] = React.useState(() => {
         if (typeof window === "undefined") return false;
         try {
-            return Boolean(window.localStorage.getItem(AUTOSAVE_KEY));
+            return Boolean(window.localStorage.getItem(autosaveKey));
         } catch {
             return false;
         }
@@ -446,14 +466,14 @@ export default function ProtocolFormWizard({
     const persistDraft = React.useCallback(
         (announce = false) => {
             try {
-                window.localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(form));
+                window.localStorage.setItem(autosaveKey, JSON.stringify(form));
                 setLastSavedAt(new Date());
                 if (announce) toast.success("Draft saved successfully");
             } catch {
                 if (announce) toast.error("Failed to save draft");
             }
         },
-        [form]
+        [form, autosaveKey]
     );
 
     React.useEffect(() => {
@@ -463,7 +483,7 @@ export default function ProtocolFormWizard({
 
     const clearDraft = () => {
         try {
-            window.localStorage.removeItem(AUTOSAVE_KEY);
+            window.localStorage.removeItem(autosaveKey);
         } catch {
             // Best-effort cleanup.
         }

@@ -25,6 +25,7 @@ jest.mock("@/app/actions/community", () => ({
     toggleTopicChat: jest.fn(),
     voteOnPoll: jest.fn(),
     markTopicRead: jest.fn(),
+    toggleReplyReaction: jest.fn(),
 }));
 jest.mock("@/app/actions/admin", () => ({
     createReport: jest.fn(),
@@ -66,6 +67,7 @@ interface CommentSectionProps {
     onStopRecording: () => void;
     onFileUpload: (file: File, type: string) => void;
     onUserClick: (id: string) => void;
+    onReactToReply: (replyId: string, emoji: string) => void;
     setShowPollCreator: (fn: (prev: boolean) => boolean) => void;
     setShowEventCreator: (fn: (prev: boolean) => boolean) => void;
     setShowLinkInput: (fn: (prev: boolean) => boolean) => void;
@@ -207,6 +209,7 @@ jest.mock("../community/CommunityCommentSection", () => ({
                                   isRecording,
                                   messagesEndRef,
                                   onUserClick,
+                                  onReactToReply,
                               }: CommentSectionProps) => (
         <div data-testid="comment-section">
             <span data-testid="topic-title">{selectedTopic.title}</span>
@@ -235,6 +238,8 @@ jest.mock("../community/CommunityCommentSection", () => ({
             <button data-testid="toggle-attachment-panel" onClick={() => setShowAttachmentPanel((p) => !p)}>Attach</button>
             <button data-testid="toggle-emoji-picker" onClick={() => setShowEmojiPicker((p) => !p)}>Emoji</button>
             <button data-testid="toggle-mentions" onClick={() => setShowMentions((p) => !p)}>Mentions</button>
+            <button data-testid="react-thumbsup-btn" onClick={() => onReactToReply("reply-1", "👍")}>React 👍</button>
+            <button data-testid="react-heart-btn" onClick={() => onReactToReply("reply-1", "❤️")}>React ❤️</button>
             <input data-testid="message-input" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
             <div data-testid="replying-to">{replyingTo?.id}</div>
             <div data-testid="pending-images">{pendingImages.length}</div>
@@ -375,6 +380,7 @@ jest.mock("../community/CommunityCreatePost", () => ({
 
 jest.mock("../community/utils", () => ({
     getDisplayName: (user: { name?: string | null }) => user?.name ?? "Anonymous",
+    deleteBlobUrl: jest.fn(),
 }));
 
 function mockMediaDevices(getUserMedia: jest.Mock): void {
@@ -452,7 +458,8 @@ const mockTopicDetail = {
             eventTitle: null as string | null,
             eventDate: null as string | null,
             eventLocation: null as string | null,
-            children: [],
+            children: [] as unknown[],
+            reactions: {} as Record<string, string[]>,
             user: { id: "user-2", name: "Other User", image: null, role: "member" },
             likes: [],
         },
@@ -480,6 +487,7 @@ describe("CommunityClient Integration", () => {
             content: "New reply",
             children: [],
             pollVotes: null,
+            reactions: {},
             user: mockUsers[0],
         });
         (communityActions.deleteReply as jest.Mock).mockResolvedValue({});
@@ -490,6 +498,10 @@ describe("CommunityClient Integration", () => {
         (communityActions.voteOnPoll as jest.Mock).mockResolvedValue({ votes: { "0": 1 } });
         (communityActions.deleteTopic as jest.Mock).mockResolvedValue({});
         (communityActions.markTopicRead as jest.Mock).mockResolvedValue({ unreadCount: 0 });
+        (communityActions.toggleReplyReaction as jest.Mock).mockResolvedValue({
+            action: "added",
+            reactions: { "👍": ["user-1"] },
+        });
         (adminActions.createReport as jest.Mock).mockResolvedValue({});
         (adminActions.sendWarning as jest.Mock).mockResolvedValue({});
         (adminActions.banUserById as jest.Mock).mockResolvedValue({});
@@ -1155,5 +1167,74 @@ describe("CommunityClient Integration", () => {
         await selectTopic();
         fireEvent.click(screen.getByTestId("mobile-channels-btn"));
         expect(screen.getByTestId("mobile-channels-btn")).toBeInTheDocument();
+    });
+
+    /* ------------------------------------------------------------------- */
+    /* Reactions                                                           */
+    /* ------------------------------------------------------------------- */
+
+    it("calls toggleReplyReaction with the reply id and emoji", async () => {
+        renderComponent();
+        await selectTopic();
+
+        fireEvent.click(screen.getByTestId("react-thumbsup-btn"));
+
+        await waitFor(() =>
+            expect(communityActions.toggleReplyReaction).toHaveBeenCalledWith(
+                "reply-1",
+                "👍"
+            )
+        );
+    });
+
+    it("sends different emojis for different buttons", async () => {
+        renderComponent();
+        await selectTopic();
+
+        fireEvent.click(screen.getByTestId("react-heart-btn"));
+
+        await waitFor(() =>
+            expect(communityActions.toggleReplyReaction).toHaveBeenCalledWith(
+                "reply-1",
+                "❤️"
+            )
+        );
+    });
+
+    it("applies the returned reaction map to the matching reply", async () => {
+        (communityActions.toggleReplyReaction as jest.Mock).mockResolvedValueOnce({
+            action: "added",
+            reactions: { "👍": ["user-1", "user-2"] },
+        });
+
+        renderComponent();
+        await selectTopic();
+
+        fireEvent.click(screen.getByTestId("react-thumbsup-btn"));
+        await waitFor(() =>
+            expect(communityActions.toggleReplyReaction).toHaveBeenCalledTimes(1)
+        );
+        expect(toast.error).not.toHaveBeenCalledWith("Failed to react to message");
+    });
+
+    it("shows error toast when toggleReplyReaction fails", async () => {
+        (communityActions.toggleReplyReaction as jest.Mock).mockRejectedValueOnce(
+            new Error("fail")
+        );
+
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
+
+        renderComponent();
+        await selectTopic();
+
+        fireEvent.click(screen.getByTestId("react-thumbsup-btn"));
+
+        await waitFor(() =>
+            expect(toast.error).toHaveBeenCalledWith("Failed to react to message")
+        );
+
+        consoleErrorSpy.mockRestore();
     });
 });

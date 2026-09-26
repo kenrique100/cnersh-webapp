@@ -28,6 +28,7 @@ const idSchema = z.string().trim().min(1).max(128);
 const pageSchema = z.number().int().min(1).max(1_000_000).catch(1);
 const limitSchema = z.number().int().min(1).max(50).catch(10);
 const reactionSchema = z.string().trim().min(1).max(64).transform(sanitizeText);
+const postIdsSchema = z.array(idSchema).min(1).max(200);
 
 export async function createPost(data: { content: string; image?: string; video?: string; images?: string[]; videos?: string[]; tags?: string[]; linkUrl?: string; linkType?: string }) {
     const session = await authSession();
@@ -149,6 +150,7 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
         const whereClause = safeUserId
             ? { deleted: false, userId: safeUserId }
             : { deleted: false };
+
         const [posts, total] = await Promise.all([
             db.post.findMany({
                 where: whereClause,
@@ -196,9 +198,18 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
             db.post.count({ where: whereClause }),
         ]);
 
-        // Build recentActivity for each post
+        // Fetch this user's read state for the current page in a single query.
+        const postIds = posts.map((p) => p.id);
+        const readRows = postIds.length
+            ? await db.postReadStatus.findMany({
+                where: { userId: session.user.id, postId: { in: postIds } },
+                select: { postId: true },
+            })
+            : [];
+        const readSet = new Set(readRows.map((r) => r.postId));
+        const viewerId = session.user.id;
+
         const postsWithActivity = posts.map((post) => {
-            // Deduplicate users from likes and comments
             const activityUsers = new Map<string, { id: string; name: string | null; image: string | null }>();
             for (const like of post.likes.slice(0, 5)) {
                 if (!activityUsers.has(like.user.id)) {
@@ -211,9 +222,17 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
                 }
             }
 
+            const isOwnPost = post.user.id === viewerId;
+            const isUnread = !isOwnPost && !readSet.has(post.id);
+
             return {
                 ...post,
-                likes: post.likes.map((l) => ({ userId: l.userId, reactionType: l.reactionType, userName: l.user.name })),
+                isUnread,
+                likes: post.likes.map((l) => ({
+                    userId: l.userId,
+                    reactionType: l.reactionType,
+                    userName: l.user.name,
+                })),
                 recentActivity: {
                     users: Array.from(activityUsers.values()).slice(0, 5),
                     likeCount: post._count.likes,
@@ -226,6 +245,68 @@ export async function getPosts(page: number = 1, limit: number = 10, userId?: st
     } catch (error) {
         console.error("Error fetching posts:", error);
         return { posts: [], total: 0, pages: 0 };
+    }
+}
+
+/**
+ * Explicit refresh entry point used by the client's pull-to-refresh / Refresh button.
+ * Kept as its own action for clarity (and so it can be rate-limited independently later).
+ */
+export async function refreshFeed(page: number = 1, limit: number = 20) {
+    return getPosts(page, limit);
+}
+
+/**
+ * Mark a batch of posts as read for the current user. Idempotent thanks to the
+ * unique (userId, postId) constraint and `skipDuplicates`.
+ * The user's own posts are skipped so the table only stores "someone else's post I saw".
+ */
+export async function markPostsAsRead(postIds: string[]) {
+    const session = await authSession();
+    if (!session) return { count: 0 };
+
+    const parsed = postIdsSchema.safeParse(postIds);
+    if (!parsed.success) return { count: 0 };
+
+    // Don't store rows for the user's own posts.
+    const ownPosts = await db.post.findMany({
+        where: { id: { in: parsed.data }, userId: session.user.id },
+        select: { id: true },
+    });
+    const ownIds = new Set(ownPosts.map((p) => p.id));
+    const toInsert = parsed.data.filter((id) => !ownIds.has(id));
+    if (toInsert.length === 0) return { count: 0 };
+
+    try {
+        await db.postReadStatus.createMany({
+            data: toInsert.map((postId) => ({ userId: session.user.id, postId })),
+            skipDuplicates: true,
+        });
+        return { count: toInsert.length };
+    } catch (error) {
+        console.error("Error marking posts as read:", error);
+        return { count: 0 };
+    }
+}
+
+export async function getUnreadPostCount(days: number = 30) {
+    const session = await authSession();
+    if (!session) return 0;
+    const safeDays = z.number().int().min(1).max(365).catch(30).parse(days);
+    const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+
+    try {
+        return await db.post.count({
+            where: {
+                deleted: false,
+                createdAt: { gte: since },
+                userId: { not: session.user.id },
+                readStatuses: { none: { userId: session.user.id } },
+            },
+        });
+    } catch (error) {
+        console.error("Error counting unread posts:", error);
+        return 0;
     }
 }
 
