@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import ProtocolFormWizard from "@/components/protocol-form-wizard";
+import ProtocolFormWizard, { clearProtocolDraft } from "@/components/protocol-form-wizard";
 import {
     submitProject,
     type SubmitProjectResult,
@@ -21,7 +21,12 @@ export interface ProjectFormPayload {
     formData?: Record<string, unknown>;
 }
 
-export default function ProjectSubmitClient() {
+interface ProjectSubmitClientProps {
+    /** Authenticated user id, sourced from the server session. */
+    userId: string;
+}
+
+export default function ProjectSubmitClient({ userId }: ProjectSubmitClientProps) {
     const router = useRouter();
     const [idempotencyKey, setIdempotencyKey] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,6 +47,8 @@ export default function ProjectSubmitClient() {
             });
 
             if (result.success) {
+                // Submission succeeded — this user's local draft is now stale.
+                clearProtocolDraft(userId);
                 toast.success(`Protocol submitted. Tracking code: ${result.protocol.trackingCode}`);
                 router.push(`/protocols/${result.protocol.id}`);
                 return;
@@ -74,6 +81,8 @@ export default function ProjectSubmitClient() {
 
     return (
         <ProtocolFormWizard
+            key={userId}
+            userId={userId}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             disabled={!idempotencyKey || isSubmitting}
