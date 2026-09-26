@@ -1,4 +1,10 @@
-import { formatTime, formatDate, getDisplayName } from '@/components/community';
+import {
+    formatTime,
+    formatDate,
+    formatDateSeparator,
+    isSameDay,
+    getDisplayName,
+} from '@/components/community/utils';
 
 const originalEnv = process.env;
 
@@ -13,16 +19,28 @@ afterEach(() => {
 });
 
 describe('formatTime', () => {
-    it('formats a date to a 12-hour time string', () => {
+    it('formats a date as 24-hour HH:MM', () => {
         const date = new Date('2024-03-15T14:30:00');
-        const result = formatTime(date);
-        expect(result).toMatch(/\d{1,2}:\d{2}\s*(AM|PM)/i);
+        expect(formatTime(date)).toBe('14:30');
     });
 
-    it('includes minutes', () => {
+    it('zero-pads hours and minutes', () => {
         const date = new Date('2024-03-15T09:05:00');
-        const result = formatTime(date);
-        expect(result).toMatch(/05/);
+        expect(formatTime(date)).toBe('09:05');
+    });
+
+    it('handles midnight correctly', () => {
+        const date = new Date('2024-03-15T00:00:00');
+        expect(formatTime(date)).toBe('00:00');
+    });
+
+    it('handles end of day correctly', () => {
+        const date = new Date('2024-03-15T23:59:00');
+        expect(formatTime(date)).toBe('23:59');
+    });
+
+    it('accepts a string date', () => {
+        expect(formatTime('2024-03-15T14:30:00')).toBe('14:30');
     });
 });
 
@@ -39,6 +57,87 @@ describe('formatDate', () => {
         const date = new Date('2024-03-15T00:00:00');
         const result = formatDate(date);
         expect(result).toMatch(/15/);
+    });
+
+    it('accepts a string date', () => {
+        const result = formatDate('2024-03-15T00:00:00');
+        expect(result).toMatch(/Friday/);
+    });
+});
+
+describe('isSameDay', () => {
+    it('returns true for two timestamps on the same calendar day', () => {
+        const a = new Date('2024-03-15T00:01:00');
+        const b = new Date('2024-03-15T23:59:00');
+        expect(isSameDay(a, b)).toBe(true);
+    });
+
+    it('returns false for two timestamps on different calendar days', () => {
+        const a = new Date('2024-03-15T23:59:00');
+        const b = new Date('2024-03-16T00:01:00');
+        expect(isSameDay(a, b)).toBe(false);
+    });
+
+    it('returns false when days differ even within the same month', () => {
+        const a = new Date('2024-03-15T12:00:00');
+        const b = new Date('2024-03-16T12:00:00');
+        expect(isSameDay(a, b)).toBe(false);
+    });
+
+    it('returns true for identical Date instances', () => {
+        const a = new Date('2024-03-15T12:00:00');
+        expect(isSameDay(a, a)).toBe(true);
+    });
+
+    it('accepts string dates', () => {
+        expect(isSameDay('2024-03-15T01:00:00', '2024-03-15T22:00:00')).toBe(true);
+        expect(isSameDay('2024-03-15T01:00:00', '2024-03-16T01:00:00')).toBe(false);
+    });
+});
+
+describe('formatDateSeparator', () => {
+    it('returns "Today" for the current calendar day', () => {
+        const now = new Date();
+        expect(formatDateSeparator(now)).toBe('Today');
+    });
+
+    it('returns "Today" for an earlier time on the current day', () => {
+        const morning = new Date();
+        morning.setHours(0, 5, 0, 0);
+        expect(formatDateSeparator(morning)).toBe('Today');
+    });
+
+    it('returns "Yesterday" for the previous calendar day', () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        expect(formatDateSeparator(yesterday)).toBe('Yesterday');
+    });
+
+    it('returns "Yesterday" for an early time on the previous day', () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 5, 0, 0);
+        expect(formatDateSeparator(yesterday)).toBe('Yesterday');
+    });
+
+    it('returns an exact long-form date for older messages', () => {
+        // Use a fixed past date so the test is not sensitive to the clock.
+        const result = formatDateSeparator(new Date('2020-09-24T10:00:00'));
+        expect(result).toMatch(/September/);
+        expect(result).toMatch(/24/);
+        expect(result).toMatch(/2020/);
+    });
+
+    it('does not return Today/Yesterday for two days ago', () => {
+        const twoDaysAgo = new Date();
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        const result = formatDateSeparator(twoDaysAgo);
+        expect(result).not.toBe('Today');
+        expect(result).not.toBe('Yesterday');
+    });
+
+    it('accepts a string date', () => {
+        expect(formatDateSeparator('2020-09-24T10:00:00')).toMatch(/September/);
     });
 });
 

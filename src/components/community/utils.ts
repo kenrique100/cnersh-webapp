@@ -28,7 +28,7 @@ export function formatTime(date: Date | string) {
     return `${h}:${m}`;
 }
 
-/** Full human-readable date, e.g. "Monday, September 24, 2026". */
+/** Full human-readable date, e.g. "Thursday, September 24, 2026". */
 export function formatDate(date: Date | string) {
     return new Date(date).toLocaleDateString("en-US", {
         weekday: "long",
