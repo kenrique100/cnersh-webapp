@@ -16,15 +16,17 @@ export async function deleteBlobUrl(url: string) {
             body: JSON.stringify({ url }),
         });
     } catch {
+        // best-effort
     }
 }
 
-/** Format a timestamp as 24-hour HH:MM (e.g. "14:33"). */
+/** Format a timestamp as WhatsApp-style 12-hour time, e.g. "7:27 AM". */
 export function formatTime(date: Date | string) {
-    const d = new Date(date);
-    const h = d.getHours().toString().padStart(2, "0");
-    const m = d.getMinutes().toString().padStart(2, "0");
-    return `${h}:${m}`;
+    return new Date(date).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    });
 }
 
 /** Full human-readable date, e.g. "Thursday, September 24, 2026". */
@@ -41,7 +43,6 @@ function startOfDay(d: Date): number {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-/** Returns true when both timestamps fall on the same calendar day. */
 export function isSameDay(a: Date | string, b: Date | string): boolean {
     return startOfDay(new Date(a)) === startOfDay(new Date(b));
 }

@@ -19,28 +19,41 @@ afterEach(() => {
 });
 
 describe('formatTime', () => {
-    it('formats a date as 24-hour HH:MM', () => {
+    it('formats a date as WhatsApp-style 12-hour time', () => {
         const date = new Date('2024-03-15T14:30:00');
-        expect(formatTime(date)).toBe('14:30');
+        expect(formatTime(date)).toBe('2:30 PM');
     });
 
-    it('zero-pads hours and minutes', () => {
+    it('does not zero-pad the hour (e.g. "9:05 AM" not "09:05 AM")', () => {
         const date = new Date('2024-03-15T09:05:00');
-        expect(formatTime(date)).toBe('09:05');
+        expect(formatTime(date)).toBe('9:05 AM');
     });
 
-    it('handles midnight correctly', () => {
+    it('formats midnight as 12:00 AM', () => {
         const date = new Date('2024-03-15T00:00:00');
-        expect(formatTime(date)).toBe('00:00');
+        expect(formatTime(date)).toBe('12:00 AM');
     });
 
-    it('handles end of day correctly', () => {
+    it('formats end-of-day as 11:59 PM', () => {
         const date = new Date('2024-03-15T23:59:00');
-        expect(formatTime(date)).toBe('23:59');
+        expect(formatTime(date)).toBe('11:59 PM');
+    });
+
+    it('uses AM for morning times', () => {
+        expect(formatTime(new Date('2024-03-15T08:00:00'))).toMatch(/AM$/);
+    });
+
+    it('uses PM for afternoon/evening times', () => {
+        expect(formatTime(new Date('2024-03-15T15:00:00'))).toMatch(/PM$/);
+    });
+
+    it('matches the general "h:mm AM/PM" shape', () => {
+        const result = formatTime(new Date('2024-03-15T14:30:00'));
+        expect(result).toMatch(/^\d{1,2}:\d{2}\s?(AM|PM)$/i);
     });
 
     it('accepts a string date', () => {
-        expect(formatTime('2024-03-15T14:30:00')).toBe('14:30');
+        expect(formatTime('2024-03-15T14:30:00')).toBe('2:30 PM');
     });
 });
 
