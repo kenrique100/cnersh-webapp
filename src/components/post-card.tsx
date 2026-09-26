@@ -6,17 +6,16 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReactionIcon, REACTION_COLORS, REACTION_ORDER, type ReactionType, isReactionType } from "@/components/reaction-icons";
 import { displayProfession } from "@/lib/user-display";
+import { cn } from "@/lib/utils";
 
 export const REACTIONS: { label: ReactionType; color: string }[] = REACTION_ORDER.map((label) => ({ label, color: REACTION_COLORS[label] }));
 
-/** Get uppercase initials from a name, e.g. "John Doe" → "JD" */
 export function getInitials(name: string | null | undefined): string {
   if (!name) return "U";
   const initials = name.split(/\s+/).filter(Boolean).map((n) => n[0]).join("").toUpperCase();
   return initials.slice(0, 2) || "U";
 }
 
-/** Relative time label – "Just now", "5m ago", "3h ago", etc. */
 export function formatRelativeDate(date: Date): string {
   const now = new Date();
   const postDate = new Date(date);
@@ -50,13 +49,38 @@ export function renderPostContent(content: string): React.ReactNode[] {
   });
 }
 
-interface PostCardProps { children: React.ReactNode; }
-export function PostCard({ children }: PostCardProps) { return <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow">{children}</Card>; }
+interface PostCardProps {
+  children: React.ReactNode;
+  isUnread?: boolean;
+}
 
-/* ---------------------------------------------------------------------- */
-/* PostContextBar - shown above a PostCard when there is recent activity  */
-/* (other users currently viewing / reacting / commenting on the post).   */
-/* ---------------------------------------------------------------------- */
+export function PostCard({ children, isUnread = false }: PostCardProps) {
+  return (
+      <Card
+          className={cn(
+              "relative overflow-hidden border bg-white dark:bg-gray-950 rounded-xl shadow-sm hover:shadow-md transition-shadow",
+              isUnread
+                  ? "border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/10"
+                  : "border-gray-200 dark:border-gray-800"
+          )}
+      >
+        {isUnread && (
+            <>
+              <span aria-hidden className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
+              <span
+                  aria-label="Unread post"
+                  className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm"
+              >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-white" />
+            New
+          </span>
+            </>
+        )}
+        {children}
+      </Card>
+  );
+}
+
 interface PostContextBarUser { id: string; name: string | null; image: string | null; }
 interface PostContextBarProps { users: PostContextBarUser[]; likeCount: number; commentCount: number; }
 export function PostContextBar({ users, likeCount, commentCount }: PostContextBarProps) {
@@ -174,6 +198,7 @@ export function PostEngagementSummary({ likeCount, commentCount, shareCount = 0,
   if (firstReactor && likeCount > 0) reactionLabel = likeCount === 1 ? <span className="truncate max-w-[160px]">{firstReactor}</span> : <span className="truncate max-w-[200px]">{firstReactor} and {othersCount} other{othersCount !== 1 ? "s" : ""}<span className="sr-only">{firstReactor}</span></span>;
   return <div className="px-2 sm:px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400"><div className="flex items-center gap-1.5 min-w-0">{likeCount > 0 && <button onClick={onLikeCountClick} className="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors min-w-0" type="button" aria-label={`${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`}><span className="flex items-center shrink-0">{(topReactions.length > 0 ? topReactions : ["Like"]).map((label, idx) => <span key={`${label}-${idx}`} className="inline-flex items-center justify-center rounded-full ring-2 ring-white dark:ring-gray-950 shrink-0" style={{ width: 22, height: 22, backgroundColor: getReactionColor(label), marginLeft: idx > 0 ? -6 : 0, zIndex: 3 - idx, position: "relative" } as React.CSSProperties}><ReactionIcon type={(isReactionType(label) ? label : "Like") as ReactionType} size={12} /></span>)}</span><span className="text-sm font-medium">{firstReactor ? reactionLabel : likeCount}</span></button>}</div><div className="flex items-center gap-3 shrink-0">{commentCount > 0 && <button onClick={onCommentCountClick} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors" type="button">{commentCount} comment{commentCount !== 1 ? "s" : ""}</button>}{shareCount > 0 && <span className="flex items-center gap-1"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" x2="12" y1="2" y2="15" /></svg>{shareCount} repost{shareCount !== 1 ? "s" : ""}</span>}</div></div>;
 }
+
 interface CommentReactionSummaryProps { reactionTypes: string[]; count: number; }
 export function CommentReactionSummary({ reactionTypes, count }: CommentReactionSummaryProps) { if (count === 0) return null; const counts = new Map<string, number>(); for (const rt of reactionTypes) counts.set(rt, (counts.get(rt) || 0) + 1); const topReactions = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([label]) => label); return <span className="inline-flex items-center gap-0.5 ml-1"><span className="flex items-center">{(topReactions.length > 0 ? topReactions : ["Like"]).map((label, idx) => <ReactionIcon key={`${label}-${idx}`} type={(isReactionType(label) ? label : "Like") as ReactionType} size={16} style={{ marginLeft: idx > 0 ? -3 : 0, zIndex: 3 - idx } as React.CSSProperties} />)}</span><span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">{count}</span></span>; }
 interface PostActionBarProps { children: React.ReactNode; }

@@ -49,6 +49,7 @@ import {
     UsersIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
+    RefreshCw,               // === NEW ===
 } from "lucide-react";
 import {
     Dialog,
@@ -84,6 +85,9 @@ import {
     getPostLikers,
     updatePost,
     togglePostComments,
+    getPosts,               // === NEW ===
+    markPostsAsRead,        // === NEW ===
+    getUnreadPostCount,     // === NEW ===
 } from "@/app/actions/feed";
 import { createReport } from "@/app/actions/admin";
 import ImageUpload from "@/components/image-upload";
@@ -156,10 +160,12 @@ interface PostData {
         likeCount: number;
         commentCount: number;
     };
+    isUnread?: boolean;
 }
 
 interface FeedClientProps {
     initialPosts: PostData[];
+    initialUnreadCount?: number;
     currentUserId: string;
     currentUserName?: string | null;
     currentUserImage?: string | null;
@@ -186,6 +192,9 @@ const EMOJI_LIST = [
 ];
 
 const MENTION_SEARCH_DEBOUNCE_MS = 200;
+const PULL_REFRESH_THRESHOLD = 60;
+const MARK_READ_FLUSH_MS = 700;
+const OBSERVER_ARM_DELAY_MS = 2500;
 
 function CommentTextWithSeeMore({ content, threshold, isReply = false }: { content: string; threshold: number; isReply?: boolean }) {
     const [expanded, setExpanded] = React.useState(false);
@@ -289,6 +298,7 @@ function VideoUploadInput({ onUpload }: { onUpload: (url: string) => void }) {
 
 export default function FeedClient({
                                        initialPosts,
+                                       initialUnreadCount = 0,
                                        currentUserId,
                                        currentUserName,
                                        currentUserImage,
@@ -350,6 +360,19 @@ export default function FeedClient({
 
     const reactionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+    // ===================== NEW: unread + refresh state =====================
+    const [unreadCount, setUnreadCount] = React.useState(initialUnreadCount);
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
+    const [pullDistance, setPullDistance] = React.useState(0);
+    const [observerArmed, setObserverArmed] = React.useState(false);
+
+    const postsRef = React.useRef<PostData[]>(initialPosts);
+    const touchStartYRef = React.useRef(0);
+    const isPullingRef = React.useRef(false);
+    const pendingReadIdsRef = React.useRef<Set<string>>(new Set());
+    const readFlushTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const refreshLockRef = React.useRef(false);
+
     React.useEffect(() => {
         const current = reactionTimeoutRef.current;
         return () => {
@@ -373,6 +396,128 @@ export default function FeedClient({
         } catch {
         }
     }, [shareCounts]);
+
+    // Keep postsRef in sync so the observer always sees fresh isUnread flags.
+    React.useEffect(() => {
+        postsRef.current = posts;
+    }, [posts]);
+
+    // Give the user a moment to notice unread markers before we start marking them.
+    React.useEffect(() => {
+        const t = setTimeout(() => setObserverArmed(true), OBSERVER_ARM_DELAY_MS);
+        return () => clearTimeout(t);
+    }, []);
+
+    // Flush read markers in batches.
+    const flushPendingReads = React.useCallback(() => {
+        const ids = Array.from(pendingReadIdsRef.current);
+        pendingReadIdsRef.current.clear();
+        if (ids.length === 0) return;
+
+        void markPostsAsRead(ids)
+            .then(() => {
+                setPosts((prev) =>
+                    prev.map((p) => (ids.includes(p.id) ? { ...p, isUnread: false } : p))
+                );
+                setUnreadCount((prev) => Math.max(0, prev - ids.length));
+            })
+            .catch(() => {
+                /* swallow — the next flush will retry */
+            });
+    }, []);
+
+    const scheduleMarkRead = React.useCallback((postId: string) => {
+        pendingReadIdsRef.current.add(postId);
+        if (readFlushTimeoutRef.current) clearTimeout(readFlushTimeoutRef.current);
+        readFlushTimeoutRef.current = setTimeout(flushPendingReads, MARK_READ_FLUSH_MS);
+    }, [flushPendingReads]);
+
+    // IntersectionObserver — mark posts as read as they become visible.
+    React.useEffect(() => {
+        if (!observerArmed || typeof window === "undefined") return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+                    const el = entry.target as HTMLElement;
+                    const id = el.dataset.postId;
+                    if (!id) continue;
+                    const post = postsRef.current.find((p) => p.id === id);
+                    if (post?.isUnread) scheduleMarkRead(id);
+                }
+            },
+            { threshold: 0.6 }
+        );
+
+        const els = document.querySelectorAll<HTMLElement>("[data-post-id]");
+        els.forEach((el) => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, [observerArmed, posts.length, scheduleMarkRead]);
+
+    // Cleanup pending flush on unmount.
+    React.useEffect(() => {
+        const pending = readFlushTimeoutRef.current;
+        return () => {
+            if (pending) clearTimeout(pending);
+        };
+    }, []);
+
+    // ===================== NEW: refresh + pull-to-refresh =====================
+    const handleRefresh = React.useCallback(async () => {
+        if (refreshLockRef.current) return;
+        refreshLockRef.current = true;
+        setIsRefreshing(true);
+        try {
+            const result = await getPosts(1, 20);
+            const normalized: PostData[] = (result.posts as unknown as PostData[]).map((p) => ({
+                ...p,
+                createdAt: p.createdAt instanceof Date ? p.createdAt : new Date(p.createdAt as unknown as string),
+            }));
+            setPosts(normalized);
+            const freshUnread = await getUnreadPostCount();
+            setUnreadCount(freshUnread);
+        } catch {
+            toast.error("Failed to refresh feed");
+        } finally {
+            setIsRefreshing(false);
+            refreshLockRef.current = false;
+        }
+    }, []);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (typeof window === "undefined") return;
+        if (window.scrollY > 4) return;
+        touchStartYRef.current = e.touches[0].clientY;
+        isPullingRef.current = false;
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (typeof window === "undefined") return;
+        if (window.scrollY > 4 || isRefreshing) return;
+        const diff = e.touches[0].clientY - touchStartYRef.current;
+        if (diff <= 0) {
+            if (pullDistance !== 0) setPullDistance(0);
+            return;
+        }
+        // Only start "pulling" after a tiny threshold so we don't fight native scroll.
+        if (diff > 8) {
+            isPullingRef.current = true;
+            setPullDistance(Math.min(diff * 0.45, 90));
+        }
+    };
+
+    const handleTouchEnd = async () => {
+        const wasPulling = isPullingRef.current;
+        const distance = pullDistance;
+        isPullingRef.current = false;
+        setPullDistance(0);
+        if (wasPulling && distance >= PULL_REFRESH_THRESHOLD) {
+            await handleRefresh();
+        }
+    };
+    // =======================================================================
 
     const handleMentionSearch = (text: string, source: string) => {
         const lastAtIndex = text.lastIndexOf("@");
@@ -481,6 +626,7 @@ export default function FeedClient({
                     createdAt: new Date(createdPost.createdAt),
                     updatedAt: new Date(createdPost.updatedAt),
                     likes: [],
+                    isUnread: false,
                     recentActivity: {
                         users: [],
                         likeCount: 0,
@@ -822,8 +968,39 @@ export default function FeedClient({
         handleCommentLike(postId, commentId, false, reaction);
     };
 
+    // Pull indicator geometry
+    const pullIndicatorHeight = isRefreshing ? Math.max(pullDistance, 56) : pullDistance;
+    const pullReady = pullDistance >= PULL_REFRESH_THRESHOLD;
+
     return (
-        <div className="w-full space-y-3">
+        <div
+            className="w-full space-y-3"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+        >
+            {/* ==== NEW: pull-to-refresh indicator (mobile) ==== */}
+            <div
+                className="flex items-center justify-center overflow-hidden transition-[height,opacity] duration-200 lg:hidden"
+                style={{ height: pullIndicatorHeight, opacity: pullIndicatorHeight > 0 ? 1 : 0 }}
+                aria-hidden={pullIndicatorHeight === 0}
+            >
+                {pullIndicatorHeight > 0 && (
+                    <div className="flex flex-col items-center gap-1">
+                        <RefreshCw
+                            className={cn(
+                                "h-5 w-5 text-blue-600 transition-transform",
+                                isRefreshing ? "animate-spin" : pullReady ? "rotate-180" : "rotate-0"
+                            )}
+                        />
+                        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                            {isRefreshing ? "Refreshing…" : pullReady ? "Release to refresh" : "Pull to refresh"}
+                        </span>
+                    </div>
+                )}
+            </div>
+
             {/* Create Post Card */}
             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm rounded-xl">
                 <CardContent className="p-2.5 sm:p-3">
@@ -951,10 +1128,28 @@ export default function FeedClient({
                 </CardContent>
             </Card>
 
-            {/* Divider */}
+            {/* ==== NEW: Refresh bar + unread badge ==== */}
             <div className="flex items-center gap-2 px-2">
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Recent Activity</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Recent Activity</span>
+                    {unreadCount > 0 && (
+                        <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-[10px] px-1.5 py-0 rounded-full">
+                            {unreadCount} new
+                        </Badge>
+                    )}
+                    <button
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50 transition-colors"
+                        title="Refresh feed"
+                        aria-label="Refresh feed"
+                    >
+                        <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+                        <span className="hidden sm:inline">Refresh</span>
+                    </button>
+                </div>
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
             </div>
 
@@ -972,11 +1167,11 @@ export default function FeedClient({
                 posts.map((post) => {
                     const userReaction = post.likes.find((l) => l.userId === currentUserId)?.reactionType;
                     return (
-                        <div key={post.id} className="space-y-0">
+                        <div key={post.id} data-post-id={post.id} className="space-y-0">
                             {post.recentActivity && post.recentActivity.users.length > 0 && (
                                 <PostContextBar users={post.recentActivity.users} likeCount={post.recentActivity.likeCount} commentCount={post.recentActivity.commentCount} />
                             )}
-                            <PostCard>
+                            <PostCard isUnread={post.isUnread}>
                                 <PostHeader
                                     userName={post.user.name}
                                     userImage={post.user.image}
