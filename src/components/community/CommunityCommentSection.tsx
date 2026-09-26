@@ -116,6 +116,8 @@ interface CommunityCommentSectionProps {
     onReplyTo: (reply: ReplyData) => void;
     onStartEditReply: (replyId: string, content: string) => void;
     onMessagesRead: () => void;
+    /** NEW: toggles an emoji reaction on a message. */
+    onReactToReply: (replyId: string, emoji: string) => void;
 }
 
 const NEAR_BOTTOM_THRESHOLD_PX = 80;
@@ -203,6 +205,7 @@ function TopicView({
                        onReplyTo,
                        onStartEditReply,
                        onMessagesRead,
+                       onReactToReply,
                    }: CommunityCommentSectionProps) {
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const [showScrollButton, setShowScrollButton] = React.useState(false);
@@ -494,6 +497,7 @@ function TopicView({
                                 onReplyTo={onReplyTo}
                                 onStartEditReply={onStartEditReply}
                                 onVotePoll={onVotePoll}
+                                onReactToReply={onReactToReply}
                             />
                         );
                     })}

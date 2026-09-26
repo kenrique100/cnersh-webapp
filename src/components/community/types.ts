@@ -12,6 +12,8 @@ export interface CommunityUser {
     role: string | null;
 }
 
+export type ReplyReactions = Record<string, string[]>;
+
 export interface TopicData {
     id: string;
     title: string;
@@ -55,7 +57,7 @@ export interface ReplyData {
     user: TopicUser;
     parentId?: string | null;
     children?: ReplyData[];
-    reactions?: Record<string, string[]>;
+    reactions?: ReplyReactions;
 }
 
 export interface TopicDetail {

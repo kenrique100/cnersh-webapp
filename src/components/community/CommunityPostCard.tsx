@@ -24,8 +24,8 @@ import {
     BarChart3Icon,
     CalendarIcon,
 } from "lucide-react";
-import { ReplyData } from "./types";
-import { EMOJI_LIST, MESSAGE_GROUP_THRESHOLD_MS } from "./constants";
+import { ReplyData, ReplyReactions } from "./types";
+import { EMOJI_LIST, MESSAGE_GROUP_THRESHOLD_MS, REACTION_EMOJIS } from "./constants";
 import { formatTime, formatDate, getDisplayName } from "./utils";
 
 interface CommunityPostCardProps {
@@ -50,8 +50,6 @@ interface CommunityPostCardProps {
     onReactToReply?: (replyId: string, emoji: string) => void;
 }
 
-const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
-
 function renderMessageContent(content: string) {
     const parts = content.split(/(@\w+)/g);
     return parts.map((part, i) => {
@@ -74,20 +72,23 @@ function ReactionBar({
                          currentUserId,
                          onReact,
                      }: {
-    reactions?: Record<string, string[]>;
+    reactions?: ReplyReactions;
     currentUserId?: string;
     onReact?: (emoji: string) => void;
 }) {
     if (!reactions || Object.keys(reactions).length === 0) return null;
     return (
-        <div className="flex flex-wrap gap-1 mt-1">
+        <div className="flex flex-wrap gap-1 mt-1" data-testid="reaction-bar">
             {Object.entries(reactions).map(([emoji, userIds]) => {
-                if (userIds.length === 0) return null;
-                const reacted = currentUserId && userIds.includes(currentUserId);
+                if (!userIds || userIds.length === 0) return null;
+                const reacted = currentUserId ? userIds.includes(currentUserId) : false;
                 return (
                     <button
                         key={emoji}
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); onReact?.(emoji); }}
+                        aria-label={`React with ${emoji}, ${userIds.length} reaction${userIds.length === 1 ? "" : "s"}`}
+                        aria-pressed={reacted}
                         className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
                             reacted
                                 ? "bg-blue-100 border-blue-300 dark:bg-blue-900 dark:border-blue-700 text-blue-700 dark:text-blue-300"
@@ -272,8 +273,8 @@ export function CommunityPostCard({
         <div
             className="group hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded px-2 py-0.5 -mx-2 relative"
             onClick={() => onMessageTap(reply.id)}
+            data-testid={`community-post-${reply.id}`}
         >
-            {/* Reply reference - shown above the message (Discord-style quote) */}
             {parentReply && (
                 <div className="flex items-center gap-1.5 ml-12 mb-0.5 text-xs text-gray-500 dark:text-gray-400">
                     <div className="w-6 h-3 border-l-2 border-t-2 border-gray-300 dark:border-gray-600 rounded-tl ml-1" />
@@ -321,7 +322,6 @@ export function CommunityPostCard({
                         </div>
                     )}
 
-                    {/* Message text */}
                     <p className="text-sm text-gray-800 dark:text-gray-200 wrap-break-word whitespace-pre-wrap">
                         {editingReplyId === reply.id ? (
                             <span className="flex items-center gap-2">
@@ -369,17 +369,14 @@ export function CommunityPostCard({
                         )}
                     </p>
 
-                    {/* Attachments */}
                     <ReplyAttachments reply={reply} currentUserId={currentUserId} onVotePoll={onVotePoll} />
 
-                    {/* Reaction bar - below content */}
                     <ReactionBar
                         reactions={reply.reactions}
                         currentUserId={currentUserId}
                         onReact={(emoji) => onReactToReply?.(reply.id, emoji)}
                     />
 
-                    {/* Nested / child replies - always below content */}
                     {reply.children && reply.children.length > 0 && (
                         <div className="mt-2 ml-4 pl-4 border-l-2 border-indigo-200 dark:border-indigo-800 space-y-2">
                             {reply.children.map((child) => (
@@ -387,6 +384,7 @@ export function CommunityPostCard({
                                     key={child.id}
                                     className="group/child flex items-start gap-2.5 py-1.5 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 relative"
                                     onClick={(e) => { e.stopPropagation(); onMessageTap(child.id); }}
+                                    data-testid={`community-post-${child.id}`}
                                 >
                                     <Avatar className="h-7 w-7 mt-0.5 shrink-0">
                                         <AvatarImage src={child.user.image || undefined} />
@@ -430,14 +428,12 @@ export function CommunityPostCard({
                                         )}
                                         <ReplyAttachments reply={child} currentUserId={currentUserId} onVotePoll={onVotePoll} />
 
-                                        {/* Child reaction bar */}
                                         <ReactionBar
                                             reactions={child.reactions}
                                             currentUserId={currentUserId}
                                             onReact={(emoji) => onReactToReply?.(child.id, emoji)}
                                         />
 
-                                        {/* Child action links - BELOW content */}
                                         <div className="flex items-center gap-3 mt-1">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onReplyTo(child); }}
@@ -445,7 +441,6 @@ export function CommunityPostCard({
                                             >
                                                 Reply
                                             </button>
-                                            {/* Quick emoji react */}
                                             {onReactToReply && (
                                                 <Popover>
                                                     <PopoverTrigger asChild>
@@ -459,7 +454,7 @@ export function CommunityPostCard({
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-2" align="start">
                                                         <div className="flex gap-1">
-                                                            {QUICK_REACTIONS.map((emoji) => (
+                                                            {REACTION_EMOJIS.map((emoji) => (
                                                                 <button
                                                                     key={emoji}
                                                                     onClick={(e) => { e.stopPropagation(); onReactToReply(child.id, emoji); }}
@@ -496,14 +491,12 @@ export function CommunityPostCard({
                     )}
                 </div>
 
-                {/* Hover action bar - top-right floating */}
                 <div
                     className={`absolute top-0 right-2 -translate-y-1/2 flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow-lg transition-opacity z-10 ${
                         activeMessageId === reply.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     }`}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* React button with quick emoji picker */}
                     {onReactToReply && (
                         <Popover>
                             <PopoverTrigger asChild>
@@ -516,7 +509,7 @@ export function CommunityPostCard({
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-2" align="end" side="top">
                                 <div className="flex gap-1">
-                                    {QUICK_REACTIONS.map((emoji) => (
+                                    {REACTION_EMOJIS.map((emoji) => (
                                         <button
                                             key={emoji}
                                             onClick={() => onReactToReply(reply.id, emoji)}

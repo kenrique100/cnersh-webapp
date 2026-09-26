@@ -17,6 +17,10 @@ export const EMOJI_LIST = [
     "🚀", "💡", "📌", "🎯", "👀", "✨", "⚡", "🌟",
 ];
 
+export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+
+export const MAX_REACTION_EMOJI_LENGTH = 16;
+
 export const CATEGORY_COLORS: Record<string, string> = {
     Announcements: "bg-yellow-500",
     General: "bg-gray-500",

@@ -15,6 +15,18 @@ const limitSchema = z.number().int().min(1).max(50).catch(10);
 const shortText = z.string().trim().min(1).max(200).transform(sanitizeText);
 const contentText = z.string().trim().min(1).max(10_000).transform(sanitizeText);
 
+const EMOJI_RANGE_REGEX =
+    /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/u;
+
+const reactionEmojiSchema = z
+    .string()
+    .trim()
+    .min(1, "Emoji is required")
+    .max(16, "Emoji is too long")
+    .refine((value) => EMOJI_RANGE_REGEX.test(value), {
+        message: "Value must contain a pictographic character",
+    });
+
 type CommunityActor = {
     session: NonNullable<Awaited<ReturnType<typeof authSession>>>;
     role: "admin" | "superadmin";
@@ -57,6 +69,31 @@ function cleanUrls(values: string[] | undefined, max: number) {
         .filter((value): value is string => Boolean(value));
 }
 
+type RawReactionRow = { emoji: string; userId: string };
+
+/** Group a flat list of (emoji, userId) rows into `{ emoji: [userId, …] }`. */
+function groupReactions(rows: RawReactionRow[] | undefined): Record<string, string[]> {
+    const grouped: Record<string, string[]> = {};
+    for (const row of rows ?? []) {
+        (grouped[row.emoji] ??= []).push(row.userId);
+    }
+    return grouped;
+}
+
+/**
+ * Recursively transform a Prisma reply (with `reactions` as raw rows) into
+ * the shape consumed by the client: `reactions` is a `{ emoji: userId[] }`
+ * map, and `children` is the same transformation applied depth-first.
+ */
+function serializeReply(reply: Record<string, unknown>): Record<string, unknown> {
+    const { reactions, children, ...rest } = reply;
+    return {
+        ...rest,
+        reactions: groupReactions(reactions as RawReactionRow[] | undefined),
+        children: ((children as Record<string, unknown>[] | undefined) ?? []).map(serializeReply),
+    };
+}
+
 async function getUnreadCountsForTopics(
     viewerId: string,
     topicIds: string[]
@@ -67,13 +104,13 @@ async function getUnreadCountsForTopics(
         Prisma.sql`
             SELECT t.id AS "topicId", COUNT(r.id)::bigint AS "unread"
             FROM "community_topic" t
-            LEFT JOIN "community_topic_read_status" rs
-                ON rs."topicId" = t.id AND rs."userId" = ${viewerId}
-            LEFT JOIN "community_reply" r
-                ON r."topicId" = t.id
-                AND r.deleted = false
-                AND r."userId" <> ${viewerId}
-                AND (rs."lastReadAt" IS NULL OR r."createdAt" > rs."lastReadAt")
+                     LEFT JOIN "community_topic_read_status" rs
+                               ON rs."topicId" = t.id AND rs."userId" = ${viewerId}
+                     LEFT JOIN "community_reply" r
+                               ON r."topicId" = t.id
+                                   AND r.deleted = false
+                                   AND r."userId" <> ${viewerId}
+                                   AND (rs."lastReadAt" IS NULL OR r."createdAt" > rs."lastReadAt")
             WHERE t.id IN (${Prisma.join(topicIds)})
             GROUP BY t.id
         `
@@ -197,14 +234,17 @@ export async function getTopicWithReplies(topicId: string) {
                 where: { deleted: false, parentId: null },
                 include: {
                     user: { select: { id: true, name: true, image: true, role: true } },
+                    reactions: { select: { emoji: true, userId: true } },
                     children: {
                         where: { deleted: false },
                         include: {
                             user: { select: { id: true, name: true, image: true, role: true } },
+                            reactions: { select: { emoji: true, userId: true } },
                             children: {
                                 where: { deleted: false },
                                 include: {
                                     user: { select: { id: true, name: true, image: true, role: true } },
+                                    reactions: { select: { emoji: true, userId: true } },
                                 },
                                 orderBy: { createdAt: "asc" },
                             },
@@ -216,7 +256,13 @@ export async function getTopicWithReplies(topicId: string) {
             },
         },
     });
-    return topic?.deleted ? null : topic;
+
+    if (!topic || topic.deleted) return null;
+
+    return {
+        ...topic,
+        replies: topic.replies.map((reply) => serializeReply(reply)),
+    };
 }
 
 export async function markTopicRead(topicId: string): Promise<{ unreadCount: number }> {
@@ -321,7 +367,6 @@ export async function addReply(data: {
         },
     });
 
-    // The author just wrote a reply — treat their per-topic cursor as current.
     void db.communityTopicReadStatus
         .upsert({
             where: { userId_topicId: { userId: session.user.id, topicId } },
@@ -383,7 +428,55 @@ export async function addReply(data: {
         console.error("[addReply] community notification failed:", error);
     });
 
-    return reply;
+    // New reply has no reactions yet; return the client-shaped field.
+    return { ...reply, reactions: {} };
+}
+
+export async function toggleReplyReaction(
+    replyId: string,
+    emoji: string
+): Promise<{ action: "added" | "removed"; reactions: Record<string, string[]> }> {
+    const { session } = await requireCommunityAccess();
+    const id = idSchema.parse(replyId);
+    const safeEmoji = reactionEmojiSchema.parse(emoji);
+
+    const reply = await db.communityReply.findUnique({
+        where: { id },
+        select: {
+            deleted: true,
+            topic: { select: { deleted: true, chatEnabled: true } },
+        },
+    });
+    if (!reply || reply.deleted || reply.topic.deleted) throw new Error("Reply not found");
+    if (!reply.topic.chatEnabled) throw new Error("Topic is closed");
+
+    const existing = await db.communityReplyReaction.findUnique({
+        where: {
+            replyId_userId_emoji: {
+                replyId: id,
+                userId: session.user.id,
+                emoji: safeEmoji,
+            },
+        },
+    });
+
+    let action: "added" | "removed";
+    if (existing) {
+        await db.communityReplyReaction.delete({ where: { id: existing.id } });
+        action = "removed";
+    } else {
+        await db.communityReplyReaction.create({
+            data: { replyId: id, userId: session.user.id, emoji: safeEmoji },
+        });
+        action = "added";
+    }
+
+    const rows = await db.communityReplyReaction.findMany({
+        where: { replyId: id },
+        select: { emoji: true, userId: true },
+    });
+
+    return { action, reactions: groupReactions(rows) };
 }
 
 export async function getCommunityUsers() {
@@ -403,7 +496,6 @@ export async function getCommunityUsers() {
         return [];
     }
 }
-
 
 async function canDeleteCommunityContent(
     actor: CommunityActor,
