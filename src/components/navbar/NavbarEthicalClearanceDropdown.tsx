@@ -43,9 +43,9 @@ export function EthicalClearanceDesktopDropdown() {
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Dossier Composition
                     </a>
-                    <a href="/Form for Ethical Clearance CNERSH (2025).pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
+                    <a href="/Evironmental Bioethics - An African Perspective.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
-                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Clearance Form
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Environmental Bioethics
                     </a>
                     <a href="/Creation of Committees for National Ethics Committee..pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
@@ -60,9 +60,25 @@ export function EthicalClearanceDesktopDropdown() {
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Evaluation Form
                     </a>
+                    <a href="/Form for Ethical Clearance CNERSH (2025).pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Clearance Form
+                    </a>
+                    <a href="/DSA%20Model.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Data Sharing Agreement
+                    </a>
+                    <a href="/Model%20MTA.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Material Transfer Agreement
+                    </a>
                     <a href="/Confidential Undertaking Cameroon National Ethics Committee.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
                         <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Confidential Undertaking CNERSH
+                    </a>
+                    <a href="/CNRESH Study Review & Follow up Form.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
+                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
+                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Study Review and Follow-up Form
                     </a>
                 </div>
             )}
@@ -103,13 +119,13 @@ export function EthicalClearanceMobileDropdown({ onNavigate }: { onNavigate: () 
                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Dossier Composition
                             </a>
-                            <a href="/Form for Ethical Clearance CNERSH (2025).pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                            <a href="/Evironmental Bioethics - An African Perspective.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
-                                <DownloadIcon className="h-4 w-4 shrink-0" />Clearance Form
+                                <DownloadIcon className="h-4 w-4 shrink-0" />Environmental Bioethics
                             </a>
-                            <a href="/Creation of Committees for National Ethics Committee.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}
-                               className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md">
-                                <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />Creation of Coordination Units CNERSH
+                            <a href="/Creation of Committees for National Ethics Committee.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                                <DownloadIcon className="h-4 w-4 shrink-0" />Creation of Coordination Units CNERSH
                             </a>
                         </div>
                     )}
@@ -130,9 +146,25 @@ export function EthicalClearanceMobileDropdown({ onNavigate }: { onNavigate: () 
                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Evaluation Form
                             </a>
+                            <a href="/Form for Ethical Clearance CNERSH (2025).pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                                <DownloadIcon className="h-4 w-4 shrink-0" />Clearance Form
+                            </a>
+                            <a href="/DSA%20Model.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                                <DownloadIcon className="h-4 w-4 shrink-0" />Data Sharing Agreement
+                            </a>
+                            <a href="/Model%20MTA.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                                <DownloadIcon className="h-4 w-4 shrink-0" />Material Transfer Agreement
+                            </a>
                             <a href="/Confidential Undertaking Cameroon National Ethics Committee.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
                                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
                                 <DownloadIcon className="h-4 w-4 shrink-0" />Confidential Undertaking CNERSH
+                            </a>
+                            <a href="/CNRESH%20Study%20Review%20&%20Follow%20up%20Form.pdf" target="_blank" rel="noopener noreferrer" onClick={onNavigate}
+                               className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950">
+                                <DownloadIcon className="h-4 w-4 shrink-0" />Study Review and Follow-up Form
                             </a>
                         </div>
                     )}

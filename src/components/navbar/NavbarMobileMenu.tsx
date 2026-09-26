@@ -27,6 +27,7 @@ import type { NavbarPage, NavbarProps, NavItem } from "./types";
 import { OurPagesDropdown } from "./NavbarOurPagesDropdown";
 import { ResourcesMobileDropdown } from "./NavbarResourcesDropdown";
 import { EthicalClearanceMobileDropdown } from "./NavbarEthicalClearanceDropdown";
+import { SOPsDropdown } from "./NavbarSOPsDropdown";
 import { MobileDynamicPageDropdown } from "./NavbarDynamicPageDropdown";
 import NavbarLanguageSwitcher from "./NavbarLanguageSwitcher";
 import UserAvatar from "@/components/user-avatar";
@@ -71,15 +72,15 @@ interface NavbarMobileMenuProps {
 }
 
 export default function NavbarMobileMenu({
-    user,
-    isAdmin,
-    notificationCount,
-    pathname,
-    pages,
-    handleSignOut,
-    open,
-    onOpenChange,
-}: NavbarMobileMenuProps) {
+                                             user,
+                                             isAdmin,
+                                             notificationCount,
+                                             pathname,
+                                             pages,
+                                             handleSignOut,
+                                             open,
+                                             onOpenChange,
+                                         }: NavbarMobileMenuProps) {
     const mobileNavItems = isAdmin ? adminMobileNavItems : userMobileNavItems;
 
     return (
@@ -152,11 +153,12 @@ export default function NavbarMobileMenu({
                                 })}
                             </div>
 
-                            {/* Our Pages Section */}
+                            {/* Top-level info dropdowns */}
                             <div className="border-t border-gray-200 dark:border-gray-800 pt-2">
                                 <OurPagesDropdown pathname={pathname} onNavigate={() => onOpenChange(false)} />
                                 <ResourcesMobileDropdown onNavigate={() => onOpenChange(false)} />
                                 <EthicalClearanceMobileDropdown onNavigate={() => onOpenChange(false)} />
+                                <SOPsDropdown onNavigate={() => onOpenChange(false)} />
                                 {/* Admin-created dynamic pages */}
                                 {pages.map((page) => (
                                     <MobileDynamicPageDropdown key={page.id} page={page} onNavigate={() => onOpenChange(false)} />
@@ -194,11 +196,12 @@ export default function NavbarMobileMenu({
                                 </Link>
                             </div>
 
-                            {/* Our Pages Dropdown */}
+                            {/* Top-level info dropdowns */}
                             <div className="py-2">
                                 <OurPagesDropdown pathname={pathname} onNavigate={() => onOpenChange(false)} />
                                 <ResourcesMobileDropdown onNavigate={() => onOpenChange(false)} />
                                 <EthicalClearanceMobileDropdown onNavigate={() => onOpenChange(false)} />
+                                <SOPsDropdown onNavigate={() => onOpenChange(false)} />
                                 {/* Admin-created dynamic pages */}
                                 {pages.map((page) => (
                                     <MobileDynamicPageDropdown key={page.id} page={page} onNavigate={() => onOpenChange(false)} />

@@ -10,7 +10,6 @@ import {
     DownloadIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SOPsDropdown } from "./NavbarSOPsDropdown";
 
 export function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
     const [isOpen, setIsOpen] = React.useState(false);
@@ -52,27 +51,19 @@ export function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; o
                         <BuildingIcon className="h-4 w-4 shrink-0" />
                         Contract Rex Org
                     </Link>
-                    <a
-                        href="/membership.pdf"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <Link
+                        href="/pages/article"
                         onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages/article"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
                     >
-                        <DownloadIcon className="h-4 w-4 shrink-0" />
-                        Membership
-                    </a>
-                    <a
-                        href="/Fiche d'Evaluation CNERSH.pdf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={onNavigate}
-                        className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
-                    >
-                        <DownloadIcon className="h-4 w-4 shrink-0" />
-                        Evaluation Form
-                    </a>
-                    <SOPsDropdown onNavigate={onNavigate} />
+                        <BuildingIcon className="h-4 w-4 shrink-0" />
+                        Article
+                    </Link>
                 </div>
             )}
         </div>
@@ -138,26 +129,6 @@ export default function OurPagesDesktopDropdown({ pathname }: { pathname: string
                         <BuildingIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                         Contract Rex Org
                     </Link>
-                    <a
-                        href="/membership.pdf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md"
-                    >
-                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        Membership
-                    </a>
-                    <a
-                        href="/Fiche d'Evaluation CNERSH.pdf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950 transition-colors rounded-md"
-                    >
-                        <DownloadIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        Evaluation Form
-                    </a>
                 </div>
             )}
         </div>

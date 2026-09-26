@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { User, Rss, FolderOpen, Settings, Users, ShieldCheckIcon, UsersIcon, FolderIcon, FileTextIcon, ChevronDownIcon, DownloadIcon } from "lucide-react";
+import { User, Rss, FolderOpen, Settings, Users, ShieldCheckIcon, UsersIcon, FolderIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -31,21 +31,6 @@ const adminNavItems = [
   { href: "/community", label: "Community", icon: Users },
 ];
 
-interface OurPagesItem {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  external?: boolean;
-}
-
-const ourPagesItems: OurPagesItem[] = [
-  { href: "/pages/about", label: "About Us", icon: Users },
-  { href: "/pages/contract-rex", label: "Contract Rex Org", icon: FolderIcon },
-  { href: "/membership.pdf", label: "Community Members", icon: DownloadIcon, external: true },
-  { href: "/CNRESH Study Review & Follow up Form.pdf", label: "Study Review and Follow-up Form", icon: DownloadIcon, external: true },
-  { href: "/Evironmental Bioethics - An African Perspective.pdf", label: "Environmental Bioethics", icon: DownloadIcon, external: true },
-];
-
 const communityFooterLinks: { label: string; href: string }[] = [
   { label: "About Us", href: "/pages/about" },
   { label: "Accessibility", href: "/pages/accessibility" },
@@ -63,9 +48,6 @@ export default function FeedLeftSidebar({
                                           isGuest = false,
                                         }: FeedLeftSidebarProps) {
   const pathname = usePathname();
-  const isOurPagesRoute = pathname.startsWith("/pages/");
-  const [isOurPagesExpanded, setIsOurPagesExpanded] = React.useState(isOurPagesRoute);
-  const isOurPagesOpen = isOurPagesRoute || isOurPagesExpanded;
 
   if (isGuest) {
     return (
@@ -190,72 +172,6 @@ export default function FeedLeftSidebar({
                 {label}
               </Link>
           ))}
-          <div>
-            <button
-                type="button"
-                onClick={() => {
-                  setIsOurPagesExpanded((prev) => !prev);
-                }}
-                className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-                    "transition-colors",
-                    isOurPagesRoute || isOurPagesOpen
-                        ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                        : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                )}
-            >
-              <FileTextIcon className="size-4 shrink-0" />
-              <span className="flex-1">Our Pages</span>
-              <ChevronDownIcon
-                  className={cn(
-                      "size-4 shrink-0 transition-transform duration-300",
-                      isOurPagesOpen && "rotate-180"
-                  )}
-              />
-            </button>
-            <div
-                className={cn(
-                    "grid transition-all duration-300 ease-in-out",
-                    isOurPagesOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                )}
-            >
-              <div className="overflow-hidden">
-                <div className="ml-7 mt-1 space-y-1 border-l border-zinc-200 pl-2.5 dark:border-zinc-700">
-                  {ourPagesItems.map(({ href, label, icon: Icon, external }) => {
-                    const isActive = !external && pathname === href;
-                    const classes = cn(
-                        "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
-                        isActive
-                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                            : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                    );
-
-                    if (external) {
-                      return (
-                          <a
-                              key={href}
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={classes}
-                          >
-                            <Icon className="size-3.5 shrink-0" />
-                            {label}
-                          </a>
-                      );
-                    }
-
-                    return (
-                        <Link key={href} href={href} className={classes}>
-                          <Icon className="size-3.5 shrink-0" />
-                          {label}
-                        </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
         </nav>
 
         {isAdmin && (

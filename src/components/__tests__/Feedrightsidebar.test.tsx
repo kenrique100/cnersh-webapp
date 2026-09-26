@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import FeedRightSidebar from "@/components/feed-right-sidebar";
 
 jest.mock("@/components/ui/card", () => ({
@@ -29,6 +29,18 @@ jest.mock("@/lib/utils", () => ({
     cn: (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" "),
 }));
 
+jest.mock("next/navigation", () => ({
+    usePathname: () => "/feeds",
+}));
+
+jest.mock("next/link", () => {
+    function LinkMock({ children, href }: React.PropsWithChildren<{ href: string }>) {
+        return <a href={href}>{children}</a>;
+    }
+    LinkMock.displayName = "LinkMock";
+    return LinkMock;
+});
+
 jest.mock("lucide-react", () => {
     const icon = (name: string) => {
         function Icon() {
@@ -43,6 +55,11 @@ jest.mock("lucide-react", () => {
         PenLineIcon: icon("PenLine"),
         MessageCircleIcon: icon("MessageCircle"),
         HeartIcon: icon("Heart"),
+        FileTextIcon: icon("FileText"),
+        ChevronDownIcon: icon("ChevronDown"),
+        Users: icon("Users"),
+        FolderIcon: icon("Folder"),
+        DownloadIcon: icon("Download"),
     };
 });
 
@@ -61,6 +78,31 @@ describe("FeedRightSidebar", () => {
     it("renders the sidebar footer", () => {
         render(<FeedRightSidebar />);
         expect(screen.getByTestId("sidebar-footer")).toBeInTheDocument();
+    });
+
+    it("renders the Our Pages section header", () => {
+        render(<FeedRightSidebar />);
+        expect(screen.getByText("Our Pages")).toBeInTheDocument();
+    });
+
+    it("renders Our Pages for guests (isLoggedIn=false)", () => {
+        render(<FeedRightSidebar isLoggedIn={false} />);
+        expect(screen.getByText("Our Pages")).toBeInTheDocument();
+        expect(screen.getByText("Track Your Protocol")).toBeInTheDocument();
+    });
+
+    it("renders Our Pages before Track Your Protocol in the DOM", () => {
+        const { container } = render(<FeedRightSidebar isLoggedIn={false} />);
+        const html = container.innerHTML;
+        expect(html.indexOf("Our Pages")).toBeLessThan(html.indexOf("Track Your Protocol"));
+    });
+
+    it("expands Our Pages to show its items when clicked", () => {
+        render(<FeedRightSidebar />);
+        fireEvent.click(screen.getByText("Our Pages"));
+        expect(screen.getByText("About Us")).toBeInTheDocument();
+        expect(screen.getByText("Contract Rex Org")).toBeInTheDocument();
+        expect(screen.getByText("Community Members")).toBeInTheDocument();
     });
 
     it("renders user activity when logged in", () => {
