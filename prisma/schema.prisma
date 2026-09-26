@@ -30,6 +30,7 @@ model User {
   pendingActivation   Boolean   @default(false)
   activationExpiresAt DateTime?
   communityReadStatus CommunityReadStatus?
+  postReadStatuses    PostReadStatus[]
   communityTopicReadStatuses CommunityTopicReadStatus[]
 
 
@@ -168,6 +169,7 @@ model Post {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments        Comment[]
   likes           Like[]
+  readStatuses    PostReadStatus[]
 
   @@index([userId])
   @@index([createdAt])
@@ -747,4 +749,21 @@ model CommunityTopicReadStatus {
   @@index([topicId])
   @@index([topicId, lastReadAt])
   @@map("community_topic_read_status")
+}
+model PostReadStatus {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  readAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@index([userId, readAt])
+  @@map("post_read_status")
 }
