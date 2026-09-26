@@ -3,8 +3,7 @@ import ProtocolRenewalReminder, {
     type ProtocolRenewalReminderProps,
 } from "@/emails/protocol-renewal-reminder";
 
-
-const FIXED_EXPIRY = new Date("2026-03-15T00:00:00.000Z");
+const FIXED_EXPIRY = new Date(2026, 2, 15);
 
 const baseProps: ProtocolRenewalReminderProps = {
     ownerName: "Dr. Amina Bello",
@@ -24,7 +23,6 @@ function formatExpiry(date: Date): string {
 function renderHtml(props: ProtocolRenewalReminderProps = baseProps): string {
     return renderToStaticMarkup(<ProtocolRenewalReminder {...props} />);
 }
-
 
 describe("ProtocolRenewalReminder", () => {
     describe("Rendering — no crash, no missing props", () => {
@@ -55,7 +53,6 @@ describe("ProtocolRenewalReminder", () => {
         it("displays the formatted expiry date inside the body (at least twice)", () => {
             const html = renderHtml();
             const label = formatExpiry(FIXED_EXPIRY);
-            // Count occurrences via split — regex over entity-escaped HTML is fragile.
             const occurrences = html.split(label).length - 1;
             expect(occurrences).toBeGreaterThanOrEqual(2);
         });
@@ -74,7 +71,6 @@ describe("ProtocolRenewalReminder", () => {
 
         it("renders the CNERSH footer", () => {
             const html = renderHtml();
-            // The source currently has a typo "Commité"; allow either spelling.
             expect(html).toMatch(/Commi?té National d/);
             expect(html).toMatch(/Santé Humaine/);
         });
@@ -90,7 +86,6 @@ describe("ProtocolRenewalReminder", () => {
         it("uses the exact resubmitUrl passed in (HTML-escaped &)", () => {
             const url = "https://example.com/deep/link?token=abc&x=1";
             const html = renderHtml({ ...baseProps, resubmitUrl: url });
-            // React escapes `&` → `&amp;` when serialising attributes.
             expect(html).toContain(`href="${url.replace(/&/g, "&amp;")}"`);
         });
 
@@ -105,7 +100,7 @@ describe("ProtocolRenewalReminder", () => {
         it("formats a mid-year date as 'Month D, YYYY' (en-US)", () => {
             const html = renderHtml({
                 ...baseProps,
-                expiresAt: new Date("2026-06-04T12:00:00Z"),
+                expiresAt: new Date(2026, 5, 4),
             });
             expect(html).toContain("June 4, 2026");
         });
@@ -113,7 +108,7 @@ describe("ProtocolRenewalReminder", () => {
         it("formats an end-of-year date correctly", () => {
             const html = renderHtml({
                 ...baseProps,
-                expiresAt: new Date("2026-12-31T12:00:00Z"),
+                expiresAt: new Date(2026, 11, 31),
             });
             expect(html).toContain("December 31, 2026");
         });
@@ -121,7 +116,7 @@ describe("ProtocolRenewalReminder", () => {
         it("formats a leap-year Feb 29 correctly", () => {
             const html = renderHtml({
                 ...baseProps,
-                expiresAt: new Date("2028-02-29T12:00:00Z"),
+                expiresAt: new Date(2028, 1, 29),
             });
             expect(html).toContain("February 29, 2028");
         });
@@ -129,7 +124,7 @@ describe("ProtocolRenewalReminder", () => {
         it("does not include a leading zero on single-digit days", () => {
             const html = renderHtml({
                 ...baseProps,
-                expiresAt: new Date("2026-03-05T12:00:00Z"),
+                expiresAt: new Date(2026, 2, 5),
             });
             expect(html).toContain("March 5, 2026");
             expect(html).not.toContain("March 05, 2026");
@@ -139,7 +134,6 @@ describe("ProtocolRenewalReminder", () => {
     describe("Edge cases", () => {
         it("handles an owner name containing an apostrophe", () => {
             const html = renderHtml({ ...baseProps, ownerName: "Dr. O'Brien" });
-            // React escapes the apostrophe in text nodes as `&#x27;`.
             expect(html).toMatch(/Dear Dr\. O('|&#x27;|&#39;|&apos;)Brien,/);
         });
 
@@ -169,34 +163,26 @@ describe("ProtocolRenewalReminder", () => {
         it("escapes raw HTML from the protocol title", () => {
             const malicious = '<script>alert("xss")</script>';
             const html = renderHtml({ ...baseProps, protocolTitle: malicious });
-            // The literal `<script>` tag must NOT appear as raw HTML.
             expect(html).not.toContain("<script>alert");
-            // It must appear escaped instead.
             expect(html).toMatch(/&lt;script&gt;/);
         });
 
         it("escapes raw HTML from the owner name", () => {
             const malicious = '<img src="x" onerror="alert(1)" />';
             const html = renderHtml({ ...baseProps, ownerName: malicious });
-            // No live <img> tag with the injected attributes.
             expect(html).not.toMatch(/<img[^>]+onerror/i);
-            // Escaped form is present.
             expect(html).toMatch(/&lt;img/);
         });
 
         it("relies on React's built-in javascript: URL blocking for the CTA href", () => {
-
             const unsafeUrl = "javascript:alert(1)";
             const html = renderHtml({ ...baseProps, resubmitUrl: unsafeUrl });
 
-            // 1. The raw script must NOT survive into the rendered HTML.
             expect(html).not.toMatch(/href="javascript:alert/);
 
-            // 2. React must have substituted its blocking stub.
             expect(html).toMatch(
                 /javascript:throw new Error\(&#x27;React has blocked a javascript: URL as a security precaution\.&#x27;\)|javascript:throw new Error\('React has blocked a javascript: URL as a security precaution\.'\)/
             );
-
         });
     });
 

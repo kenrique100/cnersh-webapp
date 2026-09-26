@@ -124,82 +124,86 @@ function isNearBottom(el: HTMLDivElement): boolean {
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD_PX;
 }
 
-export function CommunityCommentSection({
-                                            selectedTopic,
-                                            currentUserId,
-                                            isAdmin,
-                                            isSuperAdmin,
-                                            users,
-                                            messageText,
-                                            setMessageText,
-                                            pendingImage,
-                                            setPendingImage,
-                                            replyingTo,
-                                            setReplyingTo,
-                                            showEmojiPicker,
-                                            setShowEmojiPicker,
-                                            showMentions,
-                                            setShowMentions,
-                                            mentionFilter,
-                                            setMentionFilter,
-                                            editingReplyId,
-                                            setEditingReplyId,
-                                            editingContent,
-                                            setEditingContent,
-                                            activeMessageId,
-                                            setActiveMessageId,
-                                            pendingImages,
-                                            setPendingImages,
-                                            pendingVideos,
-                                            setPendingVideos,
-                                            pendingAudios,
-                                            setPendingAudios,
-                                            pendingDocuments,
-                                            setPendingDocuments,
-                                            pendingVoiceNote,
-                                            setPendingVoiceNote,
-                                            pendingLinkUrl,
-                                            setPendingLinkUrl,
-                                            pendingPollQuestion,
-                                            setPendingPollQuestion,
-                                            pendingPollOptions,
-                                            setPendingPollOptions,
-                                            pendingEventTitle,
-                                            setPendingEventTitle,
-                                            pendingEventDate,
-                                            setPendingEventDate,
-                                            pendingEventLocation,
-                                            setPendingEventLocation,
-                                            showPollCreator,
-                                            setShowPollCreator,
-                                            showEventCreator,
-                                            setShowEventCreator,
-                                            showLinkInput,
-                                            setShowLinkInput,
-                                            showAttachmentPanel,
-                                            setShowAttachmentPanel,
-                                            isRecording,
-                                            messagesEndRef,
-                                            inputRef,
-                                            onToggleChat,
-                                            onSendMessage,
-                                            onDeleteReply,
-                                            onReportChat,
-                                            onEditReply,
-                                            onMessageTap,
-                                            onUserClick,
-                                            onToggleTopicLike,
-                                            onEditTopic,
-                                            onMentionAll,
-                                            onStartRecording,
-                                            onStopRecording,
-                                            onFileUpload,
-                                            onVotePoll,
-                                            onShowMobileChannels,
-                                            onReplyTo,
-                                            onStartEditReply,
-                                            onMessagesRead,
-                                        }: CommunityCommentSectionProps) {
+export function CommunityCommentSection(props: CommunityCommentSectionProps) {
+    return <TopicView key={props.selectedTopic.id} {...props} />;
+}
+
+function TopicView({
+                       selectedTopic,
+                       currentUserId,
+                       isAdmin,
+                       isSuperAdmin,
+                       users,
+                       messageText,
+                       setMessageText,
+                       pendingImage,
+                       setPendingImage,
+                       replyingTo,
+                       setReplyingTo,
+                       showEmojiPicker,
+                       setShowEmojiPicker,
+                       showMentions,
+                       setShowMentions,
+                       mentionFilter,
+                       setMentionFilter,
+                       editingReplyId,
+                       setEditingReplyId,
+                       editingContent,
+                       setEditingContent,
+                       activeMessageId,
+                       setActiveMessageId,
+                       pendingImages,
+                       setPendingImages,
+                       pendingVideos,
+                       setPendingVideos,
+                       pendingAudios,
+                       setPendingAudios,
+                       pendingDocuments,
+                       setPendingDocuments,
+                       pendingVoiceNote,
+                       setPendingVoiceNote,
+                       pendingLinkUrl,
+                       setPendingLinkUrl,
+                       pendingPollQuestion,
+                       setPendingPollQuestion,
+                       pendingPollOptions,
+                       setPendingPollOptions,
+                       pendingEventTitle,
+                       setPendingEventTitle,
+                       pendingEventDate,
+                       setPendingEventDate,
+                       pendingEventLocation,
+                       setPendingEventLocation,
+                       showPollCreator,
+                       setShowPollCreator,
+                       showEventCreator,
+                       setShowEventCreator,
+                       showLinkInput,
+                       setShowLinkInput,
+                       showAttachmentPanel,
+                       setShowAttachmentPanel,
+                       isRecording,
+                       messagesEndRef,
+                       inputRef,
+                       onToggleChat,
+                       onSendMessage,
+                       onDeleteReply,
+                       onReportChat,
+                       onEditReply,
+                       onMessageTap,
+                       onUserClick,
+                       onToggleTopicLike,
+                       onEditTopic,
+                       onMentionAll,
+                       onStartRecording,
+                       onStopRecording,
+                       onFileUpload,
+                       onVotePoll,
+                       onShowMobileChannels,
+                       onReplyTo,
+                       onStartEditReply,
+                       onMessagesRead,
+                   }: CommunityCommentSectionProps) {
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const [showScrollButton, setShowScrollButton] = React.useState(false);
     const [unseenCount, setUnseenCount] = React.useState(0);
@@ -240,17 +244,12 @@ export function CommunityCommentSection({
     };
 
     React.useEffect(() => {
-        prevRepliesLengthRef.current = selectedTopic.replies.length;
-        setUnseenCount(0);
-        setShowScrollButton(false);
         const el = scrollContainerRef.current;
-        if (el) {
-            requestAnimationFrame(() => {
-                el.scrollTop = el.scrollHeight;
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTopic.id]);
+        if (!el) return;
+        requestAnimationFrame(() => {
+            el.scrollTop = el.scrollHeight;
+        });
+    }, []);
 
     React.useEffect(() => {
         const prev = prevRepliesLengthRef.current;
