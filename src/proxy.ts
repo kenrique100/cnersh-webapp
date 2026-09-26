@@ -1,3 +1,4 @@
+// src/proxy.ts
 import { type NextRequest, NextResponse } from "next/server";
 
 import { buildContentSecurityPolicy, createCspNonce } from "@/lib/csp";
@@ -33,6 +34,22 @@ function isProtectedPath(pathname: string): boolean {
     );
 }
 
+/**
+ * Next.js 16 proxy (successor to middleware). Always runs on the Node.js
+ * runtime — do NOT declare `runtime` in `config`, it is rejected at build.
+ *
+ * Responsibilities:
+ *   1. Attach a per-request CSP nonce so Next.js can stamp inline bootstrap
+ *      scripts (without this, React never hydrates in production).
+ *   2. Enforce the email-verification boundary at the edge for protected
+ *      routes. This is defence in depth only — server actions and API
+ *      routes MUST independently call verifiedAuthSession().
+ *
+ * Decision matrix:
+ *   No session               → /sign-in?next=<path>
+ *   Session, emailVerified=f → /verify-email
+ *   Session, emailVerified=t → allow
+ */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
     const { pathname } = request.nextUrl;
 
@@ -80,10 +97,15 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-
+    /**
+     * Documents only. API routes serve JSON and keep their own headers from
+     * next.config.ts; static assets and prefetches gain nothing from a policy
+     * and would only add per-request work.
+     *
+     * NOTE: `runtime` is intentionally omitted. Next.js 16 rejects runtime
+     * config in proxy.ts because the proxy always runs on Node.js.
+     */
     matcher: [
         "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:js|css|png|jpg|jpeg|gif|webp|avif|svg|ico|woff|woff2|ttf|map|txt|xml|json|pdf)$).*)",
     ],
-
-    runtime: "nodejs",
 };
