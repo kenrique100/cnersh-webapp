@@ -118,6 +118,7 @@ describe('auth', () => {
         };
 
         expect(config.emailAndPassword.enabled).toBe(true);
+        // Email/password accounts must not be allowed to skip verification.
         expect(config.emailAndPassword.requireEmailVerification).toBe(true);
         expect(config.emailAndPassword.minPasswordLength).toBe(10);
     });
@@ -137,11 +138,17 @@ describe('auth', () => {
             emailVerification: {
                 sendOnSignUp: boolean;
                 autoSignInAfterVerification: boolean;
+                expiresIn: number;
             };
         };
 
         expect(config.emailVerification.sendOnSignUp).toBe(true);
+        // autoSignInAfterVerification is intentionally enabled: Better Auth
+        // only creates the post-verification session after the token is
+        // successfully consumed, so this is safe.
         expect(config.emailVerification.autoSignInAfterVerification).toBe(true);
+        // Verification tokens must have a defined lifetime (1 hour).
+        expect(config.emailVerification.expiresIn).toBe(60 * 60);
     });
 
     it('sets google social provider config correctly', async () => {
@@ -204,6 +211,11 @@ describe('auth', () => {
             required: false,
             input: true,
         });
+        expect(config.user.additionalFields.professionOther).toEqual({
+            type: 'string',
+            required: false,
+            input: true,
+        });
         expect(config.user.additionalFields.title).toEqual({
             type: 'string',
             required: false,
@@ -239,6 +251,19 @@ describe('auth', () => {
         };
 
         expect(config.user.additionalFields.gender.validate('female')).toBe(true);
+    });
+
+    it('gender validate returns true for empty value (optional field)', async () => {
+        await import('@/lib/auth');
+        const config = await getConfig() as {
+            user: {
+                additionalFields: {
+                    gender: { validate: (v: string) => boolean | string };
+                };
+            };
+        };
+
+        expect(config.user.additionalFields.gender.validate('')).toBe(true);
     });
 
     it('gender validate returns error string for invalid value', async () => {

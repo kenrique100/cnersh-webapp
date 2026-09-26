@@ -1,19 +1,42 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { buildContentSecurityPolicy, createCspNonce } from "@/lib/csp";
+import { auth } from "@/lib/auth";
 
 /**
- * Attaches a per-request Content Security Policy nonce to every document
- * response. This is the Next.js 16 `proxy` convention, the successor to the
- * deprecated `middleware` file.
+ * Route prefixes that require BOTH authentication and a verified email.
+ * Everything not listed here is treated as public (marketing, auth flows,
+ * verify-email, password reset, public informational pages, etc.).
  *
- * The nonce is written onto the *request* headers as well as the response.
- * Next.js reads the incoming `Content-Security-Policy` header, finds the nonce,
- * and stamps it onto the inline bootstrap and hydration scripts it renders. A
- * static policy cannot do this, and without it React never hydrates in
- * production.
+ * Keeping this as an explicit allow-list is safer than a deny-list:
+ * adding a new protected section requires an intentional edit here.
  */
-export function proxy(request: NextRequest): NextResponse {
+const PROTECTED_PREFIXES = [
+    "/dashboard",
+    "/feeds",
+    "/projects",
+    "/protocols",
+    "/evaluations",
+    "/appeals",
+    "/aar",
+    "/sae",
+    "/profile",
+    "/notifications",
+    "/support",
+    "/community",
+    "/admin",
+] as const;
+
+function isProtectedPath(pathname: string): boolean {
+    return PROTECTED_PREFIXES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+}
+
+export async function proxy(request: NextRequest): Promise<NextResponse> {
+    const { pathname } = request.nextUrl;
+
+    // ---- 1. CSP nonce -----------------------------------------------------
     const nonce = createCspNonce();
     const csp = buildContentSecurityPolicy({
         nonce,
@@ -24,18 +47,43 @@ export function proxy(request: NextRequest): NextResponse {
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);
 
+    // ---- 2. Auth + email-verification gate --------------------------------
+    if (isProtectedPath(pathname)) {
+        // Authoritative check: server-side session, not a client cookie value.
+        const session = await auth.api
+            .getSession({ headers: request.headers })
+            .catch(() => null);
+
+        // Case A — unauthenticated.
+        if (!session) {
+            const url = request.nextUrl.clone();
+            url.pathname = "/sign-in";
+            url.search = "";
+            url.searchParams.set("next", pathname);
+            return NextResponse.redirect(url);
+        }
+
+        // Case B — authenticated but not verified.
+        if (!session.user.emailVerified) {
+            const url = request.nextUrl.clone();
+            url.pathname = "/verify-email";
+            url.search = "";
+            return NextResponse.redirect(url);
+        }
+
+        // Case C — verified: fall through and allow.
+    }
+
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set("Content-Security-Policy", csp);
     return response;
 }
 
 export const config = {
-    /**
-     * Documents only. API routes serve JSON and keep their own headers from
-     * next.config.ts; static assets and prefetches gain nothing from a policy
-     * and would only add per-request work.
-     */
+
     matcher: [
         "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:js|css|png|jpg|jpeg|gif|webp|avif|svg|ico|woff|woff2|ttf|map|txt|xml|json|pdf)$).*)",
     ],
+
+    runtime: "nodejs",
 };

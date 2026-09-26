@@ -4,6 +4,15 @@ import { auth } from "./auth";
 import { db } from "./db";
 import { sendWelcomeEmail } from "./send-welcome-email";
 
+/** Canonical error code thrown by verifiedAuthSession() for unverified users. */
+export const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED" as const;
+
+/**
+ * Returns the current server-side session, or null.
+ * Use this ONLY when authentication alone (without email verification) is
+ * intentionally sufficient. For anything that requires a verified account,
+ * use verifiedAuthSession() instead.
+ */
 export const authSession = async () => {
     try {
         const session = await auth.api.getSession({ headers: await headers() });
@@ -16,7 +25,14 @@ export const authSession = async () => {
 
 /**
  * Server-action / API guard for authenticated AND email-verified users.
- * Throws instead of redirecting so it can be used inside actions/routes.
+ *
+ * This is the application's single, authoritative server-side security
+ * boundary for verified-only operations. It derives identity exclusively
+ * from the server-side session (never from client-supplied IDs/fields).
+ *
+ * Throws:
+ *   - Error("Unauthorized")          → no session
+ *   - Error(EMAIL_NOT_VERIFIED)      → authenticated but email not verified
  */
 export const verifiedAuthSession = async () => {
     const session = await authSession();
@@ -26,30 +42,53 @@ export const verifiedAuthSession = async () => {
     }
 
     if (!session.user.emailVerified) {
-        throw new Error("EMAIL_NOT_VERIFIED");
+        throw new Error(EMAIL_NOT_VERIFIED);
     }
 
     return session;
 };
 
+/**
+ * Page-level guard: redirects unauthenticated users to /sign-in and
+ * authenticated-but-unverified users to /verify-email.
+ * Also triggers the one-time welcome email.
+ */
 export const authIsRequired = async () => {
     const session = await authSession();
-    if (!session) redirect("/sign-in");
-    if (!session.user.emailVerified) redirect("/sign-in?unverified=1");
+
+    if (!session) {
+        redirect("/sign-in");
+    }
+
+    if (!session.user.emailVerified) {
+        redirect("/verify-email");
+    }
 
     await sendWelcomeEmailIfNeeded(session.user.id);
 
     return session;
 };
 
+/** Role-aware landing page after sign-in. */
 export const getDashboardPath = (role?: string | null): string =>
-    (role === "admin" || role === "superadmin") ? "/admin" : "/dashboard";
+    role === "admin" || role === "superadmin" ? "/admin" : "/dashboard";
 
+/**
+ * Page-level guard for public auth pages (sign-in / sign-up / etc.).
+ * Sends already-verified users to their dashboard.
+ */
 export const authIsNotRequired = async () => {
     const session = await authSession();
-    if (session?.user?.emailVerified) redirect(getDashboardPath(session.user?.role));
+    if (session?.user?.emailVerified) {
+        redirect(getDashboardPath(session.user?.role));
+    }
 };
 
+/**
+ * One-time welcome email. Uses an atomic updateMany on welcomeEmailSent
+ * to avoid double-sends under concurrency. Failures are swallowed so the
+ * caller's request is never blocked by email delivery.
+ */
 async function sendWelcomeEmailIfNeeded(userId: string) {
     try {
         const user = await db.user.findUnique({

@@ -1,3 +1,5 @@
+// src/lib/__tests__/auth-utils.test.ts
+
 const mockGetSession = jest.fn();
 const mockHeaders = jest.fn();
 const mockRedirect = jest.fn((url: string) => {
@@ -42,7 +44,15 @@ import {
     authIsRequired,
     authIsNotRequired,
     getDashboardPath,
+    EMAIL_NOT_VERIFIED,
 } from '@/lib/auth-utils';
+
+describe('EMAIL_NOT_VERIFIED constant', () => {
+    it('is the string "EMAIL_NOT_VERIFIED"', () => {
+        // Callers/tests match on this value; it must not drift.
+        expect(EMAIL_NOT_VERIFIED).toBe('EMAIL_NOT_VERIFIED');
+    });
+});
 
 describe('authSession', () => {
     beforeEach(() => {
@@ -80,6 +90,14 @@ describe('authSession', () => {
         expect(consoleError).toHaveBeenCalledWith('Session fetch failed:', error);
         consoleError.mockRestore();
     });
+
+    it('does NOT enforce email verification (auth-only helper)', async () => {
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: false } };
+        mockGetSession.mockResolvedValueOnce(session);
+
+        // authSession must remain usable for intentionally auth-only flows.
+        await expect(authSession()).resolves.toBe(session);
+    });
 });
 
 describe('verifiedAuthSession', () => {
@@ -94,12 +112,25 @@ describe('verifiedAuthSession', () => {
         await expect(verifiedAuthSession()).rejects.toThrow('Unauthorized');
     });
 
-    it('throws "EMAIL_NOT_VERIFIED" for an authenticated but unverified user', async () => {
+    it('throws EMAIL_NOT_VERIFIED for an authenticated but unverified user', async () => {
         mockGetSession.mockResolvedValueOnce({
             user: { id: 'user-1', role: 'user', emailVerified: false },
         });
 
-        await expect(verifiedAuthSession()).rejects.toThrow('EMAIL_NOT_VERIFIED');
+        await expect(verifiedAuthSession()).rejects.toThrow(EMAIL_NOT_VERIFIED);
+    });
+
+    it('throws EMAIL_NOT_VERIFIED even for admin/superadmin when unverified', async () => {
+        // Verification is orthogonal to role: role must not bypass verification.
+        mockGetSession.mockResolvedValueOnce({
+            user: { id: 'admin-1', role: 'admin', emailVerified: false },
+        });
+        await expect(verifiedAuthSession()).rejects.toThrow(EMAIL_NOT_VERIFIED);
+
+        mockGetSession.mockResolvedValueOnce({
+            user: { id: 'super-1', role: 'superadmin', emailVerified: false },
+        });
+        await expect(verifiedAuthSession()).rejects.toThrow(EMAIL_NOT_VERIFIED);
     });
 
     it('returns the session for an authenticated verified user', async () => {
@@ -109,8 +140,23 @@ describe('verifiedAuthSession', () => {
         const result = await verifiedAuthSession();
 
         expect(result).toBe(session);
+        // The verification boundary must not trigger the welcome-email side effect.
         expect(mockFindUnique).not.toHaveBeenCalled();
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
+    });
+
+    it('derives identity from the server session, not client-provided input', async () => {
+        // The only thing that can reach the helper is a server-side session.
+        // Any client-supplied userId/email is irrelevant because the helper
+        // never reads from the request body/query/params.
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
+        mockGetSession.mockResolvedValueOnce(session);
+
+        const result = await verifiedAuthSession();
+
+        expect(result.user.id).toBe('user-1');
+        expect(mockGetSession).toHaveBeenCalledTimes(1);
+        expect(mockGetSession).toHaveBeenCalledWith({ headers: { cookie: 'session=abc' } });
     });
 });
 
@@ -150,6 +196,17 @@ describe('authIsRequired', () => {
         expect(mockFindUnique).not.toHaveBeenCalled();
     });
 
+    it('redirects unverified users to /verify-email and skips welcome flow', async () => {
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: false } };
+        mockGetSession.mockResolvedValueOnce(session);
+
+        await expect(authIsRequired()).rejects.toThrow('NEXT_REDIRECT:/verify-email');
+        expect(mockRedirect).toHaveBeenCalledWith('/verify-email');
+        expect(mockFindUnique).not.toHaveBeenCalled();
+        expect(mockUpdateMany).not.toHaveBeenCalled();
+        expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
+    });
+
     it('returns session and skips welcome email when user not found in db', async () => {
         const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
@@ -166,13 +223,18 @@ describe('authIsRequired', () => {
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
     });
 
-    it('redirects unverified users to sign-in and skips welcome flow', async () => {
-        const session = { user: { id: 'user-1', role: 'user', emailVerified: false } };
+    it('skips welcome email when db reports emailVerified=false even if session says true', async () => {
+        const session = { user: { id: 'user-1', role: 'user', emailVerified: true } };
         mockGetSession.mockResolvedValueOnce(session);
+        mockFindUnique.mockResolvedValueOnce({
+            email: 'user@example.com',
+            name: 'Ada',
+            emailVerified: false,
+        });
 
-        await expect(authIsRequired()).rejects.toThrow('NEXT_REDIRECT:/sign-in?unverified=1');
-        expect(mockRedirect).toHaveBeenCalledWith('/sign-in?unverified=1');
-        expect(mockFindUnique).not.toHaveBeenCalled();
+        const result = await authIsRequired();
+
+        expect(result).toBe(session);
         expect(mockUpdateMany).not.toHaveBeenCalled();
         expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
     });
