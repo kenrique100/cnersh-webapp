@@ -17,9 +17,11 @@ describe('sendResetPasswordEmail', () => {
     beforeEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
+        // Reset process.env to a clean state with necessary defaults
         process.env = {
             ...originalEnv,
             RESEND_API_KEY: 'test-resend-key',
+            NODE_ENV: 'test', // Ensure we are in a non-prod environment for logging checks
         };
         delete process.env.EMAIL_FROM;
     });
@@ -34,7 +36,7 @@ describe('sendResetPasswordEmail', () => {
 
         await expect(
             sendResetPasswordEmail({ to: 'invalid', subject: 'Reset', url: 'https://app.example.com/reset' }),
-        ).rejects.toThrow('Invalid email address: invalid');
+        ).rejects.toThrow('Invalid recipient email address');
 
         consoleError.mockRestore();
     });
@@ -49,7 +51,7 @@ describe('sendResetPasswordEmail', () => {
         ).rejects.toThrow('Email service not configured. Please contact support.');
 
         expect(consoleError).toHaveBeenCalledWith(
-            ' RESEND_API_KEY is not configured. Please add it to your .env file.',
+            '[sendResetPasswordEmail] RESEND_API_KEY is not configured'
         );
         consoleError.mockRestore();
     });
@@ -104,9 +106,13 @@ describe('sendResetPasswordEmail', () => {
 
         await expect(
             sendResetPasswordEmail({ to: 'user@example.com', subject: 'Reset', url: 'https://app.example.com/reset' }),
-        ).rejects.toThrow('Failed to send email: provider-failed');
+        ).rejects.toThrow('Failed to send email');
 
-        expect(consoleError).toHaveBeenCalledWith(' Resend API error:', { message: 'provider-failed' });
+        // The implementation redacts the URL from the error message
+        expect(consoleError).toHaveBeenCalledWith(
+            '[sendResetPasswordEmail] Resend API error:',
+            'provider-failed'
+        );
         consoleError.mockRestore();
     });
 
@@ -147,9 +153,19 @@ describe('sendResetPasswordEmail', () => {
             sendResetPasswordEmail({ to: 'user@example.com', subject: 'Reset', url: 'https://app.example.com/reset' }),
         ).rejects.toThrow('smtp-down');
 
+        // Check that the generic failure log was called
+        expect(consoleError).toHaveBeenCalledWith(
+            '[sendResetPasswordEmail] failed:',
+            'smtp-down'
+        );
+
+        // Check that the detailed error log was called with redacted content
         expect(consoleError).toHaveBeenCalledWith(
             'Error details:',
-            expect.objectContaining({ message: 'smtp-down', to: 'user@example.com' }),
+            expect.objectContaining({
+                message: 'smtp-down',
+                to: 'user@example.com'
+            })
         );
         consoleError.mockRestore();
     });
@@ -163,9 +179,18 @@ describe('sendResetPasswordEmail', () => {
             sendResetPasswordEmail({ to: 'user@example.com', subject: 'Reset', url: 'https://app.example.com/reset' }),
         ).rejects.toBe('plain-failure');
 
-        expect(
-            consoleError.mock.calls.some(([first]) => first === 'Error details:'),
-        ).toBe(false);
+        // Should only log the generic failure, not the "Error details:" object
+        expect(consoleError).toHaveBeenCalledWith(
+            '[sendResetPasswordEmail] failed:',
+            'Unknown error'
+        );
+
+        // Ensure "Error details:" was NOT logged
+        const errorDetailsCalls = consoleError.mock.calls.filter(
+            ([firstArg]) => firstArg === 'Error details:'
+        );
+        expect(errorDetailsCalls).toHaveLength(0);
+
         consoleError.mockRestore();
     });
 });
