@@ -1,4 +1,4 @@
-import { updateProfile } from "@/app/actions/user";
+import { getProfile } from "@/app/actions/user";
 import { authIsRequired } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ export default async function SettingsPage() {
 
     if (!session) redirect("/sign-in");
 
-    const user = await updateProfile();
+    const user = await getProfile();
     if (!user) redirect("/sign-in");
 
     return (

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 jest.mock("@/lib/notify-admins", () => ({ notifyAdmins: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
@@ -8,12 +8,13 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
-import { authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { getMyReviewAssignments, submitCOIDeclaration } from "@/app/actions/coi";
 
-const authMock = authSession as jest.Mock;
+const authMock = verifiedAuthSession as jest.Mock;
 const notifyMock = notifyAdmins as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 
@@ -40,17 +41,27 @@ function assignment(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockDb.reviewAssignment = { findMany: jest.fn() };
+
+  // FIX 2: Ensure all necessary mocks are defined for both actions
   mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
+
+  mockDb.reviewAssignment = {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+  };
+
   mockDb.cOIDeclaration = { create: jest.fn() };
   mockDb.project = { updateMany: jest.fn().mockResolvedValue({ count: 1 }) };
   mockDb.projectStatusHistory = { create: jest.fn() };
   mockDb.auditLog = { create: jest.fn() };
+
   notifyMock.mockResolvedValue(undefined);
 });
 
 test("requires authentication and strict conflict details", async () => {
-  authMock.mockResolvedValue(null);
+  // Mock rejected value to simulate unauthorized access properly
+  authMock.mockRejectedValue(new Error("Unauthorized"));
   await expect(submitCOIDeclaration({
     assignmentId: "assignment-1",
     hasCOI: false,
@@ -66,8 +77,7 @@ test("requires authentication and strict conflict details", async () => {
 test("atomically clears COI and starts project review", async () => {
   login();
   const declaredAt = new Date("2026-09-01T12:00:00Z");
-  mockDb.reviewAssignment.findUnique = jest.fn().mockResolvedValue(assignment());
-  mockDb.reviewAssignment.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+  mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment());
   mockDb.cOIDeclaration.create.mockResolvedValue({
     id: "coi-1",
     hasCOI: false,
@@ -99,8 +109,7 @@ test("atomically clears COI and starts project review", async () => {
 test("conflicted reviewer is excluded, detached, and admins are notified after commit", async () => {
   login();
   const declaredAt = new Date();
-  mockDb.reviewAssignment.findUnique = jest.fn().mockResolvedValue(assignment());
-  mockDb.reviewAssignment.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+  mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment());
   mockDb.cOIDeclaration.create.mockResolvedValue({
     id: "coi-2",
     hasCOI: true,
@@ -125,7 +134,7 @@ test("conflicted reviewer is excluded, detached, and admins are notified after c
 test("same declaration retry is idempotent", async () => {
   login();
   const existing = { id: "coi-1", hasCOI: false, declaredAt: new Date() };
-  mockDb.reviewAssignment.findUnique = jest.fn().mockResolvedValue(assignment({
+  mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment({
     status: "ACTIVE",
     coiDeclaration: existing,
   }));

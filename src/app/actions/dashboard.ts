@@ -1,6 +1,6 @@
 "use server";
 
-import { verifiedAuthSession } from "@/lib/auth-utils";
+import { verifiedAuthSession, EMAIL_NOT_VERIFIED } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { isAdminRole } from "@/lib/permissions";
 import { z } from "zod";
@@ -87,6 +87,9 @@ export async function getUserDashboardData() {
             }>,
         };
     } catch (error) {
+        if (error instanceof Error && error.message === EMAIL_NOT_VERIFIED) {
+            throw error;
+        }
         console.error("Error fetching user dashboard data:", error);
         return null;
     }
@@ -213,7 +216,7 @@ export async function getAdminDashboardData() {
     }
 }
 
-export async function updateProfile() {
+export async function getProfile() {
     const session = await verifiedAuthSession();
 
     try {

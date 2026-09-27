@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 jest.mock("@/lib/notify-admins", () => ({ notifyAdmins: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
@@ -10,12 +10,13 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
-import { authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { getAllSAEReports, getProjectSAEReports, reportSAE } from "@/app/actions/sae";
 
-const authMock = authSession as jest.Mock;
+const authMock = verifiedAuthSession as jest.Mock;
 const notifyMock = notifyAdmins as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 
@@ -46,7 +47,10 @@ function input(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+
+  // FIX 2: Re-assign $transaction after clearAllMocks to ensure it executes the callback
   mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
+
   mockDb.user = { findUnique: jest.fn() };
   mockDb.project = { findUnique: jest.fn() };
   mockDb.sAEReport = { create: jest.fn(), findMany: jest.fn() };
@@ -74,8 +78,8 @@ test("SAE report and audit records are committed atomically", async () => {
   login();
   const reportedAt = new Date();
   mockDb.project.findUnique
-    .mockResolvedValueOnce(project())
-    .mockResolvedValueOnce({ status: "APPROVED" });
+      .mockResolvedValueOnce(project())
+      .mockResolvedValueOnce({ status: "APPROVED" });
   mockDb.sAEReport.create.mockResolvedValue({ id: "sae-1", reportedAt });
 
   await expect(reportSAE(input())).resolves.toEqual({
@@ -100,8 +104,8 @@ test("late critical SAE gets compliance audit and urgent notification", async ()
   login();
   const reportedAt = new Date();
   mockDb.project.findUnique
-    .mockResolvedValueOnce(project())
-    .mockResolvedValueOnce({ status: "APPROVED" });
+      .mockResolvedValueOnce(project())
+      .mockResolvedValueOnce({ status: "APPROVED" });
   mockDb.sAEReport.create.mockResolvedValue({ id: "sae-1", reportedAt });
 
   const result = await reportSAE(input({
@@ -118,8 +122,8 @@ test("notification failure does not roll back a committed report", async () => {
   login();
   const reportedAt = new Date();
   mockDb.project.findUnique
-    .mockResolvedValueOnce(project())
-    .mockResolvedValueOnce({ status: "APPROVED" });
+      .mockResolvedValueOnce(project())
+      .mockResolvedValueOnce({ status: "APPROVED" });
   mockDb.sAEReport.create.mockResolvedValue({ id: "sae-1", reportedAt });
   notifyMock.mockRejectedValue(new Error("mail unavailable"));
   await expect(reportSAE(input())).resolves.toEqual(expect.objectContaining({ id: "sae-1" }));
@@ -131,6 +135,10 @@ test("SAE reads enforce project access and hide reports for deleted projects glo
   login("other", "user");
   mockDb.project.findUnique.mockResolvedValue({ userId: "owner-1" });
   await expect(getProjectSAEReports("project-1")).rejects.toThrow("Forbidden");
+
+  // FIX 2: Re-assign $transaction after clearAllMocks so the transaction callback executes
+  jest.clearAllMocks();
+  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
 
   login("admin-1", "admin");
   mockDb.sAEReport.findMany.mockResolvedValue([]);

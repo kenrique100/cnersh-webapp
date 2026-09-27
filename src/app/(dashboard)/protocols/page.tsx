@@ -1,6 +1,6 @@
 import { authIsRequired } from "@/lib/auth-utils";
 import { getUserProjects, getProtocolsAssignedToMe } from "@/app/actions/project";
-import { updateProfile } from "@/app/actions/user";
+import { getProfile } from "@/app/actions/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -239,7 +239,7 @@ export default async function ProjectsPage() {
     await authIsRequired();
 
     const [profile, myProjects, assignedProjects] = await Promise.all([
-        updateProfile(),
+        getProfile(),
         getUserProjects(),
         getProtocolsAssignedToMe(),
     ]);

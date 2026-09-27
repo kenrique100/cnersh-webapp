@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyCommunityActivity } from "@/lib/community-notifications";
 import { isAdminRole, canManageRole } from "@/lib/permissions";
@@ -28,13 +28,12 @@ const reactionEmojiSchema = z
     });
 
 type CommunityActor = {
-    session: NonNullable<Awaited<ReturnType<typeof authSession>>>;
+    session: NonNullable<Awaited<ReturnType<typeof verifiedAuthSession>>>;
     role: "admin" | "superadmin";
 };
 
 async function requireCommunityAccess(): Promise<CommunityActor> {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const user = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
@@ -689,8 +688,12 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
 const COMMUNITY_EPOCH = new Date(0);
 
 export async function getCommunityUnreadCount(): Promise<number> {
-    const session = await authSession();
-    if (!session) return 0;
+    let session;
+    try {
+        session = await verifiedAuthSession();
+    } catch {
+        return 0;
+    }
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -731,8 +734,12 @@ export async function getCommunityUnreadCount(): Promise<number> {
 }
 
 export async function markCommunityRead(): Promise<void> {
-    const session = await authSession();
-    if (!session) return;
+    let session;
+    try {
+        session = await verifiedAuthSession();
+    } catch {
+        return;
+    }
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },

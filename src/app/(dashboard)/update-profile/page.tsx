@@ -1,4 +1,4 @@
-import { updateProfile, getUserActivity } from "@/app/actions/user";
+import { getProfile, getUserActivity } from "@/app/actions/user";
 import { authIsRequired } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,7 @@ function timeAgo(date: Date): string {
 
 export default async function ProfilePage() {
     await authIsRequired();
-    const user = await updateProfile();
+    const user = await getProfile();
 
     if (!user) redirect("/sign-in");
 

@@ -1,11 +1,15 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 
 export async function getUnreadNotificationCount(): Promise<number> {
-    const session = await authSession();
-    if (!session) return 0;
+    let session;
+    try {
+        session = await verifiedAuthSession();
+    } catch {
+        return 0;
+    }
 
     try {
         return await db.notification.count({
@@ -18,8 +22,7 @@ export async function getUnreadNotificationCount(): Promise<number> {
 }
 
 export async function getNotifications(page: number = 1, limit: number = 20) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     try {
         const [notifications, total, unreadCount] = await Promise.all([
@@ -43,8 +46,7 @@ export async function getNotifications(page: number = 1, limit: number = 20) {
 }
 
 export async function markNotificationRead(notificationId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     return db.notification.update({
         where: { id: notificationId, userId: session.user.id },
@@ -53,8 +55,7 @@ export async function markNotificationRead(notificationId: string) {
 }
 
 export async function markAllNotificationsRead() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     return db.notification.updateMany({
         where: { userId: session.user.id, read: false },

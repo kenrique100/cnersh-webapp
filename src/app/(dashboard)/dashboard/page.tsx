@@ -1,5 +1,5 @@
 import { authIsRequired } from "@/lib/auth-utils";
-import { updateProfile } from "@/app/actions/user";
+import { getProfile } from "@/app/actions/user";
 import { getUserDashboardData } from "@/app/actions/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,7 +42,7 @@ function statusColor(status: string) {
 
 export default async function DashboardPage() {
     await authIsRequired();
-    const user = await updateProfile();
+    const user = await getProfile();
     const data = await getUserDashboardData();
 
     const userInitials = user?.name

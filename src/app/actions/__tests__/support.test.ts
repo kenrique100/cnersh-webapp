@@ -1,8 +1,6 @@
-import type { authSession } from '@/lib/auth-utils';
-import type { sendNotificationEmail as SendNotificationEmailType } from '@/lib/send-notification-email';
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@/lib/auth-utils', () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock('@/lib/send-notification-email', () => ({
@@ -21,13 +19,16 @@ jest.mock('@sentry/nextjs', () => ({
     captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
 }));
 
-import { authSession as _authSession } from '@/lib/auth-utils';
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession as _verifiedAuthSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
 import { sendNotificationEmail as _sendNotificationEmail } from '@/lib/send-notification-email';
+import type { verifiedAuthSession } from '@/lib/auth-utils';
+import type { sendNotificationEmail as SendNotificationEmailType } from '@/lib/send-notification-email';
 
 import { submitSupportMessage } from '@/app/actions/support';
 
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
+const mockedVerifiedAuthSession = _verifiedAuthSession as jest.MockedFunction<typeof verifiedAuthSession>;
 const mockedSendNotificationEmail = _sendNotificationEmail as jest.MockedFunction<
     typeof SendNotificationEmailType
 >;
@@ -52,77 +53,32 @@ function mockSession(
     name = 'Test User',
     email = 'testuser@test.com'
 ): void {
-    mockedAuthSession.mockResolvedValue({
-        session: {
-            id: 'session-id',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: 'token',
-            ipAddress: null,
-            userAgent: null,
-            impersonatedBy: null,
-        },
+    mockedVerifiedAuthSession.mockResolvedValue({
         user: {
             id: userId,
             name,
             email,
-            emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            image: null,
             role: 'user',
-            banned: false,
-            banReason: null,
-            banExpires: null,
-            welcomeEmailSent: false,
-            gender: 'male',
-            profession: null,
-            title: null,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
 }
 
 /**
  * A session whose user has no name (null). The action falls back to
  * the session email in that case, so this is used to verify the fallback.
- * better-auth types `name` as non-nullable, so we escape through `unknown`.
  */
 function mockSessionWithNullName(
     userId = 'user-noname',
     email = 'noname@test.com'
 ): void {
-    mockedAuthSession.mockResolvedValue({
-        session: {
-            id: 'session-id',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: 'token',
-            ipAddress: null,
-            userAgent: null,
-            impersonatedBy: null,
-        },
+    mockedVerifiedAuthSession.mockResolvedValue({
         user: {
             id: userId,
             name: null as unknown as string,
             email,
-            emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            image: null,
             role: 'user',
-            banned: false,
-            banReason: null,
-            banExpires: null,
-            welcomeEmailSent: false,
-            gender: 'male',
-            profession: null,
-            title: null,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
 }
 
 const SUPER_ADMINS = [
@@ -137,31 +93,26 @@ const validInput = {
     message: 'Every time I submit the support form it fails with error 500.',
 };
 
-// ── Setup ─────────────────────────────────────────────────────────────
-
 beforeEach(() => {
     jest.clearAllMocks();
 
-    mockedDb.user = {};
-    mockedDb.notification = {};
+    // FIX 2: Initialize ALL tables with necessary mocks in beforeEach
+    mockedDb.user = { findMany: jest.fn() };
+    mockedDb.notification = { createMany: jest.fn() };
 
     syncDb();
 
     mockedSendNotificationEmail.mockResolvedValue(undefined);
 });
 
-// ── submitSupportMessage ──────────────────────────────────────────────
-
 describe('submitSupportMessage', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(submitSupportMessage(validInput)).rejects.toThrow(
             'Unauthorized'
         );
     });
-
-    // ── Input validation ─────────────────────────────────────────────
 
     it('throws when subject is shorter than 3 characters', async () => {
         mockSession();
@@ -215,12 +166,10 @@ describe('submitSupportMessage', () => {
         ).rejects.toThrow();
     });
 
-    // ── Super admin lookup ───────────────────────────────────────────
-
     it('throws if no super admin exists', async () => {
         mockSession();
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([]);
+        mockedDb.user.findMany.mockResolvedValue([]);
         syncDb();
 
         await expect(submitSupportMessage(validInput)).rejects.toThrow(
@@ -231,8 +180,8 @@ describe('submitSupportMessage', () => {
     it('queries only non-banned superadmins', async () => {
         mockSession();
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue(SUPER_ADMINS);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue(SUPER_ADMINS);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);
@@ -248,13 +197,11 @@ describe('submitSupportMessage', () => {
         );
     });
 
-    // ── Sentry ───────────────────────────────────────────────────────
-
     it('captures a Sentry message tagged as coming from the support form', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage({
@@ -282,13 +229,11 @@ describe('submitSupportMessage', () => {
         );
     });
 
-    // ── Notification payload ─────────────────────────────────────────
-
     it('creates a SYSTEM notification for every super admin', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue(SUPER_ADMINS);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue(SUPER_ADMINS);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);
@@ -314,8 +259,8 @@ describe('submitSupportMessage', () => {
     it('formats the notification with an uppercase category and the subject', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage({
@@ -333,8 +278,8 @@ describe('submitSupportMessage', () => {
     it('truncates the preview in the notification to 200 characters with an ellipsis', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         const longMessage = 'A'.repeat(250);
@@ -349,8 +294,8 @@ describe('submitSupportMessage', () => {
     it('does not add ellipsis when the message is exactly 200 characters', async () => {
         mockSession('user-1', 'Alice');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         const exactMessage = 'B'.repeat(200);
@@ -361,13 +306,11 @@ describe('submitSupportMessage', () => {
         expect(callData.message).not.toContain('...');
     });
 
-    // ── Email dispatch ───────────────────────────────────────────────
-
     it('sends an email to each super admin', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue(SUPER_ADMINS);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue(SUPER_ADMINS);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);
@@ -394,8 +337,8 @@ describe('submitSupportMessage', () => {
     it('includes the sender, category, subject and page URL in the email body', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage({
@@ -422,8 +365,8 @@ describe('submitSupportMessage', () => {
     it('falls back to "unknown" for the page URL when none is provided', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);
@@ -437,8 +380,8 @@ describe('submitSupportMessage', () => {
     it('uses the full (non-truncated) message in emails', async () => {
         mockSession('user-1', 'Alice', 'alice@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         const longMessage = 'C'.repeat(250);
@@ -456,8 +399,8 @@ describe('submitSupportMessage', () => {
     it('falls back to the session email in the email body when name is null', async () => {
         mockSessionWithNullName('user-noname', 'noname@test.com');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);
@@ -471,8 +414,8 @@ describe('submitSupportMessage', () => {
     it('returns { success: true } on successful submission', async () => {
         mockSession('user-1', 'Alice');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         const result = await submitSupportMessage(validInput);
@@ -483,8 +426,8 @@ describe('submitSupportMessage', () => {
     it('trims leading and trailing whitespace from the message', async () => {
         mockSession('user-1', 'Alice');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage({
@@ -501,8 +444,8 @@ describe('submitSupportMessage', () => {
     it('strips HTML tags from the subject and message', async () => {
         mockSession('user-1', 'Alice');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage({
@@ -521,8 +464,8 @@ describe('submitSupportMessage', () => {
     it('still returns success even if sendNotificationEmail rejects', async () => {
         mockSession('user-1', 'Alice');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([SUPER_ADMINS[0]]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue([SUPER_ADMINS[0]]);
+        mockedDb.notification.createMany.mockResolvedValue({});
         mockedSendNotificationEmail.mockRejectedValue(new Error('SMTP error'));
         syncDb();
 
@@ -543,10 +486,10 @@ describe('submitSupportMessage', () => {
     it('sends exactly one email per super admin (no duplicates)', async () => {
         mockSession('user-1', 'Alice');
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([
+        mockedDb.user.findMany.mockResolvedValue([
             { id: 'super-1', email: 'super1@test.com', name: 'Super One' },
         ]);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);
@@ -565,8 +508,8 @@ describe('submitSupportMessage', () => {
             name: `Super ${i}`,
         }));
 
-        mockedDb.user.findMany = jest.fn().mockResolvedValue(manyAdmins);
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.user.findMany.mockResolvedValue(manyAdmins);
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await submitSupportMessage(validInput);

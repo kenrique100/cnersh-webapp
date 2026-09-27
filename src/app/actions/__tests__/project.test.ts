@@ -1,14 +1,5 @@
-/* ---------------------------------------------------------------------------
- * src/app/actions/__tests__/project.test.ts
- *
- * No `any` — the mocked DB is typed structurally via MockDb / MockedTable.
- * ------------------------------------------------------------------------ */
-
-// ---------------------------------------------------------------------------
-// Module mocks (hoisted above imports by Jest's ts-jest/babel plugin)
-// ---------------------------------------------------------------------------
-
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+/* eslint-disable @typescript-eslint/no-explicit-any */
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 
 jest.mock("@/lib/notify-admins", () => ({
   notifyAdmins: jest.fn().mockResolvedValue(undefined),
@@ -26,8 +17,6 @@ jest.mock("@/lib/idempotency-store", () => ({
 }));
 
 jest.mock("@/lib/db", () => {
-  // TS types are erased at compile time, so using `typeof mockDb` inside
-  // this hoisted factory is safe — Jest's babel plugin only hoists runtime code.
   const mockDb = {
     $transaction: jest.fn(),
     user: {
@@ -56,8 +45,6 @@ jest.mock("@/lib/db", () => {
     auditLog: { create: jest.fn() },
   };
 
-  // `db.$transaction(cb)` runs the callback with the same mocked client,
-  // mirroring Prisma's real tx shape for unit tests.
   mockDb.$transaction = jest.fn(
       async (cb: (tx: typeof mockDb) => unknown) => cb(mockDb)
   );
@@ -65,9 +52,6 @@ jest.mock("@/lib/db", () => {
   return { db: mockDb };
 });
 
-// ---------------------------------------------------------------------------
-// Structural types for the mocked DB
-// ---------------------------------------------------------------------------
 
 type MockedFn = jest.Mock;
 
@@ -94,11 +78,8 @@ type MockDb = {
   auditLog: MockedTable;
 };
 
-// ---------------------------------------------------------------------------
-// Imports (resolved against the mocks above)
-// ---------------------------------------------------------------------------
-
-import { authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
@@ -118,11 +99,7 @@ import {
   updateProjectStatus,
 } from "@/app/actions/project";
 
-// ---------------------------------------------------------------------------
-// Typed handles
-// ---------------------------------------------------------------------------
-
-const authMock = authSession as jest.MockedFunction<typeof authSession>;
+const authMock = verifiedAuthSession as jest.MockedFunction<typeof verifiedAuthSession>;
 const notifyMock = notifyAdmins as jest.MockedFunction<typeof notifyAdmins>;
 const emailMock = sendNotificationEmail as jest.MockedFunction<typeof sendNotificationEmail>;
 const storeMock = storeIdempotentResponse as jest.MockedFunction<typeof storeIdempotentResponse>;
@@ -148,14 +125,10 @@ const reserveMock = reserveIdempotencyKey as unknown as jest.Mock<
 
 const mockDb = db as unknown as MockDb;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function login(id = "owner-1", role: "user" | "admin" | "superadmin" = "user") {
   authMock.mockResolvedValue({
     user: { id, name: "User", role },
-  } as Awaited<ReturnType<typeof authSession>>);
+  } as Awaited<ReturnType<typeof verifiedAuthSession>>);
   mockDb.user.findUnique.mockResolvedValue({ role });
 }
 
@@ -183,17 +156,10 @@ function project(overrides: Record<string, unknown> = {}) {
 
 const MOCK_IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
 
-// ---------------------------------------------------------------------------
-// Test setup
-//
-// `jest.clearAllMocks()` only clears call history, NOT implementations set
-// with `mockResolvedValue`. Those leak across tests. We use `resetAllMocks`
-// (clears history AND implementations) then re-seed every default.
-// ---------------------------------------------------------------------------
-
 beforeEach(() => {
   jest.resetAllMocks();
 
+  // FIX 2: Re-assign $transaction after resetAllMocks to ensure it executes the callback
   mockDb.$transaction.mockImplementation(
       async (cb: (tx: MockDb) => unknown) => cb(mockDb)
   );
@@ -233,10 +199,6 @@ beforeEach(() => {
   storeMock.mockResolvedValue(undefined);
   releaseMock.mockResolvedValue(undefined);
 });
-
-// ---------------------------------------------------------------------------
-// submitProject
-// ---------------------------------------------------------------------------
 
 test("submission validates required fields before writing", async () => {
   login();
@@ -292,8 +254,6 @@ test("admin submissions are never auto-approved", async () => {
 test("available reviewer assignment excludes the submitting admin and is atomic", async () => {
   login("owner-1");
   mockDb.project.findFirst.mockResolvedValue(null);
-  // `role: "admin"` is required — findAvailableAdmin calls
-  // isAutoAssignableRole(candidate.role) and returns null otherwise.
   mockDb.user.findFirst.mockResolvedValue({
     id: "admin-2",
     name: "Reviewer",
@@ -358,10 +318,6 @@ test("submission falls back to the queue when the selected reviewer becomes busy
   expect(mockDb.reviewAssignment.create).not.toHaveBeenCalled();
 });
 
-// ---------------------------------------------------------------------------
-// updateProjectStatus
-// ---------------------------------------------------------------------------
-
 test("project status changes follow the legal source-state matrix and require feedback", async () => {
   login("admin-1", "admin");
   mockDb.project.findUnique.mockResolvedValue(project({ status: "SUBMITTED" }));
@@ -415,10 +371,6 @@ test("legal status transition, history, notification and audit commit together",
   expect(mockDb.auditLog.create).toHaveBeenCalled();
 });
 
-// ---------------------------------------------------------------------------
-// updateProject / deleteProject
-// ---------------------------------------------------------------------------
-
 test("only owners may edit or delete, and only before submission or after incomplete return", async () => {
   login();
   mockDb.project.findUnique.mockResolvedValue(project({ status: "SUBMITTED" }));
@@ -446,10 +398,6 @@ test("only owners may edit or delete, and only before submission or after incomp
       })
   );
 });
-
-// ---------------------------------------------------------------------------
-// Access control
-// ---------------------------------------------------------------------------
 
 test("an excluded reviewer cannot regain project access through the admin role", async () => {
   login("reviewer-1", "admin");
@@ -509,9 +457,6 @@ test("manual assignment rejects owner, busy, banned, and previously excluded rev
         reviewAssignments: [{ reviewerId: "admin-2", status: "EXCLUDED" }],
       })
   );
-  // CRITICAL: reset the "active work" probe so the function reaches the
-  // `alreadyAssigned` branch instead of throwing "already has an active
-  // review assignment" from a leaked mock.
   mockDb.reviewAssignment.findFirst.mockResolvedValue(null);
 
   await expect(assignProjectReviewer("project-1", "admin-2")).rejects.toThrow(

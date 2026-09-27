@@ -78,6 +78,9 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!session.user.emailVerified) {
+    return NextResponse.json({ error: "Email not verified" }, { status: 403 });
+  }
 
   let formData: FormData;
   try {

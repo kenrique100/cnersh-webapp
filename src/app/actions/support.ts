@@ -1,15 +1,14 @@
 "use server";
 
 import * as Sentry from "@sentry/nextjs";
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { sanitizeText } from "@/lib/sanitize";
 import { supportSchema, type SupportInput } from "@/lib/support-schema";
 
 export async function submitSupportMessage(input: SupportInput) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const parsed = supportSchema.safeParse(input);
     if (!parsed.success) {

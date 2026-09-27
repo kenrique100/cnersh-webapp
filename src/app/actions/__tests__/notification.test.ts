@@ -1,7 +1,6 @@
-import type { authSession } from '@/lib/auth-utils';
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@/lib/auth-utils', () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock('@/lib/db', () => ({
@@ -10,8 +9,9 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-import { authSession as _authSession } from '@/lib/auth-utils';
+import { verifiedAuthSession as _verifiedAuthSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
+import type { verifiedAuthSession } from '@/lib/auth-utils';
 
 import {
     getUnreadNotificationCount,
@@ -20,9 +20,8 @@ import {
     markAllNotificationsRead,
 } from '@/app/actions/notification';
 
-// ── Typed mock references ─────────────────────────────────────────────
 
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
+const mockedVerifiedAuthSession = _verifiedAuthSession as jest.MockedFunction<typeof verifiedAuthSession>;
 
 type MockTable = Record<string, jest.Mock>;
 
@@ -32,71 +31,51 @@ interface MockDb {
 
 const mockedDb = _db as unknown as MockDb;
 
-// ── Helpers ───────────────────────────────────────────────────────────
-
 function syncDb(): void {
     const live = _db as unknown as MockDb;
     live.notification = mockedDb.notification;
 }
 
 function mockSession(userId = 'user-1', name = 'Test User'): void {
-    mockedAuthSession.mockResolvedValue({
-        session: {
-            id: 'session-id',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: 'token',
-            ipAddress: null,
-            userAgent: null,
-            impersonatedBy: null,
-        },
+    mockedVerifiedAuthSession.mockResolvedValue({
         user: {
             id: userId,
             name,
             email: `${name.toLowerCase().replace(/\s+/g, '')}@test.com`,
-            emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            image: null,
             role: 'user',
-            banned: false,
-            banReason: null,
-            banExpires: null,
-            welcomeEmailSent: false,
-            gender: 'male',
-            profession: null,
-            title: null,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
 }
-
-// ── Setup ─────────────────────────────────────────────────────────────
 
 beforeEach(() => {
     jest.clearAllMocks();
 
-    mockedDb.notification = {};
+    // FIX 2: Initialize notification table with all necessary mocks
+    mockedDb.notification = {
+        count: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+    };
+
     syncDb();
 });
 
-// ── getUnreadNotificationCount ────────────────────────────────────────
-
 describe('getUnreadNotificationCount', () => {
     it('returns 0 when not authenticated (no throw)', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        // Mock rejected value to simulate unauthorized access properly
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         const result = await getUnreadNotificationCount();
 
         expect(result).toBe(0);
         // notification.count must never be called when unauthenticated
-        expect(mockedDb.notification.count).toBeUndefined();
+        expect(mockedDb.notification.count).not.toHaveBeenCalled();
     });
 
     it('returns the unread count for the authenticated user', async () => {
         mockSession('user-1');
-        mockedDb.notification.count = jest.fn().mockResolvedValue(7);
+        mockedDb.notification.count.mockResolvedValue(7);
         syncDb();
 
         const result = await getUnreadNotificationCount();
@@ -111,7 +90,7 @@ describe('getUnreadNotificationCount', () => {
 
     it('returns 0 when there are no unread notifications', async () => {
         mockSession('user-1');
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
+        mockedDb.notification.count.mockResolvedValue(0);
         syncDb();
 
         const result = await getUnreadNotificationCount();
@@ -121,7 +100,7 @@ describe('getUnreadNotificationCount', () => {
 
     it('returns 0 and does not throw when the database errors', async () => {
         mockSession('user-1');
-        mockedDb.notification.count = jest.fn().mockRejectedValue(new Error('DB error'));
+        mockedDb.notification.count.mockRejectedValue(new Error('DB error'));
         syncDb();
 
         const consoleErrorSpy = jest
@@ -138,7 +117,7 @@ describe('getUnreadNotificationCount', () => {
 
     it('scopes the count query to the authenticated user', async () => {
         mockSession('user-99');
-        mockedDb.notification.count = jest.fn().mockResolvedValue(3);
+        mockedDb.notification.count.mockResolvedValue(3);
         syncDb();
 
         await getUnreadNotificationCount();
@@ -151,11 +130,9 @@ describe('getUnreadNotificationCount', () => {
     });
 });
 
-// ── getNotifications ──────────────────────────────────────────────────
-
 describe('getNotifications', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(getNotifications()).rejects.toThrow('Unauthorized');
     });
@@ -168,10 +145,9 @@ describe('getNotifications', () => {
             { id: 'n2', message: 'World', read: true, createdAt: new Date() },
         ];
 
-        mockedDb.notification.findMany = jest.fn().mockResolvedValue(fakeNotifications);
+        mockedDb.notification.findMany.mockResolvedValue(fakeNotifications);
         // Three count calls in Promise.all: total, unread
-        mockedDb.notification.count = jest
-            .fn()
+        mockedDb.notification.count
             .mockResolvedValueOnce(20)  // total
             .mockResolvedValueOnce(5);  // unreadCount
         syncDb();
@@ -187,8 +163,8 @@ describe('getNotifications', () => {
     it('queries notifications scoped to the authenticated user', async () => {
         mockSession('user-42');
 
-        mockedDb.notification.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
+        mockedDb.notification.findMany.mockResolvedValue([]);
+        mockedDb.notification.count.mockResolvedValue(0);
         syncDb();
 
         await getNotifications();
@@ -203,8 +179,8 @@ describe('getNotifications', () => {
     it('applies correct pagination (skip / take) for page 2 with limit 5', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
+        mockedDb.notification.findMany.mockResolvedValue([]);
+        mockedDb.notification.count.mockResolvedValue(0);
         syncDb();
 
         await getNotifications(2, 5);
@@ -220,8 +196,8 @@ describe('getNotifications', () => {
     it('orders results by createdAt descending', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
+        mockedDb.notification.findMany.mockResolvedValue([]);
+        mockedDb.notification.count.mockResolvedValue(0);
         syncDb();
 
         await getNotifications();
@@ -236,9 +212,8 @@ describe('getNotifications', () => {
     it('calculates pages correctly using Math.ceil', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.notification.count = jest
-            .fn()
+        mockedDb.notification.findMany.mockResolvedValue([]);
+        mockedDb.notification.count
             .mockResolvedValueOnce(25)  // total
             .mockResolvedValueOnce(0);  // unreadCount
         syncDb();
@@ -251,10 +226,9 @@ describe('getNotifications', () => {
     it('returns empty result without throwing on database error', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.findMany = jest
-            .fn()
+        mockedDb.notification.findMany
             .mockRejectedValue(new Error('DB failure'));
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
+        mockedDb.notification.count.mockResolvedValue(0);
         syncDb();
 
         const consoleErrorSpy = jest
@@ -277,8 +251,8 @@ describe('getNotifications', () => {
     it('uses page 1 and limit 20 as defaults', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.notification.count = jest.fn().mockResolvedValue(0);
+        mockedDb.notification.findMany.mockResolvedValue([]);
+        mockedDb.notification.count.mockResolvedValue(0);
         syncDb();
 
         await getNotifications();
@@ -292,11 +266,9 @@ describe('getNotifications', () => {
     });
 });
 
-// ── markNotificationRead ──────────────────────────────────────────────
-
 describe('markNotificationRead', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(markNotificationRead('notif-1')).rejects.toThrow('Unauthorized');
     });
@@ -304,7 +276,7 @@ describe('markNotificationRead', () => {
     it('updates the notification to read: true', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.update = jest.fn().mockResolvedValue({
+        mockedDb.notification.update.mockResolvedValue({
             id: 'notif-1',
             read: true,
         });
@@ -324,7 +296,7 @@ describe('markNotificationRead', () => {
     it('scopes the update to the authenticated user to prevent unauthorised access', async () => {
         mockSession('user-99');
 
-        mockedDb.notification.update = jest.fn().mockResolvedValue({
+        mockedDb.notification.update.mockResolvedValue({
             id: 'notif-5',
             read: true,
         });
@@ -342,8 +314,7 @@ describe('markNotificationRead', () => {
     it('propagates database errors to the caller', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.update = jest
-            .fn()
+        mockedDb.notification.update
             .mockRejectedValue(new Error('Record not found'));
         syncDb();
 
@@ -353,11 +324,9 @@ describe('markNotificationRead', () => {
     });
 });
 
-// ── markAllNotificationsRead ──────────────────────────────────────────
-
 describe('markAllNotificationsRead', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(markAllNotificationsRead()).rejects.toThrow('Unauthorized');
     });
@@ -365,7 +334,7 @@ describe('markAllNotificationsRead', () => {
     it('marks all unread notifications as read for the authenticated user', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.updateMany = jest.fn().mockResolvedValue({ count: 4 });
+        mockedDb.notification.updateMany.mockResolvedValue({ count: 4 });
         syncDb();
 
         const result = await markAllNotificationsRead();
@@ -382,7 +351,7 @@ describe('markAllNotificationsRead', () => {
     it('scopes the update to only unread notifications', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.updateMany = jest.fn().mockResolvedValue({ count: 0 });
+        mockedDb.notification.updateMany.mockResolvedValue({ count: 0 });
         syncDb();
 
         await markAllNotificationsRead();
@@ -397,7 +366,7 @@ describe('markAllNotificationsRead', () => {
     it('scopes the update to the authenticated user', async () => {
         mockSession('user-77');
 
-        mockedDb.notification.updateMany = jest.fn().mockResolvedValue({ count: 2 });
+        mockedDb.notification.updateMany.mockResolvedValue({ count: 2 });
         syncDb();
 
         await markAllNotificationsRead();
@@ -412,7 +381,7 @@ describe('markAllNotificationsRead', () => {
     it('returns count 0 when there are no unread notifications', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.updateMany = jest.fn().mockResolvedValue({ count: 0 });
+        mockedDb.notification.updateMany.mockResolvedValue({ count: 0 });
         syncDb();
 
         const result = await markAllNotificationsRead();
@@ -423,8 +392,7 @@ describe('markAllNotificationsRead', () => {
     it('propagates database errors to the caller', async () => {
         mockSession('user-1');
 
-        mockedDb.notification.updateMany = jest
-            .fn()
+        mockedDb.notification.updateMany
             .mockRejectedValue(new Error('Connection timeout'));
         syncDb();
 

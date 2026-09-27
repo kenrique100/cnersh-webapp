@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
@@ -228,13 +228,15 @@ const SUBMIT_PROJECT_ACTION = "submitProject";
 export async function submitProject(
     data: SubmitProjectInput
 ): Promise<SubmitProjectResult> {
-    const session = await authSession();
-    if (!session) {
+    let session;
+    try {
+        session = await verifiedAuthSession();
+    } catch (err) {
         return {
             success: false,
             isDuplicate: false,
             reason: "unauthorized",
-            error: "Unauthorized",
+            error: err instanceof Error ? err.message : "Unauthorized",
         };
     }
 
@@ -464,8 +466,7 @@ export async function submitProject(
 }
 
 export async function getProjectById(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
 
     const project = await db.project.findUnique({
@@ -544,8 +545,7 @@ export async function getProjectById(projectId: string) {
  * when it is UNDER_REVIEW, REVIEW_COMPLETE, APPROVED, EXPIRED, etc.
  */
 export async function getUserProjects() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     try {
         return await db.project.findMany({
@@ -568,8 +568,7 @@ export const getMyProtocols = getUserProjects;
  * Returns [] for non-admin users.
  */
 export async function getProtocolsAssignedToMe() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const me = await db.user.findUnique({
         where: { id: session.user.id },
@@ -602,8 +601,7 @@ export async function getProtocolsAssignedToMe() {
 }
 
 export async function getAllProjects(status?: ProjectStatus) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -627,8 +625,7 @@ export async function updateProjectStatus(
     status: "APPROVED" | "RESUBMIT" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW",
     feedback?: string | undefined
 ) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
     const validStatus = parseInput(projectStatusSchema, status);
     const validFeedback = parseInput(z.string().trim().max(10_000).optional(), feedback);
@@ -726,8 +723,7 @@ export async function updateProjectStatus(
 }
 
 export async function deleteProject(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
 
     const project = await db.project.findUnique({
@@ -771,8 +767,7 @@ export async function updateProject(
         formData?: Record<string, unknown>;
     }
 ) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
     const input = parseInput(projectUpdateSchema, data);
 
@@ -823,8 +818,7 @@ export async function forwardProjectToFeed(
     projectId: string,
     data: { content: string; images?: string[]; videos?: string[]; tags?: string[] }
 ) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
     const input = parseInput(z.object({
         content: z.string().trim().min(1).max(10_000),
@@ -856,8 +850,7 @@ export async function forwardProjectToFeed(
 }
 
 export async function getAdminUsers() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
     if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can list admin users");
@@ -885,8 +878,7 @@ export async function getAdminUsers() {
 }
 
 export async function assignProjectReviewer(projectId: string, adminId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
     const validAdminId = parseInput(idSchema, adminId);
 
@@ -1008,8 +1000,7 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
 }
 
 export async function autoAssignProjectReviewer(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
 
     const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
@@ -1123,8 +1114,7 @@ export async function autoAssignProjectReviewer(projectId: string) {
 }
 
 export async function reassignProjectReviewer(projectId: string, reason?: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
     const validReason = parseInput(z.string().trim().min(1).max(2_000).optional(), reason);
 
@@ -1253,8 +1243,7 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
 }
 
 export async function getProjectReviewAssignments(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
 
     const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
@@ -1290,6 +1279,8 @@ export async function getProjectReviewAssignments(projectId: string) {
     });
 }
 
+// NOTE: trackProjectByCode is intentionally unchanged in Step 1.
+// It will be rewritten in Step 3 (public tracker hardening).
 export async function trackProjectByCode(trackingCode: string) {
     const parsedCode = z.string().trim().max(100).safeParse(trackingCode);
     if (!parsedCode.success) return null;
@@ -1352,8 +1343,7 @@ export interface RenewProtocolResult {
 export async function renewProtocol(
     projectId: string
 ): Promise<RenewProtocolResult> {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
 
     const project = await db.project.findUnique({

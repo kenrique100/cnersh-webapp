@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { Prisma, ProjectStatus, SessionStatus, SessionType } from "@/generated/prisma";
 import { z } from "zod";
@@ -40,8 +40,7 @@ function parseDate(value: string, field: string): Date {
 }
 
 async function requireAdmin() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const user = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
