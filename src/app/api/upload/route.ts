@@ -33,8 +33,6 @@ async function cleanupUploadedFile(storageKey: string): Promise<void> {
       throw new Error("Storage provider did not confirm deletion");
     }
   } catch (error) {
-    // The DB insert did not happen, so this object is now orphaned. Keep the
-    // storage key in server logs so operators can remove it manually.
     console.error("[upload] failed to compensate orphaned storage object:", storageKey, error);
   }
 }
@@ -43,10 +41,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   "image/": ["image/jpeg", "image/png", "image/gif", "image/webp"],
   "video/": ["video/mp4", "video/webm", "video/ogg"],
   "audio/": ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"],
-  // Documents are PDF-only. Office formats (doc/docx/xls/xlsx) are
-  // deliberately excluded: they are macro-capable containers that our
-  // content checks cannot inspect, and the protocol workflow treats
-  // documents as PDFs anyway.
+  // Documents are PDF-only. See Step 5.
   "doc": ["application/pdf"],
 };
 
@@ -169,7 +164,10 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         sanitizedFilename,
         { type: file.type }
     );
-    uploadResult = await utapi.uploadFiles(uploadFile);
+    // ACL private: UploadThing stores the object without a public read
+    // policy. Access requires a signed URL minted via getSignedUrl() in the
+    // view route. Do not relax this without revisiting the view route.
+    uploadResult = await utapi.uploadFiles(uploadFile, { acl: "private" });
   } catch (err) {
     console.error("[upload] UploadThing upload failed:", err);
     const message =
@@ -185,14 +183,11 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   }
 
   const uploadedData = uploadResult.data as typeof uploadResult.data & {
-    ufsUrl?: string;
-    url?: string;
+    key: string;
   };
   const key = uploadedData.key;
-  const uploadedUrl = uploadedData.ufsUrl ?? uploadedData.url;
-  if (!uploadedUrl) {
-    console.error("[upload] upload response did not include a file URL");
-    await cleanupUploadedFile(key);
+  if (!key) {
+    console.error("[upload] upload response did not include a key");
     return NextResponse.json({ error: "Upload service error" }, { status: 502 });
   }
 
@@ -202,8 +197,10 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         filename:   sanitizedFilename,
         mimeType:   file.type,
         size:       file.size,
-        data:       null,
-        url:        uploadedUrl,
+        // data column removed in Step 7g — do not pass it.
+        // url is intentionally null. Reads flow through /api/files/view,
+        // which mints a short-lived signed URL for the private object.
+        url:        null,
         storageKey: key,
         type:       resolveFileType(file.type),
         userId:     session.user.id,
@@ -218,6 +215,7 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         storageKey: true,
       },
     });
+
     const viewUrl = stored.storageKey
         ? `/api/files/view?storageKey=${encodeURIComponent(stored.storageKey)}`
         : null;
