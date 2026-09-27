@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import DashboardPage from "../page";
 import { authIsRequired } from "@/lib/auth-utils";
-import { updateProfile } from "@/app/actions/user";
+import { getProfile } from "@/app/actions/user";
 import { getUserDashboardData } from "@/app/actions/dashboard";
 import React from "react";
 
@@ -9,7 +9,7 @@ jest.mock("@/lib/auth-utils", () => ({
     authIsRequired: jest.fn(),
 }));
 jest.mock("@/app/actions/user", () => ({
-    updateProfile: jest.fn(),
+    getProfile: jest.fn(),
 }));
 jest.mock("@/app/actions/dashboard", () => ({
     getUserDashboardData: jest.fn(),
@@ -144,7 +144,7 @@ describe("DashboardPage", () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (authIsRequired as jest.Mock).mockResolvedValue(undefined);
-        (updateProfile as jest.Mock).mockResolvedValue(mockUser);
+        (getProfile as jest.Mock).mockResolvedValue(mockUser);
         (getUserDashboardData as jest.Mock).mockResolvedValue(mockDashboardData);
     });
 
@@ -353,7 +353,7 @@ describe("DashboardPage", () => {
     });
 
     it("handles missing user gracefully (null user)", async () => {
-        (updateProfile as jest.Mock).mockResolvedValue(null);
+        (getProfile as jest.Mock).mockResolvedValue(null);
 
         const page = await DashboardPage();
         render(page);
@@ -363,7 +363,7 @@ describe("DashboardPage", () => {
     });
 
     it("handles missing user image (null image)", async () => {
-        (updateProfile as jest.Mock).mockResolvedValue({
+        (getProfile as jest.Mock).mockResolvedValue({
             ...mockUser,
             image: null,
         });
@@ -377,7 +377,7 @@ describe("DashboardPage", () => {
     });
 
     it("uses email initials when name is an empty string", async () => {
-        (updateProfile as jest.Mock).mockResolvedValue({
+        (getProfile as jest.Mock).mockResolvedValue({
             ...mockUser,
             name: "",
         });
@@ -389,7 +389,7 @@ describe("DashboardPage", () => {
     });
 
     it("shows only first 2 initials for multi-word names", async () => {
-        (updateProfile as jest.Mock).mockResolvedValue({
+        (getProfile as jest.Mock).mockResolvedValue({
             ...mockUser,
             name: "Alice Bob Charlie",
         });
