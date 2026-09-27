@@ -53,7 +53,12 @@ describe("upload compensation", () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockedAuthSession.mockResolvedValue({
-            user: { id: "owner-1", role: "user" },
+            user: {
+                id: "owner-1",
+                role: "user",
+                // FIX: route gates on this before doing any work.
+                emailVerified: true,
+            },
         } as Awaited<ReturnType<typeof authSession>>);
     });
 
@@ -70,14 +75,28 @@ describe("upload compensation", () => {
             },
             error: null,
         } as never);
-        (mockedDb.file.create as jest.Mock).mockRejectedValueOnce(new Error("database down"));
-        mockedUtapi.deleteFiles.mockResolvedValueOnce({ success: true, deletedCount: 1 });
-        const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+
+        (mockedDb.file.create as jest.Mock).mockRejectedValueOnce(
+            new Error("database down"),
+        );
+
+        mockedUtapi.deleteFiles.mockResolvedValueOnce({
+            success: true,
+            deletedCount: 1,
+        });
+
+        const consoleError = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
 
         const form = new FormData();
-        form.set("file", new File([new Uint8Array([1, 2, 3, 4])], "photo.png", {
-            type: "image/png",
-        }));
+        form.set(
+            "file",
+            new File([new Uint8Array([1, 2, 3, 4])], "photo.png", {
+                type: "image/png",
+            }),
+        );
+
         const request = new Request("https://app.example/api/upload", {
             method: "POST",
             body: form,
@@ -87,6 +106,7 @@ describe("upload compensation", () => {
 
         expect(response.status).toBe(500);
         expect(mockedUtapi.deleteFiles).toHaveBeenCalledWith("storage-key-1");
+
         consoleError.mockRestore();
     });
 });

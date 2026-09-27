@@ -43,13 +43,11 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   "image/": ["image/jpeg", "image/png", "image/gif", "image/webp"],
   "video/": ["video/mp4", "video/webm", "video/ogg"],
   "audio/": ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"],
-  "doc": [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  ],
+  // Documents are PDF-only. Office formats (doc/docx/xls/xlsx) are
+  // deliberately excluded: they are macro-capable containers that our
+  // content checks cannot inspect, and the protocol workflow treats
+  // documents as PDFs anyway.
+  "doc": ["application/pdf"],
 };
 
 const MAX_SIZES: Record<string, number> = {
