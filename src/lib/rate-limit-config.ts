@@ -16,6 +16,18 @@ export const RATE_LIMITS = Object.freeze({
         windowMs: 60 * 60 * 1000,
         maxRequests: 5,
     }),
+    // Password reset request. Tight because it triggers an outbound email
+    // and can be abused to spam a third party using our sending domain.
+    passwordReset: Object.freeze({
+        windowMs: 60 * 60 * 1000,
+        maxRequests: 3,
+    }),
+    // Verification email resend. Same reasoning as passwordReset; slightly
+    // relaxed because legitimate users often request it more than once.
+    verifyEmailResend: Object.freeze({
+        windowMs: 60 * 60 * 1000,
+        maxRequests: 5,
+    }),
     api: Object.freeze({
         windowMs: 15 * 60 * 1000,
         maxRequests: 100,
