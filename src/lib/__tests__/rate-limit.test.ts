@@ -1,13 +1,28 @@
-import { RATE_LIMITS } from "@/lib/rate-limit-config";
+/**
+ * @jest-environment node
+ */
+
+// MUST run before `@/lib/rate-limit` is loaded: that module resolves its
+// trusted-proxy mode from `process.env.TRUSTED_PROXY_MODE` at import time.
+// On a runner that sets `process.env.VERCEL` the default would be "Vercel",
+// which ignores `x-forwarded-for` and breaks the key assertion below.
+process.env.TRUSTED_PROXY_MODE = "forwarded";
+
 import type { NextRequest } from "next/server";
-import { redis } from "@/lib/redis";
-import { rateLimit } from "@/lib/rate-limit";
 
 jest.mock("@/lib/redis", () => ({
     redis: {
         slidingWindow: jest.fn(),
     },
 }));
+
+// `require` (not `import`) so the assignment above is in effect when these
+// modules are evaluated — static imports are hoisted above it.
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { RATE_LIMITS } = require("@/lib/rate-limit-config") as typeof import("@/lib/rate-limit-config");
+const { rateLimit } = require("@/lib/rate-limit") as typeof import("@/lib/rate-limit");
+const { redis } = require("@/lib/redis") as typeof import("@/lib/redis");
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 const mockedRedis = jest.mocked(redis);
 
@@ -22,7 +37,8 @@ describe("RATE_LIMITS values", () => {
         expect(RATE_LIMITS.api.windowMs).toBe(15 * 60 * 1000);
     });
 
-    it("fileUpload: 30 requests per 15 minutes", () => {
+    // FIX: title used to say "30" while the assertion checked 50.
+    it("fileUpload: 50 requests per 15 minutes", () => {
         expect(RATE_LIMITS.fileUpload.maxRequests).toBe(50);
         expect(RATE_LIMITS.fileUpload.windowMs).toBe(15 * 60 * 1000);
     });
@@ -47,7 +63,9 @@ describe("RATE_LIMITS relationships", () => {
     });
 
     it("authSignUp is stricter than authSignIn", () => {
-        expect(RATE_LIMITS.authSignUp.maxRequests).toBeLessThan(RATE_LIMITS.authSignIn.maxRequests);
+        expect(RATE_LIMITS.authSignUp.maxRequests).toBeLessThan(
+            RATE_LIMITS.authSignIn.maxRequests,
+        );
     });
 
     it("all configs have windowMs and maxRequests", () => {
@@ -63,7 +81,7 @@ describe("RATE_LIMITS relationships", () => {
 describe("RATE_LIMITS immutability", () => {
     it("should not allow mutation in strict mode", () => {
         const original = RATE_LIMITS.auth.maxRequests;
-        // Object.freeze causes assignment to throw in strict mode
+        // Object.freeze causes assignment to throw in strict mode.
         expect(() => {
             (RATE_LIMITS.auth as Record<string, unknown>).maxRequests = 999;
         }).toThrow();
@@ -74,7 +92,7 @@ describe("RATE_LIMITS immutability", () => {
 describe("rateLimit", () => {
     const request = {
         headers: new Headers({ "x-forwarded-for": "203.0.113.10" }),
-    } as NextRequest;
+    } as unknown as NextRequest;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -88,8 +106,9 @@ describe("rateLimit", () => {
         });
 
         await expect(
-            rateLimit(request, { windowMs: 60_000, maxRequests: 2 }, "test")
+            rateLimit(request, { windowMs: 60_000, maxRequests: 2 }, "test"),
         ).resolves.toBeNull();
+
         expect(mockedRedis.slidingWindow).toHaveBeenCalledWith(
             "rl:test:ip:203.0.113.10",
             expect.any(Number),
@@ -101,7 +120,9 @@ describe("rateLimit", () => {
 
     it("fails closed with 503 when the shared limiter is unavailable", async () => {
         mockedRedis.slidingWindow.mockRejectedValueOnce(new Error("redis down"));
-        const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+        const consoleError = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
 
         const response = await rateLimit(
             request,
@@ -111,6 +132,7 @@ describe("rateLimit", () => {
 
         expect(response?.status).toBe(503);
         expect(response?.headers.get("Retry-After")).toBe("5");
+
         consoleError.mockRestore();
     });
 });
