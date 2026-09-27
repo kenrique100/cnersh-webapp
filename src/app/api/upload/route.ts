@@ -209,23 +209,26 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
         userId:     session.user.id,
       },
       select: {
-        id:        true,
-        filename:  true,
-        mimeType:  true,
-        size:      true,
-        type:      true,
-        createdAt: true,
-        url:       true,
+        id:         true,
+        filename:   true,
+        mimeType:   true,
+        size:       true,
+        type:       true,
+        createdAt:  true,
+        storageKey: true,
       },
     });
+    const viewUrl = stored.storageKey
+        ? `/api/files/view?storageKey=${encodeURIComponent(stored.storageKey)}`
+        : null;
 
     return NextResponse.json({
-      fileId:    stored.id,
-      url:       stored.url,
-      name:      stored.filename,
-      type:      stored.mimeType,
-      size:      stored.size,
-      category:  stored.type,
+      fileId:   stored.id,
+      viewUrl,
+      name:     stored.filename,
+      type:     stored.mimeType,
+      size:     stored.size,
+      category: stored.type,
       createdAt: stored.createdAt,
     });
   } catch (err) {

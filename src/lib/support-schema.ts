@@ -23,7 +23,14 @@ export const supportSchema = z.object({
         .trim()
         .min(10, "Message must be at least 10 characters")
         .max(5000, "Message must be at most 5000 characters"),
-    pageUrl: z.string().url("Page URL must be a valid URL").optional(),
+    pageUrl: z
+        .string()
+        .url("Page URL must be a valid URL")
+        .refine(
+            (v) => /^https?:\/\//i.test(v),
+            "Page URL must use http or https"
+        )
+        .optional(),
 });
 
 export type SupportInput = z.infer<typeof supportSchema>;

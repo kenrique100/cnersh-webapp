@@ -13,7 +13,13 @@ export interface IdempotencyOptions {
     responseTtlSeconds?: number;
     pollIntervalMs?: number;
     pollTimeoutMs?: number;
-    getScope?: (req: NextRequest) => Promise<string | null | undefined>;
+    /**
+     * Resolves an idempotency scope for the request (usually the authenticated
+     * user id). Required: an explicit `null` return opts the request out of
+     * idempotency (e.g. anonymous requests); omitting the resolver entirely is
+     * a programming error and throws.
+     */
+    getScope: (req: NextRequest) => Promise<string | null | undefined>;
     fingerprint?: (req: NextRequest) => Promise<string>;
 }
 
@@ -70,12 +76,21 @@ async function releaseClaim(storageKey: string, claimValue: string): Promise<voi
 
 export function withIdempotency(
     handler: (req: NextRequest) => Promise<NextResponse>,
-    options: IdempotencyOptions = {}
+    options: IdempotencyOptions
 ) {
+    if (typeof options.getScope !== "function") {
+        throw new Error(
+            "withIdempotency: getScope is required. Pass a resolver that returns " +
+            "the caller scope (e.g. the authenticated user id), or explicitly " +
+            "return null to opt a request out of idempotency."
+        );
+    }
+
     const lockTtl = options.lockTtlSeconds ?? 60;
     const respTtl = options.responseTtlSeconds ?? 86_400;
     const pollInterval = options.pollIntervalMs ?? 500;
     const pollTimeout = options.pollTimeoutMs ?? 10_000;
+    const getScope = options.getScope;
 
     return async function (req: NextRequest): Promise<NextResponse> {
         const key = extractKey(req);
@@ -90,11 +105,9 @@ export function withIdempotency(
         let storageKey: string | undefined;
         let claimValue: string | undefined;
         try {
-            const scope = options.getScope
-                ? await options.getScope(req)
-                : "global";
-            // Authentication-aware callers can bypass idempotency for anonymous
-            // requests so an unauthenticated response is never shared.
+            const scope = await getScope(req);
+            // A null/undefined scope is an explicit opt-out (e.g. anonymous
+            // request), so an unauthenticated response is never shared.
             if (!scope) return handler(req);
 
             storageKey = scopedStorageKey(key, scope);

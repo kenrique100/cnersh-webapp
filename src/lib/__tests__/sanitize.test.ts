@@ -27,12 +27,16 @@ describe('sanitizeHtml', () => {
         const unsafe = sanitizeHtml('<a href="javascript:alert(1)">x</a>');
         expect(unsafe).not.toContain('javascript:');
         expect(unsafe).toContain('x');
-        expect(sanitizeHtml('<a href="https://example.org" rel="noopener">ok</a>')).toContain('href="https://example.org"');
+        expect(
+            sanitizeHtml('<a href="https://example.org" rel="noopener">ok</a>'),
+        ).toContain('href="https://example.org"');
         expect(sanitizeHtml('<a href="//evil.example">x</a>')).not.toContain('evil.example');
     });
 
     it('should drop disallowed tags and non-allowlisted attributes', () => {
-        const result = sanitizeHtml('<p style="color:red" class="lead" data-x="1">Hi <img src="x" onerror="alert(1)"><iframe src="https://a.b"></iframe></p>');
+        const result = sanitizeHtml(
+            '<p style="color:red" class="lead" data-x="1">Hi <img src="x" onerror="alert(1)"><iframe src="https://a.b"></iframe></p>',
+        );
         expect(result).toContain('class="lead"');
         expect(result).not.toContain('style=');
         expect(result).not.toContain('data-x');

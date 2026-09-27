@@ -58,7 +58,10 @@ export function sanitizeUrl(url: string): string {
         if (/^[a-z][a-z0-9+.\-]*:/i.test(trimmed)) {
             const parsed = new URL(trimmed);
             if (!["http:", "https:", "mailto:", "tel:"].includes(parsed.protocol)) return "";
-            return trimmed;
+            // Return the canonicalized URL, not the raw input, so callers
+            // never persist or render an unparsed string (unicode separators,
+            // control characters, or other quirks that survive new URL()).
+            return parsed.toString();
         }
         if (trimmed.startsWith("/")) return trimmed;
         return "";

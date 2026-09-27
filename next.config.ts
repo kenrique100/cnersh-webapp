@@ -1,16 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-/**
- * Documents get their Content Security Policy from src/proxy.ts, which
- * mints a per-request nonce. It must NOT be set here as well: when two CSP
- * headers are present a browser enforces both, and a static `script-src 'self'`
- * would reject the nonced scripts the middleware just authorised - which is
- * exactly the failure that stopped React from hydrating in production.
- *
- * API routes are excluded from that middleware, so they get a deliberately
- * minimal policy of their own below.
- */
 const API_CSP = ["default-src 'none'", "base-uri 'none'", "frame-ancestors 'none'"].join("; ");
 
 const nextConfig: NextConfig = {
@@ -46,7 +36,7 @@ const nextConfig: NextConfig = {
     },
     { source: "/api/:path*", headers: [{ key: "Content-Security-Policy", value: API_CSP }] },
     { source: "/api/auth/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
-    { source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
+    { source: "/api/files/view", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
   ],
 };
 

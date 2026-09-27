@@ -4,9 +4,11 @@ import type { FileType } from "@/generated/prisma";
 
 export const MAX_DOCUMENT_PAGES = 4;
 
+// Server-side upload pipeline accepts PDF documents only (see Step 5).
+// Keeping this list aligned prevents a client form from allowing a docx
+// that the server would reject anyway.
 export const ALLOWED_DOCUMENT_TYPES = [
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
 export const MAX_FILE_SIZES = {
@@ -27,8 +29,16 @@ export const UT_MAX_SIZES = {
   protocol: "64MB",
 } as const;
 
+/**
+ * Builds a URL that flows through the application's authorization gateway
+ * (`/api/files/view`), which performs session + ownership checks before
+ * redirecting to the underlying object storage URL.
+ *
+ * The gateway accepts either `storageKey` (preferred) or `id`. This helper
+ * uses `id` because callers typically hold a `File.id`, not a storage key.
+ */
 export function getFileUrl(fileId: string): string {
-  return `/api/files/${fileId}`;
+  return `/api/files/view?id=${encodeURIComponent(fileId)}`;
 }
 
 export function isFileId(value: string): boolean {

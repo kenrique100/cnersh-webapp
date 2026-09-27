@@ -20,19 +20,27 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
+    const storageKey = searchParams.get("storageKey")?.trim() || null;
+    const fileId = searchParams.get("id")?.trim() || null;
 
-    const storageKey = searchParams.get("storageKey")?.trim();
-
-    if (!storageKey) {
-        return jsonError("Provide a storageKey query parameter (UploadThing file key)", 400);
+    if (!storageKey && !fileId) {
+        return jsonError(
+            "Provide a storageKey or id query parameter (UploadThing file key or file id)",
+            400
+        );
     }
 
     let file: { url: string | null; userId: string } | null;
     try {
-        file = await db.file.findUnique({
-            where: { storageKey },
-            select: { url: true, userId: true },
-        });
+        file = storageKey
+            ? await db.file.findUnique({
+                where: { storageKey },
+                select: { url: true, userId: true },
+            })
+            : await db.file.findUnique({
+                where: { id: fileId! },
+                select: { url: true, userId: true },
+            });
     } catch (error) {
         console.error("[files/view] DB lookup error:", error);
         return jsonError("Database error", 500);

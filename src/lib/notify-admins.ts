@@ -72,8 +72,12 @@ const APP_URL =
     process.env.APP_URL ||
     "http://localhost:3000";
 
+// Default sender aligned with send-notification-email.ts,
+// send-verification-email.ts, send-reset-password-email.ts, and
+// send-welcome-email.ts so all outbound mail shares one SPF/DKIM-aligned
+// From address when EMAIL_FROM is not set.
 const EMAIL_FROM =
-    process.env.EMAIL_FROM || "CNERSH <no-reply@cnersh.org>";
+    process.env.EMAIL_FROM || "CNERSH <info@cameroon-national-ethics-com.net>";
 
 export async function notifyOwnerRenewalDue(protocol: {
     id: string;

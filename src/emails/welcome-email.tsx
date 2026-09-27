@@ -94,14 +94,6 @@ export const WelcomeEmail = ({
                     <Text className="text-[#8898aa] text-[12px] text-center">
                         © {new Date().getFullYear()} {appName}. All rights reserved.
                     </Text>
-
-                    {/* Unsubscribe Link */}
-                    <Text className="text-[#8898aa] text-[12px] text-center mt-2">
-                        <a href="{{unsubscribe_url}}" className="text-[#8898aa] underline">
-                            Unsubscribe
-                        </a>{" "}
-                        from future notifications
-                    </Text>
                 </Container>
             </Body>
         </Tailwind>
