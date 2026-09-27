@@ -16,6 +16,17 @@ jest.mock("@/lib/idempotency-store", () => ({
   releaseIdempotencyKey: jest.fn().mockResolvedValue(undefined),
 }));
 
+// FIX: Mock new rate-limit dependencies to prevent real side effects
+jest.mock("@/lib/action-rate-limit", () => ({
+  enforceActionRateLimit: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("@/lib/rate-limit", () => ({
+  RATE_LIMITS: {
+    protocolTrack: { points: 10, duration: 60 },
+  },
+}));
+
 jest.mock("@/lib/db", () => {
   const mockDb = {
     $transaction: jest.fn(),
@@ -78,7 +89,6 @@ type MockDb = {
   auditLog: MockedTable;
 };
 
-// FIX 1: Import verifiedAuthSession
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
@@ -159,7 +169,7 @@ const MOCK_IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
 beforeEach(() => {
   jest.resetAllMocks();
 
-  // FIX 2: Re-assign $transaction after resetAllMocks to ensure it executes the callback
+  // Re-assign $transaction after resetAllMocks to ensure it executes the callback
   mockDb.$transaction.mockImplementation(
       async (cb: (tx: MockDb) => unknown) => cb(mockDb)
   );

@@ -1,4 +1,4 @@
-import { RATE_LIMITS } from '../rate-limit-config';
+import { RATE_LIMITS } from '../rate-limit';
 
 describe('RATE_LIMITS values', () => {
     it('auth: 5 requests per 15 minutes', () => {
@@ -48,7 +48,6 @@ describe('RATE_LIMITS immutability', () => {
         try {
             (RATE_LIMITS.auth as Record<string, unknown>).maxRequests = 999;
         } catch {
-            // Expected in strict mode - Object.freeze throws in strict
         }
         expect(RATE_LIMITS.auth.maxRequests).toBe(original);
     });

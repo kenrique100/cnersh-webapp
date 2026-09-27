@@ -11,7 +11,9 @@ import {
     storeIdempotentResponse,
     releaseIdempotencyKey,
 } from "@/lib/idempotency-store";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "node:crypto";
+import { enforceActionRateLimit } from "@/lib/action-rate-limit";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const idSchema = z.string().trim().min(1, "Identifier is required").max(128, "Identifier is too long");
@@ -1279,44 +1281,62 @@ export async function getProjectReviewAssignments(projectId: string) {
     });
 }
 
-// NOTE: trackProjectByCode is intentionally unchanged in Step 1.
-// It will be rewritten in Step 3 (public tracker hardening).
-export async function trackProjectByCode(trackingCode: string) {
+// ---------------------------------------------------------------------------
+// Public protocol tracker
+//
+// Anonymous. Returns the minimum needed to confirm a tracking code is valid
+// and show its current status. Full history, title, category, and location
+// are intentionally withheld — they belong to the authenticated owner view
+// (getProjectById) or an admin view.
+//
+// Rate-limited per tracking-code hash, so a single code cannot be polled
+// aggressively from one or many IPs. Combined with the per-IP layer that
+// fronts this action (see src/lib/rate-limit.ts), this blocks both code
+// brute-forcing and hammering a single known code.
+// ---------------------------------------------------------------------------
+
+export interface TrackedProtocolSummary {
+    trackingCode: string;
+    status: ProjectStatus;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export async function trackProjectByCode(
+    trackingCode: string
+): Promise<TrackedProtocolSummary | null> {
     const parsedCode = z.string().trim().max(100).safeParse(trackingCode);
     if (!parsedCode.success) return null;
+
     const code = parsedCode.data.toUpperCase();
     if (!code) return null;
+
+    const bucket = createHash("sha256").update(code).digest("hex").slice(0, 16);
+    await enforceActionRateLimit(
+        `track:${bucket}`,
+        RATE_LIMITS.protocolTrack,
+        "protocol-track",
+        "Too many lookups for this tracking code."
+    );
 
     const project = await db.project.findUnique({
         where: { trackingCode: code },
         select: {
             deleted: true,
-            id: true,
             trackingCode: true,
-            title: true,
-            category: true,
-            location: true,
             status: true,
             createdAt: true,
             updatedAt: true,
-            statusHistory: {
-                orderBy: { createdAt: "desc" },
-                select: { status: true, comment: true, createdAt: true },
-            },
         },
     });
 
     if (!project || project.deleted) return null;
+
     return {
-        id: project.id,
         trackingCode: project.trackingCode,
-        title: project.title,
-        category: project.category,
-        location: project.location,
         status: project.status,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-        statusHistory: project.statusHistory,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
     };
 }
 

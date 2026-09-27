@@ -8,18 +8,18 @@ jest.mock("@/app/actions/project", () => ({
 }));
 
 jest.mock("lucide-react", () => {
-    function SearchIcon() { return <span data-testid="search-icon" />; }
-    function FolderIcon() { return <span data-testid="folder-icon" />; }
-    function TagIcon() { return <span data-testid="tag-icon" />; }
-    function MapPinIcon() { return <span data-testid="map-pin-icon" />; }
-    function CalendarIcon() { return <span data-testid="calendar-icon" />; }
-    function Loader2({ className }: { className?: string }) {
-        return <span data-testid="loader2" className={className} />;
+    function SearchIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="search-icon" {...props} />; }
+    function FolderIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="folder-icon" {...props} />; }
+    function TagIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="tag-icon" {...props} />; }
+    function MapPinIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="map-pin-icon" {...props} />; }
+    function CalendarIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="calendar-icon" {...props} />; }
+    function Loader2({ className, ...props }: React.HTMLAttributes<HTMLSpanElement> & { className?: string }) {
+        return <span data-testid="loader2" className={className} {...props} />;
     }
-    function CheckCircle2Icon() { return <span data-testid="check-circle" />; }
-    function XCircleIcon() { return <span data-testid="x-circle" />; }
-    function ClockIcon() { return <span data-testid="clock-icon" />; }
-    function FileEditIcon() { return <span data-testid="file-edit" />; }
+    function CheckCircle2Icon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="check-circle" {...props} />; }
+    function XCircleIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="x-circle" {...props} />; }
+    function ClockIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="clock-icon" {...props} />; }
+    function FileEditIcon(props: React.HTMLAttributes<HTMLSpanElement>) { return <span data-testid="file-edit" {...props} />; }
     return {
         SearchIcon,
         FolderIcon,
@@ -60,18 +60,10 @@ jest.mock("@/components/ui/badge", () => ({
 }));
 
 const mockProject = {
-    id: "proj-1",
     trackingCode: "CNERSH-2026-ABC123",
-    title: "Test Protocol",
-    category: "Clinical Trial",
-    location: "Yaounde",
     status: "SUBMITTED" as const,
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-02-10"),
-    statusHistory: [
-        { status: "SUBMITTED" as const, comment: "Initial submission", createdAt: new Date("2024-01-15") },
-        { status: "DRAFT" as const, comment: null, createdAt: new Date("2024-01-10") },
-    ],
+    createdAt: "2024-01-15T00:00:00.000Z",
+    updatedAt: "2024-02-10T00:00:00.000Z",
 };
 
 describe("ProjectTracker", () => {
@@ -93,7 +85,8 @@ describe("ProjectTracker", () => {
     it("calls trackProjectByCode on submit", async () => {
         mockTrackProjectByCode.mockResolvedValueOnce(mockProject);
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "CNERSH-2026-ABC123" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));
@@ -105,20 +98,21 @@ describe("ProjectTracker", () => {
     it("shows result when project found", async () => {
         mockTrackProjectByCode.mockResolvedValueOnce(mockProject);
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "ABC" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));
         await waitFor(() =>
-            expect(screen.getByText("Test Protocol")).toBeInTheDocument(),
+            expect(screen.getByText("CNERSH-2026-ABC123")).toBeInTheDocument(),
         );
-        expect(screen.getByText("CNERSH-2026-ABC123")).toBeInTheDocument();
     });
 
     it("shows error when project not found", async () => {
         mockTrackProjectByCode.mockResolvedValueOnce(null);
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "INVALID" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));
@@ -130,24 +124,27 @@ describe("ProjectTracker", () => {
     it("shows error on network failure", async () => {
         mockTrackProjectByCode.mockRejectedValueOnce(new Error("Network error"));
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "ANY" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));
         await waitFor(() =>
-            expect(screen.getByText(/An error occurred/i)).toBeInTheDocument(),
+            expect(screen.getByText(/Network error/i)).toBeInTheDocument(),
         );
     });
 
     it("clears error when user starts typing again", async () => {
         mockTrackProjectByCode.mockResolvedValueOnce(null);
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "INVALID" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));
         await waitFor(() => screen.getByText(/No protocol found/));
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+
+        fireEvent.change(input, {
             target: { value: "NEW" },
         });
         expect(screen.queryByText(/No protocol found/)).not.toBeInTheDocument();
@@ -158,7 +155,8 @@ describe("ProjectTracker", () => {
             () => new Promise((resolve) => setTimeout(() => resolve(mockProject), 100)),
         );
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "ABC" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));
@@ -172,7 +170,8 @@ describe("ProjectTracker", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mockTrackProjectByCode.mockResolvedValueOnce({ ...mockProject, status: "UNKNOWN" as any });
         render(<ProjectTracker />);
-        fireEvent.change(screen.getByPlaceholderText(/CNERSH-2026-/i), {
+        const input = screen.getByPlaceholderText(/CNERSH-2026-/i);
+        fireEvent.change(input, {
             target: { value: "ABC" },
         });
         fireEvent.click(screen.getByRole("button", { name: /Track/i }));

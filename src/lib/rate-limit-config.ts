@@ -48,4 +48,10 @@ export const RATE_LIMITS = Object.freeze({
         windowMs: 60 * 1000,
         maxRequests: 20,
     }),
+    // Public protocol tracker (anonymous). Bucketed by tracking-code hash,
+    // so a single code cannot be polled aggressively regardless of source IP.
+    protocolTrack: Object.freeze({
+        windowMs: 60 * 1000,
+        maxRequests: 10,
+    }),
 });
