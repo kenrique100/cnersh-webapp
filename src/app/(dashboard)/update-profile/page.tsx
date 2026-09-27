@@ -17,7 +17,9 @@ const statusColors: Record<string, string> = {
     REJECTED: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
 };
 
-function timeAgo(date: Date): string {
+// Accepts Date or ISO string. The body normalizes via `new Date(...)`,
+// so callers that hold either representation work identically.
+function timeAgo(date: Date | string): string {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
     if (seconds < 0) return "just now";
     if (seconds < 60) return "just now";
