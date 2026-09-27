@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const API_CSP = ["default-src 'none'", "base-uri 'none'", "frame-ancestors 'none'"].join("; ");
 
