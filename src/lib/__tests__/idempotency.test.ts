@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { redis } from '@/lib/redis';
 import {
     getResponse,

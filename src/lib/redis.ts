@@ -50,7 +50,12 @@ function buildMemoryClient(): UnifiedClient {
     const zsets = globalThis.__redis_zsets!;
     const zsetExpiry = globalThis.__redis_zset_expiry!;
 
-    setInterval(() => {
+    // Periodic cleanup of expired entries. In Node, setInterval returns a
+    // Timeout whose .unref() prevents the timer from holding the event loop
+    // open. In jsdom (used by Jest's default testEnvironment) it returns a
+    // numeric id with no .unref, so the call is guarded. Behaviour in a real
+    // Node server is unchanged.
+    const cleanupTimer = setInterval(() => {
         const now = Date.now();
         for (const [k, v] of mem.entries()) {
             if (v.expiry > 0 && v.expiry < now) mem.delete(k);
@@ -61,7 +66,8 @@ function buildMemoryClient(): UnifiedClient {
                 zsetExpiry.delete(k);
             }
         }
-    }, 60_000).unref();
+    }, 60_000) as { unref?: () => void };
+    cleanupTimer.unref?.();
 
     function alive(key: string): boolean {
         const e = mem.get(key);
