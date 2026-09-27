@@ -1,4 +1,4 @@
-import { RATE_LIMITS } from '../rate-limit-config';
+import { RATE_LIMITS } from '../rate-limit';
 
 describe('RATE_LIMITS values', () => {
     it('auth: 5 requests per 15 minutes', () => {
@@ -14,6 +14,16 @@ describe('RATE_LIMITS values', () => {
     it('authSignUp: 5 requests per 1 hour', () => {
         expect(RATE_LIMITS.authSignUp.maxRequests).toBe(5);
         expect(RATE_LIMITS.authSignUp.windowMs).toBe(60 * 60 * 1000);
+    });
+
+    it('passwordReset: 3 requests per 1 hour', () => {
+        expect(RATE_LIMITS.passwordReset.maxRequests).toBe(3);
+        expect(RATE_LIMITS.passwordReset.windowMs).toBe(60 * 60 * 1000);
+    });
+
+    it('verifyEmailResend: 5 requests per 1 hour', () => {
+        expect(RATE_LIMITS.verifyEmailResend.maxRequests).toBe(5);
+        expect(RATE_LIMITS.verifyEmailResend.windowMs).toBe(60 * 60 * 1000);
     });
 
     it('content limits are configured', () => {
@@ -46,6 +56,7 @@ describe('RATE_LIMITS immutability', () => {
     it('should not allow mutation in strict mode', () => {
         const original = RATE_LIMITS.auth.maxRequests;
         try {
+            // In non-strict mode, this might fail silently, so we check the value after
             (RATE_LIMITS.auth as Record<string, unknown>).maxRequests = 999;
         } catch {
             // Expected in strict mode - Object.freeze throws in strict

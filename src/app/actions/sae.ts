@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { Prisma, SAEEventType } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
@@ -29,8 +29,7 @@ export async function reportSAE(data: {
     description: string;
     immediateActions?: string;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const input = parse(reportSchema, data);
     const eventDate = new Date(input.eventDate);
     if (!Number.isFinite(eventDate.getTime())) throw new Error("Event date must be a valid date");
@@ -125,8 +124,7 @@ export async function reportSAE(data: {
 }
 
 export async function getProjectSAEReports(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parse(idSchema, projectId);
 
     const project = await db.project.findUnique({
@@ -153,8 +151,7 @@ export async function getProjectSAEReports(projectId: string) {
 }
 
 export async function getAllSAEReports() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
     $transaction: jest.fn(),
@@ -10,7 +10,8 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
-import { authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import {
   getMyEvaluationReport,
@@ -19,7 +20,7 @@ import {
   submitEvaluationReport,
 } from "@/app/actions/evaluation";
 
-const authMock = authSession as jest.Mock;
+const authMock = verifiedAuthSession as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 const validScores = {
   socialValue: 4,
@@ -55,7 +56,10 @@ function assignment(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+
+  // FIX 2: Re-assign $transaction after clearAllMocks to ensure it executes the callback
   mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
+
   mockDb.reviewAssignment = {
     findUnique: jest.fn(),
     findFirst: jest.fn().mockResolvedValue(null),
@@ -79,7 +83,7 @@ beforeEach(() => {
 test("draft validation rejects out-of-range scores before database access", async () => {
   login();
   await expect(saveEvaluationDraft("assignment-1", { socialValue: 6 }))
-    .rejects.toThrow("Too big");
+      .rejects.toThrow("Too big");
   expect(mockDb.$transaction).not.toHaveBeenCalled();
 });
 
@@ -90,7 +94,7 @@ test("excluded reviewers cannot save drafts", async () => {
     coiDeclaration: { hasCOI: true },
   }));
   await expect(saveEvaluationDraft("assignment-1", { socialValue: 3 }))
-    .rejects.toThrow("Excluded reviewers");
+      .rejects.toThrow("Excluded reviewers");
 });
 
 test("draft is transactionally upserted only after a no-COI declaration", async () => {

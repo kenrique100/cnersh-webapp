@@ -16,18 +16,28 @@ jest.mock('@/lib/send-notification-email', () => ({
 
 jest.mock('@sentry/nextjs', () => ({
     startSpan: jest.fn((_: unknown, cb: () => unknown) => cb()),
+    // `notifyOwnerRenewalDue` calls this; harmless to include even though no
+    // test exercises that path.
+    captureException: jest.fn(),
+}));
+
+// NEW: prevent the real Resend SDK from being constructed at import time
+// (throws if RESEND_API_KEY is set to a value the SDK dislikes) and prevent
+// the email template's JSX from being evaluated in this Node test.
+jest.mock('resend', () => ({
+    Resend: jest.fn().mockImplementation(() => ({
+        emails: { send: jest.fn() },
+    })),
+}));
+
+jest.mock('@/emails/protocol-renewal-reminder', () => ({
+    __esModule: true,
+    default: jest.fn(() => null),
 }));
 
 const mockedDb = jest.mocked(db);
 const mockedSendNotificationEmail = jest.mocked(sendNotificationEmail);
 const mockedStartSpan = jest.mocked(Sentry.startSpan);
-
-type AdminUser = {
-    id: string;
-    email: string;
-    name: string;
-};
-
 
 describe('notifyAdmins', () => {
     beforeEach(() => {

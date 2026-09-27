@@ -1,5 +1,5 @@
 import { authIsRequired } from "@/lib/auth-utils";
-import { updateProfile } from "@/app/actions/user";
+import { getProfile } from "@/app/actions/user";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import { getCommunityUnreadCount } from "@/app/actions/community";
 import { getPages } from "@/app/actions/page-actions";
@@ -14,14 +14,14 @@ export default async function DashboardLayout({
 }>) {
     await authIsRequired();
 
-    let user: Awaited<ReturnType<typeof updateProfile>> = null;
+    let user: Awaited<ReturnType<typeof getProfile>> | null = null;
     let unreadCount = 0;
     let communityUnreadCount = 0;
     let pages: Awaited<ReturnType<typeof getPages>> = [];
 
     try {
         [user, unreadCount, communityUnreadCount, pages] = await Promise.all([
-            updateProfile(),
+            getProfile(),
             getUnreadNotificationCount(),
             getCommunityUnreadCount(),
             getPages(),

@@ -138,7 +138,6 @@ model File {
   size       Int
   url        String?
   storageKey String?  @unique
-  data       String?
   type       FileType
   userId     String
   createdAt  DateTime @default(now())

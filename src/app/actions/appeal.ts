@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { z } from "zod";
@@ -31,8 +31,7 @@ export async function fileAppeal(data: {
     grounds: string;
     evidence?: string;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const input = parse(fileAppealSchema, data);
 
     const result = await db.$transaction(async (tx) => {
@@ -130,8 +129,7 @@ export async function resolveAppeal(data: {
     decision: "UPHELD" | "REJECTED";
     decisionText: string;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const input = parse(resolveAppealSchema, data);
 
     const user = await db.user.findUnique({
@@ -210,8 +208,7 @@ export async function resolveAppeal(data: {
 }
 
 export async function getProjectAppeal(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parse(idSchema, projectId);
 
     const project = await db.project.findUnique({
@@ -237,8 +234,7 @@ export async function getProjectAppeal(projectId: string) {
 }
 
 export async function getPendingAppeals() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },

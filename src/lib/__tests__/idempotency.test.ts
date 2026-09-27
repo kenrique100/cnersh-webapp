@@ -7,7 +7,6 @@ import {
     releaseKey,
 } from '@/lib/idempotency-store';
 
-// Jest hoists this block to the top. Defining the mocks inline avoids initialization errors.
 jest.mock('@/lib/redis', () => ({
     redis: {
         getJson: jest.fn(),
@@ -19,7 +18,6 @@ jest.mock('@/lib/redis', () => ({
     },
 }));
 
-// Create a typed reference to the mocked redis instance
 const mockedRedis = jest.mocked(redis);
 
 describe('idempotency', () => {

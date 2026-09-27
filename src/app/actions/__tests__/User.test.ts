@@ -1,12 +1,10 @@
-import { updateProfile, getUserActivity } from '@/app/actions/user';
+import { getProfile, getUserActivity } from '@/app/actions/user';
 
-// ── Mock auth-utils ───────────────────────────────────────────────
 const mockVerifiedAuthSession = jest.fn();
 jest.mock('@/lib/auth-utils', () => ({
     verifiedAuthSession: () => mockVerifiedAuthSession(),
 }));
 
-// ── Mock db ───────────────────────────────────────────────────────
 const mockUserFindUnique = jest.fn();
 const mockPostFindMany = jest.fn();
 const mockProjectFindMany = jest.fn();
@@ -68,29 +66,40 @@ const PROFILE = {
     title: 'Dr.',
 };
 
+// Use fixed dates to avoid millisecond mismatches
+const FIXED_DATE_POST = new Date('2024-06-01T12:00:00.000Z');
+const FIXED_DATE_PROJECT = new Date('2024-05-01T12:00:00.000Z');
+
 const POSTS = [
     {
-        id: 'p1', content: 'Hello', image: null,
-        createdAt: new Date(), _count: { comments: 2, likes: 5 },
+        id: 'p1',
+        content: 'Hello',
+        image: null,
+        createdAt: FIXED_DATE_POST,
+        _count: { comments: 2, likes: 5 },
     },
 ];
 
 const PROJECTS = [
     {
-        id: 'pr1', title: 'Study', description: 'Desc',
-        status: 'PENDING', category: 'Health', location: 'Yaoundé',
-        feedback: null, createdAt: new Date(),
+        id: 'pr1',
+        title: 'Study',
+        description: 'Desc',
+        status: 'PENDING',
+        category: 'Health',
+        location: 'Yaoundé',
+        feedback: null,
+        createdAt: FIXED_DATE_PROJECT,
     },
 ];
 
-// ── updateProfile ─────────────────────────────────────────────────
-describe('updateProfile', () => {
+describe('getProfile', () => {
     beforeEach(() => jest.clearAllMocks());
 
     it('throws Unauthorized when session is missing', async () => {
         mockVerifiedAuthSession.mockRejectedValueOnce(new Error('Unauthorized'));
 
-        await expect(updateProfile()).rejects.toThrow('Unauthorized');
+        await expect(getProfile()).rejects.toThrow('Unauthorized');
         expect(mockUserFindUnique).not.toHaveBeenCalled();
     });
 
@@ -98,7 +107,7 @@ describe('updateProfile', () => {
         mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockUserFindUnique.mockResolvedValueOnce(PROFILE);
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(mockUserFindUnique).toHaveBeenCalledWith({
             where: { id: 'user-1' },
@@ -114,7 +123,7 @@ describe('updateProfile', () => {
         mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockUserFindUnique.mockRejectedValueOnce(new Error('DB error'));
         const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        const result = await updateProfile();
+        const result = await getProfile();
         expect(result).toBeNull();
         expect(spy).toHaveBeenCalledWith(
             'Error fetching user profile:',
@@ -126,12 +135,11 @@ describe('updateProfile', () => {
     it('returns null when findUnique returns null (user not found)', async () => {
         mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
         mockUserFindUnique.mockResolvedValueOnce(null);
-        const result = await updateProfile();
+        const result = await getProfile();
         expect(result).toBeNull();
     });
 });
 
-// ── getUserActivity ───────────────────────────────────────────────
 describe('getUserActivity', () => {
     beforeEach(() => jest.clearAllMocks());
 
@@ -149,9 +157,19 @@ describe('getUserActivity', () => {
 
         const result = await getUserActivity();
 
+        // The implementation converts Date objects to ISO strings
+        const expectedPosts = POSTS.map(p => ({
+            ...p,
+            createdAt: p.createdAt.toISOString()
+        }));
+        const expectedProjects = PROJECTS.map(p => ({
+            ...p,
+            createdAt: p.createdAt.toISOString()
+        }));
+
         expect(result).toEqual({
-            posts: POSTS,
-            projects: PROJECTS,
+            posts: expectedPosts,
+            projects: expectedProjects,
             totalPosts: 42,
             totalProjects: 7,
         });

@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import {
@@ -38,8 +38,7 @@ function parsePagination(page: number, limit: number) {
 
 /** Stats and recent activity for the User Management page */
 export async function getUserManagementData() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -122,8 +121,7 @@ export async function getUserManagementData() {
 }
 
 export async function getAdminStats() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -176,8 +174,7 @@ export async function getAdminStats() {
 }
 
 export async function getAuditLogs(page: number = 1, limit: number = 20) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -207,8 +204,7 @@ export async function getAuditLogs(page: number = 1, limit: number = 20) {
 }
 
 export async function getReports(page: number = 1, limit: number = 20) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
@@ -240,8 +236,7 @@ export async function createReport(data: {
     contentId: string;
     reason: string;
 }) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const parsed = reportSchema.safeParse(data);
     if (!parsed.success) throw new Error("Invalid report");
 
@@ -271,8 +266,7 @@ export async function createReport(data: {
 }
 
 async function requireAdmin() {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },

@@ -1,19 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// FIX 1: Mock verifiedAuthSession instead of authSession
 import {
-    createTopic,
+    addReply,
+    createTopic, deleteReply, deleteTopic, editReply,
+    getCommunityUsers,
     getTopics,
     getTopicWithReplies,
-    addReply,
-    getCommunityUsers,
-    deleteTopic,
-    deleteReply,
-    editReply,
-    toggleTopicLike,
-    voteOnPoll,
-    markTopicRead,
+    markTopicRead, toggleTopicLike, voteOnPoll
 } from "@/app/actions/community";
 
-
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 
 jest.mock("@/lib/permissions", () => ({
     isAdminRole: (role: unknown) => role === "admin" || role === "superadmin",
@@ -33,6 +29,7 @@ jest.mock("@/lib/db", () => ({
         communityReadStatus: {},
         notification: {},
         auditLog: {},
+        communityReplyReaction: {}, // Added missing table
     },
 }));
 
@@ -59,12 +56,13 @@ jest.mock("next/cache", () => ({
     revalidatePath: jest.fn(),
 }));
 
-import { authSession as _authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession as _verifiedAuthSession } from "@/lib/auth-utils";
 import { db as _db } from "@/lib/db";
-import type { authSession } from "@/lib/auth-utils";
+import type { verifiedAuthSession } from "@/lib/auth-utils";
 import { notifyCommunityActivity as _notifyCommunityActivity } from "@/lib/community-notifications";
 
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
+const mockedAuthSession = _verifiedAuthSession as jest.MockedFunction<typeof verifiedAuthSession>;
 const mockedNotifyCommunityActivity = _notifyCommunityActivity as jest.Mock;
 
 type MockTable = Record<string, jest.Mock>;
@@ -79,6 +77,7 @@ interface MockDb {
     communityReadStatus: MockTable;
     notification: MockTable;
     auditLog: MockTable;
+    communityReplyReaction: MockTable;
 }
 
 const mockedDb = _db as unknown as MockDb;
@@ -94,63 +93,76 @@ function syncDb(): void {
     live.communityReadStatus = mockedDb.communityReadStatus;
     live.notification = mockedDb.notification;
     live.auditLog = mockedDb.auditLog;
+    live.communityReplyReaction = mockedDb.communityReplyReaction;
 }
 
-function mockSession(userId = "user-1", name = "Test User"): void {
+function mockSession(userId = "user-1", name = "Test User", role = "admin"): void {
     mockedAuthSession.mockResolvedValue({
-        session: {
-            id: "session-id",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: "token",
-            ipAddress: null,
-            userAgent: null,
-            impersonatedBy: null,
-        },
         user: {
             id: userId,
             name,
             email: `${name.toLowerCase().replace(/\s+/g, "")}@test.com`,
-            emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            image: null,
-            role: "admin",
-            banned: false,
-            banReason: null,
-            banExpires: null,
-            welcomeEmailSent: false,
-            gender: "male",
-            profession: null,
-            title: null,
+            role,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
 }
 
 beforeEach(() => {
     jest.clearAllMocks();
 
+    // FIX 2: Initialize ALL tables with necessary mocks in beforeEach
     mockedDb.$queryRaw = jest.fn().mockResolvedValue([]);
-    mockedDb.user = {};
-    mockedDb.communityTopic = {};
-    mockedDb.communityReply = {};
-    mockedDb.communityTopicLike = {};
+
+    mockedDb.user = { findUnique: jest.fn(), findMany: jest.fn() };
+
+    mockedDb.communityTopic = {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        count: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+    };
+
+    mockedDb.communityReply = {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+    };
+
+    mockedDb.communityTopicLike = {
+        findUnique: jest.fn(),
+        delete: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+    };
+
     mockedDb.communityTopicReadStatus = {
         upsert: jest.fn().mockResolvedValue({}),
         findUnique: jest.fn().mockResolvedValue(null),
     };
+
     mockedDb.communityReadStatus = {
         upsert: jest.fn().mockResolvedValue({}),
         findUnique: jest.fn().mockResolvedValue(null),
     };
-    mockedDb.notification = {};
-    mockedDb.auditLog = {};
 
+    mockedDb.notification = { createMany: jest.fn() };
+
+    mockedDb.auditLog = { create: jest.fn() };
+
+    mockedDb.communityReplyReaction = {
+        findUnique: jest.fn(),
+        delete: jest.fn(),
+        create: jest.fn(),
+        findMany: jest.fn(),
+    };
+
+    // Default successful admin session
     mockSession("admin-1", "Admin");
-    mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-    mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+    mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+
+    // Default topic/reply lookups for permission checks
+    mockedDb.communityTopic.findUnique.mockResolvedValue({
         id: "t1",
         userId: "admin-1",
         deleted: false,
@@ -159,7 +171,8 @@ beforeEach(() => {
         category: "General",
         user: { role: "admin" },
     });
-    mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+
+    mockedDb.communityReply.findUnique.mockResolvedValue({
         id: "r1",
         userId: "admin-1",
         topicId: "t1",
@@ -167,20 +180,21 @@ beforeEach(() => {
         topic: { deleted: false, chatEnabled: true },
         user: { role: "admin" },
     });
+
     syncDb();
 });
 
 describe("createTopic", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(
             createTopic({ title: "T", content: "C", category: "General" })
         ).rejects.toThrow("Unauthorized");
     });
 
     it("throws when user is not admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(
@@ -190,8 +204,8 @@ describe("createTopic", () => {
 
     it("creates a topic for admin", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.create = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.create.mockResolvedValue({
             id: "t1",
             title: "Hello",
             content: "World",
@@ -220,9 +234,9 @@ describe("createTopic", () => {
     });
 
     it("creates a topic for superadmin", async () => {
-        mockSession("super-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "superadmin" });
-        mockedDb.communityTopic.create = jest.fn().mockResolvedValue({
+        mockSession("super-1", "Super", "superadmin");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "superadmin" });
+        mockedDb.communityTopic.create.mockResolvedValue({
             id: "t2",
             title: "Announcement",
             content: "Important",
@@ -241,8 +255,8 @@ describe("createTopic", () => {
 
     it("emits a NEW_TOPIC community activity for regular categories", async () => {
         mockSession("admin-1", "Admin One");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.create = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.create.mockResolvedValue({
             id: "t1",
             title: "Hello",
             content: "World body",
@@ -266,8 +280,8 @@ describe("createTopic", () => {
 
     it("emits an ANNOUNCEMENT activity when category is Announcements", async () => {
         mockSession("admin-1", "Admin One");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.create = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.create.mockResolvedValue({
             id: "t3",
             title: "Big News",
             content: "Read this",
@@ -292,9 +306,8 @@ describe("createTopic", () => {
 
 describe("getTopics", () => {
     it("rejects ordinary users before reading community data", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
-        mockedDb.communityTopic.findMany = jest.fn();
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(getTopics()).rejects.toThrow(
@@ -304,10 +317,10 @@ describe("getTopics", () => {
     });
 
     it("returns topics and pagination info", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([
+        mockedDb.communityTopic.findMany.mockResolvedValue([
             { id: "t1", title: "First" },
         ]);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(1);
+        mockedDb.communityTopic.count.mockResolvedValue(1);
         syncDb();
 
         const result = await getTopics();
@@ -318,8 +331,8 @@ describe("getTopics", () => {
     });
 
     it("filters by category when provided", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(0);
+        mockedDb.communityTopic.findMany.mockResolvedValue([]);
+        mockedDb.communityTopic.count.mockResolvedValue(0);
         syncDb();
 
         await getTopics("General");
@@ -332,8 +345,8 @@ describe("getTopics", () => {
     });
 
     it("returns empty result on error", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockRejectedValue(new Error("DB fail"));
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(0);
+        mockedDb.communityTopic.findMany.mockRejectedValue(new Error("DB fail"));
+        mockedDb.communityTopic.count.mockResolvedValue(0);
         syncDb();
 
         const consoleErrorSpy = jest
@@ -347,8 +360,8 @@ describe("getTopics", () => {
     });
 
     it("paginates correctly", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(0);
+        mockedDb.communityTopic.findMany.mockResolvedValue([]);
+        mockedDb.communityTopic.count.mockResolvedValue(0);
         syncDb();
 
         await getTopics(undefined, 3, 5);
@@ -359,11 +372,11 @@ describe("getTopics", () => {
     });
 
     it("attaches unreadCount from the aggregated query to each topic", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([
+        mockedDb.communityTopic.findMany.mockResolvedValue([
             { id: "t1", title: "First", _count: { replies: 3 } },
             { id: "t2", title: "Second", _count: { replies: 5 } },
         ]);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(2);
+        mockedDb.communityTopic.count.mockResolvedValue(2);
         mockedDb.$queryRaw.mockResolvedValueOnce([
             { topicId: "t1", unread: BigInt(7) },
             { topicId: "t2", unread: BigInt(0) },
@@ -378,10 +391,10 @@ describe("getTopics", () => {
     });
 
     it("defaults missing topics to unreadCount 0", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([
+        mockedDb.communityTopic.findMany.mockResolvedValue([
             { id: "t1", title: "First", _count: { replies: 0 } },
         ]);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(1);
+        mockedDb.communityTopic.count.mockResolvedValue(1);
         mockedDb.$queryRaw.mockResolvedValueOnce([]);
         syncDb();
 
@@ -391,8 +404,8 @@ describe("getTopics", () => {
     });
 
     it("skips the raw query entirely when there are no topics", async () => {
-        mockedDb.communityTopic.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(0);
+        mockedDb.communityTopic.findMany.mockResolvedValue([]);
+        mockedDb.communityTopic.count.mockResolvedValue(0);
         syncDb();
 
         await getTopics();
@@ -403,7 +416,7 @@ describe("getTopics", () => {
 
 describe("getTopicWithReplies", () => {
     it("returns the topic with nested replies", async () => {
-        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.communityTopic.findUnique.mockResolvedValue({
             id: "t1",
             title: "A topic",
             replies: [],
@@ -419,7 +432,7 @@ describe("getTopicWithReplies", () => {
     });
 
     it("returns null when topic not found", async () => {
-        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue(null);
+        mockedDb.communityTopic.findUnique.mockResolvedValue(null);
         syncDb();
 
         const result = await getTopicWithReplies("missing");
@@ -455,13 +468,13 @@ describe("markTopicRead", () => {
     });
 
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(markTopicRead("t1")).rejects.toThrow("Unauthorized");
     });
 
     it("throws for non-admin users", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(markTopicRead("t1")).rejects.toThrow(
@@ -472,7 +485,7 @@ describe("markTopicRead", () => {
 
 describe("addReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
 
         await expect(addReply({ topicId: "t1", content: "Hello" })).rejects.toThrow(
             "Unauthorized"
@@ -480,8 +493,8 @@ describe("addReply", () => {
     });
 
     it("throws when user is not admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(addReply({ topicId: "t1", content: "Hello" })).rejects.toThrow(
@@ -491,13 +504,13 @@ describe("addReply", () => {
 
     it("creates a reply for admin", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.create = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.create.mockResolvedValue({
             id: "r1",
             content: "Hello",
             user: { id: "admin-1", name: "Admin" },
         });
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         const result = await addReply({ topicId: "t1", content: "Hello" });
@@ -516,13 +529,13 @@ describe("addReply", () => {
 
     it("bumps the author's per-topic cursor", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.create = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.create.mockResolvedValue({
             id: "r1",
             content: "Hello",
             user: { id: "admin-1", name: "Admin" },
         });
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await addReply({ topicId: "t1", content: "Hello" });
@@ -536,19 +549,19 @@ describe("addReply", () => {
 
     it("emits a NEW_REPLY community activity with topic title and content preview", async () => {
         mockSession("admin-1", "Admin One");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.findUnique.mockResolvedValue({
             chatEnabled: true,
             deleted: false,
             title: "Topic Title",
             category: "General",
         });
-        mockedDb.communityReply.create = jest.fn().mockResolvedValue({
+        mockedDb.communityReply.create.mockResolvedValue({
             id: "r1",
             content: "Hello everyone",
             user: { id: "admin-1", name: "Admin One" },
         });
-        mockedDb.notification.createMany = jest.fn().mockResolvedValue({});
+        mockedDb.notification.createMany.mockResolvedValue({});
         syncDb();
 
         await addReply({ topicId: "t1", content: "Hello everyone" });
@@ -563,14 +576,13 @@ describe("addReply", () => {
 
     it("rejects replies to closed topics", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.findUnique.mockResolvedValue({
             deleted: false,
             chatEnabled: false,
             title: "Closed",
             category: "General",
         });
-        mockedDb.communityReply.create = jest.fn();
         syncDb();
 
         await expect(addReply({ topicId: "t1", content: "No" })).rejects.toThrow(
@@ -581,8 +593,8 @@ describe("addReply", () => {
 
     it("rejects a parent reply from a different topic", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             userId: "admin-2",
             topicId: "different-topic",
             deleted: false,
@@ -602,7 +614,7 @@ describe("addReply", () => {
 
 describe("getCommunityUsers", () => {
     it("returns list of users", async () => {
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([
+        mockedDb.user.findMany.mockResolvedValue([
             { id: "u1", name: "Alice", image: null, role: "admin" },
         ]);
         syncDb();
@@ -614,7 +626,7 @@ describe("getCommunityUsers", () => {
     });
 
     it("returns empty array on error", async () => {
-        mockedDb.user.findMany = jest.fn().mockRejectedValue(new Error("DB fail"));
+        mockedDb.user.findMany.mockRejectedValue(new Error("DB fail"));
         syncDb();
 
         const consoleErrorSpy = jest
@@ -630,13 +642,13 @@ describe("getCommunityUsers", () => {
 
 describe("deleteTopic", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(deleteTopic("t1")).rejects.toThrow("Unauthorized");
     });
 
     it("throws Forbidden for non-admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(deleteTopic("t1")).rejects.toThrow(
@@ -646,9 +658,9 @@ describe("deleteTopic", () => {
 
     it("soft-deletes topic for admin", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.update.mockResolvedValue({});
+        mockedDb.auditLog.create.mockResolvedValue({});
         syncDb();
 
         const result = await deleteTopic("t1");
@@ -664,13 +676,12 @@ describe("deleteTopic", () => {
 
     it("prevents an admin from deleting superadmin content", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopic.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopic.findUnique.mockResolvedValue({
             userId: "super-1",
             deleted: false,
             user: { role: "superadmin" },
         });
-        mockedDb.communityTopic.update = jest.fn();
         syncDb();
 
         await expect(deleteTopic("t1")).rejects.toThrow("Forbidden");
@@ -684,23 +695,23 @@ describe("deleteTopic", () => {
 
 describe("deleteReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(deleteReply("r1")).rejects.toThrow("Unauthorized");
     });
 
     it("throws Reply not found", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue(null);
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue(null);
         syncDb();
 
         await expect(deleteReply("r1")).rejects.toThrow("Reply not found");
     });
 
     it("throws Forbidden for non-owner non-admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             userId: "other-user",
             deleted: false,
             topic: { deleted: false },
@@ -715,15 +726,15 @@ describe("deleteReply", () => {
 
     it("soft-deletes reply for owner", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             userId: "admin-1",
             deleted: false,
             topic: { deleted: false },
             user: { role: "admin" },
         });
-        mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
+        mockedDb.communityReply.update.mockResolvedValue({});
+        mockedDb.auditLog.create.mockResolvedValue({});
         syncDb();
 
         const result = await deleteReply("r1");
@@ -744,13 +755,13 @@ describe("deleteReply", () => {
 
 describe("editReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(editReply("r1", "new content")).rejects.toThrow("Unauthorized");
     });
 
     it("throws when user is not admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(editReply("r1", "new content")).rejects.toThrow(
@@ -760,8 +771,8 @@ describe("editReply", () => {
 
     it("throws Reply not found", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue(null);
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue(null);
         syncDb();
 
         await expect(editReply("r1", "content")).rejects.toThrow("Reply not found");
@@ -769,8 +780,8 @@ describe("editReply", () => {
 
     it("throws Forbidden when not reply owner", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             userId: "other-user",
             deleted: false,
             topic: { deleted: false, chatEnabled: true },
@@ -782,15 +793,13 @@ describe("editReply", () => {
 
     it("updates reply content for owner", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             userId: "admin-1",
             deleted: false,
             topic: { deleted: false, chatEnabled: true },
         });
-        mockedDb.communityReply.update = jest
-            .fn()
-            .mockResolvedValue({ id: "r1", content: "updated" });
+        mockedDb.communityReply.update.mockResolvedValue({ id: "r1", content: "updated" });
         syncDb();
 
         const result = await editReply("r1", "updated");
@@ -811,13 +820,13 @@ describe("editReply", () => {
 
 describe("toggleTopicLike", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(toggleTopicLike("t1")).rejects.toThrow("Unauthorized");
     });
 
     it("throws when user is not admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(toggleTopicLike("t1")).rejects.toThrow(
@@ -827,11 +836,9 @@ describe("toggleTopicLike", () => {
 
     it("removes like when already liked with same type", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopicLike.findUnique = jest
-            .fn()
-            .mockResolvedValue({ id: "like-1", isDislike: false });
-        mockedDb.communityTopicLike.delete = jest.fn().mockResolvedValue({});
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopicLike.findUnique.mockResolvedValue({ id: "like-1", isDislike: false });
+        mockedDb.communityTopicLike.delete.mockResolvedValue({});
         syncDb();
 
         const result = await toggleTopicLike("t1", false);
@@ -842,9 +849,9 @@ describe("toggleTopicLike", () => {
 
     it("creates a new like when none exists", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopicLike.findUnique = jest.fn().mockResolvedValue(null);
-        mockedDb.communityTopicLike.create = jest.fn().mockResolvedValue({});
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopicLike.findUnique.mockResolvedValue(null);
+        mockedDb.communityTopicLike.create.mockResolvedValue({});
         syncDb();
 
         const result = await toggleTopicLike("t1", false);
@@ -854,11 +861,9 @@ describe("toggleTopicLike", () => {
 
     it("switches from like to dislike", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityTopicLike.findUnique = jest
-            .fn()
-            .mockResolvedValue({ id: "like-1", isDislike: false });
-        mockedDb.communityTopicLike.update = jest.fn().mockResolvedValue({});
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityTopicLike.findUnique.mockResolvedValue({ id: "like-1", isDislike: false });
+        mockedDb.communityTopicLike.update.mockResolvedValue({});
         syncDb();
 
         const result = await toggleTopicLike("t1", true);
@@ -874,13 +879,13 @@ describe("toggleTopicLike", () => {
 
 describe("voteOnPoll", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
         await expect(voteOnPoll("r1", 0)).rejects.toThrow("Unauthorized");
     });
 
     it("throws when user is not admin", async () => {
-        mockSession("user-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "user" });
+        mockSession("user-1", "User", "user");
+        mockedDb.user.findUnique.mockResolvedValue({ role: "user" });
         syncDb();
 
         await expect(voteOnPoll("r1", 0)).rejects.toThrow(
@@ -890,8 +895,8 @@ describe("voteOnPoll", () => {
 
     it("throws Poll not found when reply has no poll", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             pollVotes: {},
             pollOptions: [],
             deleted: false,
@@ -904,14 +909,14 @@ describe("voteOnPoll", () => {
 
     it("casts a vote successfully", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             pollVotes: {},
             pollOptions: ["Yes", "No"],
             deleted: false,
             topic: { deleted: false, chatEnabled: true },
         });
-        mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
+        mockedDb.communityReply.update.mockResolvedValue({});
         syncDb();
 
         const result = await voteOnPoll("r1", 1);
@@ -922,14 +927,14 @@ describe("voteOnPoll", () => {
 
     it("removes vote when same option is selected again", async () => {
         mockSession("admin-1");
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: "admin" });
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockedDb.user.findUnique.mockResolvedValue({ role: "admin" });
+        mockedDb.communityReply.findUnique.mockResolvedValue({
             pollVotes: { "admin-1": 0 },
             pollOptions: ["Yes", "No"],
             deleted: false,
             topic: { deleted: false, chatEnabled: true },
         });
-        mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
+        mockedDb.communityReply.update.mockResolvedValue({});
         syncDb();
 
         const result = await voteOnPoll("r1", 0);

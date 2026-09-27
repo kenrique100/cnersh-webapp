@@ -19,7 +19,7 @@ jest.mock('@/lib/db', () => ({
 import { verifiedAuthSession as _verifiedAuthSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
 
-import { updateProfile, getUserActivity } from '@/app/actions/dashboard';
+import { getProfile, getUserActivity } from '@/app/actions/dashboard';
 
 const mockedVerifiedAuthSession = _verifiedAuthSession as jest.MockedFunction<
     typeof verifiedAuthSession
@@ -109,7 +109,7 @@ describe('updateProfile', () => {
     it('throws Unauthorized when not authenticated', async () => {
         mockUnauthorized();
 
-        await expect(updateProfile()).rejects.toThrow('Unauthorized');
+        await expect(getProfile()).rejects.toThrow('Unauthorized');
         expect(mockedDb.user.findUnique).toBeUndefined();
     });
 
@@ -126,7 +126,7 @@ describe('updateProfile', () => {
         });
         syncDb();
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result).toEqual({
             email: 'alice@test.com',
@@ -151,7 +151,7 @@ describe('updateProfile', () => {
         });
         syncDb();
 
-        await updateProfile();
+        await getProfile();
 
         expect(mockedDb.user.findUnique).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -166,7 +166,7 @@ describe('updateProfile', () => {
         mockedDb.user.findUnique = jest.fn().mockResolvedValue(null);
         syncDb();
 
-        await updateProfile();
+        await getProfile();
 
         expect(mockedDb.user.findUnique).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -189,7 +189,7 @@ describe('updateProfile', () => {
         mockedDb.user.findUnique = jest.fn().mockResolvedValue(null);
         syncDb();
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result).toBeNull();
     });
@@ -204,7 +204,7 @@ describe('updateProfile', () => {
             .spyOn(console, 'error')
             .mockImplementation(() => undefined);
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result).toBeNull();
         expect(consoleErrorSpy).toHaveBeenCalled();
@@ -225,14 +225,12 @@ describe('updateProfile', () => {
         });
         syncDb();
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result?.profession).toBeNull();
         expect(result?.title).toBeNull();
     });
 });
-
-// ── getUserActivity ───────────────────────────────────────────────────
 
 describe('getUserActivity', () => {
     /**
@@ -303,6 +301,7 @@ describe('getUserActivity', () => {
 
         const result = await getUserActivity();
 
+        // Explicitly check types to avoid Jest display ambiguity
         expect(typeof result.posts[0].createdAt).toBe('string');
         expect(result.posts[0].createdAt).toBe(postDate.toISOString());
         expect(typeof result.projects[0].createdAt).toBe('string');

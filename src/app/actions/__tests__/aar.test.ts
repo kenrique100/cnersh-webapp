@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
     $transaction: jest.fn(),
@@ -9,7 +9,7 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import {
   confirmAARReceipt,
@@ -19,7 +19,7 @@ import {
   updateAARStatus,
 } from "@/app/actions/aar";
 
-const authMock = authSession as jest.Mock;
+const authMock = verifiedAuthSession as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 
 function login(id = "owner-1", role = "user") {
@@ -87,7 +87,7 @@ test("applicant submission is atomic and repeat-safe", async () => {
   login();
   mockDb.aARApplication.findUnique.mockResolvedValue(application());
   await expect(submitAARApplication("project-1", " Cover note "))
-    .resolves.toEqual({ success: true });
+      .resolves.toEqual({ success: true });
   expect(mockDb.aARApplication.updateMany).toHaveBeenCalledWith(expect.objectContaining({
     where: expect.objectContaining({
       projectId: "project-1",
@@ -102,8 +102,11 @@ test("applicant submission is atomic and repeat-safe", async () => {
   }));
   expect(mockDb.auditLog.create).toHaveBeenCalled();
 
+  // FIX 2: Re-assign $transaction after clearing mocks so the transaction callback executes
   jest.clearAllMocks();
+  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
   mockDb.aARApplication.findUnique.mockResolvedValue(application({ status: "SUBMITTED" }));
+
   await expect(submitAARApplication("project-1")).resolves.toEqual({ success: true });
   expect(mockDb.aARApplication.updateMany).not.toHaveBeenCalled();
 });
@@ -117,12 +120,17 @@ test("DROS receipt is atomic and idempotently preserves its original due date", 
   expect(mockDb.auditLog.create).toHaveBeenCalled();
 
   const originalDue = new Date("2026-10-10T00:00:00Z");
+
+  // FIX 2: Re-assign $transaction and re-apply login mocks after clearing
   jest.clearAllMocks();
-  mockDb.user.findUnique.mockResolvedValue({ role: "admin" });
+  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
+  login("admin-1", "admin");
+
   mockDb.aARApplication.findUnique.mockResolvedValue(application({
     status: "RECEIVED_BY_DROS",
     drosDueDate: originalDue,
   }));
+
   await expect(confirmAARReceipt("project-1")).resolves.toEqual({
     success: true,
     drosDueDate: originalDue.toISOString(),
@@ -134,13 +142,13 @@ test("AAR decision matrix and required decision details are enforced", async () 
   login("admin-1", "admin");
   mockDb.aARApplication.findUnique.mockResolvedValue(application({ status: "SUBMITTED" }));
   await expect(updateAARStatus("project-1", "AUTHORIZED", { aarRefNumber: "AAR-1" }))
-    .rejects.toThrow("Illegal AAR status transition");
+      .rejects.toThrow("Illegal AAR status transition");
 
   mockDb.aARApplication.findUnique.mockResolvedValue(application({ status: "RECEIVED_BY_DROS" }));
   await expect(updateAARStatus("project-1", "AUTHORIZED"))
-    .rejects.toThrow("reference number");
+      .rejects.toThrow("reference number");
   await expect(updateAARStatus("project-1", "CLARIFICATION_REQUESTED"))
-    .rejects.toThrow("Notes are required");
+      .rejects.toThrow("Notes are required");
 });
 
 test("legal AAR status change writes notification and audit in the transaction", async () => {

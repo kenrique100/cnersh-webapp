@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { EvaluationRecommendation, Prisma } from "@/generated/prisma";
 import { z } from "zod";
@@ -102,8 +102,7 @@ function assertAssignmentAccess(
 }
 
 export async function saveEvaluationDraft(assignmentId: string, scores: EvaluationScores) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validAssignmentId = parse(idSchema, assignmentId);
     const input = parse(draftSchema, scores);
     const additionalCriteria = jsonValue(input.additionalCriteria);
@@ -144,8 +143,7 @@ export async function saveEvaluationDraft(assignmentId: string, scores: Evaluati
 }
 
 export async function submitEvaluationReport(assignmentId: string, scores: EvaluationScores) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validAssignmentId = parse(idSchema, assignmentId);
     const input = parse(submissionSchema, scores);
     const additionalCriteria = jsonValue(input.additionalCriteria);
@@ -249,8 +247,7 @@ export async function submitEvaluationReport(assignmentId: string, scores: Evalu
 }
 
 export async function getMyEvaluationReport(assignmentId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validAssignmentId = parse(idSchema, assignmentId);
 
     const assignment = await db.reviewAssignment.findUnique({
@@ -272,8 +269,7 @@ export async function getMyEvaluationReport(assignmentId: string) {
  * Reviewer names and scores are never exposed to PIs via this function.
  */
 export async function getProjectEvaluationReports(projectId: string) {
-    const session = await authSession();
-    if (!session) throw new Error("Unauthorized");
+    const session = await verifiedAuthSession();
     const validProjectId = parse(idSchema, projectId);
 
     const user = await db.user.findUnique({

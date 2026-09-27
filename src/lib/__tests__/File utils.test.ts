@@ -35,15 +35,17 @@ const mockedDb = db as jest.Mocked<typeof db>;
 const mockedUtapi = utapi as jest.Mocked<typeof utapi>;
 
 const VALID_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+const EXPECTED_VIEW_URL = `/api/files/view?id=${VALID_UUID}`;
 
 describe('constants', () => {
     it('MAX_DOCUMENT_PAGES is 4', () => {
         expect(MAX_DOCUMENT_PAGES).toBe(4);
     });
 
-    it('ALLOWED_DOCUMENT_TYPES contains pdf and docx', () => {
+    it('ALLOWED_DOCUMENT_TYPES contains pdf only', () => {
         expect(ALLOWED_DOCUMENT_TYPES).toContain('application/pdf');
-        expect(ALLOWED_DOCUMENT_TYPES).toContain(
+        expect(ALLOWED_DOCUMENT_TYPES).toHaveLength(1);
+        expect(ALLOWED_DOCUMENT_TYPES).not.toContain(
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         );
     });
@@ -59,8 +61,14 @@ describe('constants', () => {
 });
 
 describe('getFileUrl', () => {
-    it('returns the correct API path for a file ID', () => {
-        expect(getFileUrl(VALID_UUID)).toBe(`/api/files/${VALID_UUID}`);
+    it('returns the view-gateway path for a file ID', () => {
+        expect(getFileUrl(VALID_UUID)).toBe(EXPECTED_VIEW_URL);
+    });
+
+    it('URL-encodes the id parameter', () => {
+        expect(getFileUrl('file with spaces')).toBe(
+            '/api/files/view?id=file%20with%20spaces'
+        );
     });
 });
 
@@ -110,12 +118,12 @@ describe('resolveFileSrc', () => {
     });
 
     it('passes through /api/ paths unchanged', () => {
-        const url = '/api/files/some-id';
+        const url = '/api/files/view?id=some-id';
         expect(resolveFileSrc(url)).toBe(url);
     });
 
-    it('converts a UUID value to an API path', () => {
-        expect(resolveFileSrc(VALID_UUID)).toBe(`/api/files/${VALID_UUID}`);
+    it('converts a UUID value to the view-gateway path', () => {
+        expect(resolveFileSrc(VALID_UUID)).toBe(EXPECTED_VIEW_URL);
     });
 
     it('returns the value as-is when it is not a UUID and not a known prefix', () => {
@@ -162,7 +170,7 @@ describe('getFileMetadata - integration', () => {
         expect(result).toBeNull();
     });
 
-    it('falls back to API path when url is null', async () => {
+    it('falls back to the view-gateway path when url is null', async () => {
         (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
             id: VALID_UUID,
             filename: 'test.pdf',
@@ -173,7 +181,7 @@ describe('getFileMetadata - integration', () => {
             createdAt: new Date(),
         });
         const result = await getFileMetadata(VALID_UUID);
-        expect(result?.url).toBe(`/api/files/${VALID_UUID}`);
+        expect(result?.url).toBe(EXPECTED_VIEW_URL);
     });
 
     it('uses stored url when present', async () => {
@@ -269,6 +277,24 @@ describe('listUserFiles - integration', () => {
 
         expect(result.total).toBe(1);
         expect(result.files[0].url).toBe(fakeFile.url);
+    });
+
+    it('falls back to the view-gateway path when url is null', async () => {
+        const fakeFile = {
+            id: VALID_UUID,
+            filename: 'notes.pdf',
+            mimeType: 'application/pdf',
+            size: 512,
+            type: 'document',
+            url: null,
+            createdAt: new Date(),
+        };
+        (mockedDb.file.findMany as jest.Mock).mockResolvedValueOnce([fakeFile]);
+        (mockedDb.file.count as jest.Mock).mockResolvedValueOnce(1);
+
+        const result = await listUserFiles('user-id-123');
+
+        expect(result.files[0].url).toBe(EXPECTED_VIEW_URL);
     });
 
     it('filters by file type when provided', async () => {

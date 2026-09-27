@@ -1,8 +1,6 @@
-import type { authSession } from '@/lib/auth-utils';
-import type { notifyAdmins as NotifyAdminsType } from '@/lib/notify-admins';
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@/lib/auth-utils', () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock('@/lib/permissions', () => {
@@ -19,16 +17,16 @@ jest.mock('@/lib/permissions', () => {
 
 jest.mock('@/lib/db', () => ({
     db: {
-        user: {},
-        auditLog: {},
-        post: {},
-        project: {},
-        communityTopic: {},
-        communityReply: {},
-        comment: {},
-        report: {},
-        notification: {},
-        session: {},
+        user: { count: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+        auditLog: { findMany: jest.fn(), count: jest.fn(), create: jest.fn() },
+        post: { count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+        project: { count: jest.fn() },
+        communityTopic: { count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+        communityReply: { count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+        comment: { count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+        report: { count: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+        notification: { create: jest.fn() },
+        session: { deleteMany: jest.fn() },
     },
 }));
 
@@ -36,9 +34,9 @@ jest.mock('@/lib/notify-admins', () => ({
     notifyAdmins: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { authSession as _authSession } from '@/lib/auth-utils';
-import { db as _db } from '@/lib/db';
-import { notifyAdmins as _notifyAdmins } from '@/lib/notify-admins';
+import { verifiedAuthSession } from '@/lib/auth-utils';
+import { db } from '@/lib/db';
+import { notifyAdmins } from '@/lib/notify-admins';
 
 import {
     getUserManagementData,
@@ -55,124 +53,59 @@ import {
     applyRoleChange,
 } from '@/app/actions/admin';
 
+const mockVerifiedAuthSession = verifiedAuthSession as jest.Mock;
+const mockNotifyAdmins = notifyAdmins as jest.Mock;
 
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
-const mockedNotifyAdmins = _notifyAdmins as jest.MockedFunction<typeof NotifyAdminsType>;
+const mockDb = db as unknown as {
+    user: { count: jest.Mock; findUnique: jest.Mock; findMany: jest.Mock; update: jest.Mock };
+    auditLog: { findMany: jest.Mock; count: jest.Mock; create: jest.Mock };
+    post: { count: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    project: { count: jest.Mock };
+    communityTopic: { count: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    communityReply: { count: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    comment: { count: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    report: { count: jest.Mock; findMany: jest.Mock; create: jest.Mock; update: jest.Mock };
+    notification: { create: jest.Mock };
+    session: { deleteMany: jest.Mock };
+};
 
-type MockTable = Record<string, jest.Mock>;
-
-interface MockDb {
-    user: MockTable;
-    auditLog: MockTable;
-    post: MockTable;
-    project: MockTable;
-    communityTopic: MockTable;
-    communityReply: MockTable;
-    comment: MockTable;
-    report: MockTable;
-    notification: MockTable;
-    session: MockTable;
-}
-
-const mockedDb = _db as unknown as MockDb;
-
-
-/** Writes every MockTable back to the live db reference so action modules see fresh mocks. */
-function syncDb(): void {
-    const live = _db as unknown as MockDb;
-    live.user = mockedDb.user;
-    live.auditLog = mockedDb.auditLog;
-    live.post = mockedDb.post;
-    live.project = mockedDb.project;
-    live.communityTopic = mockedDb.communityTopic;
-    live.communityReply = mockedDb.communityReply;
-    live.comment = mockedDb.comment;
-    live.report = mockedDb.report;
-    live.notification = mockedDb.notification;
-    live.session = mockedDb.session;
-}
-
-/**
- * Full better-auth session shape, including additionalFields from auth.ts
- * (gender, welcomeEmailSent, profession, title).
- */
-function mockSession(userId = 'admin-1', name = 'Admin User'): void {
-    mockedAuthSession.mockResolvedValue({
-        session: {
-            id: 'session-id',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: 'token',
-            ipAddress: null,
-            userAgent: null,
-            impersonatedBy: null,
-        },
+function mockSession(userId = 'admin-1', name = 'Admin User', role = 'admin'): void {
+    mockVerifiedAuthSession.mockResolvedValue({
         user: {
             id: userId,
             name,
             email: `${name.toLowerCase().replace(/\s+/g, '')}@test.com`,
             emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            image: null,
-            role: 'admin',
+            role,
             banned: false,
             banReason: null,
             banExpires: null,
-            welcomeEmailSent: false,
-            gender: 'male',
-            profession: null,
-            title: null,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    });
 }
 
-/**
- * Sets up a session for an admin or superadmin AND mocks the first
- * db.user.findUnique call (the role check inside the action) to return
- * the correct role.  Tests that need additional findUnique calls must
- * chain .mockResolvedValueOnce() themselves.
- */
 function mockAdmin(role: 'admin' | 'superadmin' = 'admin'): void {
-    mockSession('admin-1', 'Admin User');
-    mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role });
-    syncDb();
+    mockSession('admin-1', 'Admin User', role);
+    // Default mock for the acting user's role check (e.g., inside requireAdmin)
+    mockDb.user.findUnique.mockResolvedValue({ role });
 }
-
 
 beforeEach(() => {
     jest.clearAllMocks();
-
-    // Reset every table to a fresh plain object.
-    mockedDb.user = {};
-    mockedDb.auditLog = {};
-    mockedDb.post = {};
-    mockedDb.project = {};
-    mockedDb.communityTopic = {};
-    mockedDb.communityReply = {};
-    mockedDb.comment = {};
-    mockedDb.report = {};
-    mockedDb.notification = {};
-    mockedDb.session = {};
-    syncDb();
-
-    mockedNotifyAdmins.mockResolvedValue(undefined);
+    mockNotifyAdmins.mockResolvedValue(undefined);
 });
 
 // ── getUserManagementData ─────────────────────────────────────────────
 
 describe('getUserManagementData', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(getUserManagementData()).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for non-admin', async () => {
-        mockSession('user-1', 'Regular User');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular User', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(getUserManagementData()).rejects.toThrow('Forbidden');
     });
@@ -180,13 +113,11 @@ describe('getUserManagementData', () => {
     it('returns stats and users for admin', async () => {
         mockAdmin('admin');
 
-        // getUserManagementData calls user.count (×4), auditLog.findMany,
-        // user.findMany - all in Promise.all - then user.count again.
-        mockedDb.user.count = jest.fn().mockResolvedValue(100);
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([
+        mockDb.user.count.mockResolvedValue(100);
+        mockDb.user.findMany.mockResolvedValue([
             { id: 'u1', name: 'User1', role: 'user', banned: false },
         ]);
-        mockedDb.auditLog.findMany = jest.fn().mockResolvedValue([
+        mockDb.auditLog.findMany.mockResolvedValue([
             {
                 id: 'a1',
                 action: 'LOGIN',
@@ -196,7 +127,6 @@ describe('getUserManagementData', () => {
                 user: { name: 'Admin', email: 'admin@test.com' },
             },
         ]);
-        syncDb();
 
         const data = await getUserManagementData();
 
@@ -208,13 +138,12 @@ describe('getUserManagementData', () => {
     it('returns all roles for superadmin', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.user.count = jest.fn().mockResolvedValue(50);
-        mockedDb.user.findMany = jest.fn().mockResolvedValue([
+        mockDb.user.count.mockResolvedValue(50);
+        mockDb.user.findMany.mockResolvedValue([
             { id: 'u1', name: 'Admin', role: 'admin', banned: false },
             { id: 'u2', name: 'User', role: 'user', banned: false },
         ]);
-        mockedDb.auditLog.findMany = jest.fn().mockResolvedValue([]);
-        syncDb();
+        mockDb.auditLog.findMany.mockResolvedValue([]);
 
         const data = await getUserManagementData();
         expect(data.users).toHaveLength(2);
@@ -225,14 +154,13 @@ describe('getUserManagementData', () => {
 
 describe('getAdminStats', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(getAdminStats()).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1', 'Regular');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(getAdminStats()).rejects.toThrow('Forbidden');
     });
@@ -240,12 +168,11 @@ describe('getAdminStats', () => {
     it('returns aggregated stats for admin', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.count = jest.fn().mockResolvedValue(10);
-        mockedDb.post.count = jest.fn().mockResolvedValue(5);
-        mockedDb.project.count = jest.fn().mockResolvedValue(4);
-        mockedDb.communityTopic.count = jest.fn().mockResolvedValue(3);
-        mockedDb.report.count = jest.fn().mockResolvedValue(2);
-        syncDb();
+        mockDb.user.count.mockResolvedValue(10);
+        mockDb.post.count.mockResolvedValue(5);
+        mockDb.project.count.mockResolvedValue(4);
+        mockDb.communityTopic.count.mockResolvedValue(3);
+        mockDb.report.count.mockResolvedValue(2);
 
         const stats = await getAdminStats();
 
@@ -261,14 +188,13 @@ describe('getAdminStats', () => {
 
 describe('getAuditLogs', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(getAuditLogs()).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(getAuditLogs()).rejects.toThrow('Forbidden');
     });
@@ -276,11 +202,10 @@ describe('getAuditLogs', () => {
     it('returns paginated audit logs for admin', async () => {
         mockAdmin('admin');
 
-        mockedDb.auditLog.findMany = jest.fn().mockResolvedValue([
+        mockDb.auditLog.findMany.mockResolvedValue([
             { id: 'l1', action: 'LOGIN', user: { id: 'u1', name: 'Admin', email: 'a@test.com' } },
         ]);
-        mockedDb.auditLog.count = jest.fn().mockResolvedValue(1);
-        syncDb();
+        mockDb.auditLog.count.mockResolvedValue(1);
 
         const result = await getAuditLogs(1, 10);
 
@@ -292,9 +217,8 @@ describe('getAuditLogs', () => {
     it('calculates pages correctly', async () => {
         mockAdmin('admin');
 
-        mockedDb.auditLog.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.auditLog.count = jest.fn().mockResolvedValue(25);
-        syncDb();
+        mockDb.auditLog.findMany.mockResolvedValue([]);
+        mockDb.auditLog.count.mockResolvedValue(25);
 
         const result = await getAuditLogs(1, 10);
         expect(result.pages).toBe(3); // Math.ceil(25/10)
@@ -305,14 +229,13 @@ describe('getAuditLogs', () => {
 
 describe('getReports', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(getReports()).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(getReports()).rejects.toThrow('Forbidden');
     });
@@ -320,11 +243,10 @@ describe('getReports', () => {
     it('returns paginated reports for admin', async () => {
         mockAdmin('admin');
 
-        mockedDb.report.findMany = jest.fn().mockResolvedValue([
+        mockDb.report.findMany.mockResolvedValue([
             { id: 'r1', reason: 'Spam', user: { id: 'u1', name: 'Reporter' } },
         ]);
-        mockedDb.report.count = jest.fn().mockResolvedValue(1);
-        syncDb();
+        mockDb.report.count.mockResolvedValue(1);
 
         const result = await getReports();
 
@@ -337,21 +259,20 @@ describe('getReports', () => {
 
 describe('createReport', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(
             createReport({ contentType: 'POST', contentId: 'p1', reason: 'Spam' })
         ).rejects.toThrow('Unauthorized');
     });
 
     it('creates a report and notifies admins', async () => {
-        mockSession('user-1', 'Reporter');
-        mockedDb.report.create = jest.fn().mockResolvedValue({
+        mockSession('user-1', 'Reporter', 'user');
+        mockDb.report.create.mockResolvedValue({
             id: 'r1',
             reason: 'Spam',
             contentType: 'POST',
             contentId: 'p1',
         });
-        syncDb();
 
         const result = await createReport({
             contentType: 'POST',
@@ -360,7 +281,7 @@ describe('createReport', () => {
         });
 
         expect(result).toHaveProperty('id', 'r1');
-        expect(mockedDb.report.create).toHaveBeenCalledWith(
+        expect(mockDb.report.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({
                     reason: 'Spam',
@@ -370,7 +291,7 @@ describe('createReport', () => {
                 }),
             })
         );
-        expect(mockedNotifyAdmins).toHaveBeenCalledWith(
+        expect(mockNotifyAdmins).toHaveBeenCalledWith(
             expect.objectContaining({ type: 'SYSTEM' })
         );
     });
@@ -380,14 +301,13 @@ describe('createReport', () => {
 
 describe('resolveReport', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(resolveReport('r1', 'REVIEWED')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(resolveReport('r1', 'REVIEWED')).rejects.toThrow('Forbidden');
     });
@@ -395,20 +315,19 @@ describe('resolveReport', () => {
     it('resolves a report and writes an audit log', async () => {
         mockAdmin('admin');
 
-        mockedDb.report.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.report.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await resolveReport('r1', 'REVIEWED');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.report.update).toHaveBeenCalledWith(
+        expect(mockDb.report.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: { id: 'r1' },
                 data: { status: 'REVIEWED' },
             })
         );
-        expect(mockedDb.auditLog.create).toHaveBeenCalledWith(
+        expect(mockDb.auditLog.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({ action: 'RESOLVE_REPORT' }),
             })
@@ -418,13 +337,12 @@ describe('resolveReport', () => {
     it('resolves a report as DISMISSED', async () => {
         mockAdmin('admin');
 
-        mockedDb.report.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.report.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await resolveReport('r1', 'DISMISSED');
         expect(result.success).toBe(true);
-        expect(mockedDb.report.update).toHaveBeenCalledWith(
+        expect(mockDb.report.update).toHaveBeenCalledWith(
             expect.objectContaining({ data: { status: 'DISMISSED' } })
         );
     });
@@ -434,34 +352,31 @@ describe('resolveReport', () => {
 
 describe('sendWarning', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(sendWarning('user-1', 'Stop it')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(sendWarning('user-2', 'Stop it')).rejects.toThrow('Forbidden');
     });
 
     it('creates a SYSTEM notification and audit log', async () => {
         mockAdmin('admin');
-        mockedDb.user.findUnique = jest
-            .fn()
-            .mockResolvedValueOnce({ role: 'admin' })
-            .mockResolvedValueOnce({ role: 'admin' })
-            .mockResolvedValueOnce({ role: 'user' });
+        mockDb.user.findUnique
+            .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
+            .mockResolvedValueOnce({ role: 'admin' }) // acting user
+            .mockResolvedValueOnce({ role: 'user' }); // target user
 
-        mockedDb.notification.create = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.notification.create.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await sendWarning('user-2', 'Please follow the rules');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.notification.create).toHaveBeenCalledWith(
+        expect(mockDb.notification.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({
                     type: 'SYSTEM',
@@ -470,7 +385,7 @@ describe('sendWarning', () => {
                 }),
             })
         );
-        expect(mockedDb.auditLog.create).toHaveBeenCalledWith(
+        expect(mockDb.auditLog.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({ action: 'SEND_WARNING' }),
             })
@@ -482,14 +397,13 @@ describe('sendWarning', () => {
 
 describe('banUserById', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(banUserById('user-2', 'Spam')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users calling the action', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(banUserById('user-2', 'Spam')).rejects.toThrow('Forbidden');
     });
@@ -497,33 +411,28 @@ describe('banUserById', () => {
     it('admin can ban a regular user', async () => {
         mockAdmin('admin');
 
-        // requireAdmin → findUnique (admin-1) → 'admin'
-        // banUserById → findUnique (admin-1 acting) → 'admin'
-        // banUserById → findUnique (user-2 target) → 'user'
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })  // requireAdmin check
             .mockResolvedValueOnce({ role: 'admin' })  // acting user
             .mockResolvedValueOnce({ role: 'user' });  // target user
 
-        mockedDb.user.update = jest.fn().mockResolvedValue({});
-        mockedDb.session.deleteMany = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
+        mockDb.session.deleteMany.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await banUserById('user-2', 'Spam');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.user.update).toHaveBeenCalledWith(
+        expect(mockDb.user.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: { id: 'user-2' },
                 data: { banned: true, banReason: 'Spam' },
             })
         );
-        expect(mockedDb.session.deleteMany).toHaveBeenCalledWith({
+        expect(mockDb.session.deleteMany).toHaveBeenCalledWith({
             where: { userId: 'user-2' },
         });
-        expect(mockedDb.auditLog.create).toHaveBeenCalledWith(
+        expect(mockDb.auditLog.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({ action: 'BAN_USER' }),
             })
@@ -533,13 +442,10 @@ describe('banUserById', () => {
     it('prevents regular admin from banning another admin', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
             .mockResolvedValueOnce({ role: 'admin' }) // acting user
             .mockResolvedValueOnce({ role: 'admin' }); // target user is also admin
-
-        syncDb();
 
         await expect(banUserById('admin-2', 'bad')).rejects.toThrow('Forbidden');
     });
@@ -547,16 +453,14 @@ describe('banUserById', () => {
     it('superadmin can ban another admin', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'superadmin' }) // requireAdmin check
             .mockResolvedValueOnce({ role: 'superadmin' }) // acting user
             .mockResolvedValueOnce({ role: 'admin' });     // target user
 
-        mockedDb.user.update = jest.fn().mockResolvedValue({});
-        mockedDb.session.deleteMany = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
+        mockDb.session.deleteMany.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await banUserById('admin-2', 'Misconduct');
         expect(result.success).toBe(true);
@@ -565,13 +469,10 @@ describe('banUserById', () => {
     it('throws User not found when target does not exist', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
             .mockResolvedValueOnce({ role: 'admin' }) // acting user
             .mockResolvedValueOnce(null);              // target not found
-
-        syncDb();
 
         await expect(banUserById('ghost-user', 'reason')).rejects.toThrow(
             'User not found'
@@ -583,14 +484,13 @@ describe('banUserById', () => {
 
 describe('unbanUserById', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(unbanUserById('user-2')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(unbanUserById('user-2')).rejects.toThrow('Forbidden');
     });
@@ -598,12 +498,12 @@ describe('unbanUserById', () => {
     it('throws User not found when target does not exist', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        // requireAdmin calls findUnique once.
+        // Promise.all calls findUnique twice (acting user, target user).
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
-            .mockResolvedValueOnce(null);              // target not found
-
-        syncDb();
+            .mockResolvedValueOnce({ role: 'admin' }) // acting user in Promise.all
+            .mockResolvedValueOnce(null);              // target not found in Promise.all
 
         await expect(unbanUserById('ghost')).rejects.toThrow('User not found');
     });
@@ -611,20 +511,18 @@ describe('unbanUserById', () => {
     it('unbans user and writes audit log', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
-            .mockResolvedValueOnce({ role: 'admin' })
-            .mockResolvedValueOnce({ role: 'admin' })
-            .mockResolvedValueOnce({ name: 'Banned', email: 'b@test.com', role: 'user' });
+        mockDb.user.findUnique
+            .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
+            .mockResolvedValueOnce({ role: 'admin' }) // acting user
+            .mockResolvedValueOnce({ name: 'Banned', email: 'b@test.com', role: 'user' }); // target user
 
-        mockedDb.user.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await unbanUserById('user-2');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.user.update).toHaveBeenCalledWith(
+        expect(mockDb.user.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: { id: 'user-2' },
                 data: { banned: false, banReason: null, banExpires: null },
@@ -637,21 +535,16 @@ describe('unbanUserById', () => {
 
 describe('activateUser', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(activateUser('user-1')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular admin (only superadmin can activate)', async () => {
         mockAdmin('admin');
 
-        // requireAdmin passes (admin role is fine), then activateUser does a
-        // second findUnique to check for 'superadmin' specifically.
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
             .mockResolvedValueOnce({ role: 'admin' }); // activateUser superadmin check
-
-        syncDb();
 
         await expect(activateUser('user-1')).rejects.toThrow('super-admins');
     });
@@ -659,25 +552,23 @@ describe('activateUser', () => {
     it('superadmin activates a pending user', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'superadmin' }) // requireAdmin check
             .mockResolvedValueOnce({ role: 'superadmin' }); // activateUser check
 
-        mockedDb.user.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await activateUser('user-1');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.user.update).toHaveBeenCalledWith(
+        expect(mockDb.user.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: { id: 'user-1' },
                 data: { pendingActivation: false, activationExpiresAt: null },
             })
         );
-        expect(mockedDb.auditLog.create).toHaveBeenCalledWith(
+        expect(mockDb.auditLog.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({ action: 'ACTIVATE_USER' }),
             })
@@ -689,14 +580,13 @@ describe('activateUser', () => {
 
 describe('deleteReportedContent', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(deleteReportedContent('POST', 'p1')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(deleteReportedContent('POST', 'p1')).rejects.toThrow('Forbidden');
     });
@@ -704,28 +594,25 @@ describe('deleteReportedContent', () => {
     it('soft-deletes a POST', async () => {
         mockAdmin('superadmin');
 
-        // requireAdmin check + acting user check
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'superadmin' }) // requireAdmin
             .mockResolvedValueOnce({ role: 'superadmin' }); // acting user in deleteReportedContent
 
-        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+        mockDb.post.findUnique.mockResolvedValue({
             deleted: false,
             user: { role: 'user' },
         });
-        mockedDb.post.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.post.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await deleteReportedContent('POST', 'p1');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.post.update).toHaveBeenCalledWith({
+        expect(mockDb.post.update).toHaveBeenCalledWith({
             where: { id: 'p1' },
             data: { deleted: true },
         });
-        expect(mockedDb.auditLog.create).toHaveBeenCalledWith(
+        expect(mockDb.auditLog.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({ action: 'DELETE_CONTENT' }),
             })
@@ -735,22 +622,20 @@ describe('deleteReportedContent', () => {
     it('soft-deletes a COMMENT', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({ role: 'admin' });
 
-        mockedDb.comment.findUnique = jest.fn().mockResolvedValue({
+        mockDb.comment.findUnique.mockResolvedValue({
             deleted: false,
             user: { role: 'user' },
         });
-        mockedDb.comment.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.comment.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await deleteReportedContent('COMMENT', 'c1');
         expect(result.success).toBe(true);
-        expect(mockedDb.comment.update).toHaveBeenCalledWith({
+        expect(mockDb.comment.update).toHaveBeenCalledWith({
             where: { id: 'c1' },
             data: { deleted: true },
         });
@@ -759,22 +644,18 @@ describe('deleteReportedContent', () => {
     it('soft-deletes a TOPIC', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'superadmin' }) // requireAdmin
             .mockResolvedValueOnce({ role: 'superadmin' }); // acting user check
 
-        mockedDb.communityTopic.findUnique = jest
-            .fn()
-            .mockResolvedValue({ deleted: false, user: { role: 'user' } });
+        mockDb.communityTopic.findUnique.mockResolvedValue({ deleted: false, user: { role: 'user' } });
 
-        mockedDb.communityTopic.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.communityTopic.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await deleteReportedContent('TOPIC', 'topic-1');
         expect(result.success).toBe(true);
-        expect(mockedDb.communityTopic.update).toHaveBeenCalledWith({
+        expect(mockDb.communityTopic.update).toHaveBeenCalledWith({
             where: { id: 'topic-1' },
             data: { deleted: true },
         });
@@ -783,22 +664,20 @@ describe('deleteReportedContent', () => {
     it('soft-deletes a REPLY', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({ role: 'admin' });
 
-        mockedDb.communityReply.findUnique = jest.fn().mockResolvedValue({
+        mockDb.communityReply.findUnique.mockResolvedValue({
             deleted: false,
             user: { role: 'user' },
         });
-        mockedDb.communityReply.update = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.communityReply.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await deleteReportedContent('REPLY', 'reply-1');
         expect(result.success).toBe(true);
-        expect(mockedDb.communityReply.update).toHaveBeenCalledWith({
+        expect(mockDb.communityReply.update).toHaveBeenCalledWith({
             where: { id: 'reply-1' },
             data: { deleted: true },
         });
@@ -807,32 +686,28 @@ describe('deleteReportedContent', () => {
     it('rejects content that is already deleted', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({ role: 'admin' });
 
-        mockedDb.post.findUnique = jest.fn().mockResolvedValue({ deleted: true });
-        mockedDb.post.update = jest.fn();
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.post.findUnique.mockResolvedValue({ deleted: true });
+        mockDb.post.update.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         await expect(deleteReportedContent('POST', 'p1')).rejects.toThrow(
             'Content not found',
         );
-        expect(mockedDb.post.update).not.toHaveBeenCalled();
+        expect(mockDb.post.update).not.toHaveBeenCalled();
     });
 
     it('throws for unknown content type', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({ role: 'admin' });
 
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.auditLog.create.mockResolvedValue({});
 
         await expect(deleteReportedContent('UNKNOWN', 'x1')).rejects.toThrow(
             'Unknown content type'
@@ -844,16 +719,15 @@ describe('deleteReportedContent', () => {
 
 describe('applyRoleChange', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
         await expect(applyRoleChange('user-1', 'user', 'admin')).rejects.toThrow(
             'Unauthorized'
         );
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
-        syncDb();
+        mockSession('user-1', 'Regular', 'user');
+        mockDb.user.findUnique.mockResolvedValue({ role: 'user' });
 
         await expect(applyRoleChange('user-2', 'user', 'admin')).rejects.toThrow(
             'Forbidden'
@@ -863,12 +737,12 @@ describe('applyRoleChange', () => {
     it('throws User not found when target does not exist', async () => {
         mockAdmin('admin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        // requireAdmin calls findUnique once.
+        // Promise.all calls findUnique twice (acting user, target user).
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' }) // requireAdmin check
-            .mockResolvedValueOnce(null);              // target not found
-
-        syncDb();
+            .mockResolvedValueOnce({ role: 'admin' }) // acting user in Promise.all
+            .mockResolvedValueOnce(null);              // target not found in Promise.all
 
         await expect(applyRoleChange('ghost', 'user', 'admin')).rejects.toThrow(
             'User not found'
@@ -877,8 +751,7 @@ describe('applyRoleChange', () => {
 
     it('prevents an ordinary admin from granting an elevated role', async () => {
         mockAdmin('admin');
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({
@@ -886,19 +759,17 @@ describe('applyRoleChange', () => {
                 email: 'user@test.com',
                 role: 'user',
             });
-        mockedDb.user.update = jest.fn();
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
 
         await expect(
             applyRoleChange('user-1', 'user', 'superadmin'),
         ).rejects.toThrow('Forbidden');
-        expect(mockedDb.user.update).not.toHaveBeenCalled();
+        expect(mockDb.user.update).not.toHaveBeenCalled();
     });
 
     it('uses the persisted role instead of trusting the caller-provided old role', async () => {
         mockAdmin('admin');
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({ role: 'admin' })
             .mockResolvedValueOnce({
@@ -906,43 +777,40 @@ describe('applyRoleChange', () => {
                 email: 'admin@test.com',
                 role: 'admin',
             });
-        mockedDb.user.update = jest.fn();
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
 
         await expect(
             applyRoleChange('admin-2', 'user', 'user'),
         ).rejects.toThrow('Forbidden');
-        expect(mockedDb.user.update).not.toHaveBeenCalled();
+        expect(mockDb.user.update).not.toHaveBeenCalled();
     });
 
     it('invalidates sessions, notifies user, and writes audit log', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.user.findUnique = jest
-            .fn()
+        mockDb.user.findUnique
             .mockResolvedValueOnce({ role: 'superadmin' })
             .mockResolvedValueOnce({ role: 'superadmin' })
             .mockResolvedValueOnce({ name: 'User', email: 'user@test.com', role: 'user' });
 
-        mockedDb.user.update = jest.fn().mockResolvedValue({});
-        mockedDb.session.deleteMany = jest.fn().mockResolvedValue({});
-        mockedDb.notification.create = jest.fn().mockResolvedValue({});
-        mockedDb.auditLog.create = jest.fn().mockResolvedValue({});
-        syncDb();
+        mockDb.user.update.mockResolvedValue({});
+        mockDb.session.deleteMany.mockResolvedValue({});
+        mockDb.notification.create.mockResolvedValue({});
+        mockDb.auditLog.create.mockResolvedValue({});
 
         const result = await applyRoleChange('user-1', 'user', 'admin');
 
         expect(result.success).toBe(true);
-        expect(mockedDb.session.deleteMany).toHaveBeenCalledWith({
+        expect(mockDb.session.deleteMany).toHaveBeenCalledWith({
             where: { userId: 'user-1' },
         });
-        expect(mockedDb.notification.create).toHaveBeenCalledWith({
+        expect(mockDb.notification.create).toHaveBeenCalledWith({
             data: expect.objectContaining({
                 userId: 'user-1',
                 type: 'SYSTEM',
             }),
         });
-        expect(mockedDb.auditLog.create).toHaveBeenCalledWith(
+        expect(mockDb.auditLog.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 data: expect.objectContaining({
                     action: 'CHANGE_ROLE',

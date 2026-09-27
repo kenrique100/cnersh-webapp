@@ -17,7 +17,12 @@ describe('sendVerificationEmail', () => {
     beforeEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
-        process.env = { ...originalEnv, RESEND_API_KEY: 'test-resend-key' };
+        // Reset process.env to a clean state with necessary defaults
+        process.env = {
+            ...originalEnv,
+            RESEND_API_KEY: 'test-resend-key',
+            NODE_ENV: 'test', // Ensure we are in a non-prod environment for logging checks
+        };
         delete process.env.EMAIL_FROM;
     });
 
@@ -31,7 +36,7 @@ describe('sendVerificationEmail', () => {
 
         await expect(
             sendVerificationEmail({ to: 'invalid', verificationUrl: 'https://app.example.com/verify', userName: 'Ada' }),
-        ).rejects.toThrow('Invalid email address: invalid');
+        ).rejects.toThrow('Invalid recipient email address');
 
         consoleError.mockRestore();
     });
@@ -43,7 +48,7 @@ describe('sendVerificationEmail', () => {
 
         await expect(
             sendVerificationEmail({ to: 'user@example.com', verificationUrl: 'https://app.example.com/verify', userName: 'Ada' }),
-        ).rejects.toThrow('RESEND_API_KEY environment variable is not set.');
+        ).rejects.toThrow('RESEND_API_KEY environment variable is not set. Please configure it in your .env file.');
 
         consoleError.mockRestore();
     });
@@ -94,8 +99,13 @@ describe('sendVerificationEmail', () => {
 
         await expect(
             sendVerificationEmail({ to: 'user@example.com', verificationUrl: 'https://app.example.com/verify', userName: 'Ada' }),
-        ).rejects.toThrow('Failed to send email: provider-failed');
+        ).rejects.toThrow('Failed to send email');
 
+        // The implementation redacts the URL from the error message
+        expect(consoleError).toHaveBeenCalledWith(
+            '[sendVerificationEmail] Resend API error:',
+            'provider-failed'
+        );
         consoleError.mockRestore();
     });
 
@@ -136,9 +146,20 @@ describe('sendVerificationEmail', () => {
             sendVerificationEmail({ to: 'user@example.com', verificationUrl: 'https://app.example.com/verify', userName: 'Ada' }),
         ).rejects.toThrow('smtp-down');
 
+        // Check that the generic failure log was called
+        expect(consoleError).toHaveBeenCalledWith(
+            '[sendVerificationEmail] failed:',
+            'smtp-down'
+        );
+
+        // Check that the detailed error log was called with redacted content
         expect(consoleError).toHaveBeenCalledWith(
             'Error details:',
-            expect.objectContaining({ message: 'smtp-down', to: 'user@example.com', userName: 'Ada' }),
+            expect.objectContaining({
+                message: 'smtp-down',
+                to: 'user@example.com',
+                userName: 'Ada'
+            })
         );
         consoleError.mockRestore();
     });

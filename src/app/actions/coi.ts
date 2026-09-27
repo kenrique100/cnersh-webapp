@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { z } from "zod";
@@ -24,8 +24,7 @@ export async function submitCOIDeclaration(data: {
   hasCOI: boolean;
   details?: string;
 }) {
-  const session = await authSession();
-  if (!session) throw new Error("Unauthorized");
+  const session = await verifiedAuthSession();
 
   const parsed = coiSchema.safeParse(data);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || "Invalid COI declaration");
@@ -47,8 +46,8 @@ export async function submitCOIDeclaration(data: {
 
     if (assignment.coiDeclaration) {
       if (
-        assignment.coiDeclaration.hasCOI === input.hasCOI
-        && (assignment.coiDeclaration.details || null) === (input.details || null)
+          assignment.coiDeclaration.hasCOI === input.hasCOI
+          && (assignment.coiDeclaration.details || null) === (input.details || null)
       ) {
         return {
           declaration: assignment.coiDeclaration,
@@ -119,13 +118,13 @@ export async function submitCOIDeclaration(data: {
 
     await tx.auditLog.create({
       data: input.hasCOI
-        ? {
+          ? {
             action: "COI_DECLARED",
             details: `Reviewer declared COI for protocol "${assignment.project.title}". Assignment excluded.`,
             targetId: assignment.project.id,
             userId: session.user.id,
           }
-        : {
+          : {
             action: "COI_CLEARED",
             details: `Reviewer declared no conflict of interest for protocol "${assignment.project.title}". Access granted.`,
             targetId: assignment.project.id,
@@ -153,8 +152,7 @@ export async function submitCOIDeclaration(data: {
 }
 
 export async function getMyReviewAssignments() {
-  const session = await authSession();
-  if (!session) throw new Error("Unauthorized");
+  const session = await verifiedAuthSession();
 
   return db.reviewAssignment.findMany({
     where: { reviewerId: session.user.id, project: { deleted: false } },

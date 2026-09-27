@@ -3,7 +3,7 @@
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 
-export async function updateProfile() {
+export async function getProfile() {
     const session = await verifiedAuthSession();
 
     try {
@@ -67,7 +67,12 @@ export async function getUserActivity() {
             db.project.count({ where: { userId, deleted: false } }),
         ]);
 
-        return { posts, projects, totalPosts, totalProjects };
+        return {
+            posts: posts.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
+            projects: projects.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
+            totalPosts,
+            totalProjects
+        };
     } catch (error) {
         console.error("Error fetching user activity:", error);
         return { posts: [], projects: [], totalPosts: 0, totalProjects: 0 };

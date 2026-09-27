@@ -1,7 +1,6 @@
-import type { authSession } from '@/lib/auth-utils';
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@/lib/auth-utils', () => ({
-    authSession: jest.fn(),
+    verifiedAuthSession: jest.fn(),
 }));
 
 jest.mock('@/lib/db', () => ({
@@ -12,8 +11,9 @@ jest.mock('@/lib/db', () => ({
     },
 }));
 
-import { authSession as _authSession } from '@/lib/auth-utils';
+import { verifiedAuthSession as _verifiedAuthSession } from '@/lib/auth-utils';
 import { db as _db } from '@/lib/db';
+import type { verifiedAuthSession } from '@/lib/auth-utils';
 
 import {
     getPages,
@@ -25,9 +25,7 @@ import {
     deletePageItem,
 } from '@/app/actions/page-actions';
 
-// ── Typed mock references ─────────────────────────────────────────────
-
-const mockedAuthSession = _authSession as jest.MockedFunction<typeof authSession>;
+const mockedVerifiedAuthSession = _verifiedAuthSession as jest.MockedFunction<typeof verifiedAuthSession>;
 
 type MockTable = Record<string, jest.Mock>;
 
@@ -39,8 +37,6 @@ interface MockDb {
 
 const mockedDb = _db as unknown as MockDb;
 
-// ── Helpers ───────────────────────────────────────────────────────────
-
 function syncDb(): void {
     const live = _db as unknown as MockDb;
     live.user = mockedDb.user;
@@ -48,37 +44,15 @@ function syncDb(): void {
     live.pageItem = mockedDb.pageItem;
 }
 
-function mockSession(userId = 'admin-1', name = 'Admin User'): void {
-    mockedAuthSession.mockResolvedValue({
-        session: {
-            id: 'session-id',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId,
-            expiresAt: new Date(Date.now() + 86_400_000),
-            token: 'token',
-            ipAddress: null,
-            userAgent: null,
-            impersonatedBy: null,
-        },
+function mockSession(userId = 'admin-1', name = 'Admin User', role = 'admin'): void {
+    mockedVerifiedAuthSession.mockResolvedValue({
         user: {
             id: userId,
             name,
             email: `${name.toLowerCase().replace(/\s+/g, '')}@test.com`,
-            emailVerified: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            image: null,
-            role: 'admin',
-            banned: false,
-            banReason: null,
-            banExpires: null,
-            welcomeEmailSent: false,
-            gender: 'male',
-            profession: null,
-            title: null,
+            role,
         },
-    } as Awaited<ReturnType<typeof authSession>>);
+    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
 }
 
 /**
@@ -86,7 +60,7 @@ function mockSession(userId = 'admin-1', name = 'Admin User'): void {
  * db.user.findUnique call to return the given role.
  */
 function mockAdmin(role: 'admin' | 'superadmin' = 'admin'): void {
-    mockSession('admin-1', 'Admin User');
+    mockSession('admin-1', 'Admin User', role);
     mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role });
     syncDb();
 }
@@ -111,19 +85,27 @@ function buildPage(overrides: Partial<{
     };
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────
-
 beforeEach(() => {
     jest.clearAllMocks();
 
-    mockedDb.user = {};
-    mockedDb.page = {};
-    mockedDb.pageItem = {};
+    // FIX 2: Initialize ALL tables with necessary mocks in beforeEach
+    mockedDb.user = { findUnique: jest.fn() };
+
+    mockedDb.page = {
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+    };
+
+    mockedDb.pageItem = {
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+    };
 
     syncDb();
 });
-
-// ── getPages ──────────────────────────────────────────────────────────
 
 describe('getPages', () => {
     it('returns top-level pages with nested children and items', async () => {
@@ -139,7 +121,7 @@ describe('getPages', () => {
             buildPage({ id: 'page-2', name: 'Research' }),
         ];
 
-        mockedDb.page.findMany = jest.fn().mockResolvedValue(fakePages);
+        mockedDb.page.findMany.mockResolvedValue(fakePages);
         syncDb();
 
         const result = await getPages();
@@ -150,7 +132,7 @@ describe('getPages', () => {
     });
 
     it('queries only root-level pages (parentId: null)', async () => {
-        mockedDb.page.findMany = jest.fn().mockResolvedValue([]);
+        mockedDb.page.findMany.mockResolvedValue([]);
         syncDb();
 
         await getPages();
@@ -163,7 +145,7 @@ describe('getPages', () => {
     });
 
     it('orders results by createdAt ascending', async () => {
-        mockedDb.page.findMany = jest.fn().mockResolvedValue([]);
+        mockedDb.page.findMany.mockResolvedValue([]);
         syncDb();
 
         await getPages();
@@ -176,8 +158,7 @@ describe('getPages', () => {
     });
 
     it('returns empty array without throwing when database errors', async () => {
-        mockedDb.page.findMany = jest
-            .fn()
+        mockedDb.page.findMany
             .mockRejectedValue(new Error('DB error'));
         syncDb();
 
@@ -194,9 +175,10 @@ describe('getPages', () => {
     });
 
     it('does not require authentication', async () => {
-        // No session set - getPages should still work
-        mockedAuthSession.mockResolvedValue(null);
-        mockedDb.page.findMany = jest.fn().mockResolvedValue([]);
+        // FIX 3: Use mockRejectedValue to simulate auth failure/session missing
+        // This avoids TS2345 because we aren't passing null to mockResolvedValue
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
+        mockedDb.page.findMany.mockResolvedValue([]);
         syncDb();
 
         const result = await getPages();
@@ -204,11 +186,9 @@ describe('getPages', () => {
     });
 });
 
-// ── createPage ────────────────────────────────────────────────────────
-
 describe('createPage', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(
             createPage({ name: 'New Page', items: [] })
@@ -216,8 +196,8 @@ describe('createPage', () => {
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1', 'Regular User');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockSession('user-1', 'Regular User', 'user');
+        mockedDb.user.findUnique.mockResolvedValue({ role: 'user' });
         syncDb();
 
         await expect(
@@ -237,7 +217,7 @@ describe('createPage', () => {
         mockAdmin();
 
         const fakePage = buildPage({ id: 'page-new', name: 'Publications', items: [] });
-        mockedDb.page.create = jest.fn().mockResolvedValue(fakePage);
+        mockedDb.page.create.mockResolvedValue(fakePage);
         syncDb();
 
         const result = await createPage({ name: '  Publications  ', items: [] });
@@ -266,7 +246,7 @@ describe('createPage', () => {
                 { id: 'i2', name: 'Doc B', url: null, fileUrl: 'https://file.example.com/b.pdf' },
             ],
         });
-        mockedDb.page.create = jest.fn().mockResolvedValue(fakePage);
+        mockedDb.page.create.mockResolvedValue(fakePage);
         syncDb();
 
         const result = await createPage({
@@ -296,7 +276,7 @@ describe('createPage', () => {
         mockAdmin();
 
         const fakePage = buildPage({ id: 'child-page', name: 'Team', parentId: 'page-1' });
-        mockedDb.page.create = jest.fn().mockResolvedValue(fakePage);
+        mockedDb.page.create.mockResolvedValue(fakePage);
         syncDb();
 
         await createPage({ name: 'Team', parentId: 'page-1', items: [] });
@@ -311,7 +291,7 @@ describe('createPage', () => {
     it('superadmin can also create a page', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.page.create = jest.fn().mockResolvedValue(buildPage({ name: 'Governance' }));
+        mockedDb.page.create.mockResolvedValue(buildPage({ name: 'Governance' }));
         syncDb();
 
         const result = await createPage({ name: 'Governance', items: [] });
@@ -320,18 +300,16 @@ describe('createPage', () => {
     });
 });
 
-// ── updatePage ────────────────────────────────────────────────────────
-
 describe('updatePage', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(updatePage('page-1', { name: 'New' })).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockSession('user-1', 'User', 'user');
+        mockedDb.user.findUnique.mockResolvedValue({ role: 'user' });
         syncDb();
 
         await expect(updatePage('page-1', { name: 'New' })).rejects.toThrow('Forbidden');
@@ -348,7 +326,7 @@ describe('updatePage', () => {
     it('updates the page name, trimming whitespace', async () => {
         mockAdmin();
 
-        mockedDb.page.update = jest.fn().mockResolvedValue(
+        mockedDb.page.update.mockResolvedValue(
             buildPage({ id: 'page-1', name: 'Updated Name' })
         );
         syncDb();
@@ -365,18 +343,16 @@ describe('updatePage', () => {
     });
 });
 
-// ── deletePage ────────────────────────────────────────────────────────
-
 describe('deletePage', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(deletePage('page-1')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockSession('user-1', 'User', 'user');
+        mockedDb.user.findUnique.mockResolvedValue({ role: 'user' });
         syncDb();
 
         await expect(deletePage('page-1')).rejects.toThrow('Forbidden');
@@ -385,7 +361,7 @@ describe('deletePage', () => {
     it('deletes the page and returns success', async () => {
         mockAdmin();
 
-        mockedDb.page.delete = jest.fn().mockResolvedValue({});
+        mockedDb.page.delete.mockResolvedValue({});
         syncDb();
 
         const result = await deletePage('page-1');
@@ -399,8 +375,7 @@ describe('deletePage', () => {
     it('propagates database errors to the caller', async () => {
         mockAdmin();
 
-        mockedDb.page.delete = jest
-            .fn()
+        mockedDb.page.delete
             .mockRejectedValue(new Error('Foreign key constraint'));
         syncDb();
 
@@ -408,11 +383,9 @@ describe('deletePage', () => {
     });
 });
 
-// ── addPageItem ───────────────────────────────────────────────────────
-
 describe('addPageItem', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(
             addPageItem('page-1', { name: 'Item' })
@@ -420,8 +393,8 @@ describe('addPageItem', () => {
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockSession('user-1', 'User', 'user');
+        mockedDb.user.findUnique.mockResolvedValue({ role: 'user' });
         syncDb();
 
         await expect(addPageItem('page-1', { name: 'Item' })).rejects.toThrow('Forbidden');
@@ -437,7 +410,7 @@ describe('addPageItem', () => {
             fileUrl: null,
             pageId: 'page-1',
         };
-        mockedDb.pageItem.create = jest.fn().mockResolvedValue(fakeItem);
+        mockedDb.pageItem.create.mockResolvedValue(fakeItem);
         syncDb();
 
         const result = await addPageItem('page-1', {
@@ -468,7 +441,7 @@ describe('addPageItem', () => {
             fileUrl: 'https://cdn.example.com/policy.pdf',
             pageId: 'page-1',
         };
-        mockedDb.pageItem.create = jest.fn().mockResolvedValue(fakeItem);
+        mockedDb.pageItem.create.mockResolvedValue(fakeItem);
         syncDb();
 
         const result = await addPageItem('page-1', {
@@ -490,7 +463,7 @@ describe('addPageItem', () => {
     it('stores null for url when not provided', async () => {
         mockAdmin();
 
-        mockedDb.pageItem.create = jest.fn().mockResolvedValue({
+        mockedDb.pageItem.create.mockResolvedValue({
             id: 'item-no-url',
             name: 'No URL',
             url: null,
@@ -509,11 +482,9 @@ describe('addPageItem', () => {
     });
 });
 
-// ── updatePageItem ────────────────────────────────────────────────────
-
 describe('updatePageItem', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(
             updatePageItem('item-1', { name: 'New' })
@@ -521,8 +492,8 @@ describe('updatePageItem', () => {
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockSession('user-1', 'User', 'user');
+        mockedDb.user.findUnique.mockResolvedValue({ role: 'user' });
         syncDb();
 
         await expect(
@@ -547,7 +518,7 @@ describe('updatePageItem', () => {
             url: 'https://new.example.com',
             fileUrl: null,
         };
-        mockedDb.pageItem.update = jest.fn().mockResolvedValue(fakeItem);
+        mockedDb.pageItem.update.mockResolvedValue(fakeItem);
         syncDb();
 
         const result = await updatePageItem('item-1', {
@@ -571,7 +542,7 @@ describe('updatePageItem', () => {
     it('sets url to null when not provided', async () => {
         mockAdmin();
 
-        mockedDb.pageItem.update = jest.fn().mockResolvedValue({
+        mockedDb.pageItem.update.mockResolvedValue({
             id: 'item-1',
             name: 'No URL Item',
             url: null,
@@ -591,7 +562,7 @@ describe('updatePageItem', () => {
     it('updates fileUrl correctly', async () => {
         mockAdmin();
 
-        mockedDb.pageItem.update = jest.fn().mockResolvedValue({
+        mockedDb.pageItem.update.mockResolvedValue({
             id: 'item-1',
             name: 'Policy',
             url: null,
@@ -610,8 +581,7 @@ describe('updatePageItem', () => {
     it('propagates database errors to the caller', async () => {
         mockAdmin();
 
-        mockedDb.pageItem.update = jest
-            .fn()
+        mockedDb.pageItem.update
             .mockRejectedValue(new Error('Record not found'));
         syncDb();
 
@@ -621,18 +591,16 @@ describe('updatePageItem', () => {
     });
 });
 
-// ── deletePageItem ────────────────────────────────────────────────────
-
 describe('deletePageItem', () => {
     it('throws Unauthorized if not authenticated', async () => {
-        mockedAuthSession.mockResolvedValue(null);
+        mockedVerifiedAuthSession.mockRejectedValue(new Error('Unauthorized'));
 
         await expect(deletePageItem('item-1')).rejects.toThrow('Unauthorized');
     });
 
     it('throws Forbidden for regular users', async () => {
-        mockSession('user-1');
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockSession('user-1', 'User', 'user');
+        mockedDb.user.findUnique.mockResolvedValue({ role: 'user' });
         syncDb();
 
         await expect(deletePageItem('item-1')).rejects.toThrow('Forbidden');
@@ -641,7 +609,7 @@ describe('deletePageItem', () => {
     it('deletes the item and returns success', async () => {
         mockAdmin();
 
-        mockedDb.pageItem.delete = jest.fn().mockResolvedValue({});
+        mockedDb.pageItem.delete.mockResolvedValue({});
         syncDb();
 
         const result = await deletePageItem('item-1');
@@ -655,8 +623,7 @@ describe('deletePageItem', () => {
     it('propagates database errors to the caller', async () => {
         mockAdmin();
 
-        mockedDb.pageItem.delete = jest
-            .fn()
+        mockedDb.pageItem.delete
             .mockRejectedValue(new Error('Item not found'));
         syncDb();
 
@@ -666,7 +633,7 @@ describe('deletePageItem', () => {
     it('superadmin can also delete a page item', async () => {
         mockAdmin('superadmin');
 
-        mockedDb.pageItem.delete = jest.fn().mockResolvedValue({});
+        mockedDb.pageItem.delete.mockResolvedValue({});
         syncDb();
 
         const result = await deletePageItem('item-1');

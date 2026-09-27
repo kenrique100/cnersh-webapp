@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+// FIX 1: Mock verifiedAuthSession instead of authSession
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 jest.mock("@/lib/notify-admins", () => ({ notifyAdmins: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
@@ -10,7 +11,8 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
-import { authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
 import {
@@ -20,7 +22,7 @@ import {
   resolveAppeal,
 } from "@/app/actions/appeal";
 
-const authMock = authSession as jest.Mock;
+const authMock = verifiedAuthSession as jest.Mock;
 const notifyMock = notifyAdmins as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 
@@ -62,17 +64,18 @@ beforeEach(() => {
 });
 
 test("filing validates authentication, grounds, ownership and rejection source state", async () => {
-  authMock.mockResolvedValue(null);
+  // FIX 2: Mock rejected value to simulate unauthorized access properly
+  authMock.mockRejectedValue(new Error("Unauthorized"));
   await expect(fileAppeal({ projectId: "project-1", grounds: "Error" }))
-    .rejects.toThrow("Unauthorized");
+      .rejects.toThrow("Unauthorized");
 
   login();
   await expect(fileAppeal({ projectId: "project-1", grounds: " " }))
-    .rejects.toThrow("Appeal grounds are required");
+      .rejects.toThrow("Appeal grounds are required");
 
   mockDb.project.findUnique.mockResolvedValue(rejectedProject({ userId: "other" }));
   await expect(fileAppeal({ projectId: "project-1", grounds: "Error" }))
-    .rejects.toThrow("Only the PI");
+      .rejects.toThrow("Only the PI");
 });
 
 test("appeal creation, project transition, history and audit are one transaction", async () => {
@@ -130,13 +133,13 @@ test("expired and future rejection dates are rejected", async () => {
     statusHistory: [{ createdAt: new Date(Date.now() - 31 * 86_400_000) }],
   }));
   await expect(fileAppeal({ projectId: "project-1", grounds: "Error" }))
-    .rejects.toThrow("appeal window");
+      .rejects.toThrow("appeal window");
 
   mockDb.project.findUnique.mockResolvedValueOnce(rejectedProject({
     statusHistory: [{ createdAt: new Date(Date.now() + 86_400_000) }],
   }));
   await expect(fileAppeal({ projectId: "project-1", grounds: "Error" }))
-    .rejects.toThrow("future");
+      .rejects.toThrow("future");
 });
 
 test("president resolves only pending appeals on UNDER_APPEAL protocols", async () => {
@@ -194,6 +197,10 @@ test("appeal reads enforce access and pending query source state", async () => {
   mockDb.user.findUnique.mockResolvedValue({ role: "admin" });
   mockDb.appeal.findUnique.mockResolvedValue(null);
   await expect(getProjectAppeal("project-1")).resolves.toBeNull();
+
+  // FIX 3: Re-assign $transaction after clearing mocks so the transaction callback executes
+  jest.clearAllMocks();
+  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
 
   mockDb.user.findUnique.mockResolvedValue({ role: "superadmin" });
   mockDb.appeal.findMany.mockResolvedValue([]);

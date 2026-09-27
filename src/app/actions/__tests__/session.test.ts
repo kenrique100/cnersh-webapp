@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock("@/lib/auth-utils", () => ({ authSession: jest.fn() }));
+// FIX 1: Mock verifiedAuthSession instead of authSession
+jest.mock("@/lib/auth-utils", () => ({ verifiedAuthSession: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
     $transaction: jest.fn(),
@@ -8,7 +9,8 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
-import { authSession } from "@/lib/auth-utils";
+// FIX 1: Import verifiedAuthSession
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import {
   createCommitteeSession,
@@ -16,7 +18,7 @@ import {
   updateSessionStatus,
 } from "@/app/actions/session";
 
-const authMock = authSession as jest.Mock;
+const authMock = verifiedAuthSession as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 const futureDate = () => new Date(Date.now() + 7 * 86_400_000).toISOString();
 
@@ -27,7 +29,10 @@ function login(role = "admin") {
 
 beforeEach(() => {
   jest.clearAllMocks();
+
+  // FIX 2: Always re-assign $transaction with callback execution after clearAllMocks
   mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
+
   mockDb.user = { findUnique: jest.fn() };
   mockDb.committeeSession = {
     findUnique: jest.fn(),
@@ -137,7 +142,7 @@ test("completion requires quorum and minutes", async () => {
     minutes: null,
   });
   await expect(updateSessionStatus("session-1", "COMPLETED"))
-    .rejects.toThrow("Quorum");
+      .rejects.toThrow("Quorum");
 });
 
 test("cancellation atomically reverts only current agenda projects and records history", async () => {
@@ -156,7 +161,7 @@ test("cancellation atomically reverts only current agenda projects and records h
   mockDb.project.updateMany.mockResolvedValue({ count: 1 });
 
   await expect(updateSessionStatus("session-1", "CANCELLED", { notes: "Weather" }))
-    .resolves.toBe(updated);
+      .resolves.toBe(updated);
   expect(mockDb.project.findMany).toHaveBeenCalledWith(expect.objectContaining({
     where: expect.objectContaining({ deleted: false, status: "SESSION_SCHEDULED" }),
   }));

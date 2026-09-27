@@ -1,6 +1,6 @@
 "use server";
 
-import { authSession } from "@/lib/auth-utils";
+import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { AARStatus } from "@/generated/prisma";
 import { z } from "zod";
@@ -22,13 +22,13 @@ const statusTransitions: Partial<Record<AARStatus, readonly AARStatus[]>> = {
 const AAR_MESSAGES = {
   submitted: (title: string) => `AAR application submitted for protocol "${title}"`,
   receivedByDros: (title: string, due: Date) =>
-    `Your AAR application for "${title}" has been received by DROS. Review deadline: ${due.toLocaleDateString()}`,
+      `Your AAR application for "${title}" has been received by DROS. Review deadline: ${due.toLocaleDateString()}`,
   status: {
     AUTHORIZED: (title: string) => `Your AAR application for "${title}" has been authorized by the Minister.`,
     CLARIFICATION_REQUESTED: (title: string) =>
-      `DROS has requested clarification for your AAR application for "${title}". You have ${AAR_WORKING_DAYS.clarificationResponse} working days to respond.`,
+        `DROS has requested clarification for your AAR application for "${title}". You have ${AAR_WORKING_DAYS.clarificationResponse} working days to respond.`,
     INADMISSIBLE: (title: string) =>
-      `Your AAR application for "${title}" has been declared inadmissible. Please start a new application.`,
+        `Your AAR application for "${title}" has been declared inadmissible. Please start a new application.`,
   } as Partial<Record<AARStatus, (title: string) => string>>,
 };
 
@@ -54,8 +54,7 @@ function addWorkingDays(startDate: Date, days: number): Date {
 }
 
 async function requireSessionAndRole(allowedRoles: string[]) {
-  const session = await authSession();
-  if (!session) throw new Error("Unauthorized");
+  const session = await verifiedAuthSession();
   const user = await db.user.findUnique({
     where: { id: session.user.id },
     select: { role: true },
@@ -65,8 +64,7 @@ async function requireSessionAndRole(allowedRoles: string[]) {
 }
 
 export async function startAARApplication(projectId: string) {
-  const session = await authSession();
-  if (!session) throw new Error("Unauthorized");
+  const session = await verifiedAuthSession();
   const validProjectId = parse(idSchema, projectId);
 
   return db.$transaction(async (tx) => {
@@ -94,8 +92,7 @@ export async function startAARApplication(projectId: string) {
 }
 
 export async function submitAARApplication(projectId: string, notes?: string) {
-  const session = await authSession();
-  if (!session) throw new Error("Unauthorized");
+  const session = await verifiedAuthSession();
   const validProjectId = parse(idSchema, projectId);
   const validNotes = parse(z.string().trim().max(20_000).optional(), notes);
 
@@ -113,8 +110,8 @@ export async function submitAARApplication(projectId: string, notes?: string) {
       throw new Error("Forbidden: Only the applicant can submit this AAR application");
     }
     if (
-      application.project.status !== "APPROVED"
-      && application.project.status !== "APPROVED_WITH_CONDITIONS"
+        application.project.status !== "APPROVED"
+        && application.project.status !== "APPROVED_WITH_CONDITIONS"
     ) {
       throw new Error("AAR applications can only be submitted for approved protocols");
     }
@@ -195,9 +192,9 @@ export async function confirmAARReceipt(projectId: string) {
 }
 
 export async function updateAARStatus(
-  projectId: string,
-  status: AARStatus,
-  data?: { aarRefNumber?: string; notes?: string },
+    projectId: string,
+    status: AARStatus,
+    data?: { aarRefNumber?: string; notes?: string },
 ) {
   const session = await requireSessionAndRole(["admin", "superadmin"]);
   const validProjectId = parse(idSchema, projectId);
@@ -222,8 +219,8 @@ export async function updateAARStatus(
       throw new Error("An AAR reference number is required for authorization");
     }
     if (
-      (validStatus === "CLARIFICATION_REQUESTED" || validStatus === "INADMISSIBLE")
-      && !input.notes
+        (validStatus === "CLARIFICATION_REQUESTED" || validStatus === "INADMISSIBLE")
+        && !input.notes
     ) {
       throw new Error(`Notes are required when setting AAR status to ${validStatus}`);
     }
@@ -262,8 +259,7 @@ export async function updateAARStatus(
 }
 
 export async function getAARApplication(projectId: string) {
-  const session = await authSession();
-  if (!session) throw new Error("Unauthorized");
+  const session = await verifiedAuthSession();
   const validProjectId = parse(idSchema, projectId);
 
   const project = await db.project.findUnique({

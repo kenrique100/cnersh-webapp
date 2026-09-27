@@ -1,5 +1,5 @@
 import { authIsRequired } from "@/lib/auth-utils";
-import { updateProfile } from "@/app/actions/user";
+import { getProfile } from "@/app/actions/user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileTextIcon } from "lucide-react";
 
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ViewFormsPage() {
     await authIsRequired();
-    await updateProfile();
+    await getProfile();
 
     return (
         <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">

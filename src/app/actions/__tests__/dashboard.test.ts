@@ -28,7 +28,7 @@ import {
     getAdminDashboardData,
     getUserActivity,
     getUserDashboardData,
-    updateProfile,
+    getProfile, // FIX: Renamed from updateProfile to match implementation
 } from "@/app/actions/dashboard";
 
 const mockedVerifiedAuthSession =
@@ -159,9 +159,10 @@ afterEach(() => {
     jest.restoreAllMocks();
 });
 
-describe("updateProfile", () => {
+// FIX: Renamed describe block to match exported function getProfile
+describe("getProfile", () => {
     it("throws Unauthorized when not authenticated", async () => {
-        await expect(updateProfile()).rejects.toThrow("Unauthorized");
+        await expect(getProfile()).rejects.toThrow("Unauthorized");
         expect(mockedDb.user.findUnique).not.toHaveBeenCalled();
     });
 
@@ -178,7 +179,7 @@ describe("updateProfile", () => {
             title: "Dr",
         });
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result).toEqual({
             email: "alice@test.com",
@@ -211,7 +212,7 @@ describe("updateProfile", () => {
 
         mockedDb.user.findUnique.mockResolvedValue(null);
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result).toBeNull();
     });
@@ -227,7 +228,7 @@ describe("updateProfile", () => {
             .spyOn(console, "error")
             .mockImplementation(() => undefined);
 
-        const result = await updateProfile();
+        const result = await getProfile();
 
         expect(result).toBeNull();
 
@@ -350,11 +351,12 @@ describe("getUserActivity", () => {
     it("falls back to page 1 and limit 10 for invalid pagination values", async () => {
         mockSession("user-1");
 
+        // Zod .catch(1) for page and .catch(10) for limit means invalid inputs revert to defaults
         await getUserActivity(0, 100);
 
         expect(mockedDb.post.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                skip: 0,
+                skip: 0, // (1 - 1) * 10
                 take: 10,
             })
         );

@@ -3,13 +3,10 @@
  */
 
 import type { NextRequest } from "next/server";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { utapi } from "@/lib/uploadthing";
 import { DELETE } from "@/app/api/delete-blob/route";
-import { GET as getFile } from "@/app/api/files/[fileId]/route";
 import { GET as viewFile } from "@/app/api/files/view/route";
 
 jest.mock("@/lib/auth-utils", () => ({
@@ -75,67 +72,6 @@ describe("file API authorization", () => {
         jest.clearAllMocks();
     });
 
-    it("rejects anonymous file reads before querying the database", async () => {
-        mockedVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
-
-        const response = await getFile(
-            {} as NextRequest,
-            { params: Promise.resolve({ fileId: "file-1" }) },
-        );
-
-        expect(response.status).toBe(401);
-        expect(mockedDb.file.findUnique).not.toHaveBeenCalled();
-    });
-
-    it("does not let an authenticated user read another user's file", async () => {
-        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
-        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
-            data: Buffer.from("secret").toString("base64"),
-            url: null,
-            mimeType: "text/plain",
-            filename: "secret.txt",
-            userId: "owner-2",
-        });
-
-        const response = await getFile(
-            {} as NextRequest,
-            { params: Promise.resolve({ fileId: "file-1" }) },
-        );
-
-        expect(response.status).toBe(404);
-    });
-
-    it("marks an owner's file response private and non-cacheable", async () => {
-        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
-        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
-            data: Buffer.from("content").toString("base64"),
-            url: null,
-            mimeType: "text/plain",
-            filename: "notes.txt",
-            userId: "owner-1",
-        });
-
-        const response = await getFile(
-            {} as NextRequest,
-            { params: Promise.resolve({ fileId: "file-1" }) },
-        );
-
-        expect(response.status).toBe(200);
-        expect(response.headers.get("Cache-Control")).toContain("private");
-        expect(response.headers.get("Cache-Control")).toContain("no-store");
-    });
-
-    it("keeps the global Next.js file-route cache policy private", () => {
-        const nextConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
-
-        expect(nextConfig).toContain(
-            '{ source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "private, no-store" }] }',
-        );
-        expect(nextConfig).not.toContain(
-            '{ source: "/api/files/:fileId", headers: [{ key: "Cache-Control", value: "public',
-        );
-    });
-
     it("rejects anonymous storage-key redirects", async () => {
         mockedVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
 
@@ -147,6 +83,48 @@ describe("file API authorization", () => {
 
         expect(response.status).toBe(401);
         expect(mockedDb.file.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("rejects anonymous file-id redirects", async () => {
+        mockedVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
+
+        const request = {
+            nextUrl: new URL("https://app.example/api/files/view?id=file-1"),
+        } as NextRequest;
+
+        const response = await viewFile(request);
+
+        expect(response.status).toBe(401);
+        expect(mockedDb.file.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when neither storageKey nor id is supplied", async () => {
+        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
+
+        const request = {
+            nextUrl: new URL("https://app.example/api/files/view"),
+        } as NextRequest;
+
+        const response = await viewFile(request);
+
+        expect(response.status).toBe(400);
+        expect(mockedDb.file.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("does not let an authenticated user read another user's file by id", async () => {
+        mockedVerifiedAuthSession.mockResolvedValueOnce(ownerSession);
+        (mockedDb.file.findUnique as jest.Mock).mockResolvedValueOnce({
+            url: "https://ufs.example/secret",
+            userId: "owner-2",
+        });
+
+        const request = {
+            nextUrl: new URL("https://app.example/api/files/view?id=file-1"),
+        } as NextRequest;
+
+        const response = await viewFile(request);
+
+        expect(response.status).toBe(404);
     });
 
     it("rejects anonymous deletion before parsing or storage access", async () => {
