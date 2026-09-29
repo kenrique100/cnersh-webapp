@@ -7,7 +7,7 @@ const useRouter = jest.fn(() => ({
     refresh: jest.fn(),
 }));
 
-const usePathname = jest.fn(() => '/');
+const usePathname = jest.fn(() => "/");
 const useSearchParams = jest.fn(() => new URLSearchParams());
 const useParams = jest.fn(() => ({}));
 
@@ -16,7 +16,7 @@ const redirect = jest.fn((url: string) => {
 });
 
 const notFound = jest.fn(() => {
-    throw new Error('NEXT_NOT_FOUND');
+    throw new Error("NEXT_NOT_FOUND");
 });
 
 export { useRouter, usePathname, useSearchParams, useParams, redirect, notFound };
