@@ -123,7 +123,7 @@ export default async function PrivacyTermsPage() {
                                 <p>
                                     You have the right to access, correct, or request deletion of your personal data.
                                     To exercise these rights, please contact the CNERSH administration through the
-                                    Help Center.
+                                    Support page.
                                 </p>
                             </div>
                         </div>
@@ -226,10 +226,13 @@ export default async function PrivacyTermsPage() {
                 <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
                     <p>
                         For questions about our privacy policy or terms, please use the{" "}
-                        <span className="text-blue-600 dark:text-blue-400 font-medium">
-                            Help Center chat
-                        </span>
-                        {" "}button at the bottom-right of the page to contact support.
+                        <Link
+                            href="/pages/support"
+                            className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                        >
+                            Support page
+                        </Link>
+                        {" "}to contact us.
                     </p>
                     <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                         CNERSH © {new Date().getFullYear()}

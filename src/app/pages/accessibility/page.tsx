@@ -170,8 +170,14 @@ export default async function AccessibilityPage() {
                                 <p>
                                     If you experience any difficulty accessing content or functionality on our platform,
                                     or if you have suggestions for improving accessibility, please contact us through
-                                    the Help Center chat available at the bottom-right of every page. Your feedback
-                                    helps us serve all users better.
+                                    the{" "}
+                                    <Link
+                                        href="/pages/support"
+                                        className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                                    >
+                                        Support page
+                                    </Link>
+                                    . Your feedback helps us serve all users better.
                                 </p>
                             </div>
                         </div>
@@ -182,10 +188,13 @@ export default async function AccessibilityPage() {
                 <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
                     <p>
                         For accessibility concerns or feedback, please use the{" "}
-                        <span className="text-blue-600 dark:text-blue-400 font-medium">
-                            Help Center chat
-                        </span>
-                        {" "}button at the bottom-right of the page to contact support.
+                        <Link
+                            href="/pages/support"
+                            className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                        >
+                            Support page
+                        </Link>
+                        {" "}to contact us.
                     </p>
                 </div>
             </main>
