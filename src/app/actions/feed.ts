@@ -134,10 +134,6 @@ export async function createPost(data: { content: string; image?: string; video?
     };
 }
 
-/**
- * Community-wide feed. The session is used only to enrich each post
- * with the viewer's read state. There is deliberately NO `userId` parameter.
- */
 export async function getPosts(page: number = 1, limit: number = 10) {
     const session = await verifiedAuthSession();
     const safePage = pageSchema.parse(page);
