@@ -7,15 +7,37 @@ import { sendResetPasswordEmail } from "./send-reset-password-email";
 import { ac, roles } from "./permissions";
 import { admin } from "better-auth/plugins";
 
-const authBaseUrl = process.env.BETTER_AUTH_URL;
-if (!process.env.BETTER_AUTH_SECRET) throw new Error("BETTER_AUTH_SECRET must be set");
-if (!authBaseUrl) throw new Error("BETTER_AUTH_URL must be set");
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET)
-  throw new Error("Google OAuth env vars must be set");
+/**
+ * `next build` imports every route to collect page data, but no request is
+ * ever served during a build — the auth instance is never actually invoked.
+ * Without this exemption, `next build` in an environment that does not carry
+ * production secrets (CI, a fresh clone, a Vercel preview build) fails at
+ * the first route that transitively imports this module. A running server
+ * still fails closed because every real env var is still required.
+ */
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+function readEnv(name: string, buildPlaceholder: string): string {
+  const value = process.env[name];
+  if (value) return value;
+  if (isBuildPhase) return buildPlaceholder;
+  throw new Error(`${name} must be set`);
+}
+
+const authSecret = readEnv(
+    "BETTER_AUTH_SECRET",
+    "build-placeholder-secret-not-used-at-runtime-0000"
+);
+const authBaseUrl = readEnv("BETTER_AUTH_URL", "http://localhost:3000");
+const googleClientId = readEnv("GOOGLE_CLIENT_ID", "build-placeholder-google-id");
+const googleClientSecret = readEnv(
+    "GOOGLE_CLIENT_SECRET",
+    "build-placeholder-google-secret"
+);
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: authSecret,
   baseURL: authBaseUrl,
   trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
       ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",")
@@ -79,8 +101,8 @@ export const auth = betterAuth({
 
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
       prompt: "select_account",
       redirectUri: `${authBaseUrl}/api/auth/callback/google`,
     },

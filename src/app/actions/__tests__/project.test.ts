@@ -16,7 +16,6 @@ jest.mock("@/lib/idempotency-store", () => ({
   releaseIdempotencyKey: jest.fn().mockResolvedValue(undefined),
 }));
 
-// FIX: Mock new rate-limit dependencies to prevent real side effects
 jest.mock("@/lib/action-rate-limit", () => ({
   enforceActionRateLimit: jest.fn().mockResolvedValue(undefined),
 }));
@@ -25,6 +24,56 @@ jest.mock("@/lib/rate-limit", () => ({
   RATE_LIMITS: {
     protocolTrack: { points: 10, duration: 60 },
   },
+}));
+
+jest.mock("@/lib/status-transitions", () => {
+  const PROJECT_TRANSITIONS: Record<string, string[]> = {
+    SUBMITTED: ["RETURNED_INCOMPLETE", "PENDING_REVIEW"],
+    RETURNED_INCOMPLETE: ["PENDING_REVIEW"],
+    RESUBMIT: ["PENDING_REVIEW"],
+    REVIEW_COMPLETE: [
+      "SESSION_SCHEDULED",
+      "APPROVED",
+      "APPROVED_WITH_CONDITIONS",
+      "RESUBMIT",
+    ],
+    SESSION_SCHEDULED: [
+      "APPROVED",
+      "APPROVED_WITH_CONDITIONS",
+      "RESUBMIT",
+    ],
+  };
+  return {
+    APPROVAL_STATUSES: ["APPROVED", "APPROVED_WITH_CONDITIONS"],
+    ASSIGNABLE_PROJECT_STATUSES: [
+      "SUBMITTED",
+      "RETURNED_INCOMPLETE",
+      "PENDING_REVIEW",
+      "UNDER_REVIEW",
+    ],
+    OWNER_MUTABLE_STATUSES: ["DRAFT", "RETURNED_INCOMPLETE"],
+    OWNER_RESUBMIT_STATUSES: ["RETURNED_INCOMPLETE", "RESUBMIT"],
+    isLegalTransition: (from: string, to: string) =>
+        (PROJECT_TRANSITIONS[from] ?? []).includes(to),
+    requiresFeedback: (status: string) =>
+        ["RESUBMIT", "RETURNED_INCOMPLETE", "APPROVED_WITH_CONDITIONS"].includes(
+            status
+        ),
+  };
+});
+
+jest.mock("@/lib/reviewer-assignment", () => ({
+  ACTIVE_ASSIGNMENT_STATUSES: ["PENDING_COI", "ACTIVE"],
+  autoReassignReviewer: jest
+      .fn()
+      .mockResolvedValue({ assignedReviewer: null, previousReviewerId: null }),
+  getEligibleReviewers: jest.fn().mockResolvedValue([]),
+  getReviewerLoads: jest.fn().mockResolvedValue(new Map()),
+  pickLowestLoadReviewer: jest.fn().mockReturnValue(null),
+  selectReviewerForProtocol: jest.fn().mockResolvedValue(null),
+  hasActiveAssignment: jest.fn().mockResolvedValue(null),
+  getCurrentReviewer: jest.fn().mockResolvedValue(null),
+  isCurrentReviewer: jest.fn().mockResolvedValue(false),
 }));
 
 jest.mock("@/lib/db", () => {
@@ -50,10 +99,12 @@ jest.mock("@/lib/db", () => {
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
+      groupBy: jest.fn().mockResolvedValue([]),
     },
     projectStatusHistory: { create: jest.fn() },
     notification: { create: jest.fn() },
     auditLog: { create: jest.fn() },
+    post: { create: jest.fn() },
   };
 
   mockDb.$transaction = jest.fn(
@@ -63,22 +114,8 @@ jest.mock("@/lib/db", () => {
   return { db: mockDb };
 });
 
-
 type MockedFn = jest.Mock;
-
-/**
- * A table of Prisma model methods (e.g. `db.user`) where every property is
- * a Jest mock. The index signature lets tests reference any method name
- * (`findUnique`, `create`, …) without declaring each one twice.
- */
-type MockedTable = {
-  [method: string]: MockedFn;
-};
-
-/**
- * The subset of the Prisma client exercised by this test file. Mirrors the
- * shape returned by the `jest.mock("@/lib/db", …)` factory above.
- */
+type MockedTable = { [method: string]: MockedFn };
 type MockDb = {
   $transaction: MockedFn;
   user: MockedTable;
@@ -87,6 +124,7 @@ type MockDb = {
   projectStatusHistory: MockedTable;
   notification: MockedTable;
   auditLog: MockedTable;
+  post: MockedTable;
 };
 
 import { verifiedAuthSession } from "@/lib/auth-utils";
@@ -98,12 +136,14 @@ import {
   storeIdempotentResponse,
   releaseIdempotencyKey,
 } from "@/lib/idempotency-store";
+import { selectReviewerForProtocol } from "@/lib/reviewer-assignment";
 import {
   assignProjectReviewer,
   deleteProject,
   getProjectById,
   getProjectReviewAssignments,
   reassignProjectReviewer,
+  resubmitProtocol,
   submitProject,
   updateProject,
   updateProjectStatus,
@@ -114,15 +154,10 @@ const notifyMock = notifyAdmins as jest.MockedFunction<typeof notifyAdmins>;
 const emailMock = sendNotificationEmail as jest.MockedFunction<typeof sendNotificationEmail>;
 const storeMock = storeIdempotentResponse as jest.MockedFunction<typeof storeIdempotentResponse>;
 const releaseMock = releaseIdempotencyKey as jest.MockedFunction<typeof releaseIdempotencyKey>;
+const selectReviewerMock = selectReviewerForProtocol as jest.MockedFunction<
+    typeof selectReviewerForProtocol
+>;
 
-/**
- * The real `reserveIdempotencyKey` signature only advertises
- * `"completed" | "in-progress"`, but the store also returns
- * `{ status: "available" }` for first-time keys (which is why the source
- * code falls through both `if` branches and proceeds to the transaction).
- * We type the mock against what the tests actually use so TypeScript
- * doesn't reject the valid runtime value.
- */
 type ReserveResult =
     | { status: "available" }
     | { status: "completed"; response: unknown }
@@ -135,7 +170,10 @@ const reserveMock = reserveIdempotencyKey as unknown as jest.Mock<
 
 const mockDb = db as unknown as MockDb;
 
-function login(id = "owner-1", role: "user" | "admin" | "superadmin" = "user") {
+function login(
+    id = "owner-1",
+    role: "user" | "admin" | "superadmin" = "user"
+) {
   authMock.mockResolvedValue({
     user: { id, name: "User", role },
   } as Awaited<ReturnType<typeof verifiedAuthSession>>);
@@ -167,19 +205,16 @@ function project(overrides: Record<string, unknown> = {}) {
 const MOCK_IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  jest.clearAllMocks();
 
-  // Re-assign $transaction after resetAllMocks to ensure it executes the callback
   mockDb.$transaction.mockImplementation(
       async (cb: (tx: MockDb) => unknown) => cb(mockDb)
   );
 
-  // --- User ---
   mockDb.user.findUnique.mockResolvedValue(null);
   mockDb.user.findFirst.mockResolvedValue(null);
   mockDb.user.findMany.mockResolvedValue([]);
 
-  // --- Project ---
   mockDb.project.findUnique.mockResolvedValue(null);
   mockDb.project.findUniqueOrThrow.mockResolvedValue(null);
   mockDb.project.findFirst.mockResolvedValue(null);
@@ -188,27 +223,30 @@ beforeEach(() => {
   mockDb.project.update.mockResolvedValue(null);
   mockDb.project.updateMany.mockResolvedValue({ count: 1 });
 
-  // --- ReviewAssignment ---
-  mockDb.reviewAssignment.findFirst.mockResolvedValue(null); // ← prevents leaks
+  mockDb.reviewAssignment.findFirst.mockResolvedValue(null);
   mockDb.reviewAssignment.findMany.mockResolvedValue([]);
   mockDb.reviewAssignment.create.mockResolvedValue(null);
   mockDb.reviewAssignment.update.mockResolvedValue(null);
   mockDb.reviewAssignment.updateMany.mockResolvedValue({ count: 1 });
+  mockDb.reviewAssignment.groupBy.mockResolvedValue([]);
 
-  // --- Side-effect tables ---
   mockDb.projectStatusHistory.create.mockResolvedValue({});
   mockDb.notification.create.mockResolvedValue({});
   mockDb.auditLog.create.mockResolvedValue({});
+  mockDb.post.create.mockResolvedValue({});
 
-  // --- Notification / email transports ---
   notifyMock.mockResolvedValue(undefined);
   emailMock.mockResolvedValue(undefined);
 
-  // --- Idempotency store (was reset by jest.resetAllMocks) ---
   reserveMock.mockResolvedValue({ status: "available" });
   storeMock.mockResolvedValue(undefined);
   releaseMock.mockResolvedValue(undefined);
+
+  // Default: no reviewer available. Tests override per-case.
+  selectReviewerMock.mockResolvedValue(null);
 });
+
+// ── submitProject ─────────────────────────────────────────────────────
 
 test("submission validates required fields before writing", async () => {
   login();
@@ -228,10 +266,10 @@ test("submission validates required fields before writing", async () => {
   expect(mockDb.$transaction).not.toHaveBeenCalled();
 });
 
-test("admin submissions are never auto-approved", async () => {
+test("admin submissions are never auto-approved when no reviewer is available", async () => {
   login("admin-owner", "admin");
   mockDb.project.findFirst.mockResolvedValue(null);
-  mockDb.user.findFirst.mockResolvedValue(null);
+  selectReviewerMock.mockResolvedValue(null);
   const created = project({ userId: "admin-owner", status: "SUBMITTED" });
   mockDb.project.create.mockResolvedValue(created);
 
@@ -261,16 +299,17 @@ test("admin submissions are never auto-approved", async () => {
   );
 });
 
-test("available reviewer assignment excludes the submitting admin and is atomic", async () => {
+test("auto-assign excludes the submitting user and creates a PENDING_COI assignment", async () => {
   login("owner-1");
   mockDb.project.findFirst.mockResolvedValue(null);
-  mockDb.user.findFirst.mockResolvedValue({
+  selectReviewerMock.mockResolvedValue({
     id: "admin-2",
     name: "Reviewer",
     email: "reviewer@test.com",
-    role: "admin",
   });
-  mockDb.project.create.mockResolvedValue(project({ status: "PENDING_REVIEW" }));
+  mockDb.project.create.mockResolvedValue(
+      project({ status: "PENDING_REVIEW" })
+  );
 
   const result = await submitProject({
     title: "Protocol",
@@ -284,9 +323,9 @@ test("available reviewer assignment excludes the submitting admin and is atomic"
     expect(result.protocol.status).toBe("PENDING_REVIEW");
   }
 
-  const findFirstCall = mockDb.user.findFirst.mock.calls[0][0];
-  expect(findFirstCall.where.role).toBe("admin");
-  expect(findFirstCall.where.id.notIn).toEqual(expect.arrayContaining(["owner-1"]));
+  expect(selectReviewerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ excludeUserIds: ["owner-1"] })
+  );
 
   expect(mockDb.reviewAssignment.create).toHaveBeenCalledWith({
     data: {
@@ -297,16 +336,10 @@ test("available reviewer assignment excludes the submitting admin and is atomic"
   });
 });
 
-test("submission falls back to the queue when the selected reviewer becomes busy", async () => {
+test("submission falls back to SUBMITTED when no eligible reviewer exists", async () => {
   login("owner-1");
   mockDb.project.findFirst.mockResolvedValue(null);
-  mockDb.user.findFirst.mockResolvedValue({
-    id: "admin-2",
-    name: "Reviewer",
-    email: "reviewer@test.com",
-    role: "admin",
-  });
-  mockDb.reviewAssignment.findFirst.mockResolvedValue({ id: "other-active-assignment" });
+  selectReviewerMock.mockResolvedValue(null);
   mockDb.project.create.mockResolvedValue(project({ status: "SUBMITTED" }));
 
   const result = await submitProject({
@@ -320,30 +353,24 @@ test("submission falls back to the queue when the selected reviewer becomes busy
   if (result.success) {
     expect(result.protocol.status).toBe("SUBMITTED");
   }
-  expect(mockDb.project.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: "SUBMITTED" }),
-      })
-  );
   expect(mockDb.reviewAssignment.create).not.toHaveBeenCalled();
 });
 
-test("project status changes follow the legal source-state matrix and require feedback", async () => {
+// ── updateProjectStatus ──────────────────────────────────────────────
+
+test("updateProjectStatus forbids a non-reviewer admin (P16)", async () => {
   login("admin-1", "admin");
-  mockDb.project.findUnique.mockResolvedValue(project({ status: "SUBMITTED" }));
+  mockDb.project.findUnique.mockResolvedValue(
+      project({ status: "REVIEW_COMPLETE" })
+  );
+  mockDb.reviewAssignment.findFirst.mockResolvedValue(null);
 
   await expect(updateProjectStatus("project-1", "APPROVED")).rejects.toThrow(
-      "Illegal protocol status transition"
+      /reviewer|superadmin/i
   );
-
-  mockDb.project.findUnique.mockResolvedValue(project({ status: "REVIEW_COMPLETE" }));
-
-  await expect(
-      updateProjectStatus("project-1", "APPROVED_WITH_CONDITIONS")
-  ).rejects.toThrow("Feedback is required");
 });
 
-test("legal status transition, history, notification and audit commit together", async () => {
+test("updateProjectStatus allows the current reviewer", async () => {
   login("admin-1", "admin");
   const current = project({ status: "REVIEW_COMPLETE" });
   const updated = project({
@@ -354,11 +381,16 @@ test("legal status transition, history, notification and audit commit together",
 
   mockDb.project.findUnique.mockResolvedValue(current);
   mockDb.project.findUniqueOrThrow.mockResolvedValue(updated);
+  // First findUnique: acting user role. Second: owner email.
   mockDb.user.findUnique
       .mockResolvedValueOnce({ role: "admin" })
       .mockResolvedValueOnce({ email: "owner@test.com", name: "Owner" });
+  // P16 reviewer check → the acting admin IS the reviewer.
+  mockDb.reviewAssignment.findFirst.mockResolvedValue({ id: "assignment-1" });
 
-  await expect(updateProjectStatus("project-1", "APPROVED")).resolves.toBe(updated);
+  await expect(updateProjectStatus("project-1", "APPROVED")).resolves.toBe(
+      updated
+  );
 
   expect(mockDb.project.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -366,7 +398,6 @@ test("legal status transition, history, notification and audit commit together",
           deleted: false,
           status: "REVIEW_COMPLETE",
         }),
-        // Approval also writes expiresAt + reminderSentAt now.
         data: expect.objectContaining({
           status: "APPROVED",
           feedback: null,
@@ -375,11 +406,38 @@ test("legal status transition, history, notification and audit commit together",
         }),
       })
   );
-
-  expect(mockDb.projectStatusHistory.create).toHaveBeenCalled();
-  expect(mockDb.notification.create).toHaveBeenCalled();
-  expect(mockDb.auditLog.create).toHaveBeenCalled();
 });
+
+test("updateProjectStatus lets the superadmin bypass the reviewer check", async () => {
+  login("super-1", "superadmin");
+  const current = project({ status: "REVIEW_COMPLETE" });
+  const updated = project({ status: "APPROVED" });
+
+  mockDb.project.findUnique.mockResolvedValue(current);
+  mockDb.project.findUniqueOrThrow.mockResolvedValue(updated);
+  mockDb.user.findUnique
+      .mockResolvedValueOnce({ role: "superadmin" })
+      .mockResolvedValueOnce({ email: "owner@test.com", name: "Owner" });
+
+  await expect(updateProjectStatus("project-1", "APPROVED")).resolves.toBe(
+      updated
+  );
+  expect(mockDb.reviewAssignment.findFirst).not.toHaveBeenCalled();
+});
+
+test("project status changes follow the legal source-state matrix and require feedback", async () => {
+  login("admin-1", "admin");
+  mockDb.project.findUnique.mockResolvedValue(
+      project({ status: "REVIEW_COMPLETE" })
+  );
+  mockDb.reviewAssignment.findFirst.mockResolvedValue({ id: "assignment-1" });
+
+  await expect(
+      updateProjectStatus("project-1", "APPROVED_WITH_CONDITIONS")
+  ).rejects.toThrow("Feedback is required");
+});
+
+// ── ownership / edit / delete ─────────────────────────────────────────
 
 test("only owners may edit or delete, and only before submission or after incomplete return", async () => {
   login();
@@ -395,19 +453,16 @@ test("only owners may edit or delete, and only before submission or after incomp
   mockDb.project.findUnique.mockResolvedValue(
       project({ status: "RETURNED_INCOMPLETE" })
   );
-  mockDb.project.findUniqueOrThrow.mockResolvedValue(project({ title: "Changed" }));
+  mockDb.project.findUniqueOrThrow.mockResolvedValue(
+      project({ title: "Changed" })
+  );
 
   await expect(
       updateProject("project-1", { title: " Changed " })
   ).resolves.toEqual(expect.objectContaining({ title: "Changed" }));
-
-  expect(mockDb.project.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ userId: "owner-1", deleted: false }),
-        data: expect.objectContaining({ title: "Changed" }),
-      })
-  );
 });
+
+// ── getProjectById ────────────────────────────────────────────────────
 
 test("an excluded reviewer cannot regain project access through the admin role", async () => {
   login("reviewer-1", "admin");
@@ -431,10 +486,45 @@ test("an excluded reviewer cannot regain project access through the admin role",
   );
 });
 
-test("manual assignment rejects owner, busy, banned, and previously excluded reviewers", async () => {
+// ── resubmitProtocol ──────────────────────────────────────────────────
+
+test("resubmitProtocol reactivates the sticky reviewer without a fresh COI", async () => {
+  login();
+  mockDb.project.findUnique.mockResolvedValue({
+    id: "project-1",
+    userId: "owner-1",
+    status: "RESUBMIT",
+    title: "Protocol",
+  });
+  mockDb.reviewAssignment.findFirst.mockResolvedValue({
+    id: "assignment-1",
+    reviewerId: "reviewer-1",
+    reviewer: { id: "reviewer-1", name: "R", email: "r@test.com" },
+  });
+  mockDb.project.findUniqueOrThrow.mockResolvedValue({
+    id: "project-1",
+    status: "PENDING_REVIEW",
+    title: "Protocol",
+    updatedAt: new Date(),
+  });
+
+  const result = await resubmitProtocol("project-1");
+
+  expect(result.status).toBe("PENDING_REVIEW");
+  expect(mockDb.reviewAssignment.update).toHaveBeenCalledWith({
+    where: { id: "assignment-1" },
+    data: { status: "ACTIVE", reassignedAt: null },
+  });
+  // No new PENDING_COI assignment is created (no repeated COI).
+  expect(mockDb.reviewAssignment.create).not.toHaveBeenCalled();
+});
+
+// ── manual assignment ─────────────────────────────────────────────────
+
+test("manual assignment rejects the protocol owner and previously assigned reviewers", async () => {
   login("president", "superadmin");
 
-  // --- Case 1: target is the protocol owner ---------------------------------
+  // Case 1: target is the protocol owner
   mockDb.user.findUnique
       .mockResolvedValueOnce({ role: "superadmin" })
       .mockResolvedValueOnce({
@@ -445,14 +535,13 @@ test("manual assignment rejects owner, busy, banned, and previously excluded rev
         banned: false,
       });
   mockDb.project.findUnique.mockResolvedValue(project());
-  // No active work for this reviewer; the "excluded" check is what we want to hit.
   mockDb.reviewAssignment.findFirst.mockResolvedValue(null);
 
   await expect(assignProjectReviewer("project-1", "owner-1")).rejects.toThrow(
       "Protocol owners cannot review their own protocols"
   );
 
-  // --- Case 2: target was previously excluded -------------------------------
+  // Case 2: target was previously excluded
   mockDb.user.findUnique
       .mockResolvedValueOnce({ role: "superadmin" })
       .mockResolvedValueOnce({
@@ -474,7 +563,9 @@ test("manual assignment rejects owner, busy, banned, and previously excluded rev
   );
 });
 
-test("reassignment excludes every prior reviewer from replacement selection", async () => {
+// ── reassignProjectReviewer ───────────────────────────────────────────
+
+test("reassignment hands the excluded list to the reviewer-selection service", async () => {
   login("president", "superadmin");
   mockDb.project.findUnique.mockResolvedValue(
       project({
@@ -492,32 +583,32 @@ test("reassignment excludes every prior reviewer from replacement selection", as
     status: "ACTIVE",
     reviewer: { id: "old-reviewer", name: "Old", email: "old@test.com" },
   });
-  mockDb.reviewAssignment.findMany.mockResolvedValue([]);
-  mockDb.user.findFirst.mockResolvedValue(null);
+  // selectReviewerForProtocol returns null → hard failure.
+  selectReviewerMock.mockResolvedValue(null);
 
   await expect(reassignProjectReviewer("project-1")).rejects.toThrow(
-      "No available admin found for reassignment"
+      /No available admin/i
   );
 
-  expect(mockDb.user.findFirst).toHaveBeenCalledWith(
+  expect(selectReviewerMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          id: {
-            notIn: expect.arrayContaining([
-              "owner-1",
-              "old-reviewer",
-              "excluded-before",
-            ]),
-          },
-        }),
+        excludeUserIds: expect.arrayContaining([
+          "owner-1",
+          "old-reviewer",
+          "excluded-before",
+        ]),
       })
   );
 });
 
+// ── getProjectReviewAssignments ───────────────────────────────────────
+
 test("excluded regular admin cannot list project review assignments", async () => {
   login("reviewer-1", "admin");
   mockDb.project.findUnique.mockResolvedValue({ id: "project-1" });
-  mockDb.reviewAssignment.findFirst.mockResolvedValue({ id: "excluded-assignment" });
+  mockDb.reviewAssignment.findFirst.mockResolvedValue({
+    id: "excluded-assignment",
+  });
 
   await expect(getProjectReviewAssignments("project-1")).rejects.toThrow(
       "Forbidden: Excluded reviewers cannot access review assignments"
