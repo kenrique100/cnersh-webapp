@@ -3,6 +3,7 @@
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
+import { autoReassignReviewer } from "@/lib/reviewer-assignment";
 import {
     canAssignRole,
     canManageRole,
@@ -55,7 +56,6 @@ export async function getUserManagementData() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Role-tiered filtering: regular admins only see regular users; super-admins see all
     const userFilter = isSuperAdmin ? {} : { role: "user" };
 
     const [
@@ -249,7 +249,6 @@ export async function createReport(data: {
         },
     });
 
-    // Notify admins about the new report
     try {
         const contentLabel = parsed.data.contentType.toLowerCase().replace("_", " ");
         await notifyAdmins({
@@ -336,6 +335,46 @@ export async function sendWarning(userId: string, message: string) {
     return { success: true };
 }
 
+/**
+ * Automatic reassignment (Option A). Called only when:
+ *   - reviewer is banned,
+ *   - reviewer is removed,
+ *   - reviewer is demoted to "user".
+ * COI-triggered reassignment lives in coi.ts.
+ */
+async function reassignProtocolsForRemovedReviewer(
+    reviewerId: string,
+    reason: string,
+    actorUserId: string
+): Promise<void> {
+    const active = await db.reviewAssignment.findMany({
+        where: {
+            reviewerId,
+            status: { in: ["PENDING_COI", "ACTIVE"] },
+        },
+        select: { projectId: true },
+    });
+    if (active.length === 0) return;
+
+    for (const { projectId } of active) {
+        try {
+            await db.$transaction(async (tx) => {
+                await autoReassignReviewer({
+                    projectId,
+                    reason,
+                    actorUserId,
+                    tx,
+                });
+            });
+        } catch (error) {
+            console.error(
+                `[reassignProtocolsForRemovedReviewer] failed for project ${projectId}:`,
+                error
+            );
+        }
+    }
+}
+
 export async function banUserById(userId: string, reason: string) {
     const session = await requireAdmin();
     const targetId = idSchema.parse(userId);
@@ -352,7 +391,6 @@ export async function banUserById(userId: string, reason: string) {
     });
 
     if (!targetUser) throw new Error("User not found");
-
     if (!canManageRole(actingUser?.role, targetUser.role)) throw new Error("Forbidden");
 
     await db.user.update({
@@ -360,7 +398,6 @@ export async function banUserById(userId: string, reason: string) {
         data: { banned: true, banReason: safeReason },
     });
 
-    // Invalidate all active Better Auth sessions for the banned user
     await db.session.deleteMany({
         where: { userId: targetId },
     });
@@ -373,6 +410,14 @@ export async function banUserById(userId: string, reason: string) {
             userId: session.user.id,
         },
     });
+
+    if (targetUser.role === "admin" || targetUser.role === "superadmin") {
+        await reassignProtocolsForRemovedReviewer(
+            targetId,
+            "Reviewer was banned",
+            session.user.id
+        );
+    }
 
     return { success: true };
 }
@@ -513,11 +558,6 @@ export async function deleteReportedContent(
     return { success: true };
 }
 
-/**
- * Authoritatively changes a user's role. This action deliberately performs
- * both the hierarchy check and mutation; callers cannot pre-mutate through a
- * target-agnostic Better Auth endpoint and use this action only for logging.
- */
 export async function applyRoleChange(
     userId: string,
     _oldRole: string,
@@ -560,6 +600,17 @@ export async function applyRoleChange(
             userId: session.user.id,
         },
     });
+
+    if (
+        (targetUser.role === "admin" || targetUser.role === "superadmin") &&
+        newRole === "user"
+    ) {
+        await reassignProtocolsForRemovedReviewer(
+            targetId,
+            "Reviewer was demoted to user",
+            session.user.id
+        );
+    }
 
     return { success: true };
 }
@@ -644,6 +695,19 @@ export async function updateManagedUser(
             userId: session.user.id,
         },
     });
+
+    if (
+        target.role !== parsed.role &&
+        (target.role === "admin" || target.role === "superadmin") &&
+        parsed.role === "user"
+    ) {
+        await reassignProtocolsForRemovedReviewer(
+            targetId,
+            "Reviewer was demoted to user",
+            session.user.id
+        );
+    }
+
     return { success: true, roleChanged: target.role !== parsed.role };
 }
 
@@ -658,6 +722,16 @@ export async function removeManagedUser(userId: string) {
     if (!target) throw new Error("User not found");
     if (!canManageRole(actor?.role, target.role)) throw new Error("Forbidden");
 
+    // Capture active assignments before the user row (and its cascaded
+    // assignments) are removed.
+    const activeAssignments = await db.reviewAssignment.findMany({
+        where: {
+            reviewerId: targetId,
+            status: { in: ["PENDING_COI", "ACTIVE"] },
+        },
+        select: { projectId: true },
+    });
+
     await db.user.delete({ where: { id: targetId } });
     await db.auditLog.create({
         data: {
@@ -667,5 +741,24 @@ export async function removeManagedUser(userId: string) {
             userId: session.user.id,
         },
     });
+
+    for (const { projectId } of activeAssignments) {
+        try {
+            await db.$transaction(async (tx) => {
+                await autoReassignReviewer({
+                    projectId,
+                    reason: "Reviewer was removed",
+                    actorUserId: session.user.id,
+                    tx,
+                });
+            });
+        } catch (error) {
+            console.error(
+                `[removeManagedUser] reassignment failed for project ${projectId}:`,
+                error
+            );
+        }
+    }
+
     return { success: true };
 }

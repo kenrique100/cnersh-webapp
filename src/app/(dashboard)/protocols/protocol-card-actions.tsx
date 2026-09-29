@@ -4,29 +4,40 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { EyeIcon, PencilIcon, TrashIcon, Loader2 } from "lucide-react";
+import { EyeIcon, PencilIcon, TrashIcon, Loader2, SendIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { deleteProject, updateProject } from "@/app/actions/project";
+import { deleteProject, updateProject, resubmitProtocol } from "@/app/actions/project";
 
 interface ProtocolCardActionsProps {
     projectId: string;
     initialTitle: string;
     initialDescription: string;
+    status: string;
 }
 
+const EDITABLE_STATUSES = new Set(["DRAFT", "RETURNED_INCOMPLETE"]);
+const DELETABLE_STATUSES = new Set(["DRAFT", "RETURNED_INCOMPLETE"]);
+const RESUBMIT_STATUSES = new Set(["RETURNED_INCOMPLETE", "RESUBMIT"]);
+
 export default function ProtocolCardActions({
-    projectId,
-    initialTitle,
-    initialDescription,
-}: ProtocolCardActionsProps) {
+                                                projectId,
+                                                initialTitle,
+                                                initialDescription,
+                                                status,
+                                            }: ProtocolCardActionsProps) {
     const router = useRouter();
     const [isEditing, setIsEditing] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isResubmitting, setIsResubmitting] = React.useState(false);
     const [title, setTitle] = React.useState(initialTitle);
     const [description, setDescription] = React.useState(initialDescription);
+
+    const canEdit = EDITABLE_STATUSES.has(status);
+    const canDelete = DELETABLE_STATUSES.has(status);
+    const canResubmit = RESUBMIT_STATUSES.has(status);
 
     const handleSave = async () => {
         setIsSubmitting(true);
@@ -38,8 +49,8 @@ export default function ProtocolCardActions({
             toast.success("Protocol updated");
             setIsEditing(false);
             router.refresh();
-        } catch {
-            toast.error("Failed to update protocol");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update protocol");
         } finally {
             setIsSubmitting(false);
         }
@@ -52,10 +63,24 @@ export default function ProtocolCardActions({
             await deleteProject(projectId);
             toast.success("Protocol deleted");
             router.refresh();
-        } catch {
-            toast.error("Failed to delete protocol");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to delete protocol");
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleResubmit = async () => {
+        if (!confirm("Resubmit this protocol for review?")) return;
+        setIsResubmitting(true);
+        try {
+            await resubmitProtocol(projectId);
+            toast.success("Protocol resubmitted for review");
+            router.refresh();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to resubmit protocol");
+        } finally {
+            setIsResubmitting(false);
         }
     };
 
@@ -68,14 +93,37 @@ export default function ProtocolCardActions({
                         View
                     </Link>
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setIsEditing((prev) => !prev)}>
-                    <PencilIcon className="h-4 w-4 mr-1.5" />
-                    Edit
-                </Button>
-                <Button size="sm" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                    {isDeleting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <TrashIcon className="h-4 w-4 mr-1.5" />}
-                    {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
+                {canEdit && (
+                    <Button size="sm" variant="outline" onClick={() => setIsEditing((prev) => !prev)}>
+                        <PencilIcon className="h-4 w-4 mr-1.5" />
+                        Edit
+                    </Button>
+                )}
+                {canDelete && (
+                    <Button size="sm" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                        {isDeleting ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                        ) : (
+                            <TrashIcon className="h-4 w-4 mr-1.5" />
+                        )}
+                        {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
+                )}
+                {canResubmit && (
+                    <Button
+                        size="sm"
+                        onClick={handleResubmit}
+                        disabled={isResubmitting}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                        {isResubmitting ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                        ) : (
+                            <SendIcon className="h-4 w-4 mr-1.5" />
+                        )}
+                        {isResubmitting ? "Resubmitting..." : "Resubmit"}
+                    </Button>
+                )}
             </div>
 
             {isEditing && (
@@ -98,7 +146,9 @@ export default function ProtocolCardActions({
                             onClick={handleSave}
                             disabled={isSubmitting || !title.trim() || !description.trim()}
                         >
-                            {isSubmitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+                            {isSubmitting ? (
+                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            ) : null}
                             {isSubmitting ? "Saving..." : "Save"}
                         </Button>
                         <Button

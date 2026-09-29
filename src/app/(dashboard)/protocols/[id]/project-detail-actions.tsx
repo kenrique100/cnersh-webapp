@@ -5,9 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { CheckIcon, XIcon, ClockIcon, TrashIcon, PencilIcon, SendIcon, ImageIcon, VideoIcon, Loader2, RotateCcwIcon, CalendarIcon, CheckCircle2Icon } from "lucide-react";
+import {
+    CheckIcon,
+    XIcon,
+    ClockIcon,
+    TrashIcon,
+    PencilIcon,
+    SendIcon,
+    ImageIcon,
+    VideoIcon,
+    Loader2,
+    RotateCcwIcon,
+    CalendarIcon,
+    CheckCircle2Icon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { updateProjectStatus, deleteProject, updateProject, forwardProjectToFeed } from "@/app/actions/project";
+import {
+    updateProjectStatus,
+    deleteProject,
+    updateProject,
+    forwardProjectToFeed,
+    resubmitProtocol,
+} from "@/app/actions/project";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ImageUpload from "@/components/image-upload";
@@ -41,6 +60,8 @@ interface ProjectDetailActionsProps {
     currentStatus: string;
     isOwner: boolean;
     isAdmin: boolean;
+    isCurrentReviewer: boolean;
+    isSuperAdmin: boolean;
     projectTitle: string;
     projectObjectives: string | null;
     projectDescription: string;
@@ -51,6 +72,8 @@ export default function ProjectDetailActions({
                                                  currentStatus,
                                                  isOwner,
                                                  isAdmin,
+                                                 isCurrentReviewer,
+                                                 isSuperAdmin,
                                                  projectTitle,
                                                  projectObjectives,
                                                  projectDescription,
@@ -59,6 +82,7 @@ export default function ProjectDetailActions({
     const [feedback, setFeedback] = React.useState("");
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isResubmitting, setIsResubmitting] = React.useState(false);
     const [showEditForm, setShowEditForm] = React.useState(false);
     const [editTitle, setEditTitle] = React.useState(projectTitle);
     const [editDescription, setEditDescription] = React.useState(projectDescription);
@@ -75,9 +99,22 @@ export default function ProjectDetailActions({
     const [isUploadingVideo, setIsUploadingVideo] = React.useState(false);
     const videoInputRef = React.useRef<HTMLInputElement>(null);
 
-    const showAdminReview = isAdmin && !isOwner;
+    const showAdminReview =
+        isAdmin && !isOwner && (isCurrentReviewer || isSuperAdmin);
+    const canEdit = isOwner && ["DRAFT", "RETURNED_INCOMPLETE"].includes(currentStatus);
+    const canDelete = isOwner && ["DRAFT", "RETURNED_INCOMPLETE"].includes(currentStatus);
+    const canResubmit =
+        isOwner && ["RETURNED_INCOMPLETE", "RESUBMIT"].includes(currentStatus);
 
-    const handleStatusUpdate = async (status: "APPROVED" | "RESUBMIT" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW") => {
+    const handleStatusUpdate = async (
+        status:
+            | "APPROVED"
+            | "RESUBMIT"
+            | "RETURNED_INCOMPLETE"
+            | "APPROVED_WITH_CONDITIONS"
+            | "SESSION_SCHEDULED"
+            | "PENDING_REVIEW"
+    ) => {
         if (status === "RESUBMIT" && !feedback.trim()) {
             toast.error("Please provide a rejection reason before rejecting");
             return;
@@ -96,8 +133,10 @@ export default function ProjectDetailActions({
             toast.success(`Protocol ${status.toLowerCase().replace("_", " ")}`);
             setFeedback("");
             router.refresh();
-        } catch {
-            toast.error("Failed to update protocol status");
+        } catch (error) {
+            toast.error(
+                error instanceof Error ? error.message : "Failed to update protocol status"
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -110,8 +149,8 @@ export default function ProjectDetailActions({
             await deleteProject(projectId);
             toast.success("Protocol deleted");
             router.push("/protocols");
-        } catch {
-            toast.error("Failed to delete protocol");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to delete protocol");
         } finally {
             setIsDeleting(false);
         }
@@ -120,14 +159,31 @@ export default function ProjectDetailActions({
     const handleEdit = async () => {
         setIsSubmitting(true);
         try {
-            await updateProject(projectId, { title: editTitle, description: editDescription });
+            await updateProject(projectId, {
+                title: editTitle,
+                description: editDescription,
+            });
             toast.success("Protocol updated");
             setShowEditForm(false);
             router.refresh();
-        } catch {
-            toast.error("Failed to update protocol");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update protocol");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleResubmit = async () => {
+        if (!confirm("Resubmit this protocol for review?")) return;
+        setIsResubmitting(true);
+        try {
+            await resubmitProtocol(projectId);
+            toast.success("Protocol resubmitted for review");
+            router.refresh();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to resubmit protocol");
+        } finally {
+            setIsResubmitting(false);
         }
     };
 
@@ -147,8 +203,8 @@ export default function ProjectDetailActions({
             toast.success("Protocol posted to feeds!");
             setShowForwardForm(false);
             router.push("/feeds");
-        } catch {
-            toast.error("Failed to post to feeds");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to post to feeds");
         } finally {
             setIsForwarding(false);
         }
@@ -183,23 +239,47 @@ export default function ProjectDetailActions({
             {isOwner && (
                 <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Project Actions</CardTitle>
+                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                            Project Actions
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         {showEditForm ? (
                             <div className="space-y-3">
-                                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Protocol title" />
-                                <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description" className="min-h-[80px]" />
+                                <Input
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    placeholder="Protocol title"
+                                />
+                                <Textarea
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                    placeholder="Description"
+                                    className="min-h-[80px]"
+                                />
                                 <div className="flex gap-2">
-                                    <Button onClick={handleEdit} disabled={isSubmitting} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    <Button
+                                        onClick={handleEdit}
+                                        disabled={isSubmitting}
+                                        size="sm"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
                                         {isSubmitting ? "Saving..." : "Save Changes"}
                                     </Button>
-                                    <Button onClick={() => setShowEditForm(false)} variant="outline" size="sm">Cancel</Button>
+                                    <Button
+                                        onClick={() => setShowEditForm(false)}
+                                        variant="outline"
+                                        size="sm"
+                                    >
+                                        Cancel
+                                    </Button>
                                 </div>
                             </div>
                         ) : showForwardForm ? (
                             <div className="space-y-3">
-                                <p className="text-xs text-gray-500">Compose your feed post. Protocol objectives are pre-filled below.</p>
+                                <p className="text-xs text-gray-500">
+                                    Compose your feed post. Protocol objectives are pre-filled below.
+                                </p>
                                 <Textarea
                                     value={forwardContent}
                                     onChange={(e) => setForwardContent(e.target.value)}
@@ -209,9 +289,28 @@ export default function ProjectDetailActions({
                                 {forwardImages.length > 0 && (
                                     <div className="flex flex-wrap gap-2">
                                         {forwardImages.map((img, idx) => (
-                                            <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]">
-                                                <Image src={img} alt={`Preview ${idx + 1}`} width={200} height={150} className="w-full h-[100px] object-cover" unoptimized />
-                                                <button type="button" onClick={() => { deleteBlobUrl(img); setForwardImages((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer">
+                                            <div
+                                                key={idx}
+                                                className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 w-[calc(50%-4px)]"
+                                            >
+                                                <Image
+                                                    src={img}
+                                                    alt={`Preview ${idx + 1}`}
+                                                    width={200}
+                                                    height={150}
+                                                    className="w-full h-[100px] object-cover"
+                                                    unoptimized
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        deleteBlobUrl(img);
+                                                        setForwardImages((prev) =>
+                                                            prev.filter((_, i) => i !== idx)
+                                                        );
+                                                    }}
+                                                    className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer"
+                                                >
                                                     <XIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -221,9 +320,25 @@ export default function ProjectDetailActions({
                                 {forwardVideos.length > 0 && (
                                     <div className="space-y-2">
                                         {forwardVideos.map((vid, idx) => (
-                                            <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                <video src={vid} controls className="w-full max-h-[150px] object-contain bg-black" />
-                                                <button type="button" onClick={() => { deleteBlobUrl(vid); setForwardVideos((prev) => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer">
+                                            <div
+                                                key={idx}
+                                                className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
+                                            >
+                                                <video
+                                                    src={vid}
+                                                    controls
+                                                    className="w-full max-h-[150px] object-contain bg-black"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        deleteBlobUrl(vid);
+                                                        setForwardVideos((prev) =>
+                                                            prev.filter((_, i) => i !== idx)
+                                                        );
+                                                    }}
+                                                    className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white cursor-pointer"
+                                                >
                                                     <XIcon className="h-3 w-3" />
                                                 </button>
                                             </div>
@@ -243,28 +358,73 @@ export default function ProjectDetailActions({
                                 )}
                                 {showForwardVideoUpload && (
                                     <div>
-                                        <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
-                                        <button type="button" onClick={() => videoInputRef.current?.click()} disabled={isUploadingVideo} className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-4 flex flex-col items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
-                                            {isUploadingVideo ? <Loader2 className="h-6 w-6 text-blue-600 animate-spin" /> : <VideoIcon className="h-6 w-6 text-gray-400" />}
-                                            <span className="text-xs text-gray-500">{isUploadingVideo ? "Uploading..." : "Upload video (up to 5MB)"}</span>
+                                        <input
+                                            ref={videoInputRef}
+                                            type="file"
+                                            accept="video/*"
+                                            onChange={handleVideoUpload}
+                                            className="hidden"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => videoInputRef.current?.click()}
+                                            disabled={isUploadingVideo}
+                                            className="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer p-4 flex flex-col items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                        >
+                                            {isUploadingVideo ? (
+                                                <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                                            ) : (
+                                                <VideoIcon className="h-6 w-6 text-gray-400" />
+                                            )}
+                                            <span className="text-xs text-gray-500">
+                                                {isUploadingVideo
+                                                    ? "Uploading..."
+                                                    : "Upload video (up to 5MB)"}
+                                            </span>
                                         </button>
                                     </div>
                                 )}
                                 {forwardTags.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">
                                         {forwardTags.map((tag, idx) => (
-                                            <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs">
+                                            <span
+                                                key={idx}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs"
+                                            >
                                                 #{tag}
-                                                <button type="button" onClick={() => setForwardTags((prev) => prev.filter((_, i) => i !== idx))}><XIcon className="h-3 w-3" /></button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setForwardTags((prev) =>
+                                                            prev.filter((_, i) => i !== idx)
+                                                        )
+                                                    }
+                                                >
+                                                    <XIcon className="h-3 w-3" />
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 )}
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => setShowForwardImageUpload(!showForwardImageUpload)} className="text-gray-500 h-8 px-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            setShowForwardImageUpload(!showForwardImageUpload)
+                                        }
+                                        className="text-gray-500 h-8 px-2"
+                                    >
                                         <ImageIcon className="h-4 w-4 mr-1" /> Photo
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => setShowForwardVideoUpload(!showForwardVideoUpload)} className="text-gray-500 h-8 px-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            setShowForwardVideoUpload(!showForwardVideoUpload)
+                                        }
+                                        className="text-gray-500 h-8 px-2"
+                                    >
                                         <VideoIcon className="h-4 w-4 mr-1" /> Video
                                     </Button>
                                     <input
@@ -273,10 +433,16 @@ export default function ProjectDetailActions({
                                         value={forwardTagInput}
                                         onChange={(e) => setForwardTagInput(e.target.value)}
                                         onKeyDown={(e) => {
-                                            if ((e.key === "Enter" || e.key === ",") && forwardTagInput.trim()) {
+                                            if (
+                                                (e.key === "Enter" || e.key === ",") &&
+                                                forwardTagInput.trim()
+                                            ) {
                                                 e.preventDefault();
-                                                const tag = forwardTagInput.trim().replace(/^#/, "");
-                                                if (tag && !forwardTags.includes(tag)) setForwardTags((prev) => [...prev, tag]);
+                                                const tag = forwardTagInput
+                                                    .trim()
+                                                    .replace(/^#/, "");
+                                                if (tag && !forwardTags.includes(tag))
+                                                    setForwardTags((prev) => [...prev, tag]);
                                                 setForwardTagInput("");
                                             }
                                         }}
@@ -284,23 +450,66 @@ export default function ProjectDetailActions({
                                     />
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button onClick={handleForwardToFeed} disabled={isForwarding} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    <Button
+                                        onClick={handleForwardToFeed}
+                                        disabled={isForwarding}
+                                        size="sm"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
                                         <SendIcon className="h-4 w-4 mr-1" />
                                         {isForwarding ? "Posting..." : "Post to Feed"}
                                     </Button>
-                                    <Button onClick={() => setShowForwardForm(false)} variant="outline" size="sm">Cancel</Button>
+                                    <Button
+                                        onClick={() => setShowForwardForm(false)}
+                                        variant="outline"
+                                        size="sm"
+                                    >
+                                        Cancel
+                                    </Button>
                                 </div>
                             </div>
                         ) : (
                             <div className="flex flex-wrap gap-2">
-                                <Button onClick={() => setShowEditForm(true)} variant="outline" size="sm">
-                                    <PencilIcon className="h-4 w-4 mr-1" />Edit
-                                </Button>
-                                <Button onClick={handleDelete} disabled={isDeleting} variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600">
-                                    <TrashIcon className="h-4 w-4 mr-1" />{isDeleting ? "Deleting..." : "Delete"}
-                                </Button>
-                                <Button onClick={() => setShowForwardForm(true)} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                    <SendIcon className="h-4 w-4 mr-1" />Post to Feed
+                                {canEdit && (
+                                    <Button
+                                        onClick={() => setShowEditForm(true)}
+                                        variant="outline"
+                                        size="sm"
+                                    >
+                                        <PencilIcon className="h-4 w-4 mr-1" />
+                                        Edit
+                                    </Button>
+                                )}
+                                {canDelete && (
+                                    <Button
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        variant="destructive"
+                                        size="sm"
+                                        className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600"
+                                    >
+                                        <TrashIcon className="h-4 w-4 mr-1" />
+                                        {isDeleting ? "Deleting..." : "Delete"}
+                                    </Button>
+                                )}
+                                {canResubmit && (
+                                    <Button
+                                        onClick={handleResubmit}
+                                        disabled={isResubmitting}
+                                        size="sm"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    >
+                                        <SendIcon className="h-4 w-4 mr-1" />
+                                        {isResubmitting ? "Resubmitting..." : "Resubmit"}
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={() => setShowForwardForm(true)}
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                    <SendIcon className="h-4 w-4 mr-1" />
+                                    Post to Feed
                                 </Button>
                             </div>
                         )}
@@ -311,8 +520,15 @@ export default function ProjectDetailActions({
             {showAdminReview && (
                 <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/50 rounded-xl">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Review Actions</CardTitle>
-                        <p className="text-xs text-gray-500">Current status: <span className="font-medium">{currentStatus.replace(/_/g, " ")}</span></p>
+                        <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                            Review Actions
+                        </CardTitle>
+                        <p className="text-xs text-gray-500">
+                            Current status:{" "}
+                            <span className="font-medium">
+                                {currentStatus.replace(/_/g, " ")}
+                            </span>
+                        </p>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
                         <Textarea
@@ -321,42 +537,75 @@ export default function ProjectDetailActions({
                             onChange={(e) => setFeedback(e.target.value)}
                             className="min-h-[80px]"
                         />
-                        <p className="text-xs text-gray-400 dark:text-gray-500">Feedback is required when rejecting, returning incomplete, or approving with conditions.</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                            Feedback is required when rejecting, returning incomplete, or
+                            approving with conditions.
+                        </p>
                         <div className="flex flex-wrap gap-2">
                             {currentStatus === "SUBMITTED" && (
                                 <Button
-                                    onClick={() => handleStatusUpdate("RETURNED_INCOMPLETE")}
+                                    onClick={() =>
+                                        handleStatusUpdate("RETURNED_INCOMPLETE")
+                                    }
                                     disabled={isSubmitting}
                                     variant="outline"
                                     className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
                                 >
-                                    <RotateCcwIcon className="h-4 w-4 mr-1" />Return - Incomplete
+                                    <RotateCcwIcon className="h-4 w-4 mr-1" />
+                                    Return - Incomplete
                                 </Button>
                             )}
-                            {["REVIEW_COMPLETE", "PENDING_REVIEW", "UNDER_REVIEW"].includes(currentStatus) && (
+                            {["REVIEW_COMPLETE", "PENDING_REVIEW", "UNDER_REVIEW"].includes(
+                                currentStatus
+                            ) && (
                                 <Button
                                     onClick={() => handleStatusUpdate("SESSION_SCHEDULED")}
                                     disabled={isSubmitting}
                                     variant="outline"
                                     className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-400 dark:hover:bg-cyan-950"
                                 >
-                                    <CalendarIcon className="h-4 w-4 mr-1" />Schedule Session
+                                    <CalendarIcon className="h-4 w-4 mr-1" />
+                                    Schedule Session
                                 </Button>
                             )}
-                            <Button onClick={() => handleStatusUpdate("APPROVED")} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
-                                <CheckIcon className="h-4 w-4 mr-1" />Approve
+                            <Button
+                                onClick={() => handleStatusUpdate("APPROVED")}
+                                disabled={isSubmitting}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                <CheckIcon className="h-4 w-4 mr-1" />
+                                Approve
                             </Button>
-                            {["REVIEW_COMPLETE", "SESSION_SCHEDULED"].includes(currentStatus) && (
-                                <Button onClick={() => handleStatusUpdate("APPROVED_WITH_CONDITIONS")} disabled={isSubmitting} className="bg-teal-600 hover:bg-teal-700 text-white">
-                                    <CheckCircle2Icon className="h-4 w-4 mr-1" />Approve with Conditions
+                            {["REVIEW_COMPLETE", "SESSION_SCHEDULED"].includes(
+                                currentStatus
+                            ) && (
+                                <Button
+                                    onClick={() =>
+                                        handleStatusUpdate("APPROVED_WITH_CONDITIONS")
+                                    }
+                                    disabled={isSubmitting}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white"
+                                >
+                                    <CheckCircle2Icon className="h-4 w-4 mr-1" />
+                                    Approve with Conditions
                                 </Button>
                             )}
-                            <Button onClick={() => handleStatusUpdate("RESUBMIT")} disabled={isSubmitting} variant="destructive">
-                                <XIcon className="h-4 w-4 mr-1" />Reject
+                            <Button
+                                onClick={() => handleStatusUpdate("RESUBMIT")}
+                                disabled={isSubmitting}
+                                variant="destructive"
+                            >
+                                <XIcon className="h-4 w-4 mr-1" />
+                                Reject
                             </Button>
                             {currentStatus === "SUBMITTED" && (
-                                <Button onClick={() => handleStatusUpdate("PENDING_REVIEW")} disabled={isSubmitting} variant="outline">
-                                    <ClockIcon className="h-4 w-4 mr-1" />Mark Pending Review
+                                <Button
+                                    onClick={() => handleStatusUpdate("PENDING_REVIEW")}
+                                    disabled={isSubmitting}
+                                    variant="outline"
+                                >
+                                    <ClockIcon className="h-4 w-4 mr-1" />
+                                    Mark Pending Review
                                 </Button>
                             )}
                         </div>

@@ -2,22 +2,27 @@
 
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { autoReassignReviewer } from "@/lib/reviewer-assignment";
 import { notifyAdmins } from "@/lib/notify-admins";
+import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { z } from "zod";
 
-const coiSchema = z.object({
-  assignmentId: z.string().trim().min(1, "Assignment identifier is required").max(128),
-  hasCOI: z.boolean(),
-  details: z.string().trim().max(5_000).optional(),
-}).strict().superRefine((value, context) => {
-  if (value.hasCOI && !value.details) {
-    context.addIssue({
-      code: "custom",
-      path: ["details"],
-      message: "Conflict details are required when declaring a conflict of interest",
+const coiSchema = z
+    .object({
+      assignmentId: z.string().trim().min(1, "Assignment identifier is required").max(128),
+      hasCOI: z.boolean(),
+      details: z.string().trim().max(5_000).optional(),
+    })
+    .strict()
+    .superRefine((value, context) => {
+      if (value.hasCOI && !value.details) {
+        context.addIssue({
+          code: "custom",
+          path: ["details"],
+          message: "Conflict details are required when declaring a conflict of interest",
+        });
+      }
     });
-  }
-});
 
 export async function submitCOIDeclaration(data: {
   assignmentId: string;
@@ -25,40 +30,45 @@ export async function submitCOIDeclaration(data: {
   details?: string;
 }) {
   const session = await verifiedAuthSession();
-
   const parsed = coiSchema.safeParse(data);
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || "Invalid COI declaration");
+  if (!parsed.success)
+    throw new Error(parsed.error.issues[0]?.message || "Invalid COI declaration");
   const input = parsed.data;
 
   const result = await db.$transaction(async (tx) => {
     const assignment = await tx.reviewAssignment.findUnique({
       where: { id: input.assignmentId },
       include: {
-        project: { select: { id: true, title: true, userId: true, deleted: true, status: true } },
+        project: {
+          select: { id: true, title: true, userId: true, deleted: true, status: true },
+        },
         coiDeclaration: true,
       },
     });
 
-    if (!assignment || assignment.project.deleted) throw new Error("Review assignment not found");
-    if (assignment.reviewerId !== session.user.id) {
+    if (!assignment || assignment.project.deleted)
+      throw new Error("Review assignment not found");
+    if (assignment.reviewerId !== session.user.id)
       throw new Error("Forbidden: You can only submit your own COI declaration");
-    }
 
     if (assignment.coiDeclaration) {
       if (
-          assignment.coiDeclaration.hasCOI === input.hasCOI
-          && (assignment.coiDeclaration.details || null) === (input.details || null)
+          assignment.coiDeclaration.hasCOI === input.hasCOI &&
+          (assignment.coiDeclaration.details || null) === (input.details || null)
       ) {
         return {
           declaration: assignment.coiDeclaration,
           project: assignment.project,
           created: false,
+          reassigned: null,
         };
       }
       throw new Error("COI declaration has already been submitted and cannot be changed");
     }
     if (assignment.status !== "PENDING_COI") {
-      throw new Error(`COI declarations cannot be submitted for ${assignment.status} assignments`);
+      throw new Error(
+          `COI declarations cannot be submitted for ${assignment.status} assignments`
+      );
     }
     if (!["PENDING_REVIEW", "UNDER_REVIEW"].includes(assignment.project.status)) {
       throw new Error("This protocol is not accepting reviewer declarations");
@@ -72,6 +82,7 @@ export async function submitCOIDeclaration(data: {
         details: input.details || null,
       },
     });
+
     const updated = await tx.reviewAssignment.updateMany({
       where: {
         id: input.assignmentId,
@@ -84,17 +95,20 @@ export async function submitCOIDeclaration(data: {
       },
       data: { status: input.hasCOI ? "EXCLUDED" : "ACTIVE" },
     });
-    if (updated.count !== 1) throw new Error("Review assignment changed concurrently; please retry");
+    if (updated.count !== 1)
+      throw new Error("Review assignment changed concurrently; please retry");
+
+    let reassigned: { id: string; name: string | null; email: string } | null = null;
 
     if (input.hasCOI) {
-      await tx.project.updateMany({
-        where: {
-          id: assignment.project.id,
-          deleted: false,
-          assignedToId: session.user.id,
-        },
-        data: { assignedToId: null },
+      // Narrow automatic reassignment trigger: COI declared.
+      const outcome = await autoReassignReviewer({
+        projectId: assignment.project.id,
+        reason: "Reviewer declared a conflict of interest",
+        actorUserId: session.user.id,
+        tx,
       });
+      reassigned = outcome.assignedReviewer;
     } else {
       const projectTransition = await tx.project.updateMany({
         where: {
@@ -132,16 +146,47 @@ export async function submitCOIDeclaration(data: {
           },
     });
 
-    return { declaration, project: assignment.project, created: true };
+    return {
+      declaration,
+      project: assignment.project,
+      created: true,
+      reassigned,
+    };
   });
 
   if (input.hasCOI && result.created) {
-    await notifyAdmins({
-      type: "SYSTEM",
-      message: `Reviewer declared a conflict of interest for protocol "${result.project.title}". A replacement reviewer is needed.`,
-      link: "/admin/protocol-review",
-      excludeUserId: session.user.id,
-    }).catch((error) => console.error("Error notifying admins about COI:", error));
+    if (result.reassigned) {
+      // Notify the replacement reviewer directly.
+      await db.notification.create({
+        data: {
+          type: "REVIEW_ASSIGNED",
+          message: `You have been assigned to review protocol "${result.project.title}" after a COI declaration.`,
+          link: `/protocols/${result.project.id}`,
+          userId: result.reassigned.id,
+        },
+      });
+      sendNotificationEmail({
+        to: result.reassigned.email,
+        userName: result.reassigned.name || "Reviewer",
+        notificationMessage: `You have been assigned to review protocol "${result.project.title}" after a COI declaration.`,
+        notificationType: "REVIEW_ASSIGNED",
+        actionUrl: `/protocols/${result.project.id}`,
+      }).catch((err) => console.error("Error emailing replacement reviewer:", err));
+    } else {
+      // Notify superadmins only.
+      const superadmins = await db.user.findMany({
+        where: { role: "superadmin", OR: [{ banned: false }, { banned: null }] },
+        select: { id: true, email: true, name: true },
+      });
+      await db.notification.createMany({
+        data: superadmins.map((s) => ({
+          type: "SYSTEM",
+          message: `Reviewer declared a COI for protocol "${result.project.title}" and no replacement was auto-assigned. Manual assignment required.`,
+          link: `/protocols/${result.project.id}`,
+          userId: s.id,
+        })),
+      });
+    }
   }
 
   return {
@@ -153,9 +198,11 @@ export async function submitCOIDeclaration(data: {
 
 export async function getMyReviewAssignments() {
   const session = await verifiedAuthSession();
-
   return db.reviewAssignment.findMany({
-    where: { reviewerId: session.user.id, project: { deleted: false } },
+    where: {
+      reviewerId: session.user.id,
+      project: { deleted: false },
+    },
     include: {
       project: {
         select: {

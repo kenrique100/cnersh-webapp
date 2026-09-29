@@ -8,6 +8,7 @@ import { z } from "zod";
 const idSchema = z.string().trim().min(1, "Assignment identifier is required").max(128);
 const scoreSchema = z.number().int().min(1).max(5);
 const commentSchema = z.string().trim().max(10_000).optional();
+
 const evaluationShape = {
     socialValue: scoreSchema.optional(),
     scientificValidity: scoreSchema.optional(),
@@ -63,11 +64,14 @@ interface EvaluationScores {
 
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
     const result = schema.safeParse(value);
-    if (!result.success) throw new Error(result.error.issues[0]?.message || "Invalid evaluation data");
+    if (!result.success)
+        throw new Error(result.error.issues[0]?.message || "Invalid evaluation data");
     return result.data;
 }
 
-function jsonValue(value: Record<string, unknown> | undefined): Prisma.InputJsonValue | undefined {
+function jsonValue(
+    value: Record<string, unknown> | undefined
+): Prisma.InputJsonValue | undefined {
     if (value === undefined) return undefined;
     try {
         return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -83,7 +87,7 @@ function assertAssignmentAccess(
         coiDeclaration: { hasCOI: boolean } | null;
         project: { deleted: boolean; status: string };
     },
-    userId: string,
+    userId: string
 ) {
     if (assignment.reviewerId !== userId) throw new Error("Forbidden");
     if (assignment.project.deleted) throw new Error("Review assignment not found");
@@ -101,7 +105,10 @@ function assertAssignmentAccess(
     }
 }
 
-export async function saveEvaluationDraft(assignmentId: string, scores: EvaluationScores) {
+export async function saveEvaluationDraft(
+    assignmentId: string,
+    scores: EvaluationScores
+) {
     const session = await verifiedAuthSession();
     const validAssignmentId = parse(idSchema, assignmentId);
     const input = parse(draftSchema, scores);
@@ -142,7 +149,14 @@ export async function saveEvaluationDraft(assignmentId: string, scores: Evaluati
     });
 }
 
-export async function submitEvaluationReport(assignmentId: string, scores: EvaluationScores) {
+/**
+ * Single-report flow: submitting the report moves the assignment to COMPLETED
+ * and the protocol to REVIEW_COMPLETE. The reviewer keeps the protocol.
+ */
+export async function submitEvaluationReport(
+    assignmentId: string,
+    scores: EvaluationScores
+) {
     const session = await verifiedAuthSession();
     const validAssignmentId = parse(idSchema, assignmentId);
     const input = parse(submissionSchema, scores);
@@ -199,34 +213,27 @@ export async function submitEvaluationReport(assignmentId: string, scores: Evalu
             },
             data: { status: "COMPLETED" },
         });
-        if (completed.count !== 1) throw new Error("Review assignment changed concurrently; please retry");
+        if (completed.count !== 1)
+            throw new Error("Review assignment changed concurrently; please retry");
 
-        const submittedCount = await tx.reviewAssignment.count({
+        // Single-reviewer flow: transition the protocol to REVIEW_COMPLETE.
+        const transitioned = await tx.project.updateMany({
             where: {
-                projectId: assignment.project.id,
-                status: "COMPLETED",
-                evaluationReport: { is: { status: "SUBMITTED" } },
+                id: assignment.project.id,
+                deleted: false,
+                status: { in: ["PENDING_REVIEW", "UNDER_REVIEW"] },
             },
+            data: { status: "REVIEW_COMPLETE" },
         });
-        if (submittedCount >= 2) {
-            const transitioned = await tx.project.updateMany({
-                where: {
-                    id: assignment.project.id,
-                    deleted: false,
-                    status: { in: ["PENDING_REVIEW", "UNDER_REVIEW"] },
+        if (transitioned.count === 1) {
+            await tx.projectStatusHistory.create({
+                data: {
+                    projectId: assignment.project.id,
+                    status: "REVIEW_COMPLETE",
+                    changedBy: session.user.id,
+                    comment: "Evaluation report submitted",
                 },
-                data: { status: "REVIEW_COMPLETE" },
             });
-            if (transitioned.count === 1) {
-                await tx.projectStatusHistory.create({
-                    data: {
-                        projectId: assignment.project.id,
-                        status: "REVIEW_COMPLETE",
-                        changedBy: session.user.id,
-                        comment: `${submittedCount} evaluation reports submitted`,
-                    },
-                });
-            }
         }
 
         await tx.auditLog.create({
@@ -249,29 +256,21 @@ export async function submitEvaluationReport(assignmentId: string, scores: Evalu
 export async function getMyEvaluationReport(assignmentId: string) {
     const session = await verifiedAuthSession();
     const validAssignmentId = parse(idSchema, assignmentId);
-
     const assignment = await db.reviewAssignment.findUnique({
         where: { id: validAssignmentId },
         select: { reviewerId: true, status: true, project: { select: { deleted: true } } },
     });
-
     if (!assignment || assignment.project.deleted) throw new Error("Assignment not found");
     if (assignment.reviewerId !== session.user.id) throw new Error("Forbidden");
     if (assignment.status === "EXCLUDED") {
         throw new Error("Excluded reviewers cannot access evaluation reports");
     }
-
     return db.evaluationReport.findUnique({ where: { assignmentId: validAssignmentId } });
 }
 
-/**
- * Admin only: get all submitted evaluation reports for a non-deleted project.
- * Reviewer names and scores are never exposed to PIs via this function.
- */
 export async function getProjectEvaluationReports(projectId: string) {
     const session = await verifiedAuthSession();
     const validProjectId = parse(idSchema, projectId);
-
     const user = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
@@ -285,6 +284,25 @@ export async function getProjectEvaluationReports(projectId: string) {
         select: { id: true },
     });
     if (!project) throw new Error("Protocol not found");
+
+    // P16: only the current reviewer or superadmin may read evaluation reports.
+    const isSuperAdmin = user.role === "superadmin";
+    if (!isSuperAdmin) {
+        const mine = await db.reviewAssignment.findFirst({
+            where: {
+                projectId: validProjectId,
+                reviewerId: session.user.id,
+                status: { in: ["PENDING_COI", "ACTIVE", "COMPLETED"] },
+            },
+            select: { id: true },
+        });
+        if (!mine) {
+            throw new Error(
+                "Forbidden: Only the protocol's reviewer or a superadmin may read evaluation reports"
+            );
+        }
+    }
+
     const excluded = await db.reviewAssignment.findFirst({
         where: {
             projectId: validProjectId,
@@ -293,15 +311,12 @@ export async function getProjectEvaluationReports(projectId: string) {
         },
         select: { id: true },
     });
-    if (excluded && user.role !== "superadmin") {
+    if (excluded && !isSuperAdmin) {
         throw new Error("Forbidden: Excluded reviewers cannot access evaluation reports");
     }
 
     return db.evaluationReport.findMany({
-        where: {
-            status: "SUBMITTED",
-            assignment: { projectId: validProjectId, status: "COMPLETED" },
-        },
+        where: { assignment: { projectId: validProjectId } },
         include: {
             reviewer: { select: { id: true, name: true, email: true } },
         },
