@@ -8,7 +8,6 @@ import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import { TextEncoder, TextDecoder } from "util";
 
-
 if (!globalThis.structuredClone) {
     globalThis.structuredClone = <T>(obj: T): T =>
         JSON.parse(JSON.stringify(obj)) as T;

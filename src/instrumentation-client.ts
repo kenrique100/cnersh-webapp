@@ -22,6 +22,10 @@ Sentry.init({
     integrations: [
         Sentry.replayIntegration(),
         Sentry.feedbackIntegration({
+            // Sentry injects the button automatically by default. We disable
+            // that so we can control its lifetime below: it should be visible
+            // for the first 10 seconds after a full page load, then removed.
+            autoInject: false,
             colorScheme: "system",
             showName: false,
             isEmailRequired: true,
@@ -44,5 +48,40 @@ Sentry.init({
         }),
     ],
 });
+
+/**
+ * Create the Feedback widget button and remove it from the DOM after 10 s.
+ *
+ * Why manual creation: with `autoInject: true`, Sentry inserts the button the
+ * moment the integration is registered. We want the button to disappear on
+ * its own after a short window, and Sentry exposes no timer option. By
+ * disabling auto-injection and calling `createWidget()` ourselves, we keep
+ * the exact same button (same handlers, same `onSubmitSuccess`) but gain a
+ * handle we can use to call `removeFromDom()` on a timer.
+ *
+ * `removeFromDom()` removes only the button, not the form. If a user opens
+ * the form before the timer fires, their in-progress report is preserved.
+ */
+function scheduleFeedbackButtonRemoval(): void {
+    const feedback = Sentry.getFeedback();
+    if (!feedback) return;
+    const widget = feedback.createWidget();
+    setTimeout(() => {
+        widget.removeFromDom();
+    }, 10_000);
+}
+
+if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+        // `createWidget` appends into a shadow-DOM host on `document.body`.
+        // That host may not exist yet while the document is still parsing,
+        // so wait for DOMContentLoaded the same way Sentry does internally.
+        document.addEventListener("DOMContentLoaded", scheduleFeedbackButtonRemoval, {
+            once: true,
+        });
+    } else {
+        scheduleFeedbackButtonRemoval();
+    }
+}
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
