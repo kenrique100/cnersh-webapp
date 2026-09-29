@@ -1,489 +1,532 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
     ArrowLeftIcon,
-    Calendar,
-    Clock,
-    User as UserIcon,
-    Tag,
-    Share2,
-    Bookmark,
-    ChevronLeft,
-    ChevronRight,
-    Quote,
-    Info,
-    AlertTriangle,
-    CheckCircle2,
-    ArrowRight,
+    ArrowRightIcon,
+    BookOpenIcon,
+    CalendarDaysIcon,
+    ChevronRightIcon,
+    FileTextIcon,
+    LandmarkIcon,
+    ShieldCheckIcon,
+    UserRoundIcon,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { authSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import Navbar from "@/components/navbar";
-import {
-    CATEGORY_STYLES,
-    formatArticleDate,
-    getArticleBySlug,
-    getRelatedArticles,
-    listArticles,
-    type ArticleBlock,
-} from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
-interface ArticlePageProps {
-    params: Promise<{ slug: string }>;
-}
+/**
+ * CNERSH Articles & Publications
+ *
+ * Route:
+ * /pages/article
+ *
+ * This page is intentionally designed as an institutional editorial hub.
+ * Article content can later be connected to a database/CMS without
+ * changing the overall page structure.
+ */
 
-/* --------------------------------------------------------------------- */
-/* Table of contents                                                     */
-/* --------------------------------------------------------------------- */
+const articleCategories = [
+    {
+        title: "Research Ethics",
+        description:
+            "Articles and educational resources on ethical principles, human participant protection, and responsible health research.",
+        icon: ShieldCheckIcon,
+    },
+    {
+        title: "Ethical Review",
+        description:
+            "Information explaining the ethical review process and the responsibilities of researchers and review stakeholders.",
+        icon: FileTextIcon,
+    },
+    {
+        title: "Research Governance",
+        description:
+            "Institutional perspectives on governance, accountability, transparency, and standards in health research.",
+        icon: LandmarkIcon,
+    },
+];
 
-interface TocEntry {
-    id: string;
-    text: string;
-    level: 2 | 3;
-}
+const featuredArticles = [
+    {
+        category: "Research Ethics",
+        title: "Understanding Ethics in Health Research",
+        excerpt:
+            "An introduction to the principles that guide ethical health research involving human participants, with emphasis on respect, protection, accountability, and responsible research practice.",
+        date: "Research Ethics Resource",
+        readTime: "5 min read",
+    },
+    {
+        category: "Ethical Review",
+        title: "Why Ethical Review Matters",
+        excerpt:
+            "Ethical review provides an important safeguard for research participants while supporting scientifically and ethically responsible health research.",
+        date: "Ethical Review Resource",
+        readTime: "4 min read",
+    },
+    {
+        category: "Research Governance",
+        title: "Building Trust in Health Research",
+        excerpt:
+            "Transparent ethical oversight, clear responsibilities, and protection of participants contribute to public confidence in health research.",
+        date: "Governance Resource",
+        readTime: "6 min read",
+    },
+];
 
-function buildToc(blocks: ArticleBlock[]): TocEntry[] {
-    const headings: TocEntry[] = [];
-    blocks.forEach((b, idx) => {
-        if (b.type === "heading") {
-            headings.push({
-                id: `h-${idx}`,
-                text: b.text,
-                level: b.level,
-            });
-        }
-    });
-    return headings;
-}
-
-/* --------------------------------------------------------------------- */
-/* Block renderer                                                        */
-/* --------------------------------------------------------------------- */
-
-function ArticleBlockView({
-                              block,
-                              index,
-                          }: {
-    block: ArticleBlock;
-    index: number;
-}) {
-    switch (block.type) {
-        case "heading": {
-            const id = `h-${index}`;
-            if (block.level === 3) {
-                return (
-                    <h3
-                        id={id}
-                        className="mt-8 mb-3 scroll-mt-24 text-base font-semibold text-gray-900 dark:text-gray-100"
-                    >
-                        {block.text}
-                    </h3>
-                );
-            }
-            return (
-                <h2
-                    id={id}
-                    className="mt-10 mb-4 scroll-mt-24 text-xl font-bold text-gray-900 sm:text-2xl dark:text-gray-100"
-                >
-                    {block.text}
-                </h2>
-            );
-        }
-
-        case "paragraph":
-            return (
-                <p className="mb-5 text-[15px] leading-7 text-gray-700 dark:text-gray-300">
-                    {block.text}
-                </p>
-            );
-
-        case "list":
-            if (block.ordered) {
-                return (
-                    <ol className="mb-6 list-decimal space-y-2 pl-6 text-[15px] leading-7 text-gray-700 marker:text-blue-700 dark:text-gray-300 dark:marker:text-blue-400">
-                        {block.items.map((item, i) => (
-                            <li key={i}>{item}</li>
-                        ))}
-                    </ol>
-                );
-            }
-            return (
-                <ul className="mb-6 space-y-2 text-[15px] leading-7 text-gray-700 dark:text-gray-300">
-                    {block.items.map((item, i) => (
-                        <li key={i} className="flex gap-2.5">
-                            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600 dark:bg-blue-400" />
-                            <span>{item}</span>
-                        </li>
-                    ))}
-                </ul>
-            );
-
-        case "quote":
-            return (
-                <figure className="my-8 border-l-4 border-blue-600 bg-blue-50/60 py-4 pl-5 pr-6 dark:border-blue-500 dark:bg-blue-950/30">
-                    <Quote className="mb-2 h-5 w-5 text-blue-700 dark:text-blue-400" />
-                    <blockquote className="text-[15px] italic leading-7 text-gray-800 dark:text-gray-200">
-                        {block.text}
-                    </blockquote>
-                    {block.attribution && (
-                        <figcaption className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                            — {block.attribution}
-                        </figcaption>
-                    )}
-                </figure>
-            );
-
-        case "callout": {
-            const variants = {
-                info: {
-                    wrapper:
-                        "border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/30",
-                    icon: "text-blue-700 dark:text-blue-400",
-                    title: "text-blue-900 dark:text-blue-100",
-                    text: "text-blue-900/90 dark:text-blue-100/85",
-                    Icon: Info,
-                },
-                warning: {
-                    wrapper:
-                        "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/30",
-                    icon: "text-amber-700 dark:text-amber-400",
-                    title: "text-amber-900 dark:text-amber-100",
-                    text: "text-amber-900/90 dark:text-amber-100/85",
-                    Icon: AlertTriangle,
-                },
-                success: {
-                    wrapper:
-                        "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/30",
-                    icon: "text-emerald-700 dark:text-emerald-400",
-                    title: "text-emerald-900 dark:text-emerald-100",
-                    text: "text-emerald-900/90 dark:text-emerald-100/85",
-                    Icon: CheckCircle2,
-                },
-            } as const;
-            const v = variants[block.variant];
-            const Icon = v.Icon;
-            return (
-                <aside className={`my-6 rounded-xl border p-4 ${v.wrapper}`}>
-                    <div className="mb-1 flex items-center gap-2">
-                        <Icon className={`h-4 w-4 ${v.icon}`} />
-                        <p className={`text-sm font-semibold ${v.title}`}>{block.title}</p>
-                    </div>
-                    <p className={`text-sm leading-relaxed ${v.text}`}>{block.text}</p>
-                </aside>
-            );
-        }
-
-        default:
-            return null;
-    }
-}
-
-/* --------------------------------------------------------------------- */
-/* Page                                                                  */
-/* --------------------------------------------------------------------- */
-
-export default async function ArticlePage({ params }: ArticlePageProps) {
-    const { slug } = await params;
-    const article = getArticleBySlug(slug);
-    if (!article) notFound();
-
+export default async function ArticlePage() {
     const session = await authSession();
+
     let navUser = null;
     let notificationCount = 0;
 
     if (session) {
-        try {
-            const [user, unreadCount] = await Promise.all([
-                db.user.findUnique({
-                    where: { id: session.user.id },
-                    select: { name: true, email: true, image: true, gender: true, role: true },
-                }),
-                getUnreadNotificationCount(),
-            ]);
-            if (user) {
-                navUser = {
-                    name: user.name,
-                    email: user.email,
-                    image: user.image,
-                    gender: user.gender,
-                    role: user.role,
-                };
-            }
-            notificationCount = unreadCount;
-        } catch (error) {
-            console.error("Error fetching user data for article page:", error);
+        const [user, unreadCount] = await Promise.all([
+            db.user.findUnique({
+                where: {
+                    id: session.user.id,
+                },
+                select: {
+                    name: true,
+                    email: true,
+                    image: true,
+                    gender: true,
+                    role: true,
+                },
+            }),
+            getUnreadNotificationCount(),
+        ]);
+
+        if (user) {
+            navUser = {
+                name: user.name,
+                email: user.email,
+                image: user.image,
+                gender: user.gender,
+                role: user.role,
+            };
         }
+
+        notificationCount = unreadCount;
     }
 
-    const toc = buildToc(article.content);
-    const related = getRelatedArticles(article.slug, 3);
-
-    // Prev / next in chronological order
-    const ordered = listArticles();                    // newest first
-    const idx = ordered.findIndex((a) => a.slug === article.slug);
-    const newer = idx > 0 ? ordered[idx - 1] : null;
-    const older = idx < ordered.length - 1 ? ordered[idx + 1] : null;
-
-    const style = CATEGORY_STYLES[article.category];
-
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <Navbar user={navUser} notificationCount={notificationCount} />
+        <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+            <Navbar
+                user={navUser}
+                notificationCount={notificationCount}
+            />
 
-            <main className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-                {/* Breadcrumb */}
-                <div className="mb-6 flex items-center gap-2 text-sm">
-                    <Link
-                        href="/pages/articles"
-                        className="flex items-center gap-1 text-gray-500 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4" />
-                        <span className="hidden sm:inline">All articles</span>
-                        <span className="sm:hidden">Back</span>
-                    </Link>
-                    <span className="text-gray-300 dark:text-gray-600">/</span>
-                    <span className="truncate font-medium text-gray-900 dark:text-gray-100">
-                        {article.title}
-                    </span>
-                </div>
-
-                {/* Hero */}
-                <header className="relative mb-8 overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-violet-50 px-6 py-8 sm:px-10 sm:py-10 dark:border-blue-900/60 dark:from-blue-950/40 dark:via-gray-950 dark:to-violet-950/30">
-                    <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-200/40 blur-3xl dark:bg-blue-900/30" />
-                    <div className="relative">
-                        <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${style.badge}`}
+            <main>
+                {/* =========================================================
+                    HERO
+                ========================================================== */}
+                <section className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+                    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+                        {/* Breadcrumb */}
+                        <nav
+                            aria-label="Breadcrumb"
+                            className="mb-8 flex items-center gap-2 text-sm"
                         >
-                            <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                            {article.category}
-                        </span>
-                        <h1 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-3xl md:text-4xl dark:text-gray-100">
-                            {article.title}
-                        </h1>
-                        <p className="mt-4 max-w-3xl text-sm leading-relaxed text-gray-600 sm:text-base dark:text-gray-400">
-                            {article.excerpt}
-                        </p>
+                            <Link
+                                href="/"
+                                className="inline-flex items-center gap-1.5 text-gray-500 transition-colors hover:text-blue-700 dark:text-gray-400 dark:hover:text-blue-400"
+                            >
+                                <ArrowLeftIcon className="h-4 w-4" />
+                                <span>Home</span>
+                            </Link>
 
-                        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="inline-flex items-center gap-1.5">
-                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950">
-                                    <UserIcon className="h-3.5 w-3.5 text-blue-700 dark:text-blue-400" />
-                                </span>
-                                <span className="font-medium text-gray-800 dark:text-gray-200">
-                                    {article.author.name}
-                                </span>
-                                <span className="text-gray-400 dark:text-gray-500">
-                                    · {article.author.role}
-                                </span>
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {formatArticleDate(article.publishedAt)}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                {article.readTimeMinutes} min read
-                            </span>
-                            {article.updatedAt && (
-                                <span className="inline-flex items-center gap-1 italic">
-                                    Updated {formatArticleDate(article.updatedAt)}
-                                </span>
-                            )}
-                        </div>
+                            <ChevronRightIcon className="h-4 w-4 text-gray-300 dark:text-gray-700" />
 
-                        <div className="mt-6 flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400">
-                                <Tag className="h-3 w-3" />
-                                {article.tags.join(" · ")}
+                            <Link
+                                href="/pages"
+                                className="text-gray-500 transition-colors hover:text-blue-700 dark:text-gray-400 dark:hover:text-blue-400"
+                            >
+                                Our Pages
+                            </Link>
+
+                            <ChevronRightIcon className="h-4 w-4 text-gray-300 dark:text-gray-700" />
+
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                                Articles
                             </span>
+                        </nav>
+
+                        <div className="grid items-center gap-10 lg:grid-cols-[1.4fr_0.6fr]">
+                            <div>
+                                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                                    <BookOpenIcon className="h-4 w-4" />
+                                    CNERSH Publications
+                                </div>
+
+                                <h1 className="max-w-4xl text-3xl font-bold tracking-tight text-gray-950 sm:text-4xl lg:text-5xl dark:text-white">
+                                    Articles &amp; Publications
+                                </h1>
+
+                                <p className="mt-5 max-w-3xl text-base leading-8 text-gray-600 sm:text-lg dark:text-gray-400">
+                                    Explore educational resources, institutional
+                                    perspectives, and information relating to
+                                    health research ethics, ethical review, and
+                                    responsible research governance in Cameroon.
+                                </p>
+
+                                <div className="mt-8 flex flex-wrap items-center gap-3">
+                                    <a
+                                        href="#articles"
+                                        className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-800 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500"
+                                    >
+                                        Explore articles
+                                        <ArrowRightIcon className="h-4 w-4" />
+                                    </a>
+
+                                    <Link
+                                        href="/pages/about"
+                                        className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                                    >
+                                        About CNERSH
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* Institutional visual */}
+                            <div className="relative">
+                                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                                    <div className="relative min-h-[280px] p-6 sm:p-8">
+                                        <div
+                                            aria-hidden="true"
+                                            className="absolute right-0 top-0 h-32 w-32 rounded-bl-full bg-blue-100 dark:bg-blue-950/50"
+                                        />
+
+                                        <div className="relative flex h-full min-h-[230px] flex-col justify-between">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-800 text-white dark:bg-blue-600">
+                                                    <LandmarkIcon className="h-6 w-6" />
+                                                </div>
+
+                                                <span className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                                    CNERSH
+                                                </span>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-sm font-semibold text-blue-800 dark:text-blue-400">
+                                                    Knowledge &amp; Ethics
+                                                </p>
+
+                                                <p className="mt-2 text-2xl font-bold leading-tight text-gray-950 dark:text-white">
+                                                    Supporting responsible
+                                                    health research
+                                                </p>
+
+                                                <div className="mt-5 h-1 w-16 rounded-full bg-blue-800 dark:bg-blue-500" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </header>
+                </section>
 
-                {/* Content + sidebar */}
-                <div className="grid gap-8 lg:grid-cols-[1fr_240px]">
-                    {/* Article body */}
-                    <article className="min-w-0">
-                        <Card className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-                            <CardContent className="p-6 sm:p-8">
-                                {article.content.map((block, i) => (
-                                    <ArticleBlockView key={i} block={block} index={i} />
-                                ))}
-                            </CardContent>
-                        </Card>
-
-                        {/* Prev / next */}
-                        <nav className="mt-6 grid gap-3 sm:grid-cols-2">
-                            {older ? (
-                                <Link
-                                    href={`/pages/articles/${older.slug}`}
-                                    className="group rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-blue-300 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-blue-900"
-                                >
-                                    <p className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                        <ChevronLeft className="h-3 w-3" />
-                                        Older
-                                    </p>
-                                    <p className="mt-1 line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700 dark:text-gray-100 dark:group-hover:text-blue-400">
-                                        {older.title}
-                                    </p>
-                                </Link>
-                            ) : (
-                                <div className="hidden sm:block" />
-                            )}
-                            {newer && (
-                                <Link
-                                    href={`/pages/articles/${newer.slug}`}
-                                    className="group rounded-xl border border-gray-200 bg-white p-4 text-right transition-colors hover:border-blue-300 sm:col-start-2 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-blue-900"
-                                >
-                                    <p className="flex items-center justify-end gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                        Newer
-                                        <ChevronRight className="h-3 w-3" />
-                                    </p>
-                                    <p className="mt-1 line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700 dark:text-gray-100 dark:group-hover:text-blue-400">
-                                        {newer.title}
-                                    </p>
-                                </Link>
-                            )}
-                        </nav>
-                    </article>
-
-                    {/* Sidebar */}
-                    <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-                        {/* Table of contents */}
-                        {toc.length > 0 && (
-                            <Card className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-                                <CardContent className="p-5">
-                                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                        On this page
-                                    </p>
-                                    <ul className="space-y-2 text-sm">
-                                        {toc.map((entry) => (
-                                            <li
-                                                key={entry.id}
-                                                className={entry.level === 3 ? "pl-3" : ""}
-                                            >
-                                                <a
-                                                    href={`#${entry.id}`}
-                                                    className="block text-gray-600 underline-offset-2 hover:text-blue-700 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
-                                                >
-                                                    {entry.text}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Author card */}
-                        <Card className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-                            <CardContent className="p-5">
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                    Author
-                                </p>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950">
-                                        <UserIcon className="h-5 w-5 text-blue-700 dark:text-blue-400" />
+                {/* =========================================================
+                    INTRODUCTION / INSTITUTIONAL CONTEXT
+                ========================================================== */}
+                <section className="bg-gray-50 dark:bg-gray-950">
+                    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+                        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+                            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8 dark:border-gray-800 dark:bg-gray-900">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-400">
+                                        <FileTextIcon className="h-5 w-5" />
                                     </div>
+
                                     <div>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                            {article.author.name}
+                                        <p className="text-xs font-semibold uppercase tracking-widest text-blue-800 dark:text-blue-400">
+                                            About this section
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                                            {article.author.role}
+
+                                        <h2 className="mt-1 text-xl font-bold text-gray-950 sm:text-2xl dark:text-white">
+                                            Knowledge for researchers and the
+                                            public
+                                        </h2>
+
+                                        <p className="mt-4 max-w-3xl text-sm leading-7 text-gray-600 sm:text-base dark:text-gray-400">
+                                            The Articles &amp; Publications
+                                            section provides a structured space
+                                            for information related to health
+                                            research ethics and ethical
+                                            governance. Content can be used to
+                                            communicate institutional knowledge,
+                                            explain ethical review concepts,
+                                            and support understanding among
+                                            researchers, research participants,
+                                            institutions, and members of the
+                                            public.
                                         </p>
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
 
-                        {/* Share */}
-                        <Card className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-                            <CardContent className="p-5">
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                    Share
+                            {/* Quick information */}
+                            <aside className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                                    Publication areas
                                 </p>
-                                <div className="flex flex-col gap-2">
-                                    <a
-                                        href={`mailto:?subject=${encodeURIComponent(article.title)}&body=Read this article on CNERSH: ${encodeURIComponent(`/pages/articles/${article.slug}`)}`}
-                                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:border-blue-300 hover:text-blue-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300 dark:hover:border-blue-900 dark:hover:text-blue-400"
-                                    >
-                                        <Share2 className="h-3.5 w-3.5" />
-                                        Share via email
-                                    </a>
-                                    <button
-                                        type="button"
-                                        disabled
-                                        className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-dashed border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-600"
-                                        title="Coming soon"
-                                    >
-                                        <Bookmark className="h-3.5 w-3.5" />
-                                        Save for later
-                                    </button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </aside>
-                </div>
 
-                {/* Related */}
-                {related.length > 0 && (
-                    <section className="mt-12">
-                        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Related articles
-                        </h2>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {related.map((r) => {
-                                const rStyle = CATEGORY_STYLES[r.category];
+                                <div className="mt-5 space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <ShieldCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
+
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                Participant protection
+                                            </p>
+
+                                            <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                                                Ethical principles and
+                                                responsible research practice.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3">
+                                        <FileTextIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
+
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                Ethical review
+                                            </p>
+
+                                            <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                                                Guidance and educational
+                                                information about review.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3">
+                                        <LandmarkIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-700 dark:text-blue-400" />
+
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                Governance
+                                            </p>
+
+                                            <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                                                Accountability and ethical
+                                                oversight in health research.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </aside>
+                        </div>
+                    </div>
+                </section>
+
+                {/* =========================================================
+                    CATEGORIES
+                ========================================================== */}
+                <section className="border-y border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+                    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+                        <div className="max-w-2xl">
+                            <p className="text-xs font-semibold uppercase tracking-widest text-blue-800 dark:text-blue-400">
+                                Browse by topic
+                            </p>
+
+                            <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl dark:text-white">
+                                Research ethics knowledge areas
+                            </h2>
+
+                            <p className="mt-3 text-sm leading-7 text-gray-600 dark:text-gray-400">
+                                Content can be organized around the major
+                                themes relevant to ethical health research and
+                                institutional oversight.
+                            </p>
+                        </div>
+
+                        <div className="mt-8 grid gap-5 md:grid-cols-3">
+                            {articleCategories.map((category) => {
+                                const Icon = category.icon;
+
                                 return (
-                                    <Link
-                                        key={r.slug}
-                                        href={`/pages/articles/${r.slug}`}
-                                        className="group block"
+                                    <article
+                                        key={category.title}
+                                        className="group rounded-xl border border-gray-200 bg-gray-50 p-6 transition-colors hover:border-blue-200 hover:bg-blue-50/50 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-900 dark:hover:bg-blue-950/20"
                                     >
-                                        <Card className="h-full rounded-xl border border-gray-200 bg-white transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-sm dark:border-gray-800 dark:bg-gray-950 dark:hover:border-blue-900">
-                                            <CardContent className="p-4">
-                                                <span
-                                                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${rStyle.badge}`}
-                                                >
-                                                    <span
-                                                        className={`h-1 w-1 rounded-full ${rStyle.dot}`}
-                                                    />
-                                                    {r.category}
-                                                </span>
-                                                <p className="mt-2 line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700 dark:text-gray-100 dark:group-hover:text-blue-400">
-                                                    {r.title}
-                                                </p>
-                                                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                                                    {r.excerpt}
-                                                </p>
-                                                <div className="mt-3 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
-                                                    <span className="inline-flex items-center gap-1">
-                                                        <Clock className="h-3 w-3" />
-                                                        {r.readTimeMinutes} min
-                                                    </span>
-                                                    <span className="inline-flex items-center gap-1 font-medium text-blue-700 dark:text-blue-400">
-                                                        Read
-                                                        <ArrowRight className="h-3 w-3" />
-                                                    </span>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </Link>
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-blue-800 shadow-sm ring-1 ring-gray-200 dark:bg-gray-950 dark:text-blue-400 dark:ring-gray-800">
+                                            <Icon className="h-5 w-5" />
+                                        </div>
+
+                                        <h3 className="mt-5 text-base font-bold text-gray-950 dark:text-white">
+                                            {category.title}
+                                        </h3>
+
+                                        <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                                            {category.description}
+                                        </p>
+
+                                        <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-800 dark:text-blue-400">
+                                            Explore topic
+                                            <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                        </span>
+                                    </article>
                                 );
                             })}
                         </div>
-                    </section>
-                )}
+                    </div>
+                </section>
 
-                <div className="py-8 text-center text-xs text-gray-400 dark:text-gray-500">
-                    CNERSH © {new Date().getFullYear()}
-                </div>
+                {/* =========================================================
+                    ARTICLES
+                ========================================================== */}
+                <section
+                    id="articles"
+                    className="bg-gray-50 dark:bg-gray-950"
+                >
+                    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+                        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-blue-800 dark:text-blue-400">
+                                    Featured resources
+                                </p>
+
+                                <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl dark:text-white">
+                                    Articles &amp; educational resources
+                                </h2>
+                            </div>
+
+                            <p className="max-w-md text-sm leading-6 text-gray-500 sm:text-right dark:text-gray-400">
+                                A structured publication area ready for
+                                CNERSH-approved articles, guidance, and
+                                institutional resources.
+                            </p>
+                        </div>
+
+                        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+                            {featuredArticles.map((article, index) => (
+                                <article
+                                    key={article.title}
+                                    className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900 ${
+                                        index === 0
+                                            ? "lg:col-span-1"
+                                            : ""
+                                    }`}
+                                >
+                                    {/* Article visual header */}
+                                    <div className="relative h-40 overflow-hidden border-b border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-950">
+                                        <div className="absolute inset-0 flex items-end p-6">
+                                            <div className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-lg bg-white/90 text-blue-800 shadow-sm dark:bg-gray-900/90 dark:text-blue-400">
+                                                <BookOpenIcon className="h-5 w-5" />
+                                            </div>
+
+                                            <div>
+                                                <span className="inline-flex rounded-full bg-blue-800 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-blue-600">
+                                                    {article.category}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-1 flex-col p-6">
+                                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <CalendarDaysIcon className="h-3.5 w-3.5" />
+                                                {article.date}
+                                            </span>
+
+                                            <span>{article.readTime}</span>
+                                        </div>
+
+                                        <h3 className="mt-4 text-lg font-bold leading-7 text-gray-950 group-hover:text-blue-800 dark:text-white dark:group-hover:text-blue-400">
+                                            {article.title}
+                                        </h3>
+
+                                        <p className="mt-3 flex-1 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                                            {article.excerpt}
+                                        </p>
+
+                                        <div className="mt-6 border-t border-gray-100 pt-5 dark:border-gray-800">
+                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-blue-800 dark:text-blue-400">
+                                                Read article
+                                                <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* =========================================================
+                    INSTITUTIONAL CTA
+                ========================================================== */}
+                <section className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+                    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+                        <div className="overflow-hidden rounded-2xl border border-blue-900 bg-blue-900 shadow-sm dark:border-blue-800 dark:bg-blue-950">
+                            <div className="grid items-center gap-8 px-6 py-8 sm:px-8 lg:grid-cols-[1fr_auto] lg:px-10 lg:py-10">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
+                                            <UserRoundIcon className="h-5 w-5" />
+                                        </div>
+
+                                        <p className="text-xs font-semibold uppercase tracking-widest text-blue-100">
+                                            Researchers &amp; stakeholders
+                                        </p>
+                                    </div>
+
+                                    <h2 className="mt-4 text-2xl font-bold text-white sm:text-3xl">
+                                        Looking for more information?
+                                    </h2>
+
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-blue-100 sm:text-base">
+                                        Visit the institutional pages to learn
+                                        more about CNERSH, its role in health
+                                        research ethics, and the services
+                                        available through the platform.
+                                    </p>
+                                </div>
+
+                                <Link
+                                    href="/pages/about"
+                                    className="inline-flex items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900"
+                                >
+                                    Learn about CNERSH
+                                    <ArrowRightIcon className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </main>
+
+            {/* =============================================================
+                FOOTER
+            ============================================================= */}
+            <footer className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+                <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            CNERSH
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            National Ethics Committee for Health Research on
+                            Humans
+                        </p>
+                    </div>
+
+                    <p className="text-xs text-gray-500 lg:text-right dark:text-gray-400">
+                        &copy; {new Date().getFullYear()} CNERSH. All rights
+                        reserved.
+                    </p>
+                </div>
+            </footer>
         </div>
     );
 }
