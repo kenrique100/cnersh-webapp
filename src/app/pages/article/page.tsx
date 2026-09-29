@@ -1,28 +1,384 @@
-import Image from "next/image"; import Link from "next/link";
-import {ArrowRight,BookOpen,ChevronRight,Clock,FileCheck2,Gavel,HeartHandshake,Landmark,LockKeyhole,Scale,ShieldCheck,Users,Waypoints} from "lucide-react";
-import {authSession} from "@/lib/auth-utils"; import {db} from "@/lib/db"; import {getUnreadNotificationCount} from "@/app/actions/notification"; import Navbar from "@/components/navbar";
-export const dynamic="force-dynamic";
-const articles=[["research-ethics","Research Ethics","Understanding ethics in health research","Ethical research protects dignity, rights, safety and welfare while requiring scientific rigor, fairness, accountability and responsible conduct.",ShieldCheck],["ethical-review","Ethical Review","Why ethical review matters","Ethics review considers scientific justification, ethical acceptability, proportionate risk and participant protection.",FileCheck2],["participant-protection","Participant Protection","Protecting participants and vulnerable populations","Children, people lacking decision-making capacity, pregnant women where relevant, prisoners and vulnerable populations may require additional safeguards.",Users],["informed-consent","Informed Consent","Informed consent as an ongoing process","Participants should understand purpose, procedures, risks, benefits, applicable alternatives, confidentiality, voluntariness and withdrawal rights.",HeartHandshake],["continuing-oversight","Continuing Oversight","Ethical oversight after approval","Amendments, adverse events, deviations, reports, complaints, monitoring and final reporting remain part of accountable research.",Waypoints],["data-governance","Data Governance","Privacy, confidentiality and research data","Governance should address collection, responsibility, access, storage, sharing, transfer, retention, destruction and secondary use.",LockKeyhole],["biological-materials","Biological Materials","Responsible management of biological materials","Collection, storage, transport, secondary use and transfer should follow applicable requirements and approved governance.",Scale],["review-categories","Review Pathways","Review categories and committee deference","The source describes full/amendment, expedited, continuing/safety/incident and appropriate committee deference pathways.",Landmark],["scientific-checklist","Protocol Review","Scientific validation checklist","Validation covers title, investigators, sponsor, bilingual abstract, question, hypotheses, objectives, literature, design, sites, population, criteria, recruitment, sample size and collection.",BookOpen],["ethics-checklist","Protocol Review","Ethics validation checklist","The checklist includes consent/assent, data instruments, CVs, budget, funding, conflicts, insurance where applicable, DSA/MTA, engagement, risk, compensation and training.",FileCheck2],["publication-integrity","Research Integrity","Publication integrity and conflicts","Research should not be suppressed, manipulated or selectively reported; relevant conflicts should be disclosed and managed.",Scale],["penalties","Cameroon Law","Accountability under Law No. 2022/008","The source document describes administrative, financial and criminal sanctions for specified violations; the official law remains the controlling legal source.",Gavel]];
-const detail:Record<string,string[]>={
-"research-ethics":["Health research involving human beings should be scientifically sound and ethically acceptable.","Core values include human dignity, beneficence, non-maleficence, justice/equity, integrity, independence, confidentiality and accountability."],
-"ethical-review":["Ethical review assesses whether a proposed study satisfies applicable ethical requirements before research begins.","A scientifically incapable study may expose participants to risk without sufficient scientific or social value."],
-"participant-protection":["The CNERSH document identifies children, people lacking decision-making capacity, pregnant women where relevant, prisoners/institutionalized persons, economically or socially vulnerable populations, communities with limited healthcare access and emergency participants for particular attention.","Additional safeguards should be proportionate to the circumstances."],
-"informed-consent":["Participants should receive information about purpose, procedures, risks, benefits, applicable alternatives, confidentiality, voluntary participation and withdrawal.","For minors or people lacking capacity, the applicable consent and assent requirements must be followed."],
-"continuing-oversight":["Approval is not the end of ethical responsibility.","Continuing oversight can include amendments, serious adverse events, protocol deviations, continuing reports, safety reports, premature termination, final reports, participant complaints and site monitoring."],
-"data-governance":["Research data governance should define collection, responsibility, access, storage, sharing, transfer, retention, destruction and secondary use.","Privacy protections extend to identifiable information, medical records, genomic information, digital data, recordings and sensitive community information."],
-"biological-materials":["Biological materials require governance at collection, storage, transportation, secondary use and transfer.","The source calls for a biological-material management plan and MTA where applicable."],
-"review-categories":["Full/amendment review is described for greater-than-minimal risk, clinical interventions, vulnerable populations, significant ethical complexity and modifications to approved research.","Expedited review may apply to defined lower-risk research or qualifying amendments under approved SOPs.","Continuing/safety/incident review addresses ongoing oversight, serious adverse events, protocol violations, complaints or urgent circumstances."],
-"scientific-checklist":["The scientific checklist includes study title, investigators, sponsor/promoter, French and English abstract, introduction, research question, hypotheses, objectives, literature review, design, sites, period, population, inclusion/exclusion, recruitment, sample-size justification and sample collection."],
-"ethics-checklist":["The ethics checklist includes ethics-clearance request, information sheet, consent, assent where applicable, data instruments, CVs, budget, funding, conflicts, insurance where applicable, DSA, MTA, community engagement/dissemination, risk management, compensation/reimbursement, investigator brochure and GCP/training documentation."],
-"publication-integrity":["Publication integrity requires that research not be suppressed, manipulated or selectively reported because findings are inconvenient.","Relevant conflicts should be disclosed and managed."],
-"penalties":["The supplied document identifies Chapter VII, Articles 56–60 of Law No. 2022/008 as establishing sanctions.","It describes administrative measures, financial penalties and criminal sanctions for specified violations. Users should consult the official law for legal interpretation."]
-};
-export default async function ArticlePage(){const s=await authSession();let u=null,n=0;if(s){const [a,b]=await Promise.all([db.user.findUnique({where:{id:s.user.id},select:{name:true,email:true,image:true,gender:true,role:true}}),getUnreadNotificationCount()]);u=a;n=b}return <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"><Navbar user={u} notificationCount={n}/><main>
-<section className="border-b bg-white dark:border-slate-800 dark:bg-slate-950"><div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_.75fr] lg:px-8 lg:py-16"><div className="flex flex-col justify-center"><nav className="mb-6 flex gap-2 text-sm text-slate-500"><Link href="/">Home</Link><ChevronRight className="h-4 w-4"/><span>Articles</span></nav><span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-widest text-blue-900 dark:bg-blue-950 dark:text-blue-300">CNERSH Knowledge Centre</span><h1 className="mt-5 text-4xl font-black sm:text-5xl">Articles &amp; Research Ethics Guidance</h1><p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-400">A structured resource explaining CNERSH’s mandate, ethical review, participant protection, protocol governance, data stewardship and accountability.</p><a href="#articles" className="mt-7 inline-flex w-fit items-center gap-2 rounded-lg bg-blue-900 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800">Explore articles <ArrowRight className="h-4 w-4"/></a></div><div className="relative min-h-[300px] overflow-hidden rounded-3xl"><Image src="/article.png" alt="CNERSH publications and research ethics" fill priority className="object-cover"/><div className="absolute inset-0 bg-gradient-to-t from-blue-950/80 to-transparent"/><p className="absolute bottom-7 left-7 text-2xl font-black text-white">Knowledge that supports responsible health research</p></div></div></section>
-<section className="border-b bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60"><div className="mx-auto max-w-7xl overflow-x-auto px-4 py-5 sm:px-6 lg:px-8"><nav className="flex min-w-max gap-2">{[["#articles","All"],["#research-ethics","Research Ethics"],["#ethical-review","Ethical Review"],["#participant-protection","Participant Protection"],["#informed-consent","Informed Consent"],["#data-governance","Data Governance"],["#protocol-policies","Protocol Review"],["#penalties","Cameroon Law"]].map(([h,t])=><a key={h} href={h} className="rounded-full border bg-white px-4 py-2 text-sm font-semibold hover:border-blue-500 hover:text-blue-800 dark:border-slate-700 dark:bg-slate-950">{t}</a>)}</nav></div></section>
-<section id="articles" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">Knowledge resources</p><h2 className="mt-2 text-3xl font-black">Research ethics topics</h2><div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{articles.map(([id,cat,title,desc,I])=><article id={id} key={id} className="scroll-mt-24 flex flex-col rounded-2xl border bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="p-6"><div className="flex justify-between"><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-900 dark:bg-blue-950 dark:text-blue-300">{cat}</span><I className="h-5 w-5 text-slate-300"/></div><h3 className="mt-5 text-xl font-black">{title}</h3><p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-400">{desc}</p></div><div className="mt-auto border-t p-5 dark:border-slate-800"><a href={"#detail-"+id} className="inline-flex items-center gap-1 text-sm font-bold text-blue-800 hover:underline">Read article <ArrowRight className="h-4 w-4"/></a></div></article>)}</div></section>
-<section id="protocol-policies" className="border-y bg-white dark:border-slate-800 dark:bg-slate-950"><div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">Governance framework</p><h2 className="mt-2 text-3xl font-black">The 12 protocol policies</h2><div className="mt-8 grid gap-4 md:grid-cols-2">{[["01","No research without prior ethical clearance"],["02","Approved protocol must be followed"],["03","Informed consent is mandatory"],["04","Risk must be proportionate"],["05","Vulnerable participants require additional safeguards"],["06","Privacy and confidentiality"],["07","Biological materials"],["08","Data governance"],["09","Protocol amendments"],["10","Adverse events and safety reporting"],["11","Conflict of interest"],["12","Publication integrity"]].map(([n,t])=><article key={n} className="rounded-xl border p-5 dark:border-slate-800"><span className="mr-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white">{n}</span><b>{t}</b></article>)}</div></div></section>
-<section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">Expanded reading</p><h2 className="mt-2 text-3xl font-black">Detailed guidance</h2><div className="mt-8 space-y-5">{articles.map(([id,cat,title,,I])=><article id={"detail-"+id} key={id} className="scroll-mt-24 rounded-2xl border bg-white p-6 sm:p-8 dark:border-slate-800 dark:bg-slate-900"><div className="flex gap-4"><I className="mt-1 h-6 w-6 shrink-0 text-blue-800"/><div><span className="text-xs font-bold uppercase tracking-wider text-blue-800">{cat}</span><h3 className="mt-2 text-2xl font-black">{title}</h3><div className="mt-4 space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-400">{detail[id].map(p=><p key={p}>{p}</p>)}</div></div></div></article>)}</div></section>
-<section id="penalties" className="border-t bg-blue-950 text-white dark:border-slate-800"><div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-widest text-blue-300">Cameroon legal framework</p><h2 className="mt-2 text-3xl font-black">Law No. 2022/008 and accountability</h2><p className="mt-4 max-w-4xl leading-8 text-blue-100">The supplied CNERSH document identifies Chapter VII, Articles 56–60 as the sanction framework and describes administrative, financial and criminal sanctions for specified violations. The official law is the controlling legal source.</p></div></section>
-<footer className="bg-slate-950 text-white"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><Link href="/" className="flex items-center gap-3"><Image src="/logo.png" alt="CNERSH logo" width={52} height={52} className="rounded-md bg-white object-contain"/><span><b className="block">CNERSH</b><span className="text-xs text-slate-400">National Ethics Committee for Health Research on Humans</span></span></Link><nav className="mt-6 flex flex-wrap gap-5 text-sm text-slate-300">{["/pages/about","/pages/accessibility","/pages/privacy-terms","/pages/support"].map(h=><Link key={h} href={h} className="hover:text-white hover:underline">{h.split("/").pop()?.replaceAll("-"," ")}</Link>)}</nav><p className="mt-6 text-xs text-slate-500">© {new Date().getFullYear()} CNERSH · Cameroon</p></div></footer>
-</main></div>
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import {
+    ArrowRight,
+    CheckCircle2,
+    FileText,
+    Lock,
+    ShieldCheck,
+    UserCheck,
+} from "lucide-react";
+
+const privacySections = [
+    {
+        id: "information",
+        title: "Information we may receive",
+        icon: FileText,
+        content:
+            "Depending on how you use the platform, information may include details submitted through forms, contact information, account or service information where applicable, technical information about how the website is accessed, and information necessary to respond to a support request.",
+    },
+    {
+        id: "purpose",
+        title: "How information may be used",
+        icon: UserCheck,
+        content:
+            "Information may be used to provide requested services, respond to enquiries, maintain platform functionality, improve user experience, address technical problems, support security and meet applicable administrative or legal requirements.",
+    },
+    {
+        id: "security",
+        title: "Security and confidentiality",
+        icon: Lock,
+        content:
+            "CNERSH should apply appropriate technical and organizational safeguards to protect information against unauthorized access, loss, misuse, alteration or disclosure. Access to information should be limited according to legitimate operational needs.",
+    },
+    {
+        id: "protection",
+        title: "Research participant information",
+        icon: ShieldCheck,
+        content:
+            "Information concerning research participants requires particular care. The existence of this website does not replace the privacy, confidentiality, consent, data-governance and security requirements that apply to an individual research project.",
+    },
+];
+
+const terms = [
+    {
+        title: "Use the platform responsibly",
+        text: "Users should provide accurate information where information is requested and should not intentionally misuse, disrupt or attempt to compromise the platform.",
+    },
+    {
+        title: "Research approval remains separate",
+        text: "Information provided through the website does not itself constitute ethical clearance, scientific approval, regulatory authorization or permission to begin a research study.",
+    },
+    {
+        title: "Respect applicable requirements",
+        text: "Researchers and institutions remain responsible for complying with applicable laws, regulations, approved protocols, ethics requirements and official CNERSH procedures.",
+    },
+    {
+        title: "Official information controls",
+        text: "Where website information differs from an applicable law, regulation, formal decision or official instrument, the applicable authoritative source should be consulted.",
+    },
+];
+
+function Footer() {
+    return (
+        <footer className="border-t border-slate-200 bg-slate-950 text-white dark:border-slate-800">
+            <div className="mx-auto grid max-w-7xl gap-12 px-6 py-14 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
+                <div>
+                    <Link href="/" className="inline-flex items-center gap-3">
+                        <Image
+                            src="/logo.png"
+                            alt="CNERSH logo"
+                            width={48}
+                            height={48}
+                            className="h-12 w-12 object-contain"
+                        />
+                        <div>
+                            <p className="font-bold">CNERSH</p>
+                            <p className="text-xs text-slate-400">
+                                National Ethics Committee
+                            </p>
+                        </div>
+                    </Link>
+
+                    <p className="mt-5 max-w-md text-sm leading-7 text-slate-400">
+                        National health research ethics oversight and coordination.
+                    </p>
+                </div>
+
+                <div>
+                    <h3 className="font-semibold">Information</h3>
+                    <div className="mt-4 space-y-3 text-sm text-slate-400">
+                        <Link className="block hover:text-white" href="/pages/about">
+                            About CNERSH
+                        </Link>
+                        <Link className="block hover:text-white" href="/pages/article">
+                            Articles & Resources
+                        </Link>
+                        <Link
+                            className="block hover:text-white"
+                            href="/pages/accessibility"
+                        >
+                            Accessibility
+                        </Link>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="font-semibold">Contact</h3>
+                    <p className="mt-4 text-sm leading-6 text-slate-400">
+                        For questions about the website, information or support, use the
+                        support channel.
+                    </p>
+
+                    <Link
+                        href="/pages/support"
+                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-400 hover:text-white"
+                    >
+                        Contact support
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </div>
+
+            <div className="border-t border-white/10">
+                <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+                    <p>© {new Date().getFullYear()} CNERSH. All rights reserved.</p>
+                    <p>Privacy, confidentiality and responsible use.</p>
+                </div>
+            </div>
+        </footer>
+    );
+}
+
+export default function PrivacyTermsPage() {
+    return (
+        <main className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-white">
+            {/* HERO */}
+            <section className="bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950">
+                <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-28">
+                    <div className="max-w-3xl">
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">
+                            Legal & Privacy
+                        </p>
+
+                        <h1 className="mt-5 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                            Privacy Notice & Terms of Use
+                        </h1>
+
+                        <p className="mt-6 text-lg leading-8 text-slate-300">
+                            Information about responsible use of the CNERSH website,
+                            protection of information and the distinction between website
+                            services and formal research ethics requirements.
+                        </p>
+
+                        <div className="mt-8 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+                            Last reviewed: September 2026
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* NOTICE */}
+            <section className="border-b border-slate-200 bg-emerald-50 px-6 py-10 dark:border-slate-800 dark:bg-emerald-950/20 lg:px-8">
+                <div className="mx-auto flex max-w-7xl gap-4">
+                    <ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-emerald-700 dark:text-emerald-400" />
+
+                    <div>
+                        <h2 className="font-bold text-slate-950 dark:text-white">
+                            Important notice
+                        </h2>
+
+                        <p className="mt-2 max-w-4xl text-sm leading-7 text-slate-700 dark:text-slate-300">
+                            This page provides general website information. It does not
+                            replace applicable Cameroon laws, regulations, official CNERSH
+                            instruments, approved research protocols, ethics committee
+                            decisions or other authoritative requirements.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* PRIVACY */}
+            <section className="px-6 py-20 lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                    <div className="max-w-3xl">
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                            Privacy notice
+                        </p>
+
+                        <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
+                            How information should be handled
+                        </h2>
+
+                        <p className="mt-5 leading-8 text-slate-600 dark:text-slate-300">
+                            Protecting information is an important part of responsible public
+                            digital service and research governance. The principles below
+                            describe the approach to information handled through the website.
+                        </p>
+                    </div>
+
+                    <div className="mt-12 grid gap-6 md:grid-cols-2">
+                        {privacySections.map((section) => {
+                            const Icon = section.icon;
+
+                            return (
+                                <article
+                                    id={section.id}
+                                    key={section.id}
+                                    className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                                >
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                                        <Icon className="h-6 w-6" />
+                                    </div>
+
+                                    <h3 className="mt-6 text-xl font-bold">{section.title}</h3>
+
+                                    <p className="mt-3 leading-7 text-slate-600 dark:text-slate-400">
+                                        {section.content}
+                                    </p>
+                                </article>
+                            );
+                        })}
+                    </div>
+                </div>
+            </section>
+
+            {/* DATA PRINCIPLES */}
+            <section className="bg-slate-50 px-6 py-20 dark:bg-slate-900/60 lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            [
+                                "Purpose",
+                                "Information should be collected and used for legitimate, clearly understood purposes.",
+                            ],
+                            [
+                                "Minimization",
+                                "Only information necessary for the relevant purpose should be requested or retained.",
+                            ],
+                            [
+                                "Confidentiality",
+                                "Information should be protected against inappropriate access or disclosure.",
+                            ],
+                            [
+                                "Accountability",
+                                "Information handling should remain subject to appropriate governance and oversight.",
+                            ],
+                        ].map(([title, description]) => (
+                            <article
+                                key={title}
+                                className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-800 dark:bg-slate-950"
+                            >
+                                <h3 className="font-bold text-emerald-700 dark:text-emerald-400">
+                                    {title}
+                                </h3>
+                                <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-400">
+                                    {description}
+                                </p>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* TERMS */}
+            <section className="px-6 py-20 lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                    <div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr]">
+                        <div>
+                            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
+                                Terms of use
+                            </p>
+
+                            <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
+                                Using the platform responsibly
+                            </h2>
+
+                            <p className="mt-5 leading-8 text-slate-600 dark:text-slate-300">
+                                Access to CNERSH information and digital services should be
+                                accompanied by responsible use, respect for applicable
+                                requirements and protection of other people&#39;s information.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {terms.map((term) => (
+                                <article
+                                    key={term.title}
+                                    className="rounded-3xl border border-slate-200 p-7 dark:border-slate-800"
+                                >
+                                    <div className="flex gap-4">
+                                        <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+
+                                        <div>
+                                            <h3 className="font-bold">{term.title}</h3>
+                                            <p className="mt-2 leading-7 text-slate-600 dark:text-slate-400">
+                                                {term.text}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* RESEARCH DATA */}
+            <section className="bg-slate-950 px-6 py-20 text-white lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                    <div className="grid gap-12 lg:grid-cols-2">
+                        <div>
+                            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">
+                                Research data
+                            </p>
+
+                            <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
+                                Website privacy is not a substitute for research data
+                                governance
+                            </h2>
+                        </div>
+
+                        <div className="space-y-5 text-slate-300">
+                            <p className="leading-8">
+                                Research teams remain responsible for ensuring that participant
+                                information, biological materials and research records are
+                                handled according to the approved study procedures and
+                                applicable requirements.
+                            </p>
+
+                            <p className="leading-8">
+                                Where a study involves sensitive personal information,
+                                investigators should establish appropriate safeguards for
+                                collection, access, storage, transfer, retention and
+                                dissemination.
+                            </p>
+
+                            <p className="leading-8">
+                                The CNERSH website should not be treated as authorization to
+                                collect or process participant data for a research study.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* CHANGES */}
+            <section className="px-6 py-20 lg:px-8">
+                <div className="mx-auto max-w-4xl">
+                    <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-12">
+                        <h2 className="text-2xl font-bold">Updates to this page</h2>
+
+                        <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">
+                            Privacy and terms information may be updated when website
+                            services, operational practices, applicable requirements or
+                            official guidance changes. Users should consult the latest
+                            published version when relying on this information.
+                        </p>
+
+                        <div className="mt-8 flex flex-wrap gap-4">
+                            <Link
+                                href="/pages/support"
+                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white hover:bg-emerald-600"
+                            >
+                                Contact support
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+
+                            <Link
+                                href="/pages/about"
+                                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-3 font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                            >
+                                Learn about CNERSH
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <Footer />
+        </main>
+    );
+}

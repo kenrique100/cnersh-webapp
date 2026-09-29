@@ -1,19 +1,603 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import {ArrowRight,BookOpen,CheckCircle2,ChevronRight,FileCheck2,Gavel,HeartHandshake,Landmark,LockKeyhole,Scale,ShieldCheck,Users,Waypoints} from "lucide-react";
-import {authSession} from "@/lib/auth-utils"; import {db} from "@/lib/db"; import {getUnreadNotificationCount} from "@/app/actions/notification"; import Navbar from "@/components/navbar";
-export const dynamic="force-dynamic";
-const values=[["Respect for Human Dignity","Every participant is treated as a person with inherent dignity and rights.",HeartHandshake],["Beneficence","Research should seek meaningful benefits for participants and society.",HeartHandshake],["Non-Maleficence","Risks and potential harms must be minimized and justified.",ShieldCheck],["Justice & Equity","Benefits and burdens of research should be distributed fairly.",Scale],["Integrity","Decisions and processes must be honest, transparent and scientifically credible.",CheckCircle2],["Independence","Ethical decisions should be protected from inappropriate scientific, institutional, financial or political influence.",Landmark],["Confidentiality","Personal, health and research information must be appropriately protected.",LockKeyhole],["Accountability","Researchers, sponsors, institutions and committees must be answerable for their responsibilities.",Gavel]];
-const funcs=[["Ethical review","Review research protocols involving human participants and determine whether they satisfy ethical requirements.",FileCheck2],["Scientific-ethical assessment","Scientific validity is an ethical component because a study unable to answer its question may expose participants to risk without sufficient value.",BookOpen],["Participant protection","Particular attention is given to children, people lacking decision-making capacity, pregnant women where relevant, prisoners or institutionalized persons, vulnerable populations, communities with limited healthcare access and emergency participants.",Users],["Informed consent","Participants should receive information about purpose, procedures, risks, benefits, alternatives where applicable, confidentiality, voluntariness and withdrawal.",HeartHandshake],["Continuing oversight","Oversight includes amendments, serious adverse events, protocol deviations, continuing reports, safety reports, termination, final reports, complaints and monitoring.",Waypoints],["Ethics education","CNERSH promotes research ethics, GCP, responsible conduct, bioethics, data protection, community engagement and ethical issues in emerging technologies and AI.",ShieldCheck]];
-const policies=[["01","No research without prior ethical clearance","Research involving human participants should not commence without required ethical clearance and applicable administrative authorization."],["02","Approved protocol must be followed","Conduct research according to the approved protocol; substantive changes should receive appropriate review before implementation except urgent participant-safety changes."],["03","Informed consent is mandatory","No participant should be enrolled without the legally and ethically required consent process."],["04","Risk must be proportionate","Risks should be identified, minimized, justified, monitored and managed."],["05","Vulnerable participants require additional safeguards","Vulnerability should trigger enhanced ethical scrutiny and appropriate safeguards."],["06","Privacy and confidentiality","Protect identifiable information, medical records, specimens, genomic information, digital data, recordings and sensitive community information."],["07","Biological materials","Collection, storage, transportation, secondary use and transfer must comply with applicable requirements."],["08","Data governance","Define collection, responsibility, access, storage, sharing, transfer, retention, destruction and secondary use."],["09","Protocol amendments","Material changes to objectives, methods, sample, eligibility, intervention, consent, sites, investigators or data management should receive review."],["10","Adverse events and safety reporting","Promptly report serious or unexpected events according to protocol, SOPs and regulatory requirements."],["11","Conflict of interest","Disclose relevant conflicts and avoid decisions where independence could reasonably be questioned."],["12","Publication integrity","Research should not be suppressed, manipulated or selectively reported because results are inconvenient."]];
-export default async function AboutPage(){const s=await authSession();let u=null,n=0;if(s){const [a,b]=await Promise.all([db.user.findUnique({where:{id:s.user.id},select:{name:true,email:true,image:true,gender:true,role:true}}),getUnreadNotificationCount()]);u=a;n=b}return <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"><Navbar user={u} notificationCount={n}/><main>
-<section className="border-b bg-white dark:border-slate-800 dark:bg-slate-950"><div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_.8fr] lg:px-8 lg:py-16"><div className="flex flex-col justify-center"><nav className="mb-6 flex gap-2 text-sm text-slate-500"><Link href="/">Home</Link><ChevronRight className="h-4 w-4"/><span>About Us</span></nav><span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-widest text-blue-900 dark:bg-blue-950 dark:text-blue-300">National research ethics oversight</span><h1 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl">National Ethics Committee for Research for Human Health</h1><p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-400">CNERSH is Cameroon’s national ethical oversight and coordination body for research involving human participants in the health domain.</p><div className="mt-7 flex flex-wrap gap-3"><a href="#who-we-are" className="rounded-lg bg-blue-900 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800">Discover CNERSH <ArrowRight className="ml-2 inline h-4 w-4"/></a><Link href="/pages/article" className="rounded-lg border px-5 py-3 text-sm font-bold hover:bg-slate-50 dark:border-slate-700">Knowledge Centre <BookOpen className="ml-2 inline h-4 w-4"/></Link></div></div><div className="relative min-h-[320px] overflow-hidden rounded-3xl"><Image src="/about-hero.png" alt="CNERSH health research ethics" fill priority className="object-cover"/><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 p-6 pt-24"><p className="text-sm font-bold text-white">Protecting dignity, rights, safety and wellbeing in health research</p></div></div></div></section>
-<section id="who-we-are" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><div className="grid gap-8 lg:grid-cols-[1.3fr_.7fr]"><article className="rounded-2xl border bg-white p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">01 · Who we are</p><h2 className="mt-2 text-3xl font-black">A national system for ethical research oversight</h2><p className="mt-5 leading-8 text-slate-600 dark:text-slate-400">CNERSH’s fundamental responsibility is to help ensure health research is scientifically sound, ethically acceptable, respectful of human dignity, protective of participants’ rights, safety and welfare, conducted according to an approved protocol and compliant with Cameroon’s laws and regulations.</p><p className="mt-4 leading-8 text-slate-600 dark:text-slate-400">The Committee has a coordination and supervisory function in relation to research ethics committees operating within health structures and higher institutions of education. Its historical mandate includes SOP development, review of multi-regional research and compliance monitoring.</p><div className="mt-6 rounded-xl border-l-4 border-blue-800 bg-blue-50 p-5 text-sm leading-7 dark:bg-blue-950/30"><b>Legal foundation:</b> the supplied CNERSH document identifies Law No. 2022/008 as the key framework for medical research involving human beings, including participants, investigators, sponsors/promoters, biological materials, health data and clinical trials.</div></article><aside className="rounded-2xl bg-blue-950 p-7 text-white"><p className="text-xs font-bold uppercase tracking-widest text-blue-300">Our mandate</p><div className="mt-6 space-y-5">{["Scientific validity","Ethical acceptability","Participant protection","Protocol compliance","Regulatory compliance"].map(x=><div key={x} className="flex gap-3"><CheckCircle2 className="h-5 w-5 text-blue-300"/><span>{x}</span></div>)}</div></aside></div></section>
-<section className="border-y bg-white dark:border-slate-800 dark:bg-slate-950"><div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8"><article className="rounded-2xl border bg-slate-50 p-7 dark:border-slate-800 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">02 · Our vision</p><h2 className="mt-2 text-2xl font-black">Trusted national leadership</h2><p className="mt-4 leading-8 text-slate-600 dark:text-slate-400">To be a trusted national leader in ethical research governance, ensuring that research involving human beings in Cameroon advances knowledge and health while protecting human dignity, rights, safety and wellbeing.</p></article><article className="rounded-2xl border bg-slate-50 p-7 dark:border-slate-800 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">03 · Our mission</p><h2 className="mt-2 text-2xl font-black">Protect · Promote · Coordinate · Comply</h2><p className="mt-4 leading-8 text-slate-600 dark:text-slate-400">Protect rights, dignity, safety and wellbeing; promote scientifically rigorous and ethically responsible research; coordinate and strengthen the national research ethics system; and ensure compliance with Cameroon’s ethical and regulatory requirements.</p></article></div></section>
-<section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">04 · Core values</p><h2 className="mt-2 text-3xl font-black">Principles that guide oversight</h2><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{values.map(([t,d,I])=><article key={t} className="rounded-2xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><I className="h-5 w-5 text-blue-800"/><h3 className="mt-4 font-bold">{t}</h3><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{d}</p></article>)}</div></section>
-<section className="bg-slate-100 dark:bg-slate-900/60"><div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">05 · Important functions</p><h2 className="mt-2 text-3xl font-black">How ethical oversight works</h2><div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{funcs.map(([t,d,I])=><article key={t} className="rounded-2xl border bg-white p-6 dark:border-slate-800 dark:bg-slate-950"><I className="h-6 w-6 text-blue-800"/><h3 className="mt-5 font-bold">{t}</h3><p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-400">{d}</p></article>)}</div></div></section>
-<section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-800">06 · Protocol policies</p><h2 className="mt-2 text-3xl font-black">The 12-policy governance framework</h2></div><Link href="/pages/article#protocol-policies" className="font-bold text-blue-800 hover:underline">Expanded guidance <ArrowRight className="ml-1 inline h-4 w-4"/></Link></div><div className="mt-8 grid gap-3 md:grid-cols-2">{policies.map(([n,t,d])=><article key={n} className="rounded-xl border bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><div className="flex gap-4"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white">{n}</span><div><h3 className="font-bold">{t}</h3><p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">{d}</p></div></div></article>)}</div></section>
-<section className="border-y bg-white dark:border-slate-800 dark:bg-slate-950"><div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:px-8">{[["07 · Review categories","Full/amendment, expedited, continuing/safety/incident and appropriate committee deference review pathways."],["08 · Scientific & ethical processes","Validation covers scientific protocol elements plus information/consent, data, biological-material, engagement, risk, funding, compensation and training documentation."],["09 · Accountability","Ethical clearance is the beginning of an accountability relationship among researcher, participant, institution, regulator and society."]].map(([t,d])=><article key={t} className="rounded-2xl border p-7 dark:border-slate-800"><p className="text-xs font-bold uppercase tracking-widest text-blue-800">{t}</p><p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">{d}</p></article>)}</div></section>
-<section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-800">10 · Penalties</p><h2 className="mt-2 text-3xl font-black">Accountability under Law No. 2022/008</h2><p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">The CNERSH source describes administrative, financial and criminal sanctions under Chapter VII, Articles 56–60. The official law should be consulted for legal reliance.</p><Link href="/pages/article#penalties" className="mt-5 inline-block font-bold text-blue-800 hover:underline">View documented framework →</Link></div><div className="overflow-hidden rounded-2xl border dark:border-slate-800"><Image src="/article.png" alt="CNERSH research ethics resources" width={1200} height={700} className="h-64 w-full object-cover"/><div className="p-6"><p className="font-bold">Ethical clearance is not a certificate to conduct research; it begins continuing accountability.</p></div></div></div></section>
-<footer className="bg-slate-950 text-white"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><Link href="/" className="flex items-center gap-3"><Image src="/logo.png" alt="CNERSH logo" width={52} height={52} className="rounded-md bg-white object-contain"/><span><b className="block">CNERSH</b><span className="text-xs text-slate-400">National Ethics Committee for Health Research on Humans</span></span></Link><nav className="mt-6 flex flex-wrap gap-5 text-sm text-slate-300">{["/pages/article","/pages/accessibility","/pages/privacy-terms","/pages/support"].map(h=><Link key={h} href={h} className="hover:text-white hover:underline">{h.split("/").pop()?.replaceAll("-"," ")}</Link>)}</nav><p className="mt-6 text-xs text-slate-500">© {new Date().getFullYear()} CNERSH · Cameroon</p></div></footer>
-</main></div>
+import {
+    ArrowRight,
+    BookOpen,
+    CheckCircle2,
+    ChevronRight,
+    FileCheck2,
+    Gavel,
+    HeartHandshake,
+    Landmark,
+    LockKeyhole,
+    Scale,
+    ShieldCheck,
+    Users,
+    Waypoints,
+} from "lucide-react";
+
+const values = [
+    {
+        title: "Respect for Human Dignity",
+        description:
+            "Every participant is treated as a person with inherent dignity and rights.",
+        icon: HeartHandshake,
+    },
+    {
+        title: "Beneficence",
+        description:
+            "Research should seek meaningful benefits for participants and society.",
+        icon: HeartHandshake,
+    },
+    {
+        title: "Non-Maleficence",
+        description:
+            "Risks and potential harms must be minimized and appropriately justified.",
+        icon: ShieldCheck,
+    },
+    {
+        title: "Justice & Equity",
+        description:
+            "The benefits and burdens of research should be distributed fairly.",
+        icon: Scale,
+    },
+    {
+        title: "Integrity",
+        description:
+            "Decisions and processes must be honest, transparent and scientifically credible.",
+        icon: CheckCircle2,
+    },
+    {
+        title: "Independence",
+        description:
+            "Ethical decisions should be protected from inappropriate scientific, institutional, financial or political influence.",
+        icon: Landmark,
+    },
+    {
+        title: "Confidentiality",
+        description:
+            "Personal, health and research information must be appropriately protected.",
+        icon: LockKeyhole,
+    },
+    {
+        title: "Accountability",
+        description:
+            "Researchers, sponsors, institutions and committees must be answerable for their responsibilities.",
+        icon: Gavel,
+    },
+];
+
+const functions = [
+    {
+        title: "Ethical Review",
+        description:
+            "Review research protocols involving human participants and determine whether they satisfy applicable ethical requirements.",
+        icon: FileCheck2,
+    },
+    {
+        title: "Scientific-Ethical Assessment",
+        description:
+            "Scientific validity is an ethical component because a study unable to answer its research question may expose participants to risk without sufficient scientific or social value.",
+        icon: BookOpen,
+    },
+    {
+        title: "Participant Protection",
+        description:
+            "Particular attention is given to children, people lacking decision-making capacity, pregnant women where relevant, prisoners or institutionalized persons, vulnerable populations, communities with limited healthcare access and emergency participants.",
+        icon: Users,
+    },
+    {
+        title: "Informed Consent",
+        description:
+            "Participants should receive understandable information about purpose, procedures, risks, benefits, confidentiality, voluntariness and withdrawal.",
+        icon: HeartHandshake,
+    },
+    {
+        title: "Continuing Oversight",
+        description:
+            "Oversight includes amendments, serious adverse events, protocol deviations, continuing reports, safety reports, termination, final reports, complaints and monitoring.",
+        icon: Waypoints,
+    },
+    {
+        title: "Ethics Education",
+        description:
+            "CNERSH promotes research ethics, GCP, responsible conduct, bioethics, data protection, community engagement and ethical consideration of emerging technologies.",
+        icon: ShieldCheck,
+    },
+];
+
+const policies = [
+    {
+        number: "01",
+        title: "No research without prior ethical clearance",
+        description:
+            "Research involving human participants should not commence without the required ethical clearance and applicable administrative authorization.",
+    },
+    {
+        number: "02",
+        title: "Approved protocol must be followed",
+        description:
+            "Research should be conducted according to the approved protocol. Substantive changes should receive appropriate review before implementation except urgent participant-safety changes.",
+    },
+    {
+        number: "03",
+        title: "Informed consent is mandatory",
+        description:
+            "No participant should be enrolled without the legally and ethically required consent process.",
+    },
+    {
+        number: "04",
+        title: "Risk must be proportionate",
+        description:
+            "Risks should be identified, minimized, justified, monitored and appropriately managed.",
+    },
+    {
+        number: "05",
+        title: "Vulnerable participants require additional safeguards",
+        description:
+            "Vulnerability should trigger enhanced ethical scrutiny and appropriate safeguards.",
+    },
+    {
+        number: "06",
+        title: "Privacy and confidentiality",
+        description:
+            "Identifiable information, medical records, specimens, genomic information, digital data, recordings and sensitive community information require appropriate protection.",
+    },
+    {
+        number: "07",
+        title: "Biological materials",
+        description:
+            "Collection, storage, transportation, secondary use and transfer of biological materials must comply with applicable requirements.",
+    },
+    {
+        number: "08",
+        title: "Data governance",
+        description:
+            "Research data governance should define collection, responsibility, access, storage, sharing, transfer, retention, destruction and secondary use.",
+    },
+    {
+        number: "09",
+        title: "Protocol amendments",
+        description:
+            "Material changes to objectives, methods, sample, eligibility, intervention, consent, sites, investigators or data management should receive appropriate review.",
+    },
+    {
+        number: "10",
+        title: "Adverse events and safety reporting",
+        description:
+            "Serious or unexpected events should be reported according to applicable protocols, SOPs and regulatory requirements.",
+    },
+    {
+        number: "11",
+        title: "Conflict of interest",
+        description:
+            "Relevant conflicts should be disclosed and managed appropriately.",
+    },
+    {
+        number: "12",
+        title: "Publication integrity",
+        description:
+            "Research should not be suppressed, manipulated or selectively reported because findings are inconvenient.",
+    },
+];
+
+export default function AboutPage() {
+    return (
+        <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
+            {/* HERO */}
+            <section className="border-b bg-white dark:border-slate-800 dark:bg-slate-950">
+                <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_.8fr] lg:px-8 lg:py-16">
+                    <div className="flex flex-col justify-center">
+                        <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-widest text-blue-900 dark:bg-blue-950 dark:text-blue-300">
+              National Research Ethics Oversight
+            </span>
+
+                        <h1 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+                            National Ethics Committee for Research for Human Health
+                        </h1>
+
+                        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-400">
+                            CNERSH is Cameroon&apos;s national ethical oversight and
+                            coordination body for research involving human participants in
+                            the health domain.
+                        </p>
+
+                        <div className="mt-7 flex flex-wrap gap-3">
+                            <a
+                                href="#who-we-are"
+                                className="rounded-lg bg-blue-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+                            >
+                                Discover CNERSH
+                                <ArrowRight className="ml-2 inline h-4 w-4" />
+                            </a>
+
+                            <Link
+                                href="/pages/article"
+                                className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-bold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900"
+                            >
+                                Knowledge Centre
+                                <BookOpen className="ml-2 inline h-4 w-4" />
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="relative min-h-[320px] overflow-hidden rounded-3xl">
+                        <Image
+                            src="/about-hero.png"
+                            alt="CNERSH health research ethics"
+                            fill
+                            priority
+                            className="object-cover"
+                        />
+
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 p-6 pt-24">
+                            <p className="text-sm font-bold text-white">
+                                Protecting dignity, rights, safety and wellbeing in health
+                                research.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* WHO WE ARE */}
+            <section
+                id="who-we-are"
+                className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"
+            >
+                <div className="grid gap-8 lg:grid-cols-[1.3fr_.7fr]">
+                    <article className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            01 · Who We Are
+                        </p>
+
+                        <h2 className="mt-2 text-3xl font-black">
+                            A national system for ethical research oversight
+                        </h2>
+
+                        <p className="mt-5 leading-8 text-slate-600 dark:text-slate-400">
+                            CNERSH&apos;s fundamental responsibility is to help ensure that
+                            health research is scientifically sound, ethically acceptable,
+                            respectful of human dignity, protective of participants&apos;
+                            rights, safety and welfare, conducted according to an approved
+                            protocol and compliant with Cameroon&apos;s laws and regulations.
+                        </p>
+
+                        <p className="mt-4 leading-8 text-slate-600 dark:text-slate-400">
+                            The Committee has a coordination and supervisory function in
+                            relation to research ethics committees operating within health
+                            structures and higher institutions of education. Its mandate
+                            includes strengthening research ethics systems, developing
+                            procedures, reviewing relevant research and supporting
+                            compliance monitoring.
+                        </p>
+
+                        <div className="mt-6 rounded-xl border-l-4 border-blue-800 bg-blue-50 p-5 text-sm leading-7 dark:bg-blue-950/30">
+                            <b>Legal foundation:</b> The CNERSH source document identifies
+                            Law No. 2022/008 as the key framework for medical research
+                            involving human beings, including participants, investigators,
+                            sponsors/promoters, biological materials, health data and
+                            clinical research.
+                        </div>
+                    </article>
+
+                    <aside className="rounded-2xl bg-blue-950 p-7 text-white">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-300">
+                            Our Mandate
+                        </p>
+
+                        <div className="mt-6 space-y-5">
+                            {[
+                                "Scientific validity",
+                                "Ethical acceptability",
+                                "Participant protection",
+                                "Protocol compliance",
+                                "Regulatory compliance",
+                            ].map((item) => (
+                                <div key={item} className="flex gap-3">
+                                    <CheckCircle2 className="h-5 w-5 shrink-0 text-blue-300" />
+                                    <span>{item}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            {/* VISION / MISSION */}
+            <section className="border-y bg-white dark:border-slate-800 dark:bg-slate-950">
+                <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8">
+                    <article className="rounded-2xl border border-slate-200 bg-slate-50 p-7 dark:border-slate-800 dark:bg-slate-900">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            02 · Our Vision
+                        </p>
+
+                        <h2 className="mt-2 text-2xl font-black">
+                            Trusted national leadership
+                        </h2>
+
+                        <p className="mt-4 leading-8 text-slate-600 dark:text-slate-400">
+                            To be a trusted national leader in ethical research governance,
+                            ensuring that research involving human beings in Cameroon
+                            advances knowledge and health while protecting human dignity,
+                            rights, safety and wellbeing.
+                        </p>
+                    </article>
+
+                    <article className="rounded-2xl border border-slate-200 bg-slate-50 p-7 dark:border-slate-800 dark:bg-slate-900">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            03 · Our Mission
+                        </p>
+
+                        <h2 className="mt-2 text-2xl font-black">
+                            Protect · Promote · Coordinate · Comply
+                        </h2>
+
+                        <p className="mt-4 leading-8 text-slate-600 dark:text-slate-400">
+                            Protect rights, dignity, safety and wellbeing; promote
+                            scientifically rigorous and ethically responsible research;
+                            coordinate and strengthen the national research ethics system;
+                            and support compliance with Cameroon&apos;s ethical and
+                            regulatory requirements.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            {/* VALUES */}
+            <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                    04 · Core Values
+                </p>
+
+                <h2 className="mt-2 text-3xl font-black">
+                    Principles that guide ethical oversight
+                </h2>
+
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {values.map((value) => {
+                        const Icon = value.icon;
+
+                        return (
+                            <article
+                                key={value.title}
+                                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                            >
+                                <Icon className="h-6 w-6 text-blue-800" />
+
+                                <h3 className="mt-4 font-bold">{value.title}</h3>
+
+                                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                                    {value.description}
+                                </p>
+                            </article>
+                        );
+                    })}
+                </div>
+            </section>
+
+            {/* FUNCTIONS */}
+            <section className="bg-slate-100 dark:bg-slate-900/60">
+                <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+                    <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                        05 · Important Functions
+                    </p>
+
+                    <h2 className="mt-2 text-3xl font-black">
+                        How ethical oversight works
+                    </h2>
+
+                    <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                        {functions.map((item) => {
+                            const Icon = item.icon;
+
+                            return (
+                                <article
+                                    key={item.title}
+                                    className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950"
+                                >
+                                    <Icon className="h-6 w-6 text-blue-800" />
+
+                                    <h3 className="mt-5 font-bold">{item.title}</h3>
+
+                                    <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-400">
+                                        {item.description}
+                                    </p>
+                                </article>
+                            );
+                        })}
+                    </div>
+                </div>
+            </section>
+
+            {/* POLICIES */}
+            <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            06 · Protocol Policies
+                        </p>
+
+                        <h2 className="mt-2 text-3xl font-black">
+                            The 12-policy governance framework
+                        </h2>
+                    </div>
+
+                    <Link
+                        href="/pages/article#protocol-policies"
+                        className="font-bold text-blue-800 hover:underline"
+                    >
+                        Expanded guidance
+                        <ArrowRight className="ml-1 inline h-4 w-4" />
+                    </Link>
+                </div>
+
+                <div className="mt-8 grid gap-3 md:grid-cols-2">
+                    {policies.map((policy) => (
+                        <article
+                            key={policy.number}
+                            className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+                        >
+                            <div className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white">
+                  {policy.number}
+                </span>
+
+                                <div>
+                                    <h3 className="font-bold">{policy.title}</h3>
+
+                                    <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                                        {policy.description}
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </section>
+
+            {/* GOVERNANCE AREAS */}
+            <section className="border-y bg-white dark:border-slate-800 dark:bg-slate-950">
+                <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:px-8">
+                    <article className="rounded-2xl border border-slate-200 p-7 dark:border-slate-800">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            07 · Review Categories
+                        </p>
+
+                        <p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">
+                            CNERSH&apos;s governance framework includes appropriate pathways
+                            for full review, amendments, expedited review and continuing,
+                            safety or incident-related oversight.
+                        </p>
+                    </article>
+
+                    <article className="rounded-2xl border border-slate-200 p-7 dark:border-slate-800">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            08 · Scientific &amp; Ethical Processes
+                        </p>
+
+                        <p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">
+                            Review considers scientific protocol elements together with
+                            information and consent, data management, biological materials,
+                            community engagement, risk, funding, compensation and
+                            investigator training.
+                        </p>
+                    </article>
+
+                    <article className="rounded-2xl border border-slate-200 p-7 dark:border-slate-800">
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            09 · Accountability
+                        </p>
+
+                        <p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">
+                            Ethical clearance is the beginning of an accountability
+                            relationship among researchers, participants, institutions,
+                            regulators and society.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            {/* PENALTIES */}
+            <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+                <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
+                            10 · Accountability
+                        </p>
+
+                        <h2 className="mt-2 text-3xl font-black">
+                            Accountability under Law No. 2022/008
+                        </h2>
+
+                        <p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">
+                            The CNERSH source describes administrative, financial and
+                            criminal sanctions under Chapter VII, Articles 56–60. The
+                            official law should be consulted for legal reliance.
+                        </p>
+
+                        <Link
+                            href="/pages/article#penalties"
+                            className="mt-5 inline-block font-bold text-blue-800 hover:underline"
+                        >
+                            View documented framework →
+                        </Link>
+                    </div>
+
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <Image
+                            src="/article.png"
+                            alt="CNERSH research ethics resources"
+                            width={1200}
+                            height={700}
+                            className="h-64 w-full object-cover"
+                        />
+
+                        <div className="p-6">
+                            <p className="font-bold">
+                                Ethical clearance is not a certificate to conduct research; it
+                                begins continuing accountability.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* FOOTER */}
+            <footer className="bg-slate-950 text-white">
+                <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                    <Link href="/" className="flex items-center gap-3">
+                        <Image
+                            src="/logo.png"
+                            alt="CNERSH logo"
+                            width={52}
+                            height={52}
+                            className="rounded-md bg-white object-contain"
+                        />
+
+                        <span>
+              <b className="block">CNERSH</b>
+
+              <span className="text-xs text-slate-400">
+                National Ethics Committee for Health Research on Humans
+              </span>
+            </span>
+                    </Link>
+
+                    <nav className="mt-6 flex flex-wrap gap-5 text-sm text-slate-300">
+                        <Link href="/pages/article" className="hover:text-white hover:underline">
+                            Articles
+                        </Link>
+
+                        <Link
+                            href="/pages/accessibility"
+                            className="hover:text-white hover:underline"
+                        >
+                            Accessibility
+                        </Link>
+
+                        <Link
+                            href="/pages/privacy-terms"
+                            className="hover:text-white hover:underline"
+                        >
+                            Privacy &amp; Terms
+                        </Link>
+
+                        <Link
+                            href="/pages/support"
+                            className="hover:text-white hover:underline"
+                        >
+                            Support
+                        </Link>
+                    </nav>
+
+                    <p className="mt-6 text-xs text-slate-500">
+                        © {new Date().getFullYear()} CNERSH · Cameroon
+                    </p>
+                </div>
+            </footer>
+        </div>
+    );
+}
