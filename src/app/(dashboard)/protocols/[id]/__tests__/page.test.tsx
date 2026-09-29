@@ -46,6 +46,8 @@ jest.mock("../project-detail-actions", () => ({
         currentStatus: string;
         isOwner: boolean;
         isAdmin: boolean;
+        isCurrentReviewer: boolean;
+        isSuperAdmin: boolean;
         projectTitle: string;
         projectObjectives: string | null;
         projectDescription: string;
@@ -56,6 +58,8 @@ jest.mock("../project-detail-actions", () => ({
                 currentStatus: props.currentStatus,
                 isOwner: props.isOwner,
                 isAdmin: props.isAdmin,
+                isCurrentReviewer: props.isCurrentReviewer,
+                isSuperAdmin: props.isSuperAdmin,
             })}
         </div>
     ),
@@ -93,7 +97,8 @@ function makeProject(overrides: ProjectFixtureOverrides = {}) {
         createdAt: "2026-01-15T10:00:00.000Z",
         updatedAt: "2026-01-15T10:00:00.000Z",
         user: { id: "user-1", name: "Dr. Alice Nkeng", email: "alice@example.com" },
-        assignedTo: null,
+        // NOTE: `assignedTo` was removed from the schema; the reviewer is
+        // derived from the active ReviewAssignment. Kept out of the fixture.
         reviewAssignments: [],
         statusHistory: [
             {
@@ -319,7 +324,13 @@ describe("ProjectDetailPage", () => {
             makeProject({
                 userId: "user-1",
                 status: "RESUBMIT",
-                appeal: { id: "appeal-1", status: "PENDING", filedAt: new Date().toISOString(), deadlineAt: null, decision: null },
+                appeal: {
+                    id: "appeal-1",
+                    status: "PENDING",
+                    filedAt: new Date().toISOString(),
+                    deadlineAt: null,
+                    decision: null,
+                },
             }) as never,
         );
         await renderPage();
@@ -335,46 +346,50 @@ describe("ProjectDetailPage", () => {
         expect(screen.queryByText("Available Actions")).not.toBeInTheDocument();
     });
 
-    it("renders the admin assignment panel with assignment and reviewer details", async () => {
+    it("renders the admin reviewer panel with the reviewer details", async () => {
         mockedGetProjectById.mockResolvedValue(
             makeProject({
                 userId: "someone-else",
-                assignedTo: { id: "admin-1", name: "Admin Bob", email: "bob@example.com" },
                 reviewAssignments: [
                     {
+                        id: "assignment-1",
+                        reviewerId: "admin-1",
                         status: "ACTIVE",
-                        reviewer: { id: "admin-1", name: "Admin Bob", email: "bob@example.com" },
+                        reviewer: {
+                            id: "admin-1",
+                            name: "Admin Bob",
+                            email: "bob@example.com",
+                        },
                     },
                 ],
             }) as never,
         );
         mockedAuthIsRequired.mockResolvedValue(makeSession({ role: "admin" }) as never);
         await renderPage();
-        expect(screen.getByText("Admin - Assignment & Review Details")).toBeInTheDocument();
-        expect(screen.getAllByText("Admin Bob").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText("Admin - Reviewer Details")).toBeInTheDocument();
+        expect(screen.getByText("Reviewed By")).toBeInTheDocument();
+        expect(screen.getByText("Admin Bob")).toBeInTheDocument();
         expect(screen.getByText("Status: ACTIVE")).toBeInTheDocument();
     });
 
-    it("shows 'Not assigned' and 'No reviewer yet' when there is no assignment", async () => {
+    it("shows 'No reviewer yet' when there is no review assignment", async () => {
         mockedGetProjectById.mockResolvedValue(
             makeProject({
                 userId: "someone-else",
-                assignedTo: null,
                 reviewAssignments: [],
             }) as never,
         );
         mockedAuthIsRequired.mockResolvedValue(makeSession({ role: "superadmin" }) as never);
         await renderPage();
-        expect(screen.getByText("Not assigned")).toBeInTheDocument();
         expect(screen.getByText("No reviewer yet")).toBeInTheDocument();
     });
 
-    it("does not render the admin assignment panel for regular users", async () => {
+    it("does not render the admin reviewer panel for regular users", async () => {
         mockedGetProjectById.mockResolvedValue(makeProject({ userId: "user-1" }) as never);
         mockedAuthIsRequired.mockResolvedValue(makeSession({ role: "user" }) as never);
         await renderPage();
         expect(
-            screen.queryByText("Admin - Assignment & Review Details"),
+            screen.queryByText("Admin - Reviewer Details"),
         ).not.toBeInTheDocument();
     });
 
@@ -436,7 +451,12 @@ describe("ProjectDetailPage", () => {
                     piInstitution: "University of Yaoundé",
                     piEmail: "alice@example.com",
                     coInvestigators: [
-                        { name: "Dr. Bob Eto", institution: "CHU", email: "bob@chu.cm", role: "Co-PI" },
+                        {
+                            name: "Dr. Bob Eto",
+                            institution: "CHU",
+                            email: "bob@chu.cm",
+                            role: "Co-PI",
+                        },
                     ],
                     sponsorName: "Global Health Fund",
                     sponsorCountry: "Cameroon",
@@ -450,7 +470,10 @@ describe("ProjectDetailPage", () => {
                     sampleSize: "500",
                     participantProtection: "Informed consent obtained from guardians.",
                     potentialRisks: "Minor injection site reactions.",
-                    infoSheetEnglish: { url: "https://files.example.com/info-en.pdf", name: "Info Sheet EN" },
+                    infoSheetEnglish: {
+                        url: "https://files.example.com/info-en.pdf",
+                        name: "Info Sheet EN",
+                    },
                 },
             }) as never,
         );

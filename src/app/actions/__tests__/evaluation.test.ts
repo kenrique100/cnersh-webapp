@@ -7,10 +7,11 @@ jest.mock("@/lib/db", () => ({
     evaluationReport: {},
     user: {},
     project: {},
+    projectStatusHistory: {},
+    auditLog: {},
   },
 }));
 
-// FIX 1: Import verifiedAuthSession
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import {
@@ -22,6 +23,7 @@ import {
 
 const authMock = verifiedAuthSession as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
+
 const validScores = {
   socialValue: 4,
   scientificValidity: 4,
@@ -57,8 +59,9 @@ function assignment(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
 
-  // FIX 2: Re-assign $transaction after clearAllMocks to ensure it executes the callback
-  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) => callback(mockDb));
+  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) =>
+      callback(mockDb)
+  );
 
   mockDb.reviewAssignment = {
     findUnique: jest.fn(),
@@ -82,25 +85,32 @@ beforeEach(() => {
 
 test("draft validation rejects out-of-range scores before database access", async () => {
   login();
-  await expect(saveEvaluationDraft("assignment-1", { socialValue: 6 }))
-      .rejects.toThrow("Too big");
+  await expect(
+      saveEvaluationDraft("assignment-1", { socialValue: 6 })
+  ).rejects.toThrow("Too big");
   expect(mockDb.$transaction).not.toHaveBeenCalled();
 });
 
 test("excluded reviewers cannot save drafts", async () => {
   login();
-  mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment({
-    status: "EXCLUDED",
-    coiDeclaration: { hasCOI: true },
-  }));
-  await expect(saveEvaluationDraft("assignment-1", { socialValue: 3 }))
-      .rejects.toThrow("Excluded reviewers");
+  mockDb.reviewAssignment.findUnique.mockResolvedValue(
+      assignment({
+        status: "EXCLUDED",
+        coiDeclaration: { hasCOI: true },
+      })
+  );
+  await expect(
+      saveEvaluationDraft("assignment-1", { socialValue: 3 })
+  ).rejects.toThrow("Excluded reviewers");
 });
 
 test("draft is transactionally upserted only after a no-COI declaration", async () => {
   login();
   mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment());
-  mockDb.evaluationReport.upsert.mockResolvedValue({ id: "report-1", status: "DRAFT" });
+  mockDb.evaluationReport.upsert.mockResolvedValue({
+    id: "report-1",
+    status: "DRAFT",
+  });
 
   await saveEvaluationDraft("assignment-1", {
     socialValue: 3,
@@ -108,13 +118,18 @@ test("draft is transactionally upserted only after a no-COI declaration", async 
   });
 
   expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
-  expect(mockDb.evaluationReport.upsert).toHaveBeenCalledWith(expect.objectContaining({
-    where: { assignmentId: "assignment-1" },
-    create: expect.objectContaining({ reviewerId: "reviewer-1", status: "DRAFT" }),
-  }));
+  expect(mockDb.evaluationReport.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { assignmentId: "assignment-1" },
+        create: expect.objectContaining({
+          reviewerId: "reviewer-1",
+          status: "DRAFT",
+        }),
+      })
+  );
 });
 
-test("submission is atomic and advances the project only after two completed reviews", async () => {
+test("submission is atomic and moves the project to REVIEW_COMPLETE", async () => {
   login();
   const submittedAt = new Date();
   mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment());
@@ -123,36 +138,50 @@ test("submission is atomic and advances the project only after two completed rev
     status: "SUBMITTED",
     submittedAt,
   });
-  mockDb.reviewAssignment.count.mockResolvedValue(2);
   mockDb.project.updateMany.mockResolvedValue({ count: 1 });
 
   const result = await submitEvaluationReport("assignment-1", validScores);
 
-  expect(result).toEqual({ id: "report-1", submittedAt: submittedAt.toISOString() });
-  expect(mockDb.reviewAssignment.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-    where: expect.objectContaining({ status: "ACTIVE" }),
-    data: { status: "COMPLETED" },
-  }));
-  expect(mockDb.project.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-    where: expect.objectContaining({
-      deleted: false,
-      status: { in: ["PENDING_REVIEW", "UNDER_REVIEW"] },
-    }),
-    data: { status: "REVIEW_COMPLETE" },
-  }));
-  expect(mockDb.projectStatusHistory.create).toHaveBeenCalledWith(expect.objectContaining({
-    data: expect.objectContaining({ status: "REVIEW_COMPLETE" }),
-  }));
+  expect(result).toEqual({
+    id: "report-1",
+    submittedAt: submittedAt.toISOString(),
+  });
+  expect(mockDb.reviewAssignment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "ACTIVE" }),
+        data: { status: "COMPLETED" },
+      })
+  );
+  expect(mockDb.project.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deleted: false,
+          status: { in: ["PENDING_REVIEW", "UNDER_REVIEW"] },
+        }),
+        data: { status: "REVIEW_COMPLETE" },
+      })
+  );
+  expect(mockDb.projectStatusHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "REVIEW_COMPLETE" }),
+      })
+  );
   expect(mockDb.auditLog.create).toHaveBeenCalled();
 });
 
 test("repeated submitted evaluation returns the immutable report without duplicate audit", async () => {
   login();
-  const report = { id: "report-1", status: "SUBMITTED", submittedAt: new Date() };
-  mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment({
-    status: "COMPLETED",
-    evaluationReport: report,
-  }));
+  const report = {
+    id: "report-1",
+    status: "SUBMITTED",
+    submittedAt: new Date(),
+  };
+  mockDb.reviewAssignment.findUnique.mockResolvedValue(
+      assignment({
+        status: "COMPLETED",
+        evaluationReport: report,
+      })
+  );
 
   const result = await submitEvaluationReport("assignment-1", validScores);
   expect(result.id).toBe("report-1");
@@ -167,20 +196,50 @@ test("personal report lookup denies excluded assignments", async () => {
     status: "EXCLUDED",
     project: { deleted: false },
   });
-  await expect(getMyEvaluationReport("assignment-1")).rejects.toThrow("Excluded reviewers");
+  await expect(getMyEvaluationReport("assignment-1")).rejects.toThrow(
+      "Excluded reviewers"
+  );
 });
 
-test("admin project reports are scoped to submitted, completed, non-deleted work", async () => {
+test("getProjectEvaluationReports allows the current reviewer", async () => {
   login("admin-1");
   mockDb.user.findUnique.mockResolvedValue({ role: "admin" });
   mockDb.project.findUnique.mockResolvedValue({ id: "project-1" });
+  // P16 reviewer check, then the "excluded" check → both hit findFirst.
+  mockDb.reviewAssignment.findFirst
+      .mockResolvedValueOnce({ id: "reviewer-assignment" })
+      .mockResolvedValueOnce(null);
   mockDb.evaluationReport.findMany.mockResolvedValue([]);
 
   await getProjectEvaluationReports("project-1");
-  expect(mockDb.evaluationReport.findMany).toHaveBeenCalledWith(expect.objectContaining({
-    where: {
-      status: "SUBMITTED",
-      assignment: { projectId: "project-1", status: "COMPLETED" },
-    },
-  }));
+
+  expect(mockDb.evaluationReport.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { assignment: { projectId: "project-1" } },
+      })
+  );
+});
+
+test("getProjectEvaluationReports lets the superadmin read everything", async () => {
+  login("super-1");
+  mockDb.user.findUnique.mockResolvedValue({ role: "superadmin" });
+  mockDb.project.findUnique.mockResolvedValue({ id: "project-1" });
+  // Superadmin skips the P16 check; only the "excluded" lookup runs.
+  mockDb.reviewAssignment.findFirst.mockResolvedValue(null);
+  mockDb.evaluationReport.findMany.mockResolvedValue([]);
+
+  await getProjectEvaluationReports("project-1");
+
+  expect(mockDb.evaluationReport.findMany).toHaveBeenCalled();
+});
+
+test("getProjectEvaluationReports forbids a non-reviewer admin", async () => {
+  login("admin-1");
+  mockDb.user.findUnique.mockResolvedValue({ role: "admin" });
+  mockDb.project.findUnique.mockResolvedValue({ id: "project-1" });
+  mockDb.reviewAssignment.findFirst.mockResolvedValue(null);
+
+  await expect(getProjectEvaluationReports("project-1")).rejects.toThrow(
+      /reviewer|superadmin/i
+  );
 });

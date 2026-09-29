@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { Prisma, ProjectStatus } from "@/generated/prisma";
 import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
-import { isAutoAssignableRole } from "@/lib/permissions";
 import {
     reserveIdempotencyKey,
     storeIdempotentResponse,
@@ -15,44 +14,61 @@ import { randomBytes, createHash } from "node:crypto";
 import { enforceActionRateLimit } from "@/lib/action-rate-limit";
 import { RATE_LIMITS } from "@/lib/rate-limit";
 import { z } from "zod";
+import {
+    ACTIVE_ASSIGNMENT_STATUSES,
+    autoReassignReviewer,
+    getEligibleReviewers,
+    getReviewerLoads,
+    pickLowestLoadReviewer,
+    selectReviewerForProtocol,
+} from "@/lib/reviewer-assignment";
+import {
+    APPROVAL_STATUSES,
+    ASSIGNABLE_PROJECT_STATUSES,
+    OWNER_MUTABLE_STATUSES,
+    OWNER_RESUBMIT_STATUSES,
+    isLegalTransition,
+    requiresFeedback,
+} from "@/lib/status-transitions";
 
-const idSchema = z.string().trim().min(1, "Identifier is required").max(128, "Identifier is too long");
+const idSchema = z
+    .string()
+    .trim()
+    .min(1, "Identifier is required")
+    .max(128, "Identifier is too long");
 const optionalText = (max: number) => z.string().trim().max(max).optional();
 
-const projectInputSchema = z.object({
-    title: z.string().trim().min(1, "Protocol title is required").max(250),
-    description: z.string().trim().min(1, "Protocol description is required").max(20_000),
-    objectives: optionalText(10_000),
-    category: z.string().trim().min(1, "Protocol category is required").max(150),
-    location: optionalText(500),
-    timeline: optionalText(1_000),
-    budget: optionalText(1_000),
-    document: optionalText(2_048),
-    formData: z.record(z.string(), z.json()).optional(),
-}).strict();
+const projectInputSchema = z
+    .object({
+        title: z.string().trim().min(1, "Protocol title is required").max(250),
+        description: z
+            .string()
+            .trim()
+            .min(1, "Protocol description is required")
+            .max(20_000),
+        objectives: optionalText(10_000),
+        category: z.string().trim().min(1, "Protocol category is required").max(150),
+        location: optionalText(500),
+        timeline: optionalText(1_000),
+        budget: optionalText(1_000),
+        document: optionalText(2_048),
+        formData: z.record(z.string(), z.json()).optional(),
+    })
+    .strict();
 
 const projectUpdateSchema = projectInputSchema
     .omit({ document: true })
     .partial()
-    .refine((value) => Object.keys(value).length > 0, "At least one field must be provided");
+    .refine(
+        (value) => Object.keys(value).length > 0,
+        "At least one field must be provided"
+    );
 
-const submitProjectSchema = projectInputSchema.extend({
-    idempotencyKey: z.string().uuid("idempotencyKey must be a valid UUID"),
-}).strict();
+const submitProjectSchema = projectInputSchema
+    .extend({ idempotencyKey: z.string().uuid("idempotencyKey must be a valid UUID") })
+    .strict();
 
 const projectStatusSchema = z.enum(ProjectStatus);
-
-const ownerMutableStatuses = new Set<ProjectStatus>([
-    ProjectStatus.DRAFT,
-    ProjectStatus.RETURNED_INCOMPLETE,
-]);
-
-const assignableProjectStatuses = new Set<ProjectStatus>([
-    ProjectStatus.SUBMITTED,
-    ProjectStatus.RETURNED_INCOMPLETE,
-    ProjectStatus.PENDING_REVIEW,
-    ProjectStatus.UNDER_REVIEW,
-]);
 
 const ACTIVE_PROTOCOL_STATUSES: readonly ProjectStatus[] = [
     ProjectStatus.SUBMITTED,
@@ -64,51 +80,23 @@ const ACTIVE_PROTOCOL_STATUSES: readonly ProjectStatus[] = [
     ProjectStatus.APPROVED_WITH_CONDITIONS,
 ];
 
-// ---------------------------------------------------------------------------
-// 12-month validity constants
-// ---------------------------------------------------------------------------
-const APPROVAL_STATUSES: readonly ProjectStatus[] = [
-    ProjectStatus.APPROVED,
-    ProjectStatus.APPROVED_WITH_CONDITIONS,
-];
-
 const PROTOCOL_VALIDITY_MONTHS = 12;
-
 function computeExpiresAt(approvedAt: Date): Date {
     const d = new Date(approvedAt);
     d.setMonth(d.getMonth() + PROTOCOL_VALIDITY_MONTHS);
     return d;
 }
 
-const projectTransitionMatrix: Partial<Record<ProjectStatus, readonly ProjectStatus[]>> = {
-    [ProjectStatus.SUBMITTED]: [ProjectStatus.RETURNED_INCOMPLETE, ProjectStatus.PENDING_REVIEW],
-    [ProjectStatus.RETURNED_INCOMPLETE]: [ProjectStatus.PENDING_REVIEW],
-    [ProjectStatus.REVIEW_COMPLETE]: [
-        ProjectStatus.SESSION_SCHEDULED,
-        ProjectStatus.APPROVED,
-        ProjectStatus.APPROVED_WITH_CONDITIONS,
-        ProjectStatus.RESUBMIT,
-    ],
-    [ProjectStatus.SESSION_SCHEDULED]: [
-        ProjectStatus.APPROVED,
-        ProjectStatus.APPROVED_WITH_CONDITIONS,
-        ProjectStatus.RESUBMIT,
-    ],
-};
-
-const feedbackRequiredStatuses = new Set<ProjectStatus>([
-    ProjectStatus.RESUBMIT,
-    ProjectStatus.RETURNED_INCOMPLETE,
-    ProjectStatus.APPROVED_WITH_CONDITIONS,
-]);
-
 function parseInput<T>(schema: z.ZodType<T>, value: unknown): T {
     const result = schema.safeParse(value);
-    if (!result.success) throw new Error(result.error.issues[0]?.message || "Invalid input");
+    if (!result.success)
+        throw new Error(result.error.issues[0]?.message || "Invalid input");
     return result.data;
 }
 
-function toJsonValue(value: Record<string, unknown> | undefined): Prisma.InputJsonValue | undefined {
+function toJsonValue(
+    value: Record<string, unknown> | undefined
+): Prisma.InputJsonValue | undefined {
     if (value === undefined) return undefined;
     try {
         return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -129,32 +117,6 @@ async function generateTrackingCode(): Promise<string> {
     return `CNERSH-${year}-${ts}`;
 }
 
-async function findAvailableAdmin(
-    excludeIds: string[] = []
-): Promise<{ id: string; name: string | null; email: string } | null> {
-    const busyRows = await db.reviewAssignment.findMany({
-        where: { status: { in: ["PENDING_COI", "ACTIVE"] } },
-        select: { reviewerId: true },
-    });
-    const busyIds = busyRows.map((r) => r.reviewerId);
-    const allExcluded = [...new Set([...busyIds, ...excludeIds])];
-
-    // Super-admins are intentionally excluded from automatic assignment.
-    // They can only be assigned to a review manually by another super-admin.
-    const candidate = await db.user.findFirst({
-        where: {
-            role: "admin",
-            OR: [{ banned: false }, { banned: null }],
-            id: { notIn: allExcluded },
-        },
-        select: { id: true, name: true, email: true, role: true },
-        orderBy: { name: "asc" },
-    });
-    if (!candidate || !isAutoAssignableRole(candidate.role)) return null;
-
-    return { id: candidate.id, name: candidate.name, email: candidate.email };
-}
-
 async function notifyAssignmentEvent(opts: {
     type: "REVIEW_ASSIGNED" | "REVIEW_REASSIGNED";
     userId: string;
@@ -171,14 +133,15 @@ async function notifyAssignmentEvent(opts: {
             userId: opts.userId,
         },
     });
-
     sendNotificationEmail({
         to: opts.userEmail,
         userName: opts.userName || "Admin",
         notificationMessage: opts.message,
         notificationType: opts.type,
         actionUrl: `/protocols/${opts.projectId}`,
-    }).catch((err) => console.error(`Error sending ${opts.type} email:`, err));
+    }).catch((err) =>
+        console.error(`Error sending ${opts.type} email:`, err)
+    );
 }
 
 export interface SubmitProjectInput {
@@ -204,11 +167,7 @@ export interface SubmittedProtocolSummary {
 }
 
 export type SubmitProjectResult =
-    | {
-    success: true;
-    isDuplicate: false;
-    protocol: SubmittedProtocolSummary;
-}
+    | { success: true; isDuplicate: false; protocol: SubmittedProtocolSummary }
     | {
     success: false;
     isDuplicate: true;
@@ -262,11 +221,7 @@ export async function submitProject(
         userId,
         action: SUBMIT_PROJECT_ACTION,
     });
-
-    if (reservation.status === "completed") {
-        return reservation.response;
-    }
-
+    if (reservation.status === "completed") return reservation.response;
     if (reservation.status === "in-progress") {
         return {
             success: false,
@@ -288,10 +243,8 @@ export async function submitProject(
                     select: { id: true, title: true, status: true },
                     orderBy: { createdAt: "desc" },
                 });
-
-                if (existingActive) {
+                if (existingActive)
                     return { kind: "existing-active" as const, project: existingActive };
-                }
 
                 const duplicateTitle = await tx.project.findFirst({
                     where: {
@@ -302,29 +255,22 @@ export async function submitProject(
                     select: { id: true, title: true, status: true },
                     orderBy: { createdAt: "desc" },
                 });
-
-                if (duplicateTitle) {
+                if (duplicateTitle)
                     return { kind: "duplicate-title" as const, project: duplicateTitle };
-                }
 
-                const availableAdmin = await findAvailableAdmin([userId]);
+                // Balanced load: pick the lowest-load reviewer, exclude the owner.
+                const availableAdmin = await selectReviewerForProtocol({
+                    excludeUserIds: [userId],
+                    tx,
+                });
+
                 const trackingCode = await generateTrackingCode();
                 const sanitizedFormData = toJsonValue(input.formData);
 
-                const reviewerConflict = availableAdmin
-                    ? await tx.reviewAssignment.findFirst({
-                        where: {
-                            reviewerId: availableAdmin.id,
-                            status: { in: ["PENDING_COI", "ACTIVE"] },
-                        },
-                        select: { id: true },
-                    })
-                    : null;
-                const assignedAdmin = reviewerConflict ? null : availableAdmin;
-                const projectStatus = assignedAdmin
+                const projectStatus = availableAdmin
                     ? ProjectStatus.PENDING_REVIEW
                     : ProjectStatus.SUBMITTED;
-                const statusComment = assignedAdmin
+                const statusComment = availableAdmin
                     ? "Protocol submitted and auto-assigned for review"
                     : "Protocol submitted - no reviewer available, pending manual assignment";
 
@@ -342,7 +288,6 @@ export async function submitProject(
                         formData: sanitizedFormData,
                         status: projectStatus,
                         userId,
-                        ...(assignedAdmin ? { assignedToId: assignedAdmin.id } : {}),
                         statusHistory: {
                             create: {
                                 status: projectStatus,
@@ -361,11 +306,11 @@ export async function submitProject(
                     },
                 });
 
-                if (assignedAdmin) {
+                if (availableAdmin) {
                     await tx.reviewAssignment.create({
                         data: {
                             projectId: created.id,
-                            reviewerId: assignedAdmin.id,
+                            reviewerId: availableAdmin.id,
                             status: "PENDING_COI",
                         },
                     });
@@ -373,22 +318,23 @@ export async function submitProject(
 
                 await tx.auditLog.create({
                     data: {
-                        action: assignedAdmin ? "AUTO_ASSIGN_ON_SUBMIT" : "PROJECT_SUBMITTED",
-                        details: assignedAdmin
-                            ? `Protocol "${created.title}" auto-assigned to ${assignedAdmin.name || assignedAdmin.email} on submission`
+                        action: availableAdmin
+                            ? "AUTO_ASSIGN_ON_SUBMIT"
+                            : "PROJECT_SUBMITTED",
+                        details: availableAdmin
+                            ? `Protocol "${created.title}" auto-assigned to ${availableAdmin.name || availableAdmin.email} on submission`
                             : `Protocol "${created.title}" submitted pending reviewer assignment`,
                         targetId: created.id,
                         userId,
                     },
                 });
 
-                return { kind: "created" as const, project: created, assignedAdmin };
+                return { kind: "created" as const, project: created, assignedAdmin: availableAdmin };
             },
             { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
         );
 
         let response: SubmitProjectResult;
-
         if (result.kind === "existing-active") {
             response = {
                 success: false,
@@ -433,29 +379,33 @@ export async function submitProject(
                     userName: result.assignedAdmin.name,
                     message: `You have been automatically assigned to review a new protocol: "${result.project.title}"`,
                     projectId: result.project.id,
-                }).catch((err) => console.error("Error notifying auto-assigned reviewer:", err));
-
-                notifyAdmins({
-                    type: "PROJECT_STATUS",
-                    message: `${session.user.name || "A user"} submitted a new protocol: "${result.project.title}" - auto-assigned to ${result.assignedAdmin.name || result.assignedAdmin.email}`,
-                    link: `/admin/protocol-review`,
-                    excludeUserId: userId,
-                }).catch((err) => console.error("Error notifying admins:", err));
+                }).catch((err) =>
+                    console.error("Error notifying auto-assigned reviewer:", err)
+                );
             } else {
                 notifyAdmins({
                     type: "PROJECT_STATUS",
                     message: `${session.user.name || "A user"} submitted a new protocol: "${result.project.title}" - needs manual reviewer assignment`,
-                    link: `/admin/protocol-review`,
+                    link: "/admin/protocol-review",
                     excludeUserId: userId,
                 }).catch((err) => console.error("Error notifying admins:", err));
             }
         }
 
-        await storeIdempotentResponse(idempotencyKey, userId, SUBMIT_PROJECT_ACTION, response);
+        await storeIdempotentResponse(
+            idempotencyKey,
+            userId,
+            SUBMIT_PROJECT_ACTION,
+            response
+        );
         return response;
     } catch (error) {
         console.error("[submitProject] failed:", error);
-        await releaseIdempotencyKey(idempotencyKey, userId, SUBMIT_PROJECT_ACTION).catch((releaseErr) =>
+        await releaseIdempotencyKey(
+            idempotencyKey,
+            userId,
+            SUBMIT_PROJECT_ACTION
+        ).catch((releaseErr) =>
             console.error("[submitProject] failed to release idempotency key:", releaseErr)
         );
         return {
@@ -475,23 +425,42 @@ export async function getProjectById(projectId: string) {
         where: { id: validProjectId, deleted: false },
         include: {
             user: { select: { id: true, name: true, email: true, image: true } },
-            assignedTo: { select: { id: true, name: true, email: true } },
             statusHistory: { orderBy: { createdAt: "desc" } },
             reviewAssignments: {
                 include: {
                     reviewer: { select: { id: true, name: true, email: true, image: true } },
                     coiDeclaration: { select: { hasCOI: true, declaredAt: true } },
                     evaluationReport: {
-                        select: { id: true, status: true, recommendation: true, submittedAt: true },
+                        select: {
+                            id: true,
+                            status: true,
+                            recommendation: true,
+                            submittedAt: true,
+                        },
                     },
                 },
             },
-            appeal: { select: { id: true, status: true, filedAt: true, deadlineAt: true, decision: true } },
+            appeal: {
+                select: {
+                    id: true,
+                    status: true,
+                    filedAt: true,
+                    deadlineAt: true,
+                    decision: true,
+                },
+            },
             aarApplication: { select: { id: true, status: true, aarRefNumber: true } },
-            saeReports: { select: { id: true, eventType: true, eventDate: true, reportedAt: true, isLate: true } },
+            saeReports: {
+                select: {
+                    id: true,
+                    eventType: true,
+                    eventDate: true,
+                    reportedAt: true,
+                    isLate: true,
+                },
+            },
         },
     });
-
     if (!project) return null;
 
     const user = await db.user.findUnique({
@@ -503,7 +472,7 @@ export async function getProjectById(projectId: string) {
     const isSuperAdmin = user?.role === "superadmin";
     const isRegularAdmin = user?.role === "admin";
     const callerAssignment = project.reviewAssignments.find(
-        (assignment) => assignment.reviewerId === session.user.id
+        (a) => a.reviewerId === session.user.id
     );
     if (callerAssignment?.status === "EXCLUDED" && !isSuperAdmin) {
         throw new Error("Forbidden: Excluded reviewers cannot access this protocol");
@@ -516,6 +485,8 @@ export async function getProjectById(projectId: string) {
         throw new Error("Forbidden");
     }
 
+    // Non-reviewer admins should not see evaluation reports before they are
+    // assigned. Superadmins see everything.
     if (isRegularAdmin && !isAssignedReviewer && !isSuperAdmin) {
         return {
             ...project,
@@ -540,20 +511,15 @@ export async function getProjectById(projectId: string) {
     return project;
 }
 
-/**
- * Returns every protocol OWNED by the current user.
- * Ownership is the only filter — no status filter, no role filter.
- * This guarantees a user always sees their own protocol, including
- * when it is UNDER_REVIEW, REVIEW_COMPLETE, APPROVED, EXPIRED, etc.
- */
 export async function getUserProjects() {
     const session = await verifiedAuthSession();
-
     try {
         return await db.project.findMany({
             where: { userId: session.user.id, deleted: false },
             orderBy: { createdAt: "desc" },
-            include: { statusHistory: { orderBy: { createdAt: "desc" }, take: 1 } },
+            include: {
+                statusHistory: { orderBy: { createdAt: "desc" }, take: 1 },
+            },
         });
     } catch (error) {
         console.error("Error fetching user projects:", error);
@@ -561,17 +527,14 @@ export async function getUserProjects() {
     }
 }
 
-/** Alias kept for readability at call-sites that want the intent to be explicit. */
 export const getMyProtocols = getUserProjects;
 
 /**
- * Returns protocols the current user is assigned to REVIEW (as an admin /
- * super-admin). Always excludes the caller's own protocols.
- * Returns [] for non-admin users.
+ * Reviewer's list. Now includes COMPLETED assignments so the reviewer keeps
+ * the protocol for life (resubmissions, appeals, AAR, SAE, renewals).
  */
 export async function getProtocolsAssignedToMe() {
     const session = await verifiedAuthSession();
-
     const me = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
@@ -582,11 +545,11 @@ export async function getProtocolsAssignedToMe() {
         return await db.project.findMany({
             where: {
                 deleted: false,
-                userId: { not: session.user.id },        // never own protocols
+                userId: { not: session.user.id },
                 reviewAssignments: {
                     some: {
                         reviewerId: session.user.id,
-                        status: { in: ["PENDING_COI", "ACTIVE"] },
+                        status: { in: ["PENDING_COI", "ACTIVE", "COMPLETED"] },
                     },
                 },
             },
@@ -594,6 +557,12 @@ export async function getProtocolsAssignedToMe() {
             include: {
                 user: { select: { id: true, name: true, email: true, image: true } },
                 statusHistory: { orderBy: { createdAt: "desc" }, take: 1 },
+                reviewAssignments: {
+                    where: { reviewerId: session.user.id },
+                    select: { id: true, status: true, createdAt: true },
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                },
             },
         });
     } catch (error) {
@@ -604,14 +573,15 @@ export async function getProtocolsAssignedToMe() {
 
 export async function getAllProjects(status?: ProjectStatus) {
     const session = await verifiedAuthSession();
-
     const user = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
     });
-    if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
+    if (user?.role !== "admin" && user?.role !== "superadmin")
+        throw new Error("Forbidden");
 
-    const validStatus = status === undefined ? undefined : parseInput(projectStatusSchema, status);
+    const validStatus =
+        status === undefined ? undefined : parseInput(projectStatusSchema, status);
     return db.project.findMany({
         where: { deleted: false, ...(validStatus ? { status: validStatus } : {}) },
         include: {
@@ -622,21 +592,35 @@ export async function getAllProjects(status?: ProjectStatus) {
     });
 }
 
+/**
+ * Admin status change. Now restricted to the protocol's current reviewer or
+ * the superadmin (P16). Legal transitions live in status-transitions.ts.
+ */
 export async function updateProjectStatus(
     projectId: string,
-    status: "APPROVED" | "RESUBMIT" | "RETURNED_INCOMPLETE" | "APPROVED_WITH_CONDITIONS" | "SESSION_SCHEDULED" | "PENDING_REVIEW",
+    status:
+        | "APPROVED"
+        | "RESUBMIT"
+        | "RETURNED_INCOMPLETE"
+        | "APPROVED_WITH_CONDITIONS"
+        | "SESSION_SCHEDULED"
+        | "PENDING_REVIEW",
     feedback?: string | undefined
 ) {
     const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
     const validStatus = parseInput(projectStatusSchema, status);
-    const validFeedback = parseInput(z.string().trim().max(10_000).optional(), feedback);
+    const validFeedback = parseInput(
+        z.string().trim().max(10_000).optional(),
+        feedback
+    );
 
     const user = await db.user.findUnique({
         where: { id: session.user.id },
         select: { role: true },
     });
-    if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
+    const isSuperAdmin = user?.role === "superadmin";
+    if (user?.role !== "admin" && !isSuperAdmin) throw new Error("Forbidden");
 
     const currentProject = await db.project.findUnique({
         where: { id: validProjectId, deleted: false },
@@ -645,15 +629,35 @@ export async function updateProjectStatus(
     if (!currentProject) throw new Error("Protocol not found");
     if (currentProject.status === validStatus) return currentProject;
 
-    const legalTargets = projectTransitionMatrix[currentProject.status] || [];
-    if (!legalTargets.includes(validStatus)) {
-        throw new Error(`Illegal protocol status transition: ${currentProject.status} to ${validStatus}`);
+    // P16 — reviewer (or superadmin) only.
+    if (!isSuperAdmin) {
+        const active = await db.reviewAssignment.findFirst({
+            where: {
+                projectId: validProjectId,
+                reviewerId: session.user.id,
+                status: { in: ["PENDING_COI", "ACTIVE", "COMPLETED"] },
+            },
+            select: { id: true },
+        });
+        if (!active) {
+            throw new Error(
+                "Forbidden: Only the protocol's reviewer or a superadmin can change its status"
+            );
+        }
     }
-    if (feedbackRequiredStatuses.has(validStatus) && !validFeedback) {
+
+    if (!isLegalTransition(currentProject.status, validStatus)) {
+        throw new Error(
+            `Illegal protocol status transition: ${currentProject.status} to ${validStatus}`
+        );
+    }
+    if (requiresFeedback(validStatus) && !validFeedback) {
         throw new Error(`Feedback is required when changing status to ${validStatus}`);
     }
 
-    const statusMessage = `Your protocol "${currentProject.title}" has been ${validStatus.toLowerCase().replaceAll("_", " ")}`;
+    const statusMessage = `Your protocol "${currentProject.title}" has been ${validStatus
+        .toLowerCase()
+        .replaceAll("_", " ")}`;
     const isApproval = APPROVAL_STATUSES.includes(validStatus);
     const now = new Date();
 
@@ -665,15 +669,14 @@ export async function updateProjectStatus(
                 feedback: validFeedback || null,
                 ...(isApproval
                     ? {
-                        // 12-month validity window starts at approval time.
-                        // reminderSentAt is cleared so the 11-month reminder cycle restarts.
                         expiresAt: computeExpiresAt(now),
                         reminderSentAt: null,
                     }
                     : {}),
             },
         });
-        if (updated.count !== 1) throw new Error("Protocol status changed concurrently; please retry");
+        if (updated.count !== 1)
+            throw new Error("Protocol status changed concurrently; please retry");
 
         await tx.projectStatusHistory.create({
             data: {
@@ -733,17 +736,24 @@ export async function deleteProject(projectId: string) {
         select: { userId: true, status: true, title: true },
     });
     if (!project) throw new Error("Protocol not found");
-    if (project.userId !== session.user.id) throw new Error("Forbidden: Only the protocol owner can delete it");
-    if (!ownerMutableStatuses.has(project.status)) {
+    if (project.userId !== session.user.id)
+        throw new Error("Forbidden: Only the protocol owner can delete it");
+    if (!OWNER_MUTABLE_STATUSES.includes(project.status)) {
         throw new Error("Submitted protocols cannot be deleted");
     }
 
     await db.$transaction(async (tx) => {
         const result = await tx.project.updateMany({
-            where: { id: validProjectId, userId: session.user.id, deleted: false, status: project.status },
+            where: {
+                id: validProjectId,
+                userId: session.user.id,
+                deleted: false,
+                status: project.status,
+            },
             data: { deleted: true },
         });
-        if (result.count !== 1) throw new Error("Protocol changed concurrently; please retry");
+        if (result.count !== 1)
+            throw new Error("Protocol changed concurrently; please retry");
         await tx.auditLog.create({
             data: {
                 action: "PROJECT_DELETED",
@@ -778,8 +788,9 @@ export async function updateProject(
         select: { userId: true, status: true, title: true },
     });
     if (!project) throw new Error("Protocol not found");
-    if (project.userId !== session.user.id) throw new Error("Forbidden: Only the protocol owner can edit it");
-    if (!ownerMutableStatuses.has(project.status)) {
+    if (project.userId !== session.user.id)
+        throw new Error("Forbidden: Only the protocol owner can edit it");
+    if (!OWNER_MUTABLE_STATUSES.includes(project.status)) {
         throw new Error("Submitted protocols cannot be edited");
     }
 
@@ -803,7 +814,8 @@ export async function updateProject(
             },
             data: updateData,
         });
-        if (result.count !== 1) throw new Error("Protocol changed concurrently; please retry");
+        if (result.count !== 1)
+            throw new Error("Protocol changed concurrently; please retry");
         await tx.auditLog.create({
             data: {
                 action: "PROJECT_UPDATED",
@@ -816,18 +828,144 @@ export async function updateProject(
     });
 }
 
+/**
+ * Owner resubmits a RETURNED_INCOMPLETE or RESUBMIT protocol.
+ * - Sticky reviewer for life: goes to the same reviewer, no new COI.
+ * - Superadmin owns reassignment; fallback only if no reviewer was ever set.
+ */
+export async function resubmitProtocol(projectId: string) {
+    const session = await verifiedAuthSession();
+    const validProjectId = parseInput(idSchema, projectId);
+
+    const project = await db.project.findUnique({
+        where: { id: validProjectId, deleted: false },
+        select: { id: true, userId: true, status: true, title: true },
+    });
+    if (!project) throw new Error("Protocol not found");
+    if (project.userId !== session.user.id)
+        throw new Error("Forbidden: Only the protocol owner can resubmit");
+    if (!OWNER_RESUBMIT_STATUSES.includes(project.status)) {
+        throw new Error(
+            "Only returned-incomplete or rejected protocols can be resubmitted"
+        );
+    }
+
+    // Find the sticky reviewer: the last non-excluded assignment on this protocol.
+    const sticky = await db.reviewAssignment.findFirst({
+        where: {
+            projectId: validProjectId,
+            status: { in: ["PENDING_COI", "ACTIVE", "COMPLETED"] },
+        },
+        orderBy: { createdAt: "desc" },
+        include: { reviewer: { select: { id: true, name: true, email: true } } },
+    });
+
+    const updated = await db.$transaction(
+        async (tx) => {
+            const claimed = await tx.project.updateMany({
+                where: {
+                    id: validProjectId,
+                    deleted: false,
+                    userId: session.user.id,
+                    status: project.status,
+                },
+                data: { status: ProjectStatus.PENDING_REVIEW },
+            });
+            if (claimed.count !== 1)
+                throw new Error("Protocol changed concurrently; please retry");
+
+            await tx.projectStatusHistory.create({
+                data: {
+                    projectId: validProjectId,
+                    status: ProjectStatus.PENDING_REVIEW,
+                    changedBy: session.user.id,
+                    comment: "Protocol resubmitted for review",
+                },
+            });
+            await tx.auditLog.create({
+                data: {
+                    action: "PROTOCOL_RESUBMITTED",
+                    details: `Protocol "${project.title}" resubmitted by owner`,
+                    targetId: validProjectId,
+                    userId: session.user.id,
+                },
+            });
+
+            if (sticky) {
+                // Sticky reviewer: reactivate the same reviewer.
+                // No new COI declaration needed - the reviewer already cleared it.
+                await tx.reviewAssignment.update({
+                    where: { id: sticky.id },
+                    data: { status: "ACTIVE", reassignedAt: null },
+                });
+            } else {
+                // No reviewer was ever assigned. Pick one now.
+                const assigned = await selectReviewerForProtocol({
+                    excludeUserIds: [session.user.id],
+                    tx,
+                });
+                if (assigned) {
+                    await tx.reviewAssignment.create({
+                        data: {
+                            projectId: validProjectId,
+                            reviewerId: assigned.id,
+                            status: "PENDING_COI",
+                        },
+                    });
+                }
+            }
+
+            return tx.project.findUniqueOrThrow({
+                where: { id: validProjectId },
+                select: { id: true, status: true, title: true, updatedAt: true },
+            });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+    if (sticky?.reviewer) {
+        notifyAssignmentEvent({
+            type: "REVIEW_ASSIGNED",
+            userId: sticky.reviewer.id,
+            userEmail: sticky.reviewer.email,
+            userName: sticky.reviewer.name,
+            message: `Protocol "${project.title}" has been resubmitted and is back in your queue.`,
+            projectId: validProjectId,
+        }).catch((err) => console.error("Error notifying reviewer on resubmit:", err));
+    } else {
+        notifyAdmins({
+            type: "PROJECT_STATUS",
+            message: `${session.user.name || "A user"} resubmitted protocol "${project.title}" - needs manual reviewer assignment`,
+            link: "/admin/protocol-review",
+            excludeUserId: session.user.id,
+        }).catch((err) => console.error("Error notifying admins:", err));
+    }
+
+    return {
+        id: updated.id,
+        title: updated.title,
+        status: updated.status,
+        updatedAt: updated.updatedAt.toISOString(),
+    };
+}
+
 export async function forwardProjectToFeed(
     projectId: string,
     data: { content: string; images?: string[]; videos?: string[]; tags?: string[] }
 ) {
     const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
-    const input = parseInput(z.object({
-        content: z.string().trim().min(1).max(10_000),
-        images: z.array(z.string().url().max(2_048)).max(20).optional(),
-        videos: z.array(z.string().url().max(2_048)).max(10).optional(),
-        tags: z.array(z.string().trim().min(1).max(64)).max(30).optional(),
-    }).strict(), data);
+    const input = parseInput(
+        z
+            .object({
+                content: z.string().trim().min(1).max(10_000),
+                images: z.array(z.string().url().max(2_048)).max(20).optional(),
+                videos: z.array(z.string().url().max(2_048)).max(10).optional(),
+                tags: z.array(z.string().trim().min(1).max(64)).max(30).optional(),
+            })
+            .strict(),
+        data
+    );
 
     const project = await db.project.findUnique({
         where: { id: validProjectId, deleted: false },
@@ -836,8 +974,12 @@ export async function forwardProjectToFeed(
     if (!project) throw new Error("Protocol not found");
 
     if (project.userId !== session.user.id) {
-        const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-        if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
+        const user = await db.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true },
+        });
+        if (user?.role !== "admin" && user?.role !== "superadmin")
+            throw new Error("Forbidden");
     }
 
     return db.post.create({
@@ -853,29 +995,34 @@ export async function forwardProjectToFeed(
 
 export async function getAdminUsers() {
     const session = await verifiedAuthSession();
-
-    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can list admin users");
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (user?.role !== "superadmin")
+        throw new Error("Forbidden: Only super admins can list admin users");
 
     const admins = await db.user.findMany({
-        where: { role: { in: ["admin", "superadmin"] }, OR: [{ banned: false }, { banned: null }] },
-        select: { id: true, name: true, email: true, image: true, role: true, expertiseTags: true },
+        where: {
+            role: { in: ["admin", "superadmin"] },
+            OR: [{ banned: false }, { banned: null }],
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+            expertiseTags: true,
+        },
         orderBy: { name: "asc" },
     });
 
-    const busyRows = await db.reviewAssignment.findMany({
-        where: { status: { in: ["PENDING_COI", "ACTIVE"] } },
-        select: { reviewerId: true },
-    });
-    const busyCounts = busyRows.reduce<Record<string, number>>((acc, r) => {
-        acc[r.reviewerId] = (acc[r.reviewerId] || 0) + 1;
-        return acc;
-    }, {});
+    const loads = await getReviewerLoads({ reviewerIds: admins.map((a) => a.id) });
 
     return admins.map((admin) => ({
         ...admin,
-        activeAssignmentCount: busyCounts[admin.id] || 0,
-        isAvailable: !busyCounts[admin.id],
+        activeAssignmentCount: loads.get(admin.id) ?? 0,
     }));
 }
 
@@ -884,10 +1031,14 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
     const validProjectId = parseInput(idSchema, projectId);
     const validAdminId = parseInput(idSchema, adminId);
 
-    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can assign reviewers");
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (user?.role !== "superadmin")
+        throw new Error("Forbidden: Only super admins can assign reviewers");
 
-    const [admin, project, activeWork] = await Promise.all([
+    const [admin, project] = await Promise.all([
         db.user.findUnique({
             where: { id: validAdminId },
             select: { id: true, name: true, email: true, role: true, banned: true },
@@ -899,95 +1050,100 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
                 reviewAssignments: { select: { reviewerId: true, status: true } },
             },
         }),
-        db.reviewAssignment.findFirst({
-            where: { reviewerId: validAdminId, status: { in: ["PENDING_COI", "ACTIVE"] } },
-            select: { id: true },
-        }),
     ]);
 
     if (!admin || admin.banned || (admin.role !== "admin" && admin.role !== "superadmin")) {
         throw new Error("Selected user is not an admin");
     }
     if (!project) throw new Error("Protocol not found");
-    if (!assignableProjectStatuses.has(project.status)) {
+    if (!ASSIGNABLE_PROJECT_STATUSES.includes(project.status)) {
         throw new Error(`Reviewers cannot be assigned while protocol is ${project.status}`);
     }
-    if (project.userId === validAdminId) throw new Error("Protocol owners cannot review their own protocols");
-    if (activeWork) throw new Error("This reviewer already has an active review assignment");
+    if (project.userId === validAdminId)
+        throw new Error("Protocol owners cannot review their own protocols");
 
-    const alreadyAssigned = project.reviewAssignments.some((a) => a.reviewerId === validAdminId);
+    const alreadyAssigned = project.reviewAssignments.some(
+        (a) => a.reviewerId === validAdminId
+    );
     if (alreadyAssigned) {
         throw new Error("This reviewer was already assigned or excluded from this protocol");
     }
 
-    const updatedProject = await db.$transaction(async (tx) => {
-        const freshProject = await tx.project.findUnique({
-            where: { id: validProjectId, deleted: false },
-            select: { id: true, status: true, userId: true },
-        });
-        if (!freshProject || !assignableProjectStatuses.has(freshProject.status)) {
-            throw new Error("Protocol is no longer available for reviewer assignment");
-        }
-        if (freshProject.userId === validAdminId) {
-            throw new Error("Protocol owners cannot review their own protocols");
-        }
-        const conflictingAssignment = await tx.reviewAssignment.findFirst({
-            where: {
-                OR: [
-                    { projectId: validProjectId, reviewerId: validAdminId },
-                    { reviewerId: validAdminId, status: { in: ["PENDING_COI", "ACTIVE"] } },
-                ],
-            },
-            select: { id: true },
-        });
-        if (conflictingAssignment) throw new Error("Reviewer is no longer available");
+    // Only one active assignment at a time; exit existing ones as EXCLUDED.
+    const existingActive = await db.reviewAssignment.findFirst({
+        where: { projectId: validProjectId, status: { in: ["PENDING_COI", "ACTIVE"] } },
+        select: { id: true },
+    });
 
-        await tx.reviewAssignment.create({
-            data: { projectId: validProjectId, reviewerId: validAdminId, status: "PENDING_COI" },
-        });
+    const updatedProject = await db.$transaction(
+        async (tx) => {
+            const freshProject = await tx.project.findUnique({
+                where: { id: validProjectId, deleted: false },
+                select: { id: true, status: true, userId: true },
+            });
+            if (!freshProject || !ASSIGNABLE_PROJECT_STATUSES.includes(freshProject.status)) {
+                throw new Error("Protocol is no longer available for reviewer assignment");
+            }
+            if (freshProject.userId === validAdminId) {
+                throw new Error("Protocol owners cannot review their own protocols");
+            }
+            if (existingActive) {
+                await tx.reviewAssignment.update({
+                    where: { id: existingActive.id },
+                    data: { status: "EXCLUDED", reassignedAt: new Date() },
+                });
+            }
 
-        const nextStatus = freshProject.status === ProjectStatus.SUBMITTED
-        || freshProject.status === ProjectStatus.RETURNED_INCOMPLETE
-            ? ProjectStatus.PENDING_REVIEW
-            : freshProject.status;
-        const projectChanged = await tx.project.updateMany({
-            where: {
-                id: validProjectId,
-                deleted: false,
-                status: freshProject.status,
-                userId: freshProject.userId,
-            },
-            data: {
-                assignedToId: validAdminId,
-                status: nextStatus,
-            },
-        });
-        if (projectChanged.count !== 1) {
-            throw new Error("Protocol changed concurrently; please retry");
-        }
-        if (nextStatus !== freshProject.status) {
-            await tx.projectStatusHistory.create({
+            await tx.reviewAssignment.create({
                 data: {
                     projectId: validProjectId,
-                    status: nextStatus,
-                    changedBy: session.user.id,
-                    comment: "Protocol assigned for review",
+                    reviewerId: validAdminId,
+                    status: "PENDING_COI",
                 },
             });
-        }
-        await tx.auditLog.create({
-            data: {
-                action: "ASSIGN_REVIEWER",
-                details: `Assigned ${admin.name || admin.email} to review protocol "${project.title}"`,
-                targetId: validProjectId,
-                userId: session.user.id,
-            },
-        });
-        return tx.project.findUniqueOrThrow({
-            where: { id: validProjectId },
-            include: { user: { select: { id: true, name: true, email: true } } },
-        });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+            const nextStatus =
+                freshProject.status === ProjectStatus.SUBMITTED ||
+                freshProject.status === ProjectStatus.RETURNED_INCOMPLETE
+                    ? ProjectStatus.PENDING_REVIEW
+                    : freshProject.status;
+            const projectChanged = await tx.project.updateMany({
+                where: {
+                    id: validProjectId,
+                    deleted: false,
+                    status: freshProject.status,
+                    userId: freshProject.userId,
+                },
+                data: { status: nextStatus },
+            });
+            if (projectChanged.count !== 1) {
+                throw new Error("Protocol changed concurrently; please retry");
+            }
+            if (nextStatus !== freshProject.status) {
+                await tx.projectStatusHistory.create({
+                    data: {
+                        projectId: validProjectId,
+                        status: nextStatus,
+                        changedBy: session.user.id,
+                        comment: "Protocol assigned for review",
+                    },
+                });
+            }
+            await tx.auditLog.create({
+                data: {
+                    action: "ASSIGN_REVIEWER",
+                    details: `Assigned ${admin.name || admin.email} to review protocol "${project.title}"`,
+                    targetId: validProjectId,
+                    userId: session.user.id,
+                },
+            });
+            return tx.project.findUniqueOrThrow({
+                where: { id: validProjectId },
+                include: { user: { select: { id: true, name: true, email: true } } },
+            });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     await notifyAssignmentEvent({
         type: "REVIEW_ASSIGNED",
@@ -996,7 +1152,9 @@ export async function assignProjectReviewer(projectId: string, adminId: string) 
         userName: admin.name,
         message: `You have been assigned to review the protocol: "${updatedProject.title}"`,
         projectId: validProjectId,
-    }).catch((error) => console.error("Error notifying assigned reviewer:", error));
+    }).catch((error) =>
+        console.error("Error notifying assigned reviewer:", error)
+    );
 
     return updatedProject;
 }
@@ -1005,59 +1163,56 @@ export async function autoAssignProjectReviewer(projectId: string) {
     const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
 
-    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can auto-assign reviewers");
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (user?.role !== "superadmin")
+        throw new Error("Forbidden: Only super admins can auto-assign reviewers");
 
-    try {
-        const project = await db.project.findUnique({
-            where: { id: validProjectId, deleted: false },
-            include: {
-                user: { select: { id: true, name: true, email: true } },
-                reviewAssignments: { select: { reviewerId: true, status: true } },
-            },
-        });
-        if (!project) throw new Error("Protocol not found");
-        if (!assignableProjectStatuses.has(project.status)) {
-            throw new Error(`Reviewers cannot be assigned while protocol is ${project.status}`);
-        }
+    const project = await db.project.findUnique({
+        where: { id: validProjectId, deleted: false },
+        include: {
+            user: { select: { id: true, name: true, email: true } },
+            reviewAssignments: { select: { reviewerId: true, status: true } },
+        },
+    });
+    if (!project) throw new Error("Protocol not found");
+    if (!ASSIGNABLE_PROJECT_STATUSES.includes(project.status)) {
+        throw new Error(`Reviewers cannot be assigned while protocol is ${project.status}`);
+    }
+    const hasActiveAssignment = project.reviewAssignments.some(
+        (a) => a.status === "PENDING_COI" || a.status === "ACTIVE"
+    );
+    if (hasActiveAssignment)
+        throw new Error("This protocol already has an active reviewer assignment");
 
-        const hasActiveAssignment = project.reviewAssignments.some(
-            (a) => a.status === "PENDING_COI" || a.status === "ACTIVE"
-        );
-        if (hasActiveAssignment) throw new Error("This protocol already has an active reviewer assignment");
+    const unavailableForProject = [
+        project.userId,
+        ...project.reviewAssignments.map((a) => a.reviewerId),
+    ];
+    const availableAdmin = await selectReviewerForProtocol({
+        excludeUserIds: unavailableForProject,
+    });
+    if (!availableAdmin)
+        throw new Error("No available admin found. All admins are excluded or banned.");
 
-        const unavailableForProject = [
-            project.userId,
-            ...project.reviewAssignments.map((assignment) => assignment.reviewerId),
-        ];
-        const availableAdmin = await findAvailableAdmin(unavailableForProject);
-        if (!availableAdmin) throw new Error("No available admin found. All admins currently have ongoing review assignments.");
-
-        const updatedProject = await db.$transaction(async (tx) => {
+    const updatedProject = await db.$transaction(
+        async (tx) => {
             const freshProject = await tx.project.findUnique({
                 where: { id: validProjectId, deleted: false },
                 select: { status: true, userId: true },
             });
-            if (!freshProject || !assignableProjectStatuses.has(freshProject.status)) {
+            if (!freshProject || !ASSIGNABLE_PROJECT_STATUSES.includes(freshProject.status)) {
                 throw new Error("Protocol is no longer available for reviewer assignment");
             }
-            if (freshProject.userId === availableAdmin.id) {
-                throw new Error("Protocol owners cannot review their own protocols");
-            }
-            const conflict = await tx.reviewAssignment.findFirst({
-                where: {
-                    OR: [
-                        { projectId: validProjectId, status: { in: ["PENDING_COI", "ACTIVE"] } },
-                        { projectId: validProjectId, reviewerId: availableAdmin.id },
-                        { reviewerId: availableAdmin.id, status: { in: ["PENDING_COI", "ACTIVE"] } },
-                    ],
-                },
-                select: { id: true },
-            });
-            if (conflict) throw new Error("Reviewer or protocol is no longer available");
 
             await tx.reviewAssignment.create({
-                data: { projectId: validProjectId, reviewerId: availableAdmin.id, status: "PENDING_COI" },
+                data: {
+                    projectId: validProjectId,
+                    reviewerId: availableAdmin.id,
+                    status: "PENDING_COI",
+                },
             });
 
             const projectChanged = await tx.project.updateMany({
@@ -1067,10 +1222,7 @@ export async function autoAssignProjectReviewer(projectId: string) {
                     status: freshProject.status,
                     userId: freshProject.userId,
                 },
-                data: {
-                    assignedToId: availableAdmin.id,
-                    status: "PENDING_REVIEW",
-                },
+                data: { status: "PENDING_REVIEW" },
             });
             if (projectChanged.count !== 1) {
                 throw new Error("Protocol changed concurrently; please retry");
@@ -1097,31 +1249,38 @@ export async function autoAssignProjectReviewer(projectId: string) {
                 where: { id: validProjectId },
                 include: { user: { select: { id: true, name: true, email: true } } },
             });
-        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
-        await notifyAssignmentEvent({
-            type: "REVIEW_ASSIGNED",
-            userId: availableAdmin.id,
-            userEmail: availableAdmin.email,
-            userName: availableAdmin.name,
-            message: `You have been automatically assigned to review the protocol: "${updatedProject.title}"`,
-            projectId: validProjectId,
-        }).catch((error) => console.error("Error notifying auto-assigned reviewer:", error));
+    await notifyAssignmentEvent({
+        type: "REVIEW_ASSIGNED",
+        userId: availableAdmin.id,
+        userEmail: availableAdmin.email,
+        userName: availableAdmin.name,
+        message: `You have been automatically assigned to review the protocol: "${updatedProject.title}"`,
+        projectId: validProjectId,
+    }).catch((error) =>
+        console.error("Error notifying auto-assigned reviewer:", error)
+    );
 
-        return updatedProject;
-    } catch (error) {
-        console.error("[autoAssignProjectReviewer] ERROR:", error);
-        throw error;
-    }
+    return updatedProject;
 }
 
 export async function reassignProjectReviewer(projectId: string, reason?: string) {
     const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
-    const validReason = parseInput(z.string().trim().min(1).max(2_000).optional(), reason);
+    const validReason = parseInput(
+        z.string().trim().min(1).max(2_000).optional(),
+        reason
+    );
 
-    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-    if (user?.role !== "superadmin") throw new Error("Forbidden: Only super admins can reassign reviewers");
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (user?.role !== "superadmin")
+        throw new Error("Forbidden: Only super admins can reassign reviewers");
 
     const project = await db.project.findUnique({
         where: { id: validProjectId, deleted: false },
@@ -1131,7 +1290,7 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
         },
     });
     if (!project) throw new Error("Protocol not found");
-    if (!assignableProjectStatuses.has(project.status)) {
+    if (!ASSIGNABLE_PROJECT_STATUSES.includes(project.status)) {
         throw new Error(`Reviewers cannot be reassigned while protocol is ${project.status}`);
     }
 
@@ -1141,86 +1300,62 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
     });
     if (!currentAssignment) throw new Error("No active assignment found to reassign");
 
-    const nextAdmin = await findAvailableAdmin([
-        project.userId,
-        ...project.reviewAssignments.map((assignment) => assignment.reviewerId),
-    ]);
+    const nextAdmin = await selectReviewerForProtocol({
+        excludeUserIds: [
+            project.userId,
+            ...project.reviewAssignments.map((a) => a.reviewerId),
+        ],
+    });
     if (!nextAdmin) {
         throw new Error(
             "No available admin found for reassignment. All other admins currently have ongoing review assignments."
         );
     }
 
-    const updatedProject = await db.$transaction(async (tx) => {
-        const freshProject = await tx.project.findUnique({
-            where: { id: validProjectId, deleted: false },
-            select: { status: true, userId: true },
-        });
-        if (!freshProject || !assignableProjectStatuses.has(freshProject.status)) {
-            throw new Error("Protocol is no longer available for reviewer reassignment");
-        }
-        if (freshProject.userId === nextAdmin.id) {
-            throw new Error("Protocol owners cannot review their own protocols");
-        }
+    const updatedProject = await db.$transaction(
+        async (tx) => {
+            const freshProject = await tx.project.findUnique({
+                where: { id: validProjectId, deleted: false },
+                select: { status: true, userId: true },
+            });
+            if (!freshProject || !ASSIGNABLE_PROJECT_STATUSES.includes(freshProject.status)) {
+                throw new Error("Protocol is no longer available for reviewer reassignment");
+            }
 
-        const excluded = await tx.reviewAssignment.updateMany({
-            where: {
-                id: currentAssignment.id,
-                projectId: validProjectId,
-                reviewerId: currentAssignment.reviewerId,
-                status: currentAssignment.status,
-            },
-            data: { status: "EXCLUDED", reassignedAt: new Date() },
-        });
-        if (excluded.count !== 1) throw new Error("Assignment changed concurrently; please retry");
+            const excluded = await tx.reviewAssignment.updateMany({
+                where: {
+                    id: currentAssignment.id,
+                    status: currentAssignment.status,
+                },
+                data: { status: "EXCLUDED", reassignedAt: new Date() },
+            });
+            if (excluded.count !== 1)
+                throw new Error("Assignment changed concurrently; please retry");
 
-        const conflict = await tx.reviewAssignment.findFirst({
-            where: {
-                OR: [
-                    { projectId: validProjectId, reviewerId: nextAdmin.id },
-                    { reviewerId: nextAdmin.id, status: { in: ["PENDING_COI", "ACTIVE"] } },
-                ],
-            },
-            select: { id: true },
-        });
-        if (conflict) throw new Error("Replacement reviewer is no longer available");
+            await tx.reviewAssignment.create({
+                data: {
+                    projectId: validProjectId,
+                    reviewerId: nextAdmin.id,
+                    status: "PENDING_COI",
+                    reassignedFromId: currentAssignment.reviewerId,
+                },
+            });
 
-        await tx.reviewAssignment.create({
-            data: {
-                projectId: validProjectId,
-                reviewerId: nextAdmin.id,
-                status: "PENDING_COI",
-                reassignedFromId: currentAssignment.reviewerId,
-            },
-        });
-
-        const projectChanged = await tx.project.updateMany({
-            where: {
-                id: validProjectId,
-                deleted: false,
-                status: freshProject.status,
-                userId: freshProject.userId,
-            },
-            data: {
-                assignedToId: nextAdmin.id,
-            },
-        });
-        if (projectChanged.count !== 1) {
-            throw new Error("Protocol changed concurrently; please retry");
-        }
-        await tx.auditLog.create({
-            data: {
-                action: "REASSIGN_REVIEWER",
-                details: `Reassigned protocol "${project.title}" from ${currentAssignment.reviewer.name || currentAssignment.reviewer.email} to ${nextAdmin.name || nextAdmin.email}${validReason ? `. Reason: ${validReason}` : ""}`,
-                targetId: validProjectId,
-                userId: session.user.id,
-            },
-        });
-        return tx.project.findUniqueOrThrow({
-            where: { id: validProjectId },
-            include: { user: { select: { id: true, name: true, email: true } } },
-        });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+            await tx.auditLog.create({
+                data: {
+                    action: "REASSIGN_REVIEWER",
+                    details: `Reassigned protocol "${project.title}" from ${currentAssignment.reviewer.name || currentAssignment.reviewer.email} to ${nextAdmin.name || nextAdmin.email}${validReason ? `. Reason: ${validReason}` : ""}`,
+                    targetId: validProjectId,
+                    userId: session.user.id,
+                },
+            });
+            return tx.project.findUniqueOrThrow({
+                where: { id: validProjectId },
+                include: { user: { select: { id: true, name: true, email: true } } },
+            });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     await Promise.allSettled([
         notifyAssignmentEvent({
@@ -1247,9 +1382,12 @@ export async function reassignProjectReviewer(projectId: string, reason?: string
 export async function getProjectReviewAssignments(projectId: string) {
     const session = await verifiedAuthSession();
     const validProjectId = parseInput(idSchema, projectId);
-
-    const user = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-    if (user?.role !== "admin" && user?.role !== "superadmin") throw new Error("Forbidden");
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+    });
+    if (user?.role !== "admin" && user?.role !== "superadmin")
+        throw new Error("Forbidden");
 
     const project = await db.project.findUnique({
         where: { id: validProjectId, deleted: false },
@@ -1271,29 +1409,29 @@ export async function getProjectReviewAssignments(projectId: string) {
     return db.reviewAssignment.findMany({
         where: { projectId: validProjectId },
         include: {
-            reviewer: { select: { id: true, name: true, email: true, image: true, expertiseTags: true } },
+            reviewer: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    image: true,
+                    expertiseTags: true,
+                },
+            },
             coiDeclaration: true,
             evaluationReport: {
-                select: { id: true, status: true, recommendation: true, overallScore: true, submittedAt: true },
+                select: {
+                    id: true,
+                    status: true,
+                    recommendation: true,
+                    overallScore: true,
+                    submittedAt: true,
+                },
             },
         },
         orderBy: { createdAt: "asc" },
     });
 }
-
-// ---------------------------------------------------------------------------
-// Public protocol tracker
-//
-// Anonymous. Returns the minimum needed to confirm a tracking code is valid
-// and show its current status. Full history, title, category, and location
-// are intentionally withheld — they belong to the authenticated owner view
-// (getProjectById) or an admin view.
-//
-// Rate-limited per tracking-code hash, so a single code cannot be polled
-// aggressively from one or many IPs. Combined with the per-IP layer that
-// fronts this action (see src/lib/rate-limit.ts), this blocks both code
-// brute-forcing and hammering a single known code.
-// ---------------------------------------------------------------------------
 
 export interface TrackedProtocolSummary {
     trackingCode: string;
@@ -1307,7 +1445,6 @@ export async function trackProjectByCode(
 ): Promise<TrackedProtocolSummary | null> {
     const parsedCode = z.string().trim().max(100).safeParse(trackingCode);
     if (!parsedCode.success) return null;
-
     const code = parsedCode.data.toUpperCase();
     if (!code) return null;
 
@@ -1329,9 +1466,7 @@ export async function trackProjectByCode(
             updatedAt: true,
         },
     });
-
     if (!project || project.deleted) return null;
-
     return {
         trackingCode: project.trackingCode,
         status: project.status,
@@ -1339,10 +1474,6 @@ export async function trackProjectByCode(
         updatedAt: project.updatedAt.toISOString(),
     };
 }
-
-// ---------------------------------------------------------------------------
-// Protocol renewal (12-month validity cycle)
-// ---------------------------------------------------------------------------
 
 export interface RenewProtocolResult {
     id: string;
@@ -1354,11 +1485,7 @@ export interface RenewProtocolResult {
 
 /**
  * Owner-initiated renewal of an EXPIRED protocol.
- * - Verifies ownership and current status.
- * - Auto-assigns an eligible ADMIN (never a super-admin).
- * - Resets expiresAt / reminderSentAt so the next approval starts a new
- *   12-month cycle.
- * - Moves the protocol into the standard review pipeline.
+ * Sticky reviewer: the same reviewer is re-activated if one exists.
  */
 export async function renewProtocol(
     projectId: string
@@ -1378,7 +1505,14 @@ export async function renewProtocol(
         throw new Error("Only expired protocols can be renewed");
     }
 
-    const availableAdmin = await findAvailableAdmin([session.user.id]);
+    const sticky = await db.reviewAssignment.findFirst({
+        where: {
+            projectId: validProjectId,
+            status: { in: ["PENDING_COI", "ACTIVE", "COMPLETED"] },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, reviewerId: true },
+    });
 
     const updatedProject = await db.$transaction(
         async (tx) => {
@@ -1390,7 +1524,7 @@ export async function renewProtocol(
                 throw new Error("Protocol is no longer available for renewal");
             }
 
-            const nextStatus = availableAdmin
+            const nextStatus = sticky
                 ? ProjectStatus.UNDER_REVIEW
                 : ProjectStatus.SUBMITTED;
 
@@ -1403,7 +1537,6 @@ export async function renewProtocol(
                 },
                 data: {
                     status: nextStatus,
-                    assignedToId: availableAdmin?.id ?? null,
                     expiresAt: null,
                     reminderSentAt: null,
                 },
@@ -1412,27 +1545,21 @@ export async function renewProtocol(
                 throw new Error("Protocol changed concurrently; please retry");
             }
 
-            if (availableAdmin) {
-                const existing = await tx.reviewAssignment.findFirst({
-                    where: {
-                        projectId: validProjectId,
-                        reviewerId: availableAdmin.id,
-                    },
-                    select: { id: true },
+            if (sticky) {
+                await tx.reviewAssignment.update({
+                    where: { id: sticky.id },
+                    data: { status: "ACTIVE", reassignedAt: null },
                 });
-                if (existing) {
-                    await tx.reviewAssignment.update({
-                        where: { id: existing.id },
-                        data: {
-                            status: "PENDING_COI",
-                            reassignedAt: null,
-                        },
-                    });
-                } else {
+            } else {
+                const assigned = await selectReviewerForProtocol({
+                    excludeUserIds: [session.user.id],
+                    tx,
+                });
+                if (assigned) {
                     await tx.reviewAssignment.create({
                         data: {
                             projectId: validProjectId,
-                            reviewerId: availableAdmin.id,
+                            reviewerId: assigned.id,
                             status: "PENDING_COI",
                         },
                     });
@@ -1444,8 +1571,8 @@ export async function renewProtocol(
                     projectId: validProjectId,
                     status: nextStatus,
                     changedBy: session.user.id,
-                    comment: availableAdmin
-                        ? "Protocol renewed and auto-assigned for review"
+                    comment: sticky
+                        ? "Protocol renewed and returned to the same reviewer"
                         : "Protocol renewed - pending reviewer assignment",
                 },
             });
@@ -1453,9 +1580,7 @@ export async function renewProtocol(
             await tx.auditLog.create({
                 data: {
                     action: "PROTOCOL_RENEWED",
-                    details: availableAdmin
-                        ? `Protocol "${project.title}" renewed and auto-assigned to ${availableAdmin.name || availableAdmin.email}`
-                        : `Protocol "${project.title}" renewed pending reviewer assignment`,
+                    details: `Protocol "${project.title}" renewed`,
                     targetId: validProjectId,
                     userId: session.user.id,
                 },
@@ -1474,24 +1599,6 @@ export async function renewProtocol(
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
-
-    if (availableAdmin) {
-        notifyAssignmentEvent({
-            type: "REVIEW_ASSIGNED",
-            userId: availableAdmin.id,
-            userEmail: availableAdmin.email,
-            userName: availableAdmin.name,
-            message: `You have been assigned to review the renewed protocol: "${updatedProject.title}"`,
-            projectId: updatedProject.id,
-        }).catch((err) => console.error("Error notifying renewal reviewer:", err));
-    } else {
-        notifyAdmins({
-            type: "PROJECT_STATUS",
-            message: `${session.user.name || "A user"} renewed a protocol: "${updatedProject.title}" - needs manual reviewer assignment`,
-            link: `/admin/protocol-review`,
-            excludeUserId: session.user.id,
-        }).catch((err) => console.error("Error notifying admins about renewal:", err));
-    }
 
     return {
         id: updatedProject.id,

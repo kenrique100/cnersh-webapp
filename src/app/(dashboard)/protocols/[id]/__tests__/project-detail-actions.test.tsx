@@ -9,6 +9,7 @@ import {
     deleteProject,
     updateProject,
     forwardProjectToFeed,
+    resubmitProtocol,
 } from "@/app/actions/project";
 
 jest.mock("next/navigation", () => ({
@@ -24,6 +25,7 @@ jest.mock("@/app/actions/project", () => ({
     deleteProject: jest.fn(),
     updateProject: jest.fn(),
     forwardProjectToFeed: jest.fn(),
+    resubmitProtocol: jest.fn(),
 }));
 
 jest.mock("next/image", () => {
@@ -72,15 +74,34 @@ const mockedUpdateProjectStatus = jest.mocked(updateProjectStatus);
 const mockedDeleteProject = jest.mocked(deleteProject);
 const mockedUpdateProject = jest.mocked(updateProject);
 const mockedForwardProjectToFeed = jest.mocked(forwardProjectToFeed);
+const mockedResubmitProtocol = jest.mocked(resubmitProtocol);
 
 const defaultProps = {
     projectId: "project-1",
     currentStatus: "SUBMITTED",
     isOwner: true,
     isAdmin: false,
+    isCurrentReviewer: false,
+    isSuperAdmin: false,
     projectTitle: "Malaria Vaccine Trial",
     projectObjectives: "Reduce malaria incidence by 40%.",
     projectDescription: "A study into malaria vaccine efficacy in children.",
+};
+
+// Owner tests that exercise Edit / Delete / Post-to-Feed must render in a
+// status that unlocks those actions. DRAFT is the least restrictive.
+const ownerDefaultProps = {
+    ...defaultProps,
+    currentStatus: "DRAFT",
+};
+
+// Admin review tests must present the caller as the current reviewer (or a
+// superadmin) so the Review Actions card is rendered. See component P16 gate.
+const adminReviewProps = {
+    ...defaultProps,
+    isOwner: false,
+    isAdmin: true,
+    isCurrentReviewer: true,
 };
 
 function makeFile(name: string, type: string, sizeBytes: number): File {
@@ -109,13 +130,13 @@ describe("ProjectDetailActions", () => {
     });
 
     it("renders only Project Actions for a plain owner", () => {
-        render(<ProjectDetailActions {...defaultProps} isOwner={true} isAdmin={false} />);
+        render(<ProjectDetailActions {...ownerDefaultProps} />);
         expect(screen.getByText("Project Actions")).toBeInTheDocument();
         expect(screen.queryByText("Review Actions")).not.toBeInTheDocument();
     });
 
-    it("renders only Review Actions for an admin who is not the owner", () => {
-        render(<ProjectDetailActions {...defaultProps} isOwner={false} isAdmin={true} />);
+    it("renders Review Actions for the assigned reviewer (isCurrentReviewer=true)", () => {
+        render(<ProjectDetailActions {...adminReviewProps} />);
         expect(screen.getByText("Review Actions")).toBeInTheDocument();
         expect(screen.queryByText("Project Actions")).not.toBeInTheDocument();
         expect(
@@ -127,8 +148,34 @@ describe("ProjectDetailActions", () => {
         ).toBeInTheDocument();
     });
 
+    it("renders Review Actions for a superadmin who is not the owner", () => {
+        render(
+            <ProjectDetailActions
+                {...defaultProps}
+                isOwner={false}
+                isAdmin={true}
+                isCurrentReviewer={false}
+                isSuperAdmin={true}
+            />,
+        );
+        expect(screen.getByText("Review Actions")).toBeInTheDocument();
+    });
+
+    it("does NOT render Review Actions for a non-reviewer admin (P16)", () => {
+        render(
+            <ProjectDetailActions
+                {...defaultProps}
+                isOwner={false}
+                isAdmin={true}
+                isCurrentReviewer={false}
+                isSuperAdmin={false}
+            />,
+        );
+        expect(screen.queryByText("Review Actions")).not.toBeInTheDocument();
+    });
+
     it("renders only Project Actions when the viewer is both owner and admin", () => {
-        render(<ProjectDetailActions {...defaultProps} isOwner={true} isAdmin={true} />);
+        render(<ProjectDetailActions {...ownerDefaultProps} isAdmin={true} />);
         expect(screen.getByText("Project Actions")).toBeInTheDocument();
         expect(screen.queryByText("Review Actions")).not.toBeInTheDocument();
     });
@@ -136,7 +183,7 @@ describe("ProjectDetailActions", () => {
     describe("owner: edit flow", () => {
         it("opens the edit form pre-filled with title and description", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /edit/i }));
             expect(screen.getByDisplayValue("Malaria Vaccine Trial")).toBeInTheDocument();
             expect(
@@ -147,7 +194,7 @@ describe("ProjectDetailActions", () => {
         it("saves edits and refreshes the router on success", async () => {
             mockedUpdateProject.mockResolvedValue({} as never);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /edit/i }));
             const titleInput = screen.getByDisplayValue("Malaria Vaccine Trial");
             await user.clear(titleInput);
@@ -165,9 +212,10 @@ describe("ProjectDetailActions", () => {
         });
 
         it("shows an error toast when saving edits fails", async () => {
-            mockedUpdateProject.mockRejectedValue(new Error("network error"));
+            // Reject with a non-Error so the handler's fallback message is exercised.
+            mockedUpdateProject.mockRejectedValue("network error");
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /edit/i }));
             await user.click(screen.getByRole("button", { name: "Save Changes" }));
             await waitFor(() => {
@@ -177,11 +225,27 @@ describe("ProjectDetailActions", () => {
 
         it("cancels the edit form without saving", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /edit/i }));
             await user.click(screen.getByRole("button", { name: "Cancel" }));
             expect(mockedUpdateProject).not.toHaveBeenCalled();
             expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+        });
+
+        it("hides Edit and Delete buttons when the protocol is SUBMITTED", () => {
+            render(<ProjectDetailActions {...defaultProps} currentStatus="SUBMITTED" />);
+            expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
+            expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+            // Post to Feed is always available to the owner.
+            expect(screen.getByRole("button", { name: /post to feed/i })).toBeInTheDocument();
+        });
+
+        it("shows Edit and Delete buttons for RETURNED_INCOMPLETE", () => {
+            render(
+                <ProjectDetailActions {...defaultProps} currentStatus="RETURNED_INCOMPLETE" />,
+            );
+            expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
         });
     });
 
@@ -190,7 +254,7 @@ describe("ProjectDetailActions", () => {
             (window.confirm as jest.Mock).mockReturnValue(true);
             mockedDeleteProject.mockResolvedValue({ success: true } as never);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /delete/i }));
             await waitFor(() => {
                 expect(mockedDeleteProject).toHaveBeenCalledWith("project-1");
@@ -202,16 +266,16 @@ describe("ProjectDetailActions", () => {
         it("does not delete when the confirmation dialog is dismissed", async () => {
             (window.confirm as jest.Mock).mockReturnValue(false);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /delete/i }));
             expect(mockedDeleteProject).not.toHaveBeenCalled();
         });
 
         it("shows an error toast when deletion fails", async () => {
             (window.confirm as jest.Mock).mockReturnValue(true);
-            mockedDeleteProject.mockRejectedValue(new Error("failed"));
+            mockedDeleteProject.mockRejectedValue("failed");
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /delete/i }));
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith("Failed to delete protocol");
@@ -219,10 +283,50 @@ describe("ProjectDetailActions", () => {
         });
     });
 
+    describe("owner: resubmit flow", () => {
+        it("shows the Resubmit button for RETURNED_INCOMPLETE", () => {
+            render(
+                <ProjectDetailActions {...defaultProps} currentStatus="RETURNED_INCOMPLETE" />,
+            );
+            expect(screen.getByRole("button", { name: /resubmit/i })).toBeInTheDocument();
+        });
+
+        it("shows the Resubmit button for RESUBMIT", () => {
+            render(<ProjectDetailActions {...defaultProps} currentStatus="RESUBMIT" />);
+            expect(screen.getByRole("button", { name: /resubmit/i })).toBeInTheDocument();
+        });
+
+        it("does not show Resubmit for DRAFT", () => {
+            render(<ProjectDetailActions {...defaultProps} currentStatus="DRAFT" />);
+            expect(screen.queryByRole("button", { name: /resubmit/i })).not.toBeInTheDocument();
+        });
+
+        it("calls resubmitProtocol and refreshes the router when confirmed", async () => {
+            (window.confirm as jest.Mock).mockReturnValue(true);
+            mockedResubmitProtocol.mockResolvedValue({} as never);
+            const user = userEvent.setup();
+            render(<ProjectDetailActions {...defaultProps} currentStatus="RESUBMIT" />);
+            await user.click(screen.getByRole("button", { name: /resubmit/i }));
+            await waitFor(() => {
+                expect(mockedResubmitProtocol).toHaveBeenCalledWith("project-1");
+                expect(toast.success).toHaveBeenCalledWith("Protocol resubmitted for review");
+                expect(mockRouter.refresh).toHaveBeenCalled();
+            });
+        });
+
+        it("does not resubmit when the confirmation dialog is dismissed", async () => {
+            (window.confirm as jest.Mock).mockReturnValue(false);
+            const user = userEvent.setup();
+            render(<ProjectDetailActions {...defaultProps} currentStatus="RESUBMIT" />);
+            await user.click(screen.getByRole("button", { name: /resubmit/i }));
+            expect(mockedResubmitProtocol).not.toHaveBeenCalled();
+        });
+    });
+
     describe("owner: forward to feed flow", () => {
         it("opens the forward form pre-filled with the project objectives", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             expect(
                 screen.getByDisplayValue("Reduce malaria incidence by 40%."),
@@ -231,7 +335,7 @@ describe("ProjectDetailActions", () => {
 
         it("falls back to the description when there are no objectives", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} projectObjectives={null} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} projectObjectives={null} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             expect(
                 screen.getByDisplayValue("A study into malaria vaccine efficacy in children."),
@@ -240,7 +344,7 @@ describe("ProjectDetailActions", () => {
 
         it("shows a validation error when submitting empty content", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             const textarea = screen.getByDisplayValue("Reduce malaria incidence by 40%.");
             await user.clear(textarea);
@@ -256,7 +360,7 @@ describe("ProjectDetailActions", () => {
         it("posts to the feed and redirects on success", async () => {
             mockedForwardProjectToFeed.mockResolvedValue({} as never);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await waitFor(() => {
@@ -272,9 +376,9 @@ describe("ProjectDetailActions", () => {
         });
 
         it("shows an error toast when posting to the feed fails", async () => {
-            mockedForwardProjectToFeed.mockRejectedValue(new Error("failed"));
+            mockedForwardProjectToFeed.mockRejectedValue("failed");
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await waitFor(() => {
@@ -284,7 +388,7 @@ describe("ProjectDetailActions", () => {
 
         it("cancels the forward form and returns to the default actions", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: "Cancel" }));
             expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
@@ -292,7 +396,7 @@ describe("ProjectDetailActions", () => {
 
         it("adds and removes a tag from the forward form", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             const tagInput = screen.getByPlaceholderText("Add tag...");
             await user.type(tagInput, "malaria{enter}");
@@ -309,13 +413,11 @@ describe("ProjectDetailActions", () => {
         it("adds an image via the image upload widget and includes it on submit", async () => {
             mockedForwardProjectToFeed.mockResolvedValue({} as never);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /photo/i }));
             await user.click(screen.getByTestId("mock-image-upload"));
-            expect(
-                screen.getByAltText(/preview 1/i),
-            ).toBeInTheDocument();
+            expect(screen.getByAltText(/preview 1/i)).toBeInTheDocument();
 
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await waitFor(() => {
@@ -330,7 +432,7 @@ describe("ProjectDetailActions", () => {
 
         it("removes an added image preview", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} />);
+            render(<ProjectDetailActions {...ownerDefaultProps} />);
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /photo/i }));
             await user.click(screen.getByTestId("mock-image-upload"));
@@ -349,7 +451,9 @@ describe("ProjectDetailActions", () => {
 
         it("rejects a non-video file for the video uploader", async () => {
             const user = userEvent.setup();
-            const { container } = render(<ProjectDetailActions {...defaultProps} />);
+            const { container } = render(
+                <ProjectDetailActions {...ownerDefaultProps} />,
+            );
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /video/i }));
             const fileInput = container.querySelector(
@@ -364,7 +468,9 @@ describe("ProjectDetailActions", () => {
 
         it("rejects an oversized video file", async () => {
             const user = userEvent.setup();
-            const { container } = render(<ProjectDetailActions {...defaultProps} />);
+            const { container } = render(
+                <ProjectDetailActions {...ownerDefaultProps} />,
+            );
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /video/i }));
             const fileInput = container.querySelector(
@@ -379,7 +485,9 @@ describe("ProjectDetailActions", () => {
 
         it("uploads a valid video file and renders a preview", async () => {
             const user = userEvent.setup();
-            const { container } = render(<ProjectDetailActions {...defaultProps} />);
+            const { container } = render(
+                <ProjectDetailActions {...ownerDefaultProps} />,
+            );
             await user.click(screen.getByRole("button", { name: /post to feed/i }));
             await user.click(screen.getByRole("button", { name: /video/i }));
             const fileInput = container.querySelector(
@@ -402,7 +510,7 @@ describe("ProjectDetailActions", () => {
     describe("admin: review actions", () => {
         it("requires feedback before rejecting", async () => {
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} isOwner={false} isAdmin={true} />);
+            render(<ProjectDetailActions {...adminReviewProps} />);
             await user.click(screen.getByRole("button", { name: /reject/i }));
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith(
@@ -416,13 +524,13 @@ describe("ProjectDetailActions", () => {
             const user = userEvent.setup();
             render(
                 <ProjectDetailActions
-                    {...defaultProps}
-                    isOwner={false}
-                    isAdmin={true}
+                    {...adminReviewProps}
                     currentStatus="SUBMITTED"
                 />,
             );
-            await user.click(screen.getByRole("button", { name: /return - incomplete/i }));
+            await user.click(
+                screen.getByRole("button", { name: /return - incomplete/i }),
+            );
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith(
                     "Please specify what is missing or incomplete before returning",
@@ -435,13 +543,13 @@ describe("ProjectDetailActions", () => {
             const user = userEvent.setup();
             render(
                 <ProjectDetailActions
-                    {...defaultProps}
-                    isOwner={false}
-                    isAdmin={true}
+                    {...adminReviewProps}
                     currentStatus="REVIEW_COMPLETE"
                 />,
             );
-            await user.click(screen.getByRole("button", { name: /approve with conditions/i }));
+            await user.click(
+                screen.getByRole("button", { name: /approve with conditions/i }),
+            );
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith(
                     "Please specify the conditions for approval",
@@ -453,7 +561,7 @@ describe("ProjectDetailActions", () => {
         it("approves a protocol without requiring feedback", async () => {
             mockedUpdateProjectStatus.mockResolvedValue({} as never);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} isOwner={false} isAdmin={true} />);
+            render(<ProjectDetailActions {...adminReviewProps} />);
             await user.click(screen.getByRole("button", { name: /^approve$/i }));
             await waitFor(() => {
                 expect(mockedUpdateProjectStatus).toHaveBeenCalledWith(
@@ -469,7 +577,7 @@ describe("ProjectDetailActions", () => {
         it("submits a rejection with feedback", async () => {
             mockedUpdateProjectStatus.mockResolvedValue({} as never);
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} isOwner={false} isAdmin={true} />);
+            render(<ProjectDetailActions {...adminReviewProps} />);
             await user.type(
                 screen.getByPlaceholderText(/required for rejection/i),
                 "Missing informed consent form",
@@ -485,26 +593,30 @@ describe("ProjectDetailActions", () => {
         });
 
         it("shows an error toast when the status update fails", async () => {
-            mockedUpdateProjectStatus.mockRejectedValue(new Error("failed"));
+            mockedUpdateProjectStatus.mockRejectedValue("failed");
             const user = userEvent.setup();
-            render(<ProjectDetailActions {...defaultProps} isOwner={false} isAdmin={true} />);
+            render(<ProjectDetailActions {...adminReviewProps} />);
             await user.click(screen.getByRole("button", { name: /^approve$/i }));
             await waitFor(() => {
-                expect(toast.error).toHaveBeenCalledWith("Failed to update protocol status");
+                expect(toast.error).toHaveBeenCalledWith(
+                    "Failed to update protocol status",
+                );
             });
         });
 
         it("shows status-appropriate action buttons for SUBMITTED", () => {
             render(
                 <ProjectDetailActions
-                    {...defaultProps}
-                    isOwner={false}
-                    isAdmin={true}
+                    {...adminReviewProps}
                     currentStatus="SUBMITTED"
                 />,
             );
-            expect(screen.getByRole("button", { name: /return - incomplete/i })).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: /mark pending review/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: /return - incomplete/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: /mark pending review/i }),
+            ).toBeInTheDocument();
             expect(
                 screen.queryByRole("button", { name: /schedule session/i }),
             ).not.toBeInTheDocument();
@@ -516,13 +628,13 @@ describe("ProjectDetailActions", () => {
         it("shows status-appropriate action buttons for REVIEW_COMPLETE", () => {
             render(
                 <ProjectDetailActions
-                    {...defaultProps}
-                    isOwner={false}
-                    isAdmin={true}
+                    {...adminReviewProps}
                     currentStatus="REVIEW_COMPLETE"
                 />,
             );
-            expect(screen.getByRole("button", { name: /schedule session/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: /schedule session/i }),
+            ).toBeInTheDocument();
             expect(
                 screen.getByRole("button", { name: /approve with conditions/i }),
             ).toBeInTheDocument();
@@ -537,14 +649,16 @@ describe("ProjectDetailActions", () => {
         it("always renders Approve and Reject regardless of status", () => {
             render(
                 <ProjectDetailActions
-                    {...defaultProps}
-                    isOwner={false}
-                    isAdmin={true}
+                    {...adminReviewProps}
                     currentStatus="UNDER_REVIEW"
                 />,
             );
-            expect(screen.getByRole("button", { name: /^approve$/i })).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: /reject/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: /^approve$/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: /reject/i }),
+            ).toBeInTheDocument();
         });
     });
 });

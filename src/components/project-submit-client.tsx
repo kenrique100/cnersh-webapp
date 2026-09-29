@@ -22,7 +22,6 @@ export interface ProjectFormPayload {
 }
 
 interface ProjectSubmitClientProps {
-    /** Authenticated user id, sourced from the server session. */
     userId: string;
 }
 
@@ -47,16 +46,19 @@ export default function ProjectSubmitClient({ userId }: ProjectSubmitClientProps
             });
 
             if (result.success) {
-                // Submission succeeded — this user's local draft is now stale.
                 clearProtocolDraft(userId);
-                toast.success(`Protocol submitted. Tracking code: ${result.protocol.trackingCode}`);
+                toast.success(
+                    `Protocol submitted. Tracking code: ${result.protocol.trackingCode}`
+                );
                 router.push(`/protocols/${result.protocol.id}`);
                 return;
             }
 
             if (result.isDuplicate) {
                 toast.error(result.error);
-                router.push(`/protocols/${result.existingProtocolId}/edit`);
+                // P17 fix: no /edit route exists. The detail page offers edit
+                // and resubmit controls based on the protocol's current status.
+                router.push(`/protocols/${result.existingProtocolId}`);
                 return;
             }
 

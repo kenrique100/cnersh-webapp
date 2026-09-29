@@ -3,24 +3,33 @@ jest.mock("@/lib/auth-utils", () => ({
   verifiedAuthSession: jest.fn(),
   EMAIL_NOT_VERIFIED: "EMAIL_NOT_VERIFIED",
 }));
-jest.mock("@/lib/notify-admins", () => ({ notifyAdmins: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   db: {
     $transaction: jest.fn(),
     reviewAssignment: {},
+    user: {},
   },
+}));
+jest.mock("@/lib/reviewer-assignment", () => ({
+  autoReassignReviewer: jest.fn(),
+  getCurrentReviewer: jest.fn(),
+}));
+jest.mock("@/lib/send-notification-email", () => ({
+  sendNotificationEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { notifyAdmins } from "@/lib/notify-admins";
+import { autoReassignReviewer } from "@/lib/reviewer-assignment";
+import { sendNotificationEmail } from "@/lib/send-notification-email";
 import {
   getMyReviewAssignments,
   submitCOIDeclaration,
 } from "@/app/actions/coi";
 
 const authMock = verifiedAuthSession as jest.Mock;
-const notifyMock = notifyAdmins as jest.Mock;
+const reassignMock = autoReassignReviewer as jest.Mock;
+const emailMock = sendNotificationEmail as jest.Mock;
 const mockDb = db as unknown as Record<string, any>;
 
 const input = {
@@ -52,36 +61,44 @@ function assignment(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
 
-  mockDb.$transaction = jest.fn(
-      async (callback: (tx: any) => unknown) => callback(mockDb)
+  mockDb.$transaction = jest.fn(async (callback: (tx: any) => unknown) =>
+      callback(mockDb)
   );
 
   mockDb.reviewAssignment = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    update: jest.fn(),
+    create: jest.fn(),
   };
 
   mockDb.cOIDeclaration = { create: jest.fn() };
   mockDb.project = { updateMany: jest.fn().mockResolvedValue({ count: 1 }) };
   mockDb.projectStatusHistory = { create: jest.fn() };
   mockDb.auditLog = { create: jest.fn() };
+  mockDb.notification = { create: jest.fn(), createMany: jest.fn() };
+  mockDb.user = {
+    findMany: jest.fn().mockResolvedValue([]),
+    findUnique: jest.fn(),
+  };
 
-  notifyMock.mockResolvedValue(undefined);
+  reassignMock.mockResolvedValue({
+    assignedReviewer: null,
+    previousReviewerId: null,
+  });
+  emailMock.mockResolvedValue(undefined);
 });
 
 describe("COI actions", () => {
   describe("submitCOIDeclaration", () => {
     it("throws if not authenticated", async () => {
-      // verifiedAuthSession rejects on missing session, it does not return null.
       authMock.mockRejectedValue(new Error("Unauthorized"));
-
       await expect(submitCOIDeclaration(input)).rejects.toThrow("Unauthorized");
     });
 
     it("throws if not verified", async () => {
       authMock.mockRejectedValue(new Error("EMAIL_NOT_VERIFIED"));
-
       await expect(submitCOIDeclaration(input)).rejects.toThrow(
           "EMAIL_NOT_VERIFIED"
       );
@@ -185,7 +202,7 @@ describe("COI actions", () => {
       );
     });
 
-    it("handles NO COI (hasCOI=false)", async () => {
+    it("handles NO COI (hasCOI=false): no reassignment, no notifications", async () => {
       login();
       const declaredAt = new Date("2026-09-01T12:00:00Z");
 
@@ -214,6 +231,12 @@ describe("COI actions", () => {
             data: { status: "ACTIVE" },
           })
       );
+      expect(mockDb.project.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ status: "PENDING_REVIEW" }),
+            data: { status: "UNDER_REVIEW" },
+          })
+      );
       expect(mockDb.projectStatusHistory.create).toHaveBeenCalledWith(
           expect.objectContaining({
             data: expect.objectContaining({ status: "UNDER_REVIEW" }),
@@ -224,18 +247,30 @@ describe("COI actions", () => {
             data: expect.objectContaining({ action: "COI_CLEARED" }),
           })
       );
-      expect(notifyMock).not.toHaveBeenCalled();
+      expect(reassignMock).not.toHaveBeenCalled();
+      expect(mockDb.notification.create).not.toHaveBeenCalled();
+      expect(mockDb.notification.createMany).not.toHaveBeenCalled();
+      expect(emailMock).not.toHaveBeenCalled();
     });
 
-    it("handles COI (hasCOI=true) and notifies admins after commit", async () => {
+    it("handles COI (hasCOI=true) and notifies the replacement reviewer", async () => {
       login();
       const declaredAt = new Date();
+      const replacement = {
+        id: "reviewer-2",
+        name: "Replacement",
+        email: "replacement@example.com",
+      };
 
       mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment());
       mockDb.cOIDeclaration.create.mockResolvedValue({
         id: "coi-2",
         hasCOI: true,
         declaredAt,
+      });
+      reassignMock.mockResolvedValue({
+        assignedReviewer: replacement,
+        previousReviewerId: "reviewer-1",
       });
 
       await submitCOIDeclaration({
@@ -247,15 +282,68 @@ describe("COI actions", () => {
       expect(mockDb.reviewAssignment.updateMany).toHaveBeenCalledWith(
           expect.objectContaining({ data: { status: "EXCLUDED" } })
       );
-      expect(mockDb.project.updateMany).toHaveBeenCalledWith(
-          expect.objectContaining({ data: { assignedToId: null } })
-      );
       expect(mockDb.auditLog.create).toHaveBeenCalledWith(
           expect.objectContaining({
             data: expect.objectContaining({ action: "COI_DECLARED" }),
           })
       );
-      expect(notifyMock).toHaveBeenCalledTimes(1);
+      expect(reassignMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            projectId: "project-1",
+            reason: expect.stringContaining("conflict of interest"),
+          })
+      );
+      expect(mockDb.notification.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              type: "REVIEW_ASSIGNED",
+              userId: "reviewer-2",
+            }),
+          })
+      );
+      expect(emailMock).toHaveBeenCalledWith(
+          expect.objectContaining({ to: "replacement@example.com" })
+      );
+      expect(mockDb.notification.createMany).not.toHaveBeenCalled();
+    });
+
+    it("notifies superadmins when no replacement reviewer is available", async () => {
+      login();
+      const declaredAt = new Date();
+
+      mockDb.reviewAssignment.findUnique.mockResolvedValue(assignment());
+      mockDb.cOIDeclaration.create.mockResolvedValue({
+        id: "coi-3",
+        hasCOI: true,
+        declaredAt,
+      });
+      reassignMock.mockResolvedValue({
+        assignedReviewer: null,
+        previousReviewerId: "reviewer-1",
+      });
+      mockDb.user.findMany.mockResolvedValue([
+        { id: "super-1", email: "super@example.com", name: "Super" },
+      ]);
+
+      await submitCOIDeclaration({
+        assignmentId: "assignment-1",
+        hasCOI: true,
+        details: "Close collaborator",
+      });
+
+      expect(mockDb.user.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ role: "superadmin" }),
+          })
+      );
+      expect(mockDb.notification.createMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.arrayContaining([
+              expect.objectContaining({ userId: "super-1" }),
+            ]),
+          })
+      );
+      expect(mockDb.notification.create).not.toHaveBeenCalled();
     });
 
     it("is idempotent for the exact same declaration retry", async () => {
@@ -276,14 +364,14 @@ describe("COI actions", () => {
       expect(result.id).toBe("coi-1");
       expect(mockDb.cOIDeclaration.create).not.toHaveBeenCalled();
       expect(mockDb.auditLog.create).not.toHaveBeenCalled();
-      expect(notifyMock).not.toHaveBeenCalled();
+      expect(reassignMock).not.toHaveBeenCalled();
+      expect(emailMock).not.toHaveBeenCalled();
     });
   });
 
   describe("getMyReviewAssignments", () => {
     it("throws if not authenticated", async () => {
       authMock.mockRejectedValue(new Error("Unauthorized"));
-
       await expect(getMyReviewAssignments()).rejects.toThrow("Unauthorized");
     });
 
@@ -310,7 +398,10 @@ describe("COI actions", () => {
 
       expect(mockDb.reviewAssignment.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
-            where: { reviewerId: "reviewer-1", project: { deleted: false } },
+            where: {
+              reviewerId: "reviewer-1",
+              project: { deleted: false },
+            },
           })
       );
       expect(result).toEqual(rows);
@@ -324,7 +415,10 @@ describe("COI actions", () => {
 
       expect(mockDb.reviewAssignment.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
-            where: { reviewerId: "reviewer-1", project: { deleted: false } },
+            where: {
+              reviewerId: "reviewer-1",
+              project: { deleted: false },
+            },
           })
       );
     });

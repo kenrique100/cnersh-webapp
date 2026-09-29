@@ -11,6 +11,7 @@ import {
     HashIcon,
     ClipboardListIcon,
     UserIcon,
+    AlertTriangleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,11 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
         color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
         dot: "bg-red-500",
     },
+    RESUBMIT: {
+        label: "Rejected - Resubmit required",
+        color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+        dot: "bg-red-500",
+    },
     UNDER_APPEAL: {
         label: "Under Appeal",
         color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
@@ -95,7 +101,7 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
 };
 
 const statusOrder = [
-    "EXPIRED",              // surface expired protocols first — they need action
+    "EXPIRED",
     "PENDING_REVIEW",
     "UNDER_REVIEW",
     "REVIEW_COMPLETE",
@@ -105,6 +111,7 @@ const statusOrder = [
     "APPROVED",
     "APPROVED_WITH_CONDITIONS",
     "DRAFT",
+    "RESUBMIT",
     "REJECTED",
     "UNDER_APPEAL",
     "APPEAL_RESOLVED",
@@ -168,6 +175,7 @@ function renderOwnerCard(project: OwnerProject) {
                     projectId={project.id}
                     initialTitle={project.title}
                     initialDescription={project.description}
+                    status={project.status}
                 />
             </CardContent>
         </Card>
@@ -180,6 +188,9 @@ function renderAssignedCard(project: AssignedProject) {
         color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
         dot: "bg-gray-400",
     };
+    const myAssignment = project.reviewAssignments?.[0];
+    const isPendingCOI = myAssignment?.status === "PENDING_COI";
+
     return (
         <Card
             key={project.id}
@@ -202,31 +213,51 @@ function renderAssignedCard(project: AssignedProject) {
                 </div>
             </CardHeader>
             <CardContent className="pt-0">
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
-                    {project.description}
-                </p>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1">
-                        <UserIcon className="h-3 w-3" />
-                        {project.user?.name || project.user?.email || "Unknown owner"}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <TagIcon className="h-3 w-3" />
-                        {project.category}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <CalendarIcon className="h-3 w-3" />
-                        {new Date(project.createdAt).toLocaleDateString()}
-                    </span>
-                </div>
+                {isPendingCOI ? (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 mb-3">
+                        <AlertTriangleIcon className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-semibold">COI declaration required</p>
+                            <p className="mt-0.5">
+                                Declare your conflict of interest before the protocol content is shown.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
+                            {project.description}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                                <UserIcon className="h-3 w-3" />
+                                {project.user?.name || project.user?.email || "Unknown owner"}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <TagIcon className="h-3 w-3" />
+                                {project.category}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <CalendarIcon className="h-3 w-3" />
+                                {new Date(project.createdAt).toLocaleDateString()}
+                            </span>
+                        </div>
+                    </>
+                )}
                 <div className="mt-3">
-                    <Link href={`/protocols/${project.id}`}>
+                    <Link
+                        href={
+                            isPendingCOI && myAssignment
+                                ? `/protocols/${project.id}/coi?assignmentId=${myAssignment.id}`
+                                : `/protocols/${project.id}`
+                        }
+                    >
                         <Button
                             variant="outline"
                             size="sm"
                             className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950"
                         >
-                            Open Review
+                            {isPendingCOI ? "Declare COI to continue" : "Open Review"}
                         </Button>
                     </Link>
                 </div>
@@ -246,7 +277,6 @@ export default async function ProjectsPage() {
 
     const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
 
-    // Group owner projects by status
     const groupedProjects: Record<string, OwnerProject[]> = {};
     for (const project of myProjects) {
         if (!groupedProjects[project.status]) groupedProjects[project.status] = [];
@@ -286,7 +316,6 @@ export default async function ProjectsPage() {
                     </Link>
                 </div>
 
-                {/* Status Summary — owner projects only */}
                 {myProjects.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-8">
                         {summaryStatuses.map((status) => {
@@ -398,9 +427,31 @@ export default async function ProjectsPage() {
                                 </CardContent>
                             </Card>
                         ) : (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {assignedProjects.map((project) => renderAssignedCard(project))}
-                            </div>
+                            <>
+                                <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                    <span className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-medium">
+                                        Your current load: {assignedProjects.length}
+                                    </span>
+                                    <span className="text-xs">
+                                        Protocols waiting on you (COI or active review).
+                                    </span>
+                                </div>
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {[...assignedProjects]
+                                        .sort((a, b) => {
+                                            const aPending =
+                                                a.reviewAssignments?.[0]?.status === "PENDING_COI" ? 0 : 1;
+                                            const bPending =
+                                                b.reviewAssignments?.[0]?.status === "PENDING_COI" ? 0 : 1;
+                                            if (aPending !== bPending) return aPending - bPending;
+                                            return (
+                                                new Date(b.createdAt).getTime() -
+                                                new Date(a.createdAt).getTime()
+                                            );
+                                        })
+                                        .map((project) => renderAssignedCard(project))}
+                                </div>
+                            </>
                         )}
                     </div>
                 )}
