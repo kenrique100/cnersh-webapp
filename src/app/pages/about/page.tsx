@@ -195,9 +195,9 @@ export default function AboutPage() {
                     className="object-cover object-center"
                 />
 
-                <div className="absolute inset-0 bg-slate-950/65" />
+                <div className="absolute inset-0 bg-slate-950/20" />
 
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-blue-950/30" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/40 to-blue-950/30" />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/20" />
 
@@ -208,7 +208,7 @@ export default function AboutPage() {
                                 National Research Ethics Oversight
                             </div>
 
-                            <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl">
+                            <h1 className="mt-6 text-3xl font-black leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl xl:text-5xl">
                                 National Ethics Committee for Research for Human Health
                             </h1>
 

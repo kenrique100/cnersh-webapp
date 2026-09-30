@@ -68,76 +68,91 @@ const terms = [
 function Footer() {
     return (
         <footer className="border-t border-slate-800 bg-slate-950 text-white">
-            <div className="mx-auto grid max-w-7xl gap-12 px-6 py-12 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
-                <div>
-                    <Link href="/" className="inline-flex items-center gap-3">
-                        <Image
-                            src="/logo.png"
-                            alt="CNERSH logo"
-                            width={48}
-                            height={48}
-                            className="h-12 w-12 object-contain"
-                        />
+            {/* Main Footer */}
+            <div className="mx-auto grid max-w-7xl gap-12 px-6 py-14 lg:grid-cols-[1.5fr_1fr_1.2fr] lg:px-8">
 
+                <div>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-4"
+                    >
+                        {/* White Logo Background */}
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-white p-2.5 shadow-lg">
+                            <Image
+                                src="/logo.png"
+                                alt="CNERSH logo"
+                                width={64}
+                                height={64}
+                                className="h-full w-full object-contain"
+                            />
+                        </div>
+
+                        {/* Brand Text */}
                         <div>
-                            <p className="font-bold">CNERSH</p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xl font-bold tracking-tight text-white">
+                                CNERSH
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-400">
                                 National Ethics Committee
                             </p>
                         </div>
                     </Link>
 
-                    <p className="mt-5 max-w-md text-sm leading-7 text-slate-400">
+                    <p className="mt-8 max-w-md text-sm leading-7 text-slate-400">
                         National health research ethics oversight and
                         coordination.
                     </p>
                 </div>
 
                 <div>
-                    <h3 className="font-semibold">Information</h3>
+                    <h3 className="text-lg font-semibold text-white">
+                        Information
+                    </h3>
 
-                    <div className="mt-4 space-y-3 text-sm text-slate-400">
+                    <div className="mt-6 space-y-4 text-sm text-slate-400">
                         <Link
                             href="/pages/about"
-                            className="block transition-colors hover:text-white"
+                            className="block transition-colors duration-200 hover:text-white"
                         >
                             About CNERSH
                         </Link>
 
                         <Link
                             href="/pages/article"
-                            className="block transition-colors hover:text-white"
+                            className="block transition-colors duration-200 hover:text-white"
                         >
                             Articles &amp; Resources
                         </Link>
 
                         <Link
                             href="/pages/accessibility"
-                            className="block transition-colors hover:text-white"
+                            className="block transition-colors duration-200 hover:text-white"
                         >
                             Accessibility
                         </Link>
                     </div>
                 </div>
-
                 <div>
-                    <h3 className="font-semibold">Contact</h3>
+                    <h3 className="text-lg font-semibold text-white">
+                        Contact
+                    </h3>
 
-                    <p className="mt-4 text-sm leading-6 text-slate-400">
+                    <p className="mt-6 max-w-md text-sm leading-7 text-slate-400">
                         For questions about the website, information or
                         support, use the support channel.
                     </p>
 
                     <Link
                         href="/pages/support"
-                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-400 transition-colors hover:text-white"
+                        className="group mt-6 inline-flex items-center gap-3 text-sm font-semibold text-emerald-400 transition-colors duration-200 hover:text-emerald-300"
                     >
                         Contact support
-                        <ArrowRight className="h-4 w-4" />
+
+                        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                     </Link>
                 </div>
             </div>
-
             <div className="border-t border-white/10">
                 <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
                     <p>
@@ -145,7 +160,9 @@ function Footer() {
                         reserved.
                     </p>
 
-                    <p>Privacy, confidentiality and responsible use.</p>
+                    <p>
+                        Privacy, confidentiality and responsible use.
+                    </p>
                 </div>
             </div>
         </footer>
@@ -168,9 +185,9 @@ export default function PrivacyTermsPage() {
                     />
                 </div>
 
-                <div className="absolute inset-0 -z-20 bg-slate-950/60" />
+                <div className="absolute inset-0 -z-20 bg-slate-950/40" />
 
-                <div className="absolute inset-0 -z-20 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/25" />
+                <div className="absolute inset-0 -z-20 bg-gradient-to-r from-slate-950 via-slate-950/40 to-slate-950/25" />
 
                 <div className="absolute inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-slate-950/60 to-transparent" />
 
@@ -180,45 +197,46 @@ export default function PrivacyTermsPage() {
 
                 <div className="absolute right-0 top-20 -z-10 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" />
 
-                <div className="mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-28">
-                    <div className="w-full max-w-3xl">
-                        <div className="flex flex-col items-start gap-6">
-                            <div className="flex items-center gap-4">
-                                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/20 bg-white/95 p-3 shadow-2xl backdrop-blur-md sm:h-24 sm:w-24">
-                                    <Image
-                                        src="/minsante_logo.png"
-                                        alt="Ministry of Public Health Cameroon"
-                                        width={100}
-                                        height={100}
-                                        priority
-                                        className="h-full w-full object-contain"
-                                    />
-                                </div>
+                {/* Main Content Container */}
+                <div className="mx-auto flex min-h-[620px] max-w-7xl flex-col justify-center px-6 py-24 lg:px-8 lg:py-28">
 
-                                <div className="hidden h-12 w-px bg-white/30 sm:block" />
+                    {/* Top Header Row: Badge Left, Logo Right */}
+                    <div className="mb-10 flex w-full flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
 
-                                <div className="hidden sm:block">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-                                        Republic of Cameroon
-                                    </p>
 
-                                    <p className="mt-1 text-sm font-medium text-white">
-                                        Ministry of Public Health
-                                    </p>
-                                </div>
+                        {/* Ministry Logo block on the right */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/20 p-3 shadow-2xl backdrop-blur-md sm:h-20 sm:w-20">
+                                <Image
+                                    src="/minsante_logo.png"
+                                    alt="Ministry of Public Health Cameroon"
+                                    width={100}
+                                    height={100}
+                                    priority
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
 
-                            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-950/50 px-4 py-2 text-sm font-semibold text-emerald-300 shadow-lg backdrop-blur-md">
-                                <ShieldCheck className="h-4 w-4" />
-                                <span>CNERSH • Legal &amp; Privacy</span>
+                            <div className="hidden h-12 w-px bg-white/30 sm:block" />
+
+                            <div className="hidden sm:block">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                                    Republic of Cameroon
+                                </p>
+                                <p className="mt-1 text-sm font-medium text-white">
+                                    Ministry of Public Health
+                                </p>
                             </div>
                         </div>
+                    </div>
 
-                        <h1 className="mt-7 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+                    {/* Main Text Content: Constrained to left side */}
+                    <div className="w-full max-w-3xl">
+                        <h1 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
                             Privacy Notice{" "}
                             <span className="text-emerald-400">
-                                &amp; Terms of Use
-                            </span>
+                    &amp; Terms of Use
+                </span>
                         </h1>
 
                         <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 sm:text-xl">
@@ -227,25 +245,6 @@ export default function PrivacyTermsPage() {
                             distinction between website services and formal
                             research ethics requirements.
                         </p>
-
-                        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                            <a
-                                href="#privacy-notice"
-                                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-sm font-bold text-slate-950 shadow-xl shadow-emerald-950/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-400"
-                            >
-                                Read Privacy Notice
-
-                                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-                            </a>
-
-                            <a
-                                href="#terms-of-use"
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15"
-                            >
-                                <FileText className="h-4 w-4" />
-                                Terms of Use
-                            </a>
-                        </div>
 
                         <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4 border-t border-white/15 pt-6 text-sm text-slate-300">
                             <div className="flex items-center gap-2">
@@ -265,33 +264,13 @@ export default function PrivacyTermsPage() {
                         </div>
                     </div>
                 </div>
+
+                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-50 to-transparent dark:from-slate-950" />
             </section>
-
-            {/* Important notice */}
-            <section className="border-b border-slate-200 bg-emerald-50 px-4 py-8 dark:border-slate-800 dark:bg-emerald-950/20 lg:px-8">
-                <div className="mx-auto flex max-w-7xl gap-4">
-                    <ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-emerald-700 dark:text-emerald-400" />
-
-                    <div>
-                        <h2 className="font-bold text-slate-950 dark:text-white">
-                            Important notice
-                        </h2>
-
-                        <p className="mt-2 max-w-4xl text-sm leading-7 text-slate-700 dark:text-slate-300">
-                            This page provides general website information. It
-                            does not replace applicable Cameroon laws,
-                            regulations, official CNERSH instruments, approved
-                            research protocols, ethics committee decisions or
-                            other authoritative requirements.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
             {/* Privacy notice */}
             <section
                 id="privacy-notice"
-                className="scroll-mt-20 px-6 py-20 lg:px-8"
+                className="scroll-mt-20 px-6 py-15 lg:px-8"
             >
                 <div className="mx-auto max-w-7xl">
                     <div className="max-w-3xl">
@@ -341,7 +320,7 @@ export default function PrivacyTermsPage() {
             </section>
 
             {/* Information principles */}
-            <section className="bg-slate-50 px-6 py-20 dark:bg-slate-900/60 lg:px-8">
+            <section className="bg-slate-50 px-6 py-15 dark:bg-slate-900/60 lg:px-8">
                 <div className="mx-auto max-w-7xl">
                     <div className="mb-12 max-w-3xl">
                         <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
@@ -397,7 +376,7 @@ export default function PrivacyTermsPage() {
             {/* Terms */}
             <section
                 id="terms-of-use"
-                className="scroll-mt-20 px-6 py-20 lg:px-8"
+                className="scroll-mt-20 px-6 py-15 lg:px-8"
             >
                 <div className="mx-auto max-w-7xl">
                     <div className="grid gap-12 lg:grid-cols-[0.7fr_1.3fr]">
@@ -445,7 +424,7 @@ export default function PrivacyTermsPage() {
             </section>
 
             {/* Research data */}
-            <section className="relative overflow-hidden bg-slate-950 px-6 py-20 text-white lg:px-8">
+            <section className="relative overflow-hidden bg-slate-950 px-6 py-15 text-white lg:px-8">
                 <div className="absolute -right-32 top-0 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
 
                 <div className="relative mx-auto max-w-7xl">
@@ -488,7 +467,7 @@ export default function PrivacyTermsPage() {
             </section>
 
             {/* Updates */}
-            <section className="px-6 py-20 lg:px-8">
+            <section className="px-6 py-15 lg:px-8">
                 <div className="mx-auto max-w-4xl">
                     <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-12">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
