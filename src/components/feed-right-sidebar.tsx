@@ -43,7 +43,6 @@ const ourPagesItems: OurPagesItem[] = [
   { href: "/pages/about", label: "About Us", icon: Users },
   { href: "/pages/contract-rex", label: "Contract Rex Org", icon: FolderIcon },
   { href: "/pages/article", label: "Article", icon: Users },
-  { href: "/pages/accessibility", label: "Accessibility", icon: Users },
   { href: "/membership.pdf", label: "Community Members", icon: DownloadIcon, external: true },
 ];
 
