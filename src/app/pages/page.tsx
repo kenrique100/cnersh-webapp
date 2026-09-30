@@ -195,7 +195,7 @@ export default async function OurPagesPage() {
                                 </li>
                             </ul>
 
-                            {/* Application Guidelines - sub-section */}
+                            {/* Application Guidelines - subsection */}
                             <div className="mt-4">
                                 <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">
@@ -355,7 +355,7 @@ export default async function OurPagesPage() {
                                 </li>
                             </ul>
 
-                            {/* Law & Research in Cameroon - sub-section */}
+                            {/* Law & Research in Cameroon - subsection */}
                             <div className="mt-4">
                                 <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">
@@ -446,7 +446,7 @@ export default async function OurPagesPage() {
                                 </ul>
                             </div>
 
-                            {/* Ministerial Decision - sub-section */}
+                            {/* Ministerial Decision - subsection */}
                             <div className="mt-4">
                                 <Card className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                                     <CardHeader className="pb-2">

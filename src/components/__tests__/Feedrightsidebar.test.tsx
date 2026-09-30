@@ -17,14 +17,6 @@ jest.mock("@/components/project-tracker", () => {
     return ProjectTrackerMock;
 });
 
-jest.mock("@/components/sidebar-footer", () => {
-    function SidebarFooterMock() {
-        return <div data-testid="sidebar-footer" />;
-    }
-    SidebarFooterMock.displayName = "SidebarFooterMock";
-    return SidebarFooterMock;
-});
-
 jest.mock("@/lib/utils", () => ({
     cn: (...c: (string | boolean | undefined)[]) => c.filter(Boolean).join(" "),
 }));
@@ -73,11 +65,6 @@ describe("FeedRightSidebar", () => {
     it("renders the protocol tracker", () => {
         render(<FeedRightSidebar />);
         expect(screen.getByTestId("project-tracker")).toBeInTheDocument();
-    });
-
-    it("renders the sidebar footer", () => {
-        render(<FeedRightSidebar />);
-        expect(screen.getByTestId("sidebar-footer")).toBeInTheDocument();
     });
 
     it("renders the Our Pages section header", () => {

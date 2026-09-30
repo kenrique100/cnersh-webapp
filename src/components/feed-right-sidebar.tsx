@@ -18,7 +18,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import ProjectTracker from "@/components/project-tracker";
-import SidebarFooter from "@/components/sidebar-footer";
 
 interface UserActivityItem {
   type: "post" | "comment" | "reaction";
@@ -234,9 +233,6 @@ export default function FeedRightSidebar({
               </p>
             </Card>
         )}
-
-        {/* Sidebar Footer */}
-        <SidebarFooter />
       </div>
   );
 }
