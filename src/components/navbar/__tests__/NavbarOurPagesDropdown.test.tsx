@@ -40,6 +40,8 @@ jest.mock('lucide-react', () => ({
 const tokens = (el: Element | null): string[] =>
     (el?.className ?? '').split(/\s+/).filter(Boolean);
 
+/* ─────────────────────────── Mobile dropdown ─────────────────────────── */
+
 describe('OurPagesDropdown (mobile)', () => {
     it('renders the trigger button labelled "Our Pages"', () => {
         render(<OurPagesDropdown pathname="/" onNavigate={jest.fn()} />);
@@ -51,15 +53,21 @@ describe('OurPagesDropdown (mobile)', () => {
         expect(screen.queryByText('About Us')).not.toBeInTheDocument();
         expect(screen.queryByText('Contract Rex Org')).not.toBeInTheDocument();
         expect(screen.queryByText('Article')).not.toBeInTheDocument();
+        expect(screen.queryByText('Accessibility')).not.toBeInTheDocument();
+        expect(screen.queryByText('Privacy & Terms')).not.toBeInTheDocument();
+        expect(screen.queryByText('Contact Support')).not.toBeInTheDocument();
     });
 
-    it('opens and shows all three mobile items (About Us, Contract Rex Org, Article)', () => {
+    it('opens and shows all six mobile items', () => {
         render(<OurPagesDropdown pathname="/" onNavigate={jest.fn()} />);
         fireEvent.click(screen.getByText('Our Pages'));
 
         expect(screen.getByText('About Us')).toBeInTheDocument();
         expect(screen.getByText('Contract Rex Org')).toBeInTheDocument();
         expect(screen.getByText('Article')).toBeInTheDocument();
+        expect(screen.getByText('Accessibility')).toBeInTheDocument();
+        expect(screen.getByText('Privacy & Terms')).toBeInTheDocument();
+        expect(screen.getByText('Contact Support')).toBeInTheDocument();
     });
 
     it('does not render Membership, Evaluation Form, or SOPs', () => {
@@ -96,7 +104,8 @@ describe('OurPagesDropdown (mobile)', () => {
         fireEvent.click(screen.getByText('Our Pages'));
         fireEvent.click(screen.getByText('About Us'));
         fireEvent.click(screen.getByText('Article'));
-        expect(onNavigate).toHaveBeenCalledTimes(2);
+        fireEvent.click(screen.getByText('Contact Support'));
+        expect(onNavigate).toHaveBeenCalledTimes(3);
     });
 
     it('applies active styling for the matching pathname', () => {
@@ -105,6 +114,16 @@ describe('OurPagesDropdown (mobile)', () => {
         );
         fireEvent.click(screen.getByText('Our Pages'));
         const cls = tokens(screen.getByText('About Us').closest('a'));
+        expect(cls).toContain('bg-blue-50');
+        expect(cls).toContain('text-blue-700');
+    });
+
+    it('applies active styling for /pages/support', () => {
+        render(
+            <OurPagesDropdown pathname="/pages/support" onNavigate={jest.fn()} />
+        );
+        fireEvent.click(screen.getByText('Our Pages'));
+        const cls = tokens(screen.getByText('Contact Support').closest('a'));
         expect(cls).toContain('bg-blue-50');
         expect(cls).toContain('text-blue-700');
     });
@@ -134,8 +153,20 @@ describe('OurPagesDropdown (mobile)', () => {
             'href',
             '/pages/article'
         );
+        expect(screen.getByText('Accessibility').closest('a')).toHaveAttribute(
+            'href',
+            '/pages/accessibility'
+        );
+        expect(
+            screen.getByText('Privacy & Terms').closest('a')
+        ).toHaveAttribute('href', '/pages/privacy-terms');
+        expect(
+            screen.getByText('Contact Support').closest('a')
+        ).toHaveAttribute('href', '/pages/support');
     });
 });
+
+/* ─────────────────────────── Desktop dropdown ────────────────────────── */
 
 describe('OurPagesDesktopDropdown', () => {
     it('renders the trigger button', () => {
@@ -148,19 +179,19 @@ describe('OurPagesDesktopDropdown', () => {
         expect(screen.queryByText('About Us')).not.toBeInTheDocument();
     });
 
-    it('opens and shows both desktop items (About Us, Contract Rex Org)', () => {
+    it('opens and shows all three desktop items (About Us, Contract Rex Org, Article)', () => {
         render(<OurPagesDesktopDropdown pathname="/" />);
         fireEvent.click(screen.getByText('Our Pages'));
 
         expect(screen.getByText('About Us')).toBeInTheDocument();
         expect(screen.getByText('Contract Rex Org')).toBeInTheDocument();
+        expect(screen.getByText('Article')).toBeInTheDocument();
     });
 
-    it('does not render Article, Membership, Evaluation Form, or SOPs', () => {
+    it('does not render Membership, Evaluation Form, or SOPs', () => {
         render(<OurPagesDesktopDropdown pathname="/" />);
         fireEvent.click(screen.getByText('Our Pages'));
 
-        expect(screen.queryByText('Article')).not.toBeInTheDocument();
         expect(screen.queryByText('Membership')).not.toBeInTheDocument();
         expect(screen.queryByText('Evaluation Form')).not.toBeInTheDocument();
         expect(screen.queryByText("SOP's")).not.toBeInTheDocument();
@@ -218,6 +249,14 @@ describe('OurPagesDesktopDropdown', () => {
         expect(cls).toContain('text-blue-700');
     });
 
+    it('applies active styling on the Article link when on /pages/article', () => {
+        render(<OurPagesDesktopDropdown pathname="/pages/article" />);
+        fireEvent.click(screen.getByText('Our Pages'));
+        const cls = tokens(screen.getByText('Article').closest('a'));
+        expect(cls).toContain('bg-blue-50');
+        expect(cls).toContain('text-blue-700');
+    });
+
     it('points desktop links to the correct hrefs', () => {
         render(<OurPagesDesktopDropdown pathname="/" />);
         fireEvent.click(screen.getByText('Our Pages'));
@@ -229,5 +268,9 @@ describe('OurPagesDesktopDropdown', () => {
         expect(
             screen.getByText('Contract Rex Org').closest('a')
         ).toHaveAttribute('href', '/pages/contract-rex');
+        expect(screen.getByText('Article').closest('a')).toHaveAttribute(
+            'href',
+            '/pages/article'
+        );
     });
 });
