@@ -192,7 +192,6 @@ export default function NotificationsClient({
                 {selectedNotification && (() => {
                     // Compute the config for the selected notification inside the render block
                     const notificationConfig = getConfig(selectedNotification.type);
-                    const Icon = notificationConfig.icon;
                     return (
                         <DialogContent className="sm:max-w-lg">
                             <DialogHeader>

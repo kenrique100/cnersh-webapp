@@ -6,7 +6,6 @@ import {
     ArrowRight,
     BookOpen,
     CheckCircle2,
-    ChevronRight,
     FileCheck2,
     Gavel,
     HeartHandshake,
@@ -186,63 +185,139 @@ const policies = [
 export default function AboutPage() {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
-            {/* HERO */}
-            <section className="border-b bg-white dark:border-slate-800 dark:bg-slate-950">
-                <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_.8fr] lg:px-8 lg:py-16">
-                    <div className="flex flex-col justify-center">
-                        <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-widest text-blue-900 dark:bg-blue-950 dark:text-blue-300">
-              National Research Ethics Oversight
-            </span>
+            {/* Hero */}
+            <section className="relative isolate min-h-[650px] overflow-hidden bg-slate-950">
+                <Image
+                    src="/about-hero.png"
+                    alt="Health research and ethical oversight"
+                    fill
+                    priority
+                    className="object-cover object-center"
+                />
 
-                        <h1 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                            National Ethics Committee for Research for Human Health
-                        </h1>
+                <div className="absolute inset-0 bg-slate-950/65" />
 
-                        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-400">
-                            CNERSH is Cameroon&apos;s national ethical oversight and
-                            coordination body for research involving human participants in
-                            the health domain.
-                        </p>
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-blue-950/30" />
 
-                        <div className="mt-7 flex flex-wrap gap-3">
-                            <a
-                                href="#who-we-are"
-                                className="rounded-lg bg-blue-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
-                            >
-                                Discover CNERSH
-                                <ArrowRight className="ml-2 inline h-4 w-4" />
-                            </a>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/20" />
 
-                            <Link
-                                href="/pages/article"
-                                className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-bold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900"
-                            >
-                                Knowledge Centre
-                                <BookOpen className="ml-2 inline h-4 w-4" />
-                            </Link>
-                        </div>
-                    </div>
+                <div className="relative mx-auto flex min-h-[650px] max-w-7xl items-center px-4 py-20 sm:px-6 lg:px-8">
+                    <div className="grid w-full gap-12 lg:grid-cols-[1.25fr_.75fr] lg:items-center">
+                        <div className="max-w-3xl">
+                            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-200 backdrop-blur-md">
+                                National Research Ethics Oversight
+                            </div>
 
-                    <div className="relative min-h-[320px] overflow-hidden rounded-3xl">
-                        <Image
-                            src="/about-hero.png"
-                            alt="CNERSH health research ethics"
-                            fill
-                            priority
-                            className="object-cover"
-                        />
+                            <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl">
+                                National Ethics Committee for Research for Human Health
+                            </h1>
 
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 p-6 pt-24">
-                            <p className="text-sm font-bold text-white">
-                                Protecting dignity, rights, safety and wellbeing in health
-                                research.
+                            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 sm:text-xl">
+                                CNERSH is Cameroon&apos;s national ethical oversight and
+                                coordination body for research involving human participants
+                                in the health domain.
                             </p>
+
+                            <div className="mt-8 flex flex-wrap gap-3">
+                                <a
+                                    href="#who-we-are"
+                                    className="inline-flex items-center rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-600"
+                                >
+                                    Discover CNERSH
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </a>
+
+                                <Link
+                                    href="/pages/article"
+                                    className="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
+                                >
+                                    Knowledge Centre
+                                    <BookOpen className="ml-2 h-4 w-4" />
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-start lg:justify-end">
+                            <div className="relative w-full max-w-sm">
+                                <div className="absolute -inset-6 rounded-[2rem] bg-blue-500/10 blur-3xl" />
+
+                                <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/10 p-7 shadow-2xl backdrop-blur-xl">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-200">
+                                                Government Health Authority
+                                            </p>
+
+                                            <p className="mt-2 text-sm font-semibold text-white">
+                                                Ministry of Public Health
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl bg-white p-3 shadow-lg">
+                                            <Image
+                                                src="/minsante_logo.png"
+                                                alt="Ministry of Public Health Cameroon"
+                                                width={90}
+                                                height={90}
+                                                className="h-16 w-16 object-contain"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="my-6 h-px bg-white/20" />
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20">
+                                                <ShieldCheck className="h-4 w-4 text-blue-200" />
+                                            </div>
+
+                                            <div>
+                                                <p className="text-sm font-bold text-white">
+                                                    Participant Protection
+                                                </p>
+
+                                                <p className="mt-1 text-xs leading-5 text-slate-300">
+                                                    Protecting dignity, rights, safety and
+                                                    wellbeing.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-3">
+                                            <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20">
+                                                <Scale className="h-4 w-4 text-blue-200" />
+                                            </div>
+
+                                            <div>
+                                                <p className="text-sm font-bold text-white">
+                                                    Ethical Governance
+                                                </p>
+
+                                                <p className="mt-1 text-xs leading-5 text-slate-300">
+                                                    Supporting responsible health research
+                                                    in Cameroon.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-7 rounded-xl border border-white/10 bg-slate-950/30 px-4 py-3">
+                                        <p className="text-xs leading-5 text-slate-300">
+                                            Ethical research oversight for a healthier and
+                                            safer Cameroon.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-50 to-transparent dark:from-slate-950" />
             </section>
 
-            {/* WHO WE ARE */}
+            {/* Who We Are */}
             <section
                 id="who-we-are"
                 className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"
@@ -306,7 +381,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* VISION / MISSION */}
+            {/* Vision and Mission */}
             <section className="border-y bg-white dark:border-slate-800 dark:bg-slate-950">
                 <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8">
                     <article className="rounded-2xl border border-slate-200 bg-slate-50 p-7 dark:border-slate-800 dark:bg-slate-900">
@@ -346,7 +421,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* VALUES */}
+            {/* Core Values */}
             <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
                 <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
                     04 · Core Values
@@ -378,7 +453,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* FUNCTIONS */}
+            {/* Functions */}
             <section className="bg-slate-100 dark:bg-slate-900/60">
                 <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
                     <p className="text-xs font-bold uppercase tracking-widest text-blue-800">
@@ -412,7 +487,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* POLICIES */}
+            {/* Policies */}
             <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
@@ -441,9 +516,9 @@ export default function AboutPage() {
                             className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
                         >
                             <div className="flex gap-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white">
-                  {policy.number}
-                </span>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white">
+                                    {policy.number}
+                                </span>
 
                                 <div>
                                     <h3 className="font-bold">{policy.title}</h3>
@@ -458,7 +533,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* GOVERNANCE AREAS */}
+            {/* Governance Areas */}
             <section className="border-y bg-white dark:border-slate-800 dark:bg-slate-950">
                 <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:px-8">
                     <article className="rounded-2xl border border-slate-200 p-7 dark:border-slate-800">
@@ -500,7 +575,7 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* PENALTIES */}
+            {/* Accountability */}
             <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
                 <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
                     <div>
@@ -537,15 +612,15 @@ export default function AboutPage() {
 
                         <div className="p-6">
                             <p className="font-bold">
-                                Ethical clearance is not a certificate to conduct research; it
-                                begins continuing accountability.
+                                Ethical clearance is not a certificate to conduct research;
+                                it begins continuing accountability.
                             </p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* FOOTER */}
+            {/* Footer */}
             <footer className="bg-slate-950 text-white">
                 <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                     <Link href="/" className="flex items-center gap-3">
@@ -558,16 +633,19 @@ export default function AboutPage() {
                         />
 
                         <span>
-              <b className="block">CNERSH</b>
+                            <b className="block">CNERSH</b>
 
-              <span className="text-xs text-slate-400">
-                National Ethics Committee for Health Research on Humans
-              </span>
-            </span>
+                            <span className="text-xs text-slate-400">
+                                National Ethics Committee for Health Research on Humans
+                            </span>
+                        </span>
                     </Link>
 
                     <nav className="mt-6 flex flex-wrap gap-5 text-sm text-slate-300">
-                        <Link href="/pages/article" className="hover:text-white hover:underline">
+                        <Link
+                            href="/pages/article"
+                            className="hover:text-white hover:underline"
+                        >
                             Articles
                         </Link>
 

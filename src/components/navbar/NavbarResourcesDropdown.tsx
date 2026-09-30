@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { ChevronDownIcon, DownloadIcon, GlobeIcon, BookOpenIcon, FileTextIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 

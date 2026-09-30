@@ -6,11 +6,10 @@ import {
     AlertCircle,
     Bug,
     CheckCircle2,
-    CreditCard,
     FileText,
     Lightbulb,
-    MessageSquare,
     Send,
+    ShieldCheck,
     User as UserIcon,
 } from "lucide-react";
 
@@ -28,19 +27,17 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 
 import { submitSupportMessage } from "@/app/actions/support";
-import {SupportCategory} from "@/lib/support-schema";
-
+import { SupportCategory } from "@/lib/support-schema";
 const CATEGORIES: {
     value: SupportCategory;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
 }[] = [
-    { value: "bug", label: "Bug report", icon: Bug },
-    { value: "account", label: "Account issue", icon: UserIcon },
-    { value: "protocol", label: "Protocol question", icon: FileText },
-    { value: "billing", label: "Billing", icon: CreditCard },
+    { value: "protocol", label: "Research ethics enquiry", icon: FileText },
+    { value: "account", label: "Application support", icon: UserIcon },
+    { value: "other", label: "Compliance question", icon: ShieldCheck },
+    { value: "bug", label: "Website / technical issue", icon: Bug },
     { value: "feature", label: "Feature request", icon: Lightbulb },
-    { value: "other", label: "Other", icon: MessageSquare },
 ];
 
 const SUBJECT_MIN = 3;
@@ -52,7 +49,7 @@ interface SupportFormProps {
 }
 
 export default function SupportForm({ user }: SupportFormProps) {
-    const [category, setCategory] = React.useState<SupportCategory>("bug");
+    const [category, setCategory] = React.useState<SupportCategory>("protocol");
     const [subject, setSubject] = React.useState("");
     const [message, setMessage] = React.useState("");
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -97,7 +94,7 @@ export default function SupportForm({ user }: SupportFormProps) {
         setIsSent(false);
         setSubject("");
         setMessage("");
-        setCategory("bug");
+        setCategory("protocol");
         setError(null);
     };
 
@@ -211,7 +208,7 @@ export default function SupportForm({ user }: SupportFormProps) {
                         <Textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Please describe your issue in detail. Include steps to reproduce if reporting a bug."
+                            placeholder="Please describe your issue in detail. Include the page or submission reference where relevant."
                             className="min-h-[160px] resize-y"
                             maxLength={MESSAGE_MAX}
                             required

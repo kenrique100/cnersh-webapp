@@ -63,6 +63,45 @@ export function OurPagesDropdown({ pathname, onNavigate }: { pathname: string; o
                         <BuildingIcon className="h-4 w-4 shrink-0" />
                         Article
                     </Link>
+                    <Link
+                        href="/pages/accessibility"
+                        onClick={onNavigate}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages/accessibility"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <BuildingIcon className="h-4 w-4 shrink-0" />
+                        Accessibility
+                    </Link>
+                    <Link
+                        href="/pages/privacy-terms"
+                        onClick={onNavigate}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages/privacy-terms"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <BuildingIcon className="h-4 w-4 shrink-0" />
+                        Privacy & Terms
+                    </Link>
+                    <Link
+                        href="/pages/support"
+                        onClick={onNavigate}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+                            pathname === "/pages/support"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                : "text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <BuildingIcon className="h-4 w-4 shrink-0" />
+                        Contact Support
+                    </Link>
                 </div>
             )}
         </div>
@@ -127,6 +166,19 @@ export default function OurPagesDesktopDropdown({ pathname }: { pathname: string
                     >
                         <BuildingIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                         Contract Rex Org
+                    </Link>
+                    <Link
+                        href="/pages/article"
+                        onClick={() => setIsOpen(false)}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-sm transition-colors rounded-md",
+                            pathname === "/pages/article"
+                                ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950"
+                                : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-950"
+                        )}
+                    >
+                        <BuildingIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        Article
                     </Link>
                 </div>
             )}

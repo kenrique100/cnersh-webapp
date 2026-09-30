@@ -74,8 +74,10 @@ function Footer() {
                             height={48}
                             className="h-12 w-12 object-contain"
                         />
+
                         <div>
                             <p className="font-bold">CNERSH</p>
+
                             <p className="text-xs text-slate-400">
                                 National Ethics Committee
                             </p>
@@ -89,13 +91,22 @@ function Footer() {
 
                 <div>
                     <h3 className="font-semibold">Information</h3>
+
                     <div className="mt-4 space-y-3 text-sm text-slate-400">
-                        <Link className="block hover:text-white" href="/pages/about">
+                        <Link
+                            className="block hover:text-white"
+                            href="/pages/about"
+                        >
                             About CNERSH
                         </Link>
-                        <Link className="block hover:text-white" href="/pages/article">
+
+                        <Link
+                            className="block hover:text-white"
+                            href="/pages/article"
+                        >
                             Articles & Resources
                         </Link>
+
                         <Link
                             className="block hover:text-white"
                             href="/pages/accessibility"
@@ -107,9 +118,10 @@ function Footer() {
 
                 <div>
                     <h3 className="font-semibold">Contact</h3>
+
                     <p className="mt-4 text-sm leading-6 text-slate-400">
-                        For questions about the website, information or support, use the
-                        support channel.
+                        For questions about the website, information or support,
+                        use the support channel.
                     </p>
 
                     <Link
@@ -124,8 +136,13 @@ function Footer() {
 
             <div className="border-t border-white/10">
                 <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-                    <p>© {new Date().getFullYear()} CNERSH. All rights reserved.</p>
-                    <p>Privacy, confidentiality and responsible use.</p>
+                    <p>
+                        © {new Date().getFullYear()} CNERSH. All rights reserved.
+                    </p>
+
+                    <p>
+                        Privacy, confidentiality and responsible use.
+                    </p>
                 </div>
             </div>
         </footer>
@@ -149,8 +166,8 @@ export default function PrivacyTermsPage() {
 
                         <p className="mt-6 text-lg leading-8 text-slate-300">
                             Information about responsible use of the CNERSH website,
-                            protection of information and the distinction between website
-                            services and formal research ethics requirements.
+                            protection of information and the distinction between
+                            website services and formal research ethics requirements.
                         </p>
 
                         <div className="mt-8 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
@@ -171,10 +188,11 @@ export default function PrivacyTermsPage() {
                         </h2>
 
                         <p className="mt-2 max-w-4xl text-sm leading-7 text-slate-700 dark:text-slate-300">
-                            This page provides general website information. It does not
-                            replace applicable Cameroon laws, regulations, official CNERSH
-                            instruments, approved research protocols, ethics committee
-                            decisions or other authoritative requirements.
+                            This page provides general website information. It does
+                            not replace applicable Cameroon laws, regulations,
+                            official CNERSH instruments, approved research
+                            protocols, ethics committee decisions or other
+                            authoritative requirements.
                         </p>
                     </div>
                 </div>
@@ -193,9 +211,10 @@ export default function PrivacyTermsPage() {
                         </h2>
 
                         <p className="mt-5 leading-8 text-slate-600 dark:text-slate-300">
-                            Protecting information is an important part of responsible public
-                            digital service and research governance. The principles below
-                            describe the approach to information handled through the website.
+                            Protecting information is an important part of
+                            responsible public digital service and research
+                            governance. The principles below describe the approach
+                            to information handled through the website.
                         </p>
                     </div>
 
@@ -213,7 +232,9 @@ export default function PrivacyTermsPage() {
                                         <Icon className="h-6 w-6" />
                                     </div>
 
-                                    <h3 className="mt-6 text-xl font-bold">{section.title}</h3>
+                                    <h3 className="mt-6 text-xl font-bold">
+                                        {section.title}
+                                    </h3>
 
                                     <p className="mt-3 leading-7 text-slate-600 dark:text-slate-400">
                                         {section.content}
@@ -254,6 +275,7 @@ export default function PrivacyTermsPage() {
                                 <h3 className="font-bold text-emerald-700 dark:text-emerald-400">
                                     {title}
                                 </h3>
+
                                 <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-400">
                                     {description}
                                 </p>
@@ -277,9 +299,10 @@ export default function PrivacyTermsPage() {
                             </h2>
 
                             <p className="mt-5 leading-8 text-slate-600 dark:text-slate-300">
-                                Access to CNERSH information and digital services should be
-                                accompanied by responsible use, respect for applicable
-                                requirements and protection of other people's information.
+                                Access to CNERSH information and digital services
+                                should be accompanied by responsible use, respect
+                                for applicable requirements and protection of other
+                                people&apos;s information.
                             </p>
                         </div>
 
@@ -293,7 +316,10 @@ export default function PrivacyTermsPage() {
                                         <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
 
                                         <div>
-                                            <h3 className="font-bold">{term.title}</h3>
+                                            <h3 className="font-bold">
+                                                {term.title}
+                                            </h3>
+
                                             <p className="mt-2 leading-7 text-slate-600 dark:text-slate-400">
                                                 {term.text}
                                             </p>
@@ -316,29 +342,31 @@ export default function PrivacyTermsPage() {
                             </p>
 
                             <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
-                                Website privacy is not a substitute for research data
-                                governance
+                                Website privacy is not a substitute for research
+                                data governance
                             </h2>
                         </div>
 
                         <div className="space-y-5 text-slate-300">
                             <p className="leading-8">
-                                Research teams remain responsible for ensuring that participant
-                                information, biological materials and research records are
-                                handled according to the approved study procedures and
-                                applicable requirements.
+                                Research teams remain responsible for ensuring that
+                                participant information, biological materials and
+                                research records are handled according to the
+                                approved study procedures and applicable
+                                requirements.
                             </p>
 
                             <p className="leading-8">
-                                Where a study involves sensitive personal information,
-                                investigators should establish appropriate safeguards for
-                                collection, access, storage, transfer, retention and
-                                dissemination.
+                                Where a study involves sensitive personal
+                                information, investigators should establish
+                                appropriate safeguards for collection, access,
+                                storage, transfer, retention and dissemination.
                             </p>
 
                             <p className="leading-8">
-                                The CNERSH website should not be treated as authorization to
-                                collect or process participant data for a research study.
+                                The CNERSH website should not be treated as
+                                authorization to collect or process participant
+                                data for a research study.
                             </p>
                         </div>
                     </div>
@@ -349,13 +377,16 @@ export default function PrivacyTermsPage() {
             <section className="px-6 py-20 lg:px-8">
                 <div className="mx-auto max-w-4xl">
                     <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-12">
-                        <h2 className="text-2xl font-bold">Updates to this page</h2>
+                        <h2 className="text-2xl font-bold">
+                            Updates to this page
+                        </h2>
 
                         <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">
-                            Privacy and terms information may be updated when website
-                            services, operational practices, applicable requirements or
-                            official guidance changes. Users should consult the latest
-                            published version when relying on this information.
+                            Privacy and terms information may be updated when
+                            website services, operational practices, applicable
+                            requirements or official guidance changes. Users
+                            should consult the latest published version when
+                            relying on this information.
                         </p>
 
                         <div className="mt-8 flex flex-wrap gap-4">
