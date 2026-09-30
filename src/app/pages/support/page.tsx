@@ -70,13 +70,13 @@ function Footer() {
                         <Image
                             src="/logo.png"
                             alt="CNERSH logo"
-                            width={48}
-                            height={48}
-                            className="h-12 w-12 object-contain"
+                            width={52}
+                            height={52}
+                            className="h-13 w-13 rounded-lg bg-white object-contain p-1"
                         />
 
                         <div>
-                            <p className="font-bold">CNERSH</p>
+                            <p className="text-lg font-bold">CNERSH</p>
 
                             <p className="text-xs text-slate-400">
                                 National Ethics Committee
@@ -169,10 +169,27 @@ export default async function SupportPage() {
         <main className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-white">
             {/* HERO */}
             <section className="relative isolate overflow-hidden bg-slate-950">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_38%)]" />
+                {/* Background Image */}
+                <div className="absolute inset-0 -z-30">
+                    <Image
+                        src="/support.png"
+                        alt="Support background"
+                        fill
+                        priority
+                        sizes="100vw"
+                        className="object-cover object-center"
+                    />
+                </div>
 
-                <div className="absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+                <div className="absolute inset-0 -z-20 bg-slate-950/70" />
 
+                <div className="absolute inset-0 -z-20 bg-gradient-to-r from-slate-950 via-slate-950/60 to-transparent" />
+
+                <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_38%)]" />
+
+                <div className="absolute -left-24 bottom-0 -z-10 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+
+                {/* Content Container */}
                 <div className="relative mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-28">
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-300 backdrop-blur-sm">
@@ -207,41 +224,14 @@ export default async function SupportPage() {
                                 Browse resources
                             </Link>
                         </div>
-
-                        <div className="mt-10 grid max-w-2xl grid-cols-1 gap-4 border-t border-white/10 pt-7 sm:grid-cols-3">
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-slate-500">
-                                    Ethics
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-white">
-                                    Research guidance
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-slate-500">
-                                    Applications
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-white">
-                                    Submission support
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-slate-500">
-                                    Website
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-white">
-                                    Technical assistance
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 </div>
+                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-50 to-transparent dark:from-slate-950" />
+
             </section>
 
             {/* SUPPORT CATEGORIES */}
-            <section className="px-6 py-20 lg:px-8">
+            <section className="px-6 py-15 lg:px-8">
                 <div className="mx-auto max-w-7xl">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
@@ -292,7 +282,7 @@ export default async function SupportPage() {
             </section>
 
             {/* HOW SUPPORT WORKS */}
-            <section className="bg-slate-50 px-6 py-20 dark:bg-slate-900/60 lg:px-8">
+            <section className="bg-slate-50 px-6 py-15 dark:bg-slate-900/60 lg:px-8">
                 <div className="mx-auto max-w-7xl">
                     <div className="grid gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start">
                         <div>
@@ -351,7 +341,7 @@ export default async function SupportPage() {
             </section>
 
             {/* CONTACT INFORMATION */}
-            <section className="px-6 py-20 lg:px-8">
+            <section className="px-6 py-15 lg:px-8">
                 <div className="mx-auto max-w-7xl">
                     <div className="grid gap-6 md:grid-cols-3">
                         <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -403,7 +393,7 @@ export default async function SupportPage() {
             {/* FORM */}
             <section
                 id="contact-form"
-                className="scroll-mt-20 bg-slate-950 px-6 py-20 text-white lg:px-8"
+                className="scroll-mt-20 bg-slate-950 px-6 py-15 text-white lg:px-8"
             >
                 <div className="mx-auto max-w-7xl">
                     <div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
@@ -464,7 +454,7 @@ export default async function SupportPage() {
             </section>
 
             {/* FINAL CTA */}
-            <section className="px-6 py-20 lg:px-8">
+            <section className="px-6 py-15 lg:px-8">
                 <div className="mx-auto max-w-4xl rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-12">
                     <h2 className="text-2xl font-bold sm:text-3xl">
                         Looking for information before contacting support?

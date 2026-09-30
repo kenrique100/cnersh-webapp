@@ -197,7 +197,7 @@ export default function AccessibilityPage() {
                     className="object-cover object-center opacity-25"
                 />
 
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/95 to-emerald-950/80" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/40 to-emerald-950/40" />
 
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.20),transparent_35%)]" />
 
@@ -219,7 +219,7 @@ export default function AccessibilityPage() {
                                 </p>
                             </div>
 
-                            <h1 className="mt-7 text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+                            <h1 className="mt-7 text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
                                 Designed for more people to{" "}
                                 <span className="text-emerald-400">
                                     access, understand and use.
@@ -248,38 +248,6 @@ export default function AccessibilityPage() {
                                     Contact support
                                 </Link>
                             </div>
-
-                            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4 border-t border-white/10 pt-6">
-                                <div>
-                                    <p className="text-xs uppercase tracking-widest text-slate-500">
-                                        Focus
-                                    </p>
-
-                                    <p className="mt-1 text-sm font-semibold text-white">
-                                        Inclusive access
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-xs uppercase tracking-widest text-slate-500">
-                                        Experience
-                                    </p>
-
-                                    <p className="mt-1 text-sm font-semibold text-white">
-                                        Responsive design
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-xs uppercase tracking-widest text-slate-500">
-                                        Support
-                                    </p>
-
-                                    <p className="mt-1 text-sm font-semibold text-white">
-                                        User assistance
-                                    </p>
-                                </div>
-                            </div>
                         </div>
 
                         <div className="hidden lg:flex lg:justify-end">
@@ -300,36 +268,16 @@ export default function AccessibilityPage() {
                                         height={170}
                                         className="h-full w-full object-contain"
                                     />
-
-                                </div>
-
-                                <div className="absolute right-2 top-16 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-md">
-                                    <p className="text-xs font-semibold text-emerald-300">
-                                        Inclusive
-                                    </p>
-
-                                    <p className="mt-1 text-xs text-slate-300">
-                                        Digital access
-                                    </p>
-                                </div>
-
-                                <div className="absolute bottom-12 left-0 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-md">
-                                    <p className="text-xs font-semibold text-white">
-                                        Accessible
-                                    </p>
-
-                                    <p className="mt-1 text-xs text-slate-400">
-                                        Public service
-                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-50 to-transparent dark:from-slate-950" />
             </section>
 
             {/* Introduction */}
-            <section className="px-6 py-20 lg:px-8">
+            <section className="px-6 py-15 lg:px-8">
                 <div className="mx-auto max-w-4xl text-center">
                     <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-400">
                         Our approach
@@ -349,7 +297,7 @@ export default function AccessibilityPage() {
             </section>
 
             {/* Features */}
-            <section className="bg-slate-50 px-6 py-20 dark:bg-slate-900/60 lg:px-8">
+            <section className="bg-slate-50 px-6 py-15 dark:bg-slate-900/60 lg:px-8">
                 <div className="mx-auto max-w-7xl">
 
                     <div className="max-w-2xl">
@@ -397,7 +345,7 @@ export default function AccessibilityPage() {
             {/* Commitment */}
             <section
                 id="commitment"
-                className="scroll-mt-20 px-6 py-20 lg:px-8"
+                className="scroll-mt-20 px-6 py-15 lg:px-8"
             >
                 <div className="mx-auto max-w-7xl">
 
@@ -454,7 +402,7 @@ export default function AccessibilityPage() {
             </section>
 
             {/* Accessibility principles */}
-            <section className="bg-slate-950 px-6 py-20 text-white lg:px-8">
+            <section className="bg-slate-950 px-6 py-15 text-white lg:px-8">
                 <div className="mx-auto max-w-7xl">
 
                     <div className="max-w-3xl">
@@ -492,7 +440,7 @@ export default function AccessibilityPage() {
             </section>
 
             {/* Report */}
-            <section className="px-6 py-20 lg:px-8">
+            <section className="px-6 py-15 lg:px-8">
                 <div className="mx-auto max-w-4xl">
 
                     <div className="relative overflow-hidden rounded-[2rem] border border-emerald-200 bg-emerald-50 p-8 dark:border-emerald-900/50 dark:bg-emerald-950/30 sm:p-12">
@@ -516,7 +464,7 @@ export default function AccessibilityPage() {
 
                             <Link
                                 href="/pages/support"
-                                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-600"
+                                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-300"
                             >
                                 Report an issue
                                 <ArrowRight className="h-4 w-4" />
