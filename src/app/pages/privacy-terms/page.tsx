@@ -279,7 +279,8 @@ export default function PrivacyTermsPage() {
                             <p className="mt-5 leading-8 text-slate-600 dark:text-slate-300">
                                 Access to CNERSH information and digital services should be
                                 accompanied by responsible use, respect for applicable
-                                requirements and protection of other people's information.
+                                requirements and protection of other people&apos;s
+                                information.
                             </p>
                         </div>
 

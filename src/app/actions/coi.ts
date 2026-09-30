@@ -3,7 +3,6 @@
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { autoReassignReviewer } from "@/lib/reviewer-assignment";
-import { notifyAdmins } from "@/lib/notify-admins";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { z } from "zod";
 

@@ -6,7 +6,6 @@ import {
     ArrowRight,
     BookOpen,
     CheckCircle2,
-    ChevronRight,
     FileCheck2,
     Gavel,
     HeartHandshake,

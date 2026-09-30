@@ -296,6 +296,9 @@ export default function ImageUpload({
                             minWidth={50}
                             minHeight={50}
                         >
+                            {/* eslint-disable-next-line @next/next/no-img-element --
+                                ReactCrop requires a real DOM <img> ref for canvas cropping;
+                                next/image cannot be used here. */}
                             <img
                                 ref={imgRef}
                                 src={cropSrc}
