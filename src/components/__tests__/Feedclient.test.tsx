@@ -246,6 +246,8 @@ const basePost = {
     isUnread: false as boolean | undefined,
 };
 
+const SHARE_KEY = (userId: string) => `cnersh:feed:${userId}:share-counts`;
+
 const defaultProps = {
     initialPosts: [basePost],
     initialUnreadCount: 0,                        // === NEW ===
@@ -1604,7 +1606,8 @@ describe('FeedClient', () => {
             await waitFor(() => expect(screen.getByText('WhatsApp')).toBeInTheDocument());
             await user.click(screen.getByText('WhatsApp'));
             windowOpenSpy.mockRestore();
-            expect(localStorage.getItem('feed-share-counts')).toContain('post-1');
+            expect(localStorage.getItem(SHARE_KEY('current-user'))).toContain('post-1');
+            expect(localStorage.getItem('feed-share-counts')).toBeNull();
         });
     });
 
@@ -1649,19 +1652,37 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── localStorage share counts ────────────────────────────────────
+    // ── localStorage share counts (user-scoped) ──────────────────────
     describe('localStorage', () => {
-        it('reads share counts from localStorage on init', () => {
-            localStorage.setItem('feed-share-counts', JSON.stringify({ 'post-1': 5 }));
+        afterEach(() => localStorage.clear());
+
+        it('reads share counts from the current user\'s key on init', () => {
+            localStorage.setItem(SHARE_KEY('current-user'), JSON.stringify({ 'post-1': 5 }));
             setup();
             expect(screen.getByTestId('post-card')).toBeInTheDocument();
-            localStorage.removeItem('feed-share-counts');
         });
 
         it('handles corrupted localStorage gracefully', () => {
-            localStorage.setItem('feed-share-counts', 'not-valid-json{{{');
+            localStorage.setItem(SHARE_KEY('current-user'), 'not-valid-json{{{');
             expect(() => setup()).not.toThrow();
-            localStorage.removeItem('feed-share-counts');
+        });
+
+        it('does not inherit another user\'s share counts on the same browser', () => {
+            localStorage.setItem(SHARE_KEY('user-a'), JSON.stringify({ 'post-1': 7 }));
+
+            setup({ currentUserId: 'user-b' });
+
+            // User B starts fresh and never touches user A's entry.
+            expect(localStorage.getItem(SHARE_KEY('user-b'))).toBe('{}');
+            expect(localStorage.getItem(SHARE_KEY('user-a'))).toBe(JSON.stringify({ 'post-1': 7 }));
+        });
+
+        it('ignores the old global feed-share-counts key', () => {
+            localStorage.setItem('feed-share-counts', JSON.stringify({ 'post-1': 9 }));
+
+            setup({ currentUserId: 'user-b' });
+
+            expect(localStorage.getItem(SHARE_KEY('user-b'))).toBe('{}');
         });
     });
 

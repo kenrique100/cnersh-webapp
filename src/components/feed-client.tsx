@@ -114,6 +114,9 @@ import {
 } from "@/components/post-card";
 import { ReactionsPicker } from "@/components/reactions-picker";
 import UserAvatar from "@/components/user-avatar";
+import { readUserJson, writeUserJson, type UserStorageKey } from "@/lib/browser-storage";
+
+const SHARE_COUNTS_KEY: UserStorageKey = "feed:share-counts";
 
 interface PostUser {
     id: string;
@@ -380,22 +383,13 @@ export default function FeedClient({
         };
     }, []);
 
-    const [shareCounts, setShareCounts] = React.useState<Record<string, number>>(() => {
-        if (typeof window === "undefined") return {};
-        try {
-            const stored = localStorage.getItem("feed-share-counts");
-            return stored ? JSON.parse(stored) : {};
-        } catch {
-            return {};
-        }
-    });
+    const [shareCounts, setShareCounts] = React.useState<Record<string, number>>(() =>
+        readUserJson<Record<string, number>>(currentUserId, SHARE_COUNTS_KEY, {}),
+    );
 
     React.useEffect(() => {
-        try {
-            localStorage.setItem("feed-share-counts", JSON.stringify(shareCounts));
-        } catch {
-        }
-    }, [shareCounts]);
+        writeUserJson(currentUserId, SHARE_COUNTS_KEY, shareCounts);
+    }, [currentUserId, shareCounts]);
 
     // Keep postsRef in sync so the observer always sees fresh isUnread flags.
     React.useEffect(() => {

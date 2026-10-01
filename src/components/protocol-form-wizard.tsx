@@ -22,8 +22,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { PROTOCOL_DRAFT_PREFIX } from "@/lib/browser-storage";
 
-export const AUTOSAVE_KEY_PREFIX = "cnersh-protocol-draft";
+export const AUTOSAVE_KEY_PREFIX = PROTOCOL_DRAFT_PREFIX;
 
 const AUTOSAVE_INTERVAL = 30_000;
 

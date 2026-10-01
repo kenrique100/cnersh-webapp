@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import { getPages } from "@/app/actions/page-actions";
 import FeedLeftSidebar from "@/components/feed-left-sidebar";
+import UserStorageGuard from "@/components/user-storage-guard";
 import FeedRightSidebar from "@/components/feed-right-sidebar";
 import ProjectTracker from "@/components/project-tracker";
 
@@ -89,6 +90,9 @@ export default async function Home() {
         <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
             {/* Navbar */}
             <Navbar user={navUser} notificationCount={notificationCount} pages={pages} />
+            {isVerifiedSession && session?.user?.id && (
+                <UserStorageGuard userId={session.user.id} />
+            )}
 
             <div className="mx-auto max-w-[1200px] px-1 sm:px-4 py-3 sm:py-6">
                 <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">

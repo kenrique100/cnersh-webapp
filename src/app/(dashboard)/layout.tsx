@@ -6,13 +6,14 @@ import { getPages } from "@/app/actions/page-actions";
 import Navbar from "@/components/navbar";
 import DashboardShell from "@/components/dashboard-shell";
 import React from "react";
+import UserStorageGuard from "@/components/user-storage-guard";
 
 export default async function DashboardLayout({
                                                   children,
                                               }: Readonly<{
     children: React.ReactNode;
 }>) {
-    await authIsRequired();
+    const session = await authIsRequired();
 
     let user: Awaited<ReturnType<typeof getProfile>> | null = null;
     let unreadCount = 0;
@@ -32,6 +33,7 @@ export default async function DashboardLayout({
 
     return (
         <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
+            <UserStorageGuard userId={session.user.id} />
             <Navbar
                 user={
                     user
