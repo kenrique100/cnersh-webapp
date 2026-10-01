@@ -25,11 +25,7 @@ jest.mock("@/lib/auth", () => ({
 import { db } from "@/lib/db";
 import { sendCnershVerificationEmail } from "@/lib/cnersh-verification";
 
-/**
- * `jest.Mock<any>` — using a concrete arrow-function generic here causes
- * @jest/globals to resolve `mockResolvedValueOnce`'s parameter to `never`.
- */
-type AsyncMock = jest.Mock<any>;
+type AsyncMock = jest.MockedFunction<(...args: unknown[]) => Promise<unknown>>;
 
 const accountMock = db.account as unknown as { findFirst: AsyncMock };
 const userMock = db.user as unknown as { update: AsyncMock };
