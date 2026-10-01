@@ -179,7 +179,7 @@ export function SignUpForm() {
                 } as SignUpData,
                 {
                     onSuccess: async () => {
-                        toast.success("Account created. Please verify your email before signing in.");
+                        toast.success("Account created. Check your inbox to verify your email.");
                         form.reset({
                             name: "",
                             email: "",
@@ -191,7 +191,8 @@ export function SignUpForm() {
                             termsAccepted: false,
                         });
                         setPassword("");
-                        router.push("/sign-in");
+                        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+
                     },
                     onError: (ctx) => {
                         console.error("Signup error:", ctx.error);

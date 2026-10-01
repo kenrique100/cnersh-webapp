@@ -18,6 +18,7 @@ model User {
   updatedAt                  DateTime                   @updatedAt
   emailVerified              Boolean                    @default(false)
   welcomeEmailSent           Boolean                    @default(false)
+  cnershVerified             Boolean                    @default(false)
   image                      String?
   gender                     Gender?
   profession                 String?
@@ -60,6 +61,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([createdAt])
+  @@index([cnershVerified])
   @@map("user")
 }
 
