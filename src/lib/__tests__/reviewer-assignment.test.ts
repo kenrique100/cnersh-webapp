@@ -67,7 +67,7 @@ describe("getEligibleReviewers", () => {
             expect.objectContaining({
                 where: expect.objectContaining({
                     role: "admin",
-                    OR: [{ banned: false }, { banned: null }],
+                    banned: false,
                 }),
             })
         );
@@ -460,20 +460,13 @@ describe("autoReassignReviewer", () => {
         tx.user.findMany.mockResolvedValue([
             { id: "new-reviewer", name: "New", email: "new@x", role: "admin" },
         ]);
-        // (getReviewerLoads for the new candidate hits groupBy on tx; but
-        // getReviewerLoads uses client(tx).reviewAssignment.groupBy — the
-        // helper falls back to global db.reviewAssignment when tx is passed
-        // only if tx.reviewAssignment.groupBy is absent. Provide it.)
+        // getReviewerLoads calls client(tx).reviewAssignment.groupBy, so we
+        // need to install it on the tx mock explicitly.
         (tx.reviewAssignment as any).groupBy = jest
             .fn()
-            .mockResolvedValue([{ reviewerId: "new-reviewer", _count: { _all: 0 } }]);
-
-        // getEligibleReviewers + getReviewerLoads both get the tx client.
-        // Simpler: mock db.user.findMany for the fallback path? No — the
-        // helper uses the tx because we pass tx. Make the tx the source.
-        tx.user.findMany.mockResolvedValue([
-            { id: "new-reviewer", name: "New", email: "new@x", role: "admin" },
-        ]);
+            .mockResolvedValue([
+                { reviewerId: "new-reviewer", _count: { _all: 0 } },
+            ]);
 
         jest.spyOn(Math, "random").mockReturnValue(0);
 
@@ -513,7 +506,9 @@ describe("autoReassignReviewer", () => {
             { reviewerId: "another-old" },
         ]);
         tx.user.findMany.mockResolvedValue([]);
-        (tx.reviewAssignment as any).groupBy = jest.fn().mockResolvedValue([]);
+        (tx.reviewAssignment as any).groupBy = jest
+            .fn()
+            .mockResolvedValue([]);
 
         await autoReassignReviewer({
             projectId: "project-1",
@@ -540,7 +535,9 @@ describe("autoReassignReviewer", () => {
             reviewerId: "old-reviewer",
         });
         tx.user.findMany.mockResolvedValue([]);
-        (tx.reviewAssignment as any).groupBy = jest.fn().mockResolvedValue([]);
+        (tx.reviewAssignment as any).groupBy = jest
+            .fn()
+            .mockResolvedValue([]);
 
         const result = await autoReassignReviewer({
             projectId: "project-1",
@@ -564,7 +561,9 @@ describe("autoReassignReviewer", () => {
         tx.user.findMany.mockResolvedValue([
             { id: "new-reviewer", name: "New", email: "new@x", role: "admin" },
         ]);
-        (tx.reviewAssignment as any).groupBy = jest.fn().mockResolvedValue([]);
+        (tx.reviewAssignment as any).groupBy = jest
+            .fn()
+            .mockResolvedValue([]);
         jest.spyOn(Math, "random").mockReturnValue(0);
 
         await autoReassignReviewer({
@@ -581,7 +580,9 @@ describe("autoReassignReviewer", () => {
         tx.user.findMany.mockResolvedValue([
             { id: "new-reviewer", name: "New", email: "new@x", role: "admin" },
         ]);
-        (tx.reviewAssignment as any).groupBy = jest.fn().mockResolvedValue([]);
+        (tx.reviewAssignment as any).groupBy = jest
+            .fn()
+            .mockResolvedValue([]);
         jest.spyOn(Math, "random").mockReturnValue(0);
 
         await autoReassignReviewer({
@@ -608,7 +609,9 @@ describe("autoReassignReviewer", () => {
         tx.user.findMany.mockResolvedValue([
             { id: "new-reviewer", name: "New", email: "new@x", role: "admin" },
         ]);
-        (tx.reviewAssignment as any).groupBy = jest.fn().mockResolvedValue([]);
+        (tx.reviewAssignment as any).groupBy = jest
+            .fn()
+            .mockResolvedValue([]);
         jest.spyOn(Math, "random").mockReturnValue(0);
 
         const result = await autoReassignReviewer({

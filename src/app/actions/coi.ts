@@ -4,6 +4,7 @@ import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { autoReassignReviewer } from "@/lib/reviewer-assignment";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { activeUserWithRoleFilter } from "@/lib/user-filters";
 import { z } from "zod";
 
 const coiSchema = z
@@ -174,7 +175,7 @@ export async function submitCOIDeclaration(data: {
     } else {
       // Notify superadmins only.
       const superadmins = await db.user.findMany({
-        where: { role: "superadmin", OR: [{ banned: false }, { banned: null }] },
+        where: activeUserWithRoleFilter("superadmin"),
         select: { id: true, email: true, name: true },
       });
       await db.notification.createMany({

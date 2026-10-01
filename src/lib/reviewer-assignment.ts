@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { Prisma, ReviewAssignmentStatus } from "@/generated/prisma";
 import { isAutoAssignableRole } from "@/lib/permissions";
+import { activeUserFilter } from "@/lib/user-filters";
 
 /** "Load" = assignments still occupying a reviewer. Completed ones don't count. */
 export const ACTIVE_ASSIGNMENT_STATUSES: readonly ReviewAssignmentStatus[] = [
@@ -31,7 +32,7 @@ export async function getEligibleReviewers(
     const rows = await client(options.tx).user.findMany({
         where: {
             role: "admin",
-            OR: [{ banned: false }, { banned: null }],
+            ...activeUserFilter,
             ...(excludeUserIds.length ? { id: { notIn: excludeUserIds } } : {}),
         },
         select: { id: true, name: true, email: true, role: true },

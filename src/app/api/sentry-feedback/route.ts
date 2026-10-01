@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
 import { sanitizeText } from "@/lib/sanitize";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import {activeUserWithRoleFilter} from "@/lib/user-filters";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
     const limited = await rateLimit(
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const superAdmins = await db.user.findMany({
-        where: { role: "superadmin", banned: { not: true } },
+        where: activeUserWithRoleFilter("superadmin"),
         select: { id: true, email: true, name: true },
     });
 

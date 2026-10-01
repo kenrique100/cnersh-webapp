@@ -12,6 +12,7 @@ import {
     type RoleName,
 } from "@/lib/permissions";
 import { sanitizeText } from "@/lib/sanitize";
+import { activeUserFilter } from "@/lib/user-filters";
 import { z } from "zod";
 
 const idSchema = z.string().trim().min(1).max(128);
@@ -67,7 +68,7 @@ export async function getUserManagementData() {
         userList,
     ] = await Promise.all([
         db.user.count({ where: userFilter }),
-        db.user.count({ where: { ...userFilter, banned: { not: true } } }),
+        db.user.count({ where: { ...userFilter, ...activeUserFilter } }),
         db.user.count({ where: { ...userFilter, banned: true } }),
         db.user.count({ where: { ...userFilter, createdAt: { gte: thirtyDaysAgo } } }),
         db.auditLog.findMany({

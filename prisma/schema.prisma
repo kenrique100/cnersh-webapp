@@ -8,56 +8,54 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(uuid())
-  email               String    @unique
-  name                String?
-  role                String?
-  bio                 String?
-  hasDeletePermission Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  emailVerified       Boolean   @default(false)
-  welcomeEmailSent    Boolean   @default(false)
-  image               String?
-  gender              Gender?
-  profession          String?
-  professionOther     String?
-  title               String?
-  banned              Boolean?
-  banReason           String?
-  banExpires          DateTime?
-  expertiseTags       String[]  @default([])
-  pendingActivation   Boolean   @default(false)
-  activationExpiresAt DateTime?
-  communityReadStatus CommunityReadStatus?
-  postReadStatuses    PostReadStatus[]
+  id                         String                     @id @default(uuid())
+  email                      String                     @unique
+  name                       String?
+  role                       String?
+  bio                        String?
+  hasDeletePermission        Boolean                    @default(false)
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime                   @updatedAt
+  emailVerified              Boolean                    @default(false)
+  welcomeEmailSent           Boolean                    @default(false)
+  image                      String?
+  gender                     Gender?
+  profession                 String?
+  professionOther            String?
+  title                      String?
+  banned                     Boolean                    @default(false)
+  banReason                  String?
+  banExpires                 DateTime?
+  expertiseTags              String[]                   @default([])
+  pendingActivation          Boolean                    @default(false)
+  activationExpiresAt        DateTime?
+  communityReadStatus        CommunityReadStatus?
+  postReadStatuses           PostReadStatus[]
   communityTopicReadStatuses CommunityTopicReadStatus[]
 
-
-  sessions            Session[]
-  accounts            Account[]
-  posts               Post[]
-  comments            Comment[]
-  likes               Like[]
-  projects            Project[]            @relation("ProjectOwner")
-  assignedProjects    Project[]            @relation("ProjectReviewer")
-  communityTopics     CommunityTopic[]
-  communityReplies    CommunityReply[]
+  sessions                Session[]
+  accounts                Account[]
+  posts                   Post[]
+  comments                Comment[]
+  likes                   Like[]
+  projects                Project[]                @relation("ProjectOwner")
+  assignedProjects        Project[]                @relation("ProjectReviewer")
+  communityTopics         CommunityTopic[]
+  communityReplies        CommunityReply[]
   communityReplyReactions CommunityReplyReaction[]
-  reports             Report[]             @relation("ReportAuthor")
-  notifications       Notification[]
-  auditLogs           AuditLog[]
-  commentLikes        CommentLike[]
-  communityTopicLikes CommunityTopicLike[]
-  reviewAssignments   ReviewAssignment[]
-  coiDeclarations     COIDeclaration[]
-  evaluationReports   EvaluationReport[]
-  saeReports          SAEReport[]
-  aarApplications     AARApplication[]
-  appeals             Appeal[]
-  files               File[]
-  idempotencyKeys     IdempotencyKey[]
-
+  reports                 Report[]                 @relation("ReportAuthor")
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  commentLikes            CommentLike[]
+  communityTopicLikes     CommunityTopicLike[]
+  reviewAssignments       ReviewAssignment[]
+  coiDeclarations         COIDeclaration[]
+  evaluationReports       EvaluationReport[]
+  saeReports              SAEReport[]
+  aarApplications         AARApplication[]
+  appeals                 Appeal[]
+  files                   File[]
+  idempotencyKeys         IdempotencyKey[]
 
   @@index([email])
   @@index([role])
@@ -152,21 +150,21 @@ model File {
 }
 
 model Post {
-  id              String    @id @default(uuid())
+  id              String           @id @default(uuid())
   content         String
   image           String?
   video           String?
-  images          String[]  @default([])
-  videos          String[]  @default([])
-  tags            String[]  @default([])
+  images          String[]         @default([])
+  videos          String[]         @default([])
+  tags            String[]         @default([])
   linkUrl         String?
   linkType        String?
-  commentsEnabled Boolean   @default(true)
-  deleted         Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  commentsEnabled Boolean          @default(true)
+  deleted         Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments        Comment[]
   likes           Like[]
   readStatuses    PostReadStatus[]
@@ -308,24 +306,24 @@ enum ProjectStatus {
 }
 
 model CommunityTopic {
-  id          String               @id @default(uuid())
-  title       String
-  content     String
-  category    String
-  image       String?
-  images      String[]             @default([])
-  video       String?
-  videos      String[]             @default([])
-  documents   String[]             @default([])
-  linkUrl     String?
-  chatEnabled Boolean              @default(true)
-  deleted     Boolean              @default(false)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  userId      String
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replies     CommunityReply[]
-  likes       CommunityTopicLike[]
+  id           String                     @id @default(uuid())
+  title        String
+  content      String
+  category     String
+  image        String?
+  images       String[]                   @default([])
+  video        String?
+  videos       String[]                   @default([])
+  documents    String[]                   @default([])
+  linkUrl      String?
+  chatEnabled  Boolean                    @default(true)
+  deleted      Boolean                    @default(false)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  userId       String
+  user         User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies      CommunityReply[]
+  likes        CommunityTopicLike[]
   readStatuses CommunityTopicReadStatus[]
 
   @@index([userId])
@@ -350,35 +348,35 @@ model CommunityTopicLike {
 }
 
 model CommunityReply {
-  id            String           @id @default(uuid())
+  id            String                   @id @default(uuid())
   content       String
   image         String?
-  images        String[]         @default([])
+  images        String[]                 @default([])
   video         String?
-  videos        String[]         @default([])
+  videos        String[]                 @default([])
   audio         String?
-  audios        String[]         @default([])
+  audios        String[]                 @default([])
   voiceNote     String?
   document      String?
-  documents     String[]         @default([])
+  documents     String[]                 @default([])
   linkUrl       String?
   pollQuestion  String?
-  pollOptions   String[]         @default([])
+  pollOptions   String[]                 @default([])
   reactions     CommunityReplyReaction[]
   pollVotes     Json?
   eventTitle    String?
   eventDate     DateTime?
   eventLocation String?
-  deleted       Boolean          @default(false)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  deleted       Boolean                  @default(false)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
   topicId       String
   parentId      String?
   userId        String
-  topic         CommunityTopic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  parent        CommunityReply?  @relation("ReplyToReply", fields: [parentId], references: [id])
-  children      CommunityReply[] @relation("ReplyToReply")
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic         CommunityTopic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  parent        CommunityReply?          @relation("ReplyToReply", fields: [parentId], references: [id])
+  children      CommunityReply[]         @relation("ReplyToReply")
+  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
   @@index([userId])
@@ -597,9 +595,9 @@ model CommitteeSession {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  @@unique([sessionType, sessionDate])
   @@index([sessionDate])
   @@index([status])
-  @@unique([sessionType, sessionDate])
   @@map("committee_session")
 }
 
@@ -716,7 +714,7 @@ model IdempotencyKey {
   createdAt DateTime @default(now())
   expiresAt DateTime
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, action, key])
   @@index([expiresAt])
@@ -751,6 +749,7 @@ model CommunityTopicReadStatus {
   @@index([topicId, lastReadAt])
   @@map("community_topic_read_status")
 }
+
 model PostReadStatus {
   id        String   @id @default(uuid())
   userId    String
@@ -759,8 +758,8 @@ model PostReadStatus {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
   @@index([userId])
@@ -768,13 +767,14 @@ model PostReadStatus {
   @@index([userId, readAt])
   @@map("post_read_status")
 }
+
 model CommunityReplyReaction {
-  id        String   @id @default(uuid())
+  id        String         @id @default(uuid())
   replyId   String
   userId    String
   emoji     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   reply     CommunityReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
