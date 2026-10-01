@@ -53,12 +53,7 @@ import {
     confirmCnershVerification,
 } from "@/app/actions/verification";
 
-/**
- * `jest.Mock<any>` — using a concrete arrow-function generic here causes
- * @jest/globals to resolve `mockResolvedValueOnce`'s parameter to `never`,
- * which then rejects every argument. `jest.Mock<any>` avoids that.
- */
-type AsyncMock = jest.Mock<any>;
+type AsyncMock = jest.MockedFunction<(...args: unknown[]) => Promise<unknown>>;
 
 const userMock = db.user as unknown as {
     findUnique: AsyncMock;
