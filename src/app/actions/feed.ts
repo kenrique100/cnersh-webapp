@@ -8,6 +8,7 @@ import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
 import { enforceActionRateLimit } from "@/lib/action-rate-limit";
 import { RATE_LIMITS } from "@/lib/rate-limit";
 import { canManageRole, isAdminRole } from "@/lib/permissions";
+import { activeUserFilter } from "@/lib/user-filters";
 import { z } from "zod";
 
 const MENTION_REGEX = /@(\w[\w\s]*?)(?=\s@|$|\s)/g;
@@ -815,7 +816,7 @@ export async function searchUsers(query: string) {
             where: {
                 ...(safeQuery ? { name: { contains: safeQuery, mode: "insensitive" as const } } : {}),
                 id: { not: session.user.id },
-                banned: { not: true },
+                ...activeUserFilter,
             },
             select: { id: true, name: true, image: true },
             take: 8,
@@ -834,7 +835,7 @@ export async function getAllUsers() {
         const users = await db.user.findMany({
             where: {
                 id: { not: session.user.id },
-                banned: { not: true },
+                ...activeUserFilter,
             },
             select: { id: true, name: true, image: true },
             orderBy: { name: "asc" },

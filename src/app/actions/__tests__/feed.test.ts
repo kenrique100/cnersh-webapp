@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     createPost,
     getPosts,
@@ -45,9 +46,14 @@ jest.mock('@/lib/auth-utils', () => ({
 
 jest.mock('@/lib/permissions', () => ({
     isAdminRole: (role: unknown) => role === 'admin' || role === 'superadmin',
-    canManageRole: (actor: string, target: string) =>
-        ({ user: 0, admin: 1, superadmin: 2 }[actor] ?? -1) >
-        ({ user: 0, admin: 1, superadmin: 2 }[target] ?? 99),
+    canManageRole: (actor: string, target: string) => {
+        const levels: Record<string, number> = {
+            user: 0,
+            admin: 1,
+            superadmin: 2,
+        };
+        return (levels[actor] ?? -1) > (levels[target] ?? 99);
+    },
 }));
 
 jest.mock('@/lib/db', () => ({
@@ -83,17 +89,11 @@ jest.mock('@/lib/rate-limit', () => ({
     },
 }));
 
-const mockedVerifiedAuthSession = verifiedAuthSession as jest.MockedFunction<
-    typeof verifiedAuthSession
->;
+const mockedVerifiedAuthSession = verifiedAuthSession as jest.Mock;
 const mockedDb = db as unknown as MockDb;
-const mockedNotifyAdmins = notifyAdmins as jest.MockedFunction<typeof notifyAdmins>;
-const mockedSendNotificationEmail = sendNotificationEmail as jest.MockedFunction<
-    typeof sendNotificationEmail
->;
-const mockedEnforceActionRateLimit = enforceActionRateLimit as jest.MockedFunction<
-    typeof enforceActionRateLimit
->;
+const mockedNotifyAdmins = notifyAdmins as jest.Mock;
+const mockedSendNotificationEmail = sendNotificationEmail as jest.Mock;
+const mockedEnforceActionRateLimit = enforceActionRateLimit as jest.Mock;
 
 function mockSession(userId = 'user-1', name = 'Test User'): void {
     mockedVerifiedAuthSession.mockResolvedValue({
@@ -125,7 +125,7 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
             profession: null,
             title: null,
         },
-    } as Awaited<ReturnType<typeof verifiedAuthSession>>);
+    });
 }
 
 function mockUnauthorized(): void {
@@ -156,16 +156,18 @@ function mockUser(
     };
 }
 
-function makeFeedPostRow(overrides: Partial<{
-    id: string;
-    userId: string;
-    userName: string;
-    createdAt: Date;
-    likes: unknown[];
-    comments: unknown[];
-    likeCount: number;
-    commentCount: number;
-}> = {}) {
+function makeFeedPostRow(
+    overrides: Partial<{
+        id: string;
+        userId: string;
+        userName: string;
+        createdAt: Date;
+        likes: unknown[];
+        comments: unknown[];
+        likeCount: number;
+        commentCount: number;
+    }> = {}
+) {
     return {
         id: overrides.id ?? 'p1',
         content: 'Post content',
@@ -178,7 +180,10 @@ function makeFeedPostRow(overrides: Partial<{
         linkType: null,
         commentsEnabled: true,
         createdAt: overrides.createdAt ?? new Date(),
-        user: mockUser(overrides.userId ?? 'u1', overrides.userName ?? 'Alice'),
+        user: mockUser(
+            overrides.userId ?? 'u1',
+            overrides.userName ?? 'Alice'
+        ),
         _count: {
             comments: overrides.commentCount ?? 0,
             likes: overrides.likeCount ?? 0,
@@ -249,22 +254,14 @@ beforeEach(() => {
         post: { deleted: false, commentsEnabled: true },
         user: { role: 'user', email: 'alice@test.com', name: 'Alice' },
     });
-
-    const liveDb = db as unknown as MockDb;
-    liveDb.post = mockedDb.post;
-    liveDb.user = mockedDb.user;
-    liveDb.notification = mockedDb.notification;
-    liveDb.like = mockedDb.like;
-    liveDb.comment = mockedDb.comment;
-    liveDb.commentLike = mockedDb.commentLike;
-    liveDb.postReadStatus = mockedDb.postReadStatus;
-    liveDb.$queryRaw = mockedDb.$queryRaw;
 });
 
 describe('createPost', () => {
     it('throws "Unauthorized" if user is not authenticated', async () => {
         mockUnauthorized();
-        await expect(createPost({ content: 'Hello' })).rejects.toThrow('Unauthorized');
+        await expect(createPost({ content: 'Hello' })).rejects.toThrow(
+            'Unauthorized'
+        );
     });
 
     it('creates a post and returns serialised plain object', async () => {
@@ -293,7 +290,10 @@ describe('createPost', () => {
         mockedDb.user.findMany = jest.fn().mockResolvedValue([]);
         mockedDb.notification.createMany = jest.fn();
 
-        const result = await createPost({ content: 'Hello @Bob', tags: ['test'] });
+        const result = await createPost({
+            content: 'Hello @Bob',
+            tags: ['test'],
+        });
 
         expect(mockedDb.post.create).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -355,13 +355,17 @@ describe('createPost', () => {
 
     it('handles database error gracefully', async () => {
         mockSession();
-        mockedDb.post.create = jest.fn().mockRejectedValue(new Error('DB error'));
+        mockedDb.post.create = jest
+            .fn()
+            .mockRejectedValue(new Error('DB error'));
 
         const consoleErrorSpy = jest
             .spyOn(console, 'error')
             .mockImplementation(() => undefined);
 
-        await expect(createPost({ content: 'test' })).rejects.toThrow('Failed to save post');
+        await expect(createPost({ content: 'test' })).rejects.toThrow(
+            'Failed to save post'
+        );
 
         consoleErrorSpy.mockRestore();
     });
@@ -385,8 +389,16 @@ describe('getPosts', () => {
                 likeCount: 3,
                 commentCount: 2,
                 likes: [
-                    { userId: 'u2', reactionType: 'Like', user: { id: 'u2', name: 'Bob', image: null } },
-                    { userId: 'u3', reactionType: 'Like', user: { id: 'u3', name: 'Charlie', image: null } },
+                    {
+                        userId: 'u2',
+                        reactionType: 'Like',
+                        user: { id: 'u2', name: 'Bob', image: null },
+                    },
+                    {
+                        userId: 'u3',
+                        reactionType: 'Like',
+                        user: { id: 'u3', name: 'Charlie', image: null },
+                    },
                 ],
                 comments: [
                     { user: { id: 'u2', name: 'Bob', image: null } },
@@ -415,7 +427,9 @@ describe('getPosts', () => {
             makeFeedPostRow({ id: 'p2', userId: 'someone-else' }),
         ]);
         mockedDb.post.count = jest.fn().mockResolvedValue(2);
-        mockedDb.postReadStatus.findMany = jest.fn().mockResolvedValue([{ postId: 'p1' }]);
+        mockedDb.postReadStatus.findMany = jest
+            .fn()
+            .mockResolvedValue([{ postId: 'p1' }]);
 
         const result = await getPosts(1, 10);
 
@@ -452,7 +466,9 @@ describe('getPosts', () => {
     });
 
     it('handles fetch error gracefully', async () => {
-        mockedDb.post.findMany = jest.fn().mockRejectedValue(new Error('fail'));
+        mockedDb.post.findMany = jest
+            .fn()
+            .mockRejectedValue(new Error('fail'));
         mockedDb.post.count = jest.fn().mockResolvedValue(0);
 
         const consoleErrorSpy = jest
@@ -490,7 +506,9 @@ describe('refreshFeed', () => {
 describe('markPostsAsRead', () => {
     it('throws Unauthorized when not authenticated', async () => {
         mockUnauthorized();
-        await expect(markPostsAsRead(['p1', 'p2'])).rejects.toThrow('Unauthorized');
+        await expect(markPostsAsRead(['p1', 'p2'])).rejects.toThrow(
+            'Unauthorized'
+        );
         expect(mockedDb.postReadStatus.createMany).not.toHaveBeenCalled();
     });
 
@@ -503,8 +521,12 @@ describe('markPostsAsRead', () => {
 
     it("skips the user's own posts and inserts the rest", async () => {
         mockSession();
-        mockedDb.post.findMany = jest.fn().mockResolvedValue([{ id: 'own-post' }]);
-        mockedDb.postReadStatus.createMany = jest.fn().mockResolvedValue({ count: 1 });
+        mockedDb.post.findMany = jest
+            .fn()
+            .mockResolvedValue([{ id: 'own-post' }]);
+        mockedDb.postReadStatus.createMany = jest
+            .fn()
+            .mockResolvedValue({ count: 1 });
 
         const result = await markPostsAsRead(['own-post', 'other-post']);
 
@@ -517,7 +539,9 @@ describe('markPostsAsRead', () => {
 
     it("returns count 0 without inserting if all posts are the user's own", async () => {
         mockSession();
-        mockedDb.post.findMany = jest.fn().mockResolvedValue([{ id: 'own-post' }]);
+        mockedDb.post.findMany = jest
+            .fn()
+            .mockResolvedValue([{ id: 'own-post' }]);
         mockedDb.postReadStatus.createMany = jest.fn();
 
         const result = await markPostsAsRead(['own-post']);
@@ -529,7 +553,9 @@ describe('markPostsAsRead', () => {
     it('swallows database errors and returns count 0', async () => {
         mockSession();
         mockedDb.post.findMany = jest.fn().mockResolvedValue([]);
-        mockedDb.postReadStatus.createMany = jest.fn().mockRejectedValue(new Error('boom'));
+        mockedDb.postReadStatus.createMany = jest
+            .fn()
+            .mockRejectedValue(new Error('boom'));
 
         const consoleErrorSpy = jest
             .spyOn(console, 'error')
@@ -593,7 +619,9 @@ describe('getPublicPosts', () => {
     });
 
     it('returns empty array on error', async () => {
-        mockedDb.post.findMany = jest.fn().mockRejectedValue(new Error('fail'));
+        mockedDb.post.findMany = jest
+            .fn()
+            .mockRejectedValue(new Error('fail'));
         const consoleErrorSpy = jest
             .spyOn(console, 'error')
             .mockImplementation(() => undefined);
@@ -633,7 +661,10 @@ describe('toggleLike', () => {
             })
         );
         expect(mockedSendNotificationEmail).toHaveBeenCalledWith(
-            expect.objectContaining({ to: 'alice@test.com', notificationType: 'LIKE' })
+            expect.objectContaining({
+                to: 'alice@test.com',
+                notificationType: 'LIKE',
+            })
         );
         expect(mockedNotifyAdmins).toHaveBeenCalled();
     });
@@ -763,7 +794,9 @@ describe('addComment', () => {
         });
         mockedDb.comment.create = jest.fn();
 
-        await expect(addComment('p1', 'No')).rejects.toThrow('Comments are closed');
+        await expect(addComment('p1', 'No')).rejects.toThrow(
+            'Comments are closed'
+        );
         expect(mockedDb.comment.create).not.toHaveBeenCalled();
     });
 
@@ -783,7 +816,7 @@ describe('addComment', () => {
         });
 
         await expect(addComment('p1', 'No', 'c1')).rejects.toThrow(
-            'Invalid parent comment',
+            'Invalid parent comment'
         );
     });
 });
@@ -796,7 +829,9 @@ describe('getPostComments', () => {
                 content: 'Parent',
                 user: mockUser('u1', 'Alice'),
                 _count: { commentLikes: 1, replies: 1 },
-                commentLikes: [{ userId: 'u2', isDislike: false, reactionType: 'Like' }],
+                commentLikes: [
+                    { userId: 'u2', isDislike: false, reactionType: 'Like' },
+                ],
                 replies: [
                     {
                         id: 'r1',
@@ -844,7 +879,9 @@ describe('deletePost', () => {
             deleted: false,
             user: { role: 'user' },
         });
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
+        mockedDb.user.findUnique = jest
+            .fn()
+            .mockResolvedValue({ role: 'admin' });
         mockedDb.post.update = jest.fn().mockResolvedValue(undefined);
         await deletePost('p1');
         expect(mockedDb.post.update).toHaveBeenCalled();
@@ -868,7 +905,9 @@ describe('deletePost', () => {
             deleted: false,
             user: { role: 'superadmin' },
         });
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
+        mockedDb.user.findUnique = jest
+            .fn()
+            .mockResolvedValue({ role: 'admin' });
         mockedDb.post.update = jest.fn();
 
         await expect(deletePost('p1')).rejects.toThrow('Forbidden');
@@ -879,7 +918,9 @@ describe('deletePost', () => {
 describe('updatePost', () => {
     it('updates if owner', async () => {
         mockSession('user-1');
-        mockedDb.post.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1', deleted: false });
+        mockedDb.post.findUnique = jest
+            .fn()
+            .mockResolvedValue({ userId: 'user-1', deleted: false });
         mockedDb.post.update = jest
             .fn()
             .mockResolvedValue({ id: 'p1', content: 'Updated' });
@@ -892,18 +933,26 @@ describe('updatePost', () => {
 
     it('throws Forbidden if not owner', async () => {
         mockSession('user-2');
-        mockedDb.post.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1', deleted: false });
-        await expect(updatePost('p1', { content: 'No' })).rejects.toThrow('Forbidden');
+        mockedDb.post.findUnique = jest
+            .fn()
+            .mockResolvedValue({ userId: 'user-1', deleted: false });
+        await expect(updatePost('p1', { content: 'No' })).rejects.toThrow(
+            'Forbidden'
+        );
     });
 });
 
 describe('togglePostComments', () => {
     it('toggles commentsEnabled and returns new value', async () => {
         mockSession('user-1');
-        mockedDb.post.findUnique = jest
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-1',
+            deleted: false,
+            commentsEnabled: true,
+        });
+        mockedDb.post.update = jest
             .fn()
-            .mockResolvedValue({ userId: 'user-1', deleted: false, commentsEnabled: true });
-        mockedDb.post.update = jest.fn().mockResolvedValue({ commentsEnabled: false });
+            .mockResolvedValue({ commentsEnabled: false });
 
         const result = await togglePostComments('p1');
         expect(result.commentsEnabled).toBe(false);
@@ -924,7 +973,11 @@ describe('getUserActivity', () => {
     it('aggregates posts, comments, likes and returns sorted for the session user', async () => {
         mockSession('user-1');
         mockedDb.post.findMany = jest.fn().mockResolvedValue([
-            { id: 'p1', content: 'Post content', createdAt: new Date('2024-01-02') },
+            {
+                id: 'p1',
+                content: 'Post content',
+                createdAt: new Date('2024-01-02'),
+            },
         ]);
         mockedDb.comment.findMany = jest.fn().mockResolvedValue([
             {
@@ -949,7 +1002,6 @@ describe('getUserActivity', () => {
         expect(activities[1].type).toBe('post');
         expect(activities[2].type).toBe('comment');
 
-        // All three queries are scoped to the session user id.
         expect(mockedDb.post.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: { userId: 'user-1', deleted: false },
@@ -958,7 +1010,11 @@ describe('getUserActivity', () => {
         );
         expect(mockedDb.comment.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: { userId: 'user-1', deleted: false, post: { deleted: false } },
+                where: {
+                    userId: 'user-1',
+                    deleted: false,
+                    post: { deleted: false },
+                },
                 take: 5,
             })
         );
@@ -977,7 +1033,9 @@ describe('getUserActivity', () => {
 
     it('returns empty array on error', async () => {
         mockSession('user-1');
-        mockedDb.post.findMany = jest.fn().mockRejectedValue(new Error('fail'));
+        mockedDb.post.findMany = jest
+            .fn()
+            .mockRejectedValue(new Error('fail'));
         mockedDb.comment.findMany = jest.fn().mockResolvedValue([]);
         mockedDb.like.findMany = jest.fn().mockResolvedValue([]);
 
@@ -994,7 +1052,9 @@ describe('toggleCommentLike', () => {
 
     it('throws if not authenticated', async () => {
         mockUnauthorized();
-        await expect(toggleCommentLike(commentId)).rejects.toThrow('Unauthorized');
+        await expect(toggleCommentLike(commentId)).rejects.toThrow(
+            'Unauthorized'
+        );
     });
 
     it('removes like if same reaction exists', async () => {
@@ -1100,7 +1160,9 @@ describe('deleteComment', () => {
             post: { deleted: false },
             user: { role: 'user' },
         });
-        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'admin' });
+        mockedDb.user.findUnique = jest
+            .fn()
+            .mockResolvedValue({ role: 'admin' });
         mockedDb.comment.update = jest.fn().mockResolvedValue({});
         await deleteComment('c1');
         expect(mockedDb.comment.update).toHaveBeenCalled();
@@ -1133,7 +1195,7 @@ describe('searchUsers', () => {
                 where: {
                     name: { contains: 'Bob', mode: 'insensitive' },
                     id: { not: 'user-1' },
-                    banned: { not: true },
+                    banned: false,
                 },
             })
         );
@@ -1156,7 +1218,7 @@ describe('getAllUsers', () => {
         expect(users).toHaveLength(1);
         expect(mockedDb.user.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: { id: { not: 'user-1' }, banned: { not: true } },
+                where: { id: { not: 'user-1' }, banned: false },
             })
         );
     });

@@ -28,6 +28,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { submitSupportMessage } from "@/app/actions/support";
 import { SupportCategory } from "@/lib/support-schema";
+
 const CATEGORIES: {
     value: SupportCategory;
     label: string;
@@ -71,16 +72,24 @@ export default function SupportForm({ user }: SupportFormProps) {
             const pageUrl =
                 typeof window !== "undefined" ? window.location.href : undefined;
 
-            await submitSupportMessage({
+            const result = await submitSupportMessage({
                 category,
                 subject,
                 message,
                 pageUrl,
             });
 
+            if (!result.success) {
+                setError(result.error);
+                toast.error(result.error);
+                return;
+            }
+
             setIsSent(true);
             toast.success("Message sent — we'll get back to you soon");
         } catch (err) {
+            // Anything that still slips past the action's try/catch —
+            // e.g. an authentication failure from verifiedAuthSession().
             const msg =
                 err instanceof Error ? err.message : "Failed to send message";
             setError(msg);

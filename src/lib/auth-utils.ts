@@ -7,33 +7,26 @@ import { sendWelcomeEmail } from "./send-welcome-email";
 /** Canonical error code thrown by verifiedAuthSession() for unverified users. */
 export const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED" as const;
 
-/**
- * Returns the current server-side session, or null.
- * Use this ONLY when authentication alone (without email verification) is
- * intentionally sufficient. For anything that requires a verified account,
- * use verifiedAuthSession() instead.
- */
+const isDynamicServerUsageError = (error: unknown): boolean =>
+    !!error &&
+    typeof error === "object" &&
+    "digest" in error &&
+    (error as { digest?: string }).digest === "DYNAMIC_SERVER_USAGE";
+
 export const authSession = async () => {
     try {
         const session = await auth.api.getSession({ headers: await headers() });
         return session ?? null;
     } catch (error) {
+        // Never swallow Next.js's dynamic-rendering signal.
+        if (isDynamicServerUsageError(error)) {
+            throw error;
+        }
         console.error("Session fetch failed:", error);
         return null;
     }
 };
 
-/**
- * Server-action / API guard for authenticated AND email-verified users.
- *
- * This is the application's single, authoritative server-side security
- * boundary for verified-only operations. It derives identity exclusively
- * from the server-side session (never from client-supplied IDs/fields).
- *
- * Throws:
- *   - Error("Unauthorized")          → no session
- *   - Error(EMAIL_NOT_VERIFIED)      → authenticated but email not verified
- */
 export const verifiedAuthSession = async () => {
     const session = await authSession();
 
@@ -48,11 +41,6 @@ export const verifiedAuthSession = async () => {
     return session;
 };
 
-/**
- * Page-level guard: redirects unauthenticated users to /sign-in and
- * authenticated-but-unverified users to /verify-email.
- * Also triggers the one-time welcome email.
- */
 export const authIsRequired = async () => {
     const session = await authSession();
 
@@ -84,11 +72,6 @@ export const authIsNotRequired = async () => {
     }
 };
 
-/**
- * One-time welcome email. Uses an atomic updateMany on welcomeEmailSent
- * to avoid double-sends under concurrency. Failures are swallowed so the
- * caller's request is never blocked by email delivery.
- */
 async function sendWelcomeEmailIfNeeded(userId: string) {
     try {
         const user = await db.user.findUnique({

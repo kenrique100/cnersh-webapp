@@ -3,6 +3,7 @@
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { getCurrentReviewer } from "@/lib/reviewer-assignment";
+import { activeUserWithRoleFilter } from "@/lib/user-filters";
 import { z } from "zod";
 
 const APPEAL_WINDOW_DAYS = 30;
@@ -154,10 +155,7 @@ export async function fileAppeal(data: {
         }
 
         const superadmins = await db.user.findMany({
-            where: {
-                role: "superadmin",
-                OR: [{ banned: false }, { banned: null }],
-            },
+            where: activeUserWithRoleFilter("superadmin"),
             select: { id: true },
         });
         if (superadmins.length > 0) {

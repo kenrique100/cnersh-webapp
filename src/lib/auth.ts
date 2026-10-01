@@ -6,15 +6,8 @@ import { sendVerificationEmail } from "@/lib/send-verification-email";
 import { sendResetPasswordEmail } from "./send-reset-password-email";
 import { ac, roles } from "./permissions";
 import { admin } from "better-auth/plugins";
+import { sendCnershVerificationEmail } from "@/lib/cnersh-verification";
 
-/**
- * `next build` imports every route to collect page data, but no request is
- * ever served during a build — the auth instance is never actually invoked.
- * Without this exemption, `next build` in an environment that does not carry
- * production secrets (CI, a fresh clone, a Vercel preview build) fails at
- * the first route that transitively imports this module. A running server
- * still fails closed because every real env var is still required.
- */
 const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 function readEnv(name: string, buildPlaceholder: string): string {
@@ -46,13 +39,17 @@ export const auth = betterAuth({
       : [authBaseUrl],
 
   session: { expiresIn: 60 * 60 * 24, updateAge: 60 * 60 * 24 },
+  // IMPORTANT: do NOT enable session.cookieCache — the requirement is that
+  // session data stays server-side and HttpOnly. Cookie caching would put
+  // session state into a second browser cookie, which is not allowed.
 
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
     minPasswordLength: 10,
     sendResetPassword: async ({ user, url }) => {
-      if (!user?.email) throw new Error("User email is required for password reset");
+      if (!user?.email)
+        throw new Error("User email is required for password reset");
       await sendResetPasswordEmail({
         to: user.email,
         subject: "Reset your password",
@@ -70,7 +67,8 @@ export const auth = betterAuth({
     // invalidates them after a single successful verification.
     expiresIn: 60 * 60,
     sendVerificationEmail: async ({ user, url }) => {
-      if (!user?.email) throw new Error("User email is required for verification");
+      if (!user?.email)
+        throw new Error("User email is required for verification");
       const verificationUrl = new URL(url);
       verificationUrl.searchParams.set("callbackURL", "/feeds");
       await sendVerificationEmail({
@@ -96,6 +94,10 @@ export const auth = betterAuth({
       professionOther: { type: "string", required: false, input: true },
       title: { type: "string", required: false, input: true },
       welcomeEmailSent: { type: "boolean", default: false },
+      // The CNERSH gate. Every account — including Google — starts at
+      // false and is flipped to true only after the CNERSH email
+      // verification flow completes.
+      cnershVerified: { type: "boolean", default: false },
     },
   },
 
@@ -105,6 +107,53 @@ export const auth = betterAuth({
       clientSecret: googleClientSecret,
       prompt: "select_account",
       redirectUri: `${authBaseUrl}/api/auth/callback/google`,
+    },
+  },
+
+  // CNERSH policy hooks.
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Google users arrive with emailVerified: true but
+          // cnershVerified: false. Send the CNERSH email now.
+          // Email/password users are handled by sendOnSignUp.
+          if (user.emailVerified && !(user as { cnershVerified?: boolean }).cnershVerified) {
+            try {
+              await sendCnershVerificationEmail({
+                id: user.id,
+                email: user.email,
+                name: user.name ?? null,
+              });
+            } catch (err) {
+              console.error(
+                  "[auth.user.create.after] CNERSH send failed:",
+                  err
+              );
+            }
+          }
+        },
+      },
+      update: {
+        after: async (user) => {
+          // Email/password users flip emailVerified → true via Better
+          // Auth's built-in verify flow. Mirror that into
+          // cnershVerified. Skip Google users: they already have
+          // emailVerified: true and must complete the CNERSH flow.
+          if (user.emailVerified && !(user as { cnershVerified?: boolean }).cnershVerified) {
+            const googleAccount = await db.account.findFirst({
+              where: { userId: user.id, providerId: "google" },
+              select: { id: true },
+            });
+            if (!googleAccount) {
+              await db.user.update({
+                where: { id: user.id },
+                data: { cnershVerified: true },
+              });
+            }
+          }
+        },
+      },
     },
   },
 

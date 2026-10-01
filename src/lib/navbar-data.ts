@@ -11,6 +11,12 @@ export type NavbarUser = {
     role: string | null;
 };
 
+const isDynamicServerUsageError = (error: unknown): boolean =>
+    !!error &&
+    typeof error === "object" &&
+    "digest" in error &&
+    (error as { digest?: string }).digest === "DYNAMIC_SERVER_USAGE";
+
 export async function getNavbarData() {
     let user: NavbarUser | null = null;
     let notificationCount = 0;
@@ -42,6 +48,10 @@ export async function getNavbarData() {
             notificationCount = unread;
         }
     } catch (error) {
+        // Let Next.js know this route is dynamic — do not swallow it.
+        if (isDynamicServerUsageError(error)) {
+            throw error;
+        }
         console.error("Error fetching navbar data:", error);
     }
 

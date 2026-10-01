@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { Prisma, SAEEventType } from "@/generated/prisma";
 import { getCurrentReviewer } from "@/lib/reviewer-assignment";
 import { sendNotificationEmail } from "@/lib/send-notification-email";
+import { activeUserWithRoleFilter } from "@/lib/user-filters";
 import { z } from "zod";
 
 const SAE_REPORT_WINDOW_HOURS = 24;
@@ -37,7 +38,7 @@ async function notifyReviewerAndSuperadmins(opts: {
 }) {
     const reviewer = await getCurrentReviewer(opts.projectId);
     const superadmins = await db.user.findMany({
-        where: { role: "superadmin", OR: [{ banned: false }, { banned: null }] },
+        where: activeUserWithRoleFilter("superadmin"),
         select: { id: true, email: true, name: true },
     });
 

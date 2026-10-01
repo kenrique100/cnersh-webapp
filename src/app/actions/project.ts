@@ -13,6 +13,7 @@ import {
 import { randomBytes, createHash } from "node:crypto";
 import { enforceActionRateLimit } from "@/lib/action-rate-limit";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { activeUserFilter } from "@/lib/user-filters";
 import { z } from "zod";
 import {
     getReviewerLoads,
@@ -1001,7 +1002,7 @@ export async function getAdminUsers() {
     const admins = await db.user.findMany({
         where: {
             role: { in: ["admin", "superadmin"] },
-            OR: [{ banned: false }, { banned: null }],
+            ...activeUserFilter,
         },
         select: {
             id: true,

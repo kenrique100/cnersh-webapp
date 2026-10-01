@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { notifyCommunityActivity } from "@/lib/community-notifications";
 import { isAdminRole, canManageRole } from "@/lib/permissions";
 import { sanitizeText, sanitizeUrl } from "@/lib/sanitize";
+import { activeUserFilter } from "@/lib/user-filters";
 import { Prisma } from "@/generated/prisma";
 import { z } from "zod";
 
@@ -389,8 +390,8 @@ export async function addReply(data: {
                 where: {
                     name: { in: names },
                     role: { in: ["admin", "superadmin"] },
-                    banned: { not: true },
                     id: { not: session.user.id },
+                    ...activeUserFilter,
                 },
                 select: { id: true },
             });
@@ -484,7 +485,7 @@ export async function getCommunityUsers() {
         return await db.user.findMany({
             where: {
                 role: { in: ["admin", "superadmin"] },
-                banned: { not: true },
+                ...activeUserFilter,
             },
             select: { id: true, name: true, image: true, role: true },
             orderBy: { name: "asc" },
