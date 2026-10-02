@@ -8,6 +8,49 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ============================================================
+   Safe-area insets (Case 10)
+
+   `viewport-fit=cover` is set in src/app/layout.tsx. On notched
+   phones (iPhone X+, Android with a gesture bar) the browser
+   returns non-zero values for these env() vars; elsewhere they
+   resolve to 0px. Every consumer reads the CSS variable, never
+   the raw env() expression, so a single override here changes
+   the whole app.
+   ============================================================ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/*
+ * Tailwind v4 utilities. Use these on the cookie banner and on any
+ * fixed-position element that must clear the home indicator.
+ *
+ *   pb-safe         → padding-bottom = safe-area only
+ *   pb-safe-offset  → padding-bottom = 1rem + safe-area
+ *   mb-safe         → margin-bottom  = safe-area only
+ *   bottom-safe     → bottom         = safe-area only
+ *   bottom-safe-fab → bottom         = 1rem + safe-area (floating buttons)
+ */
+@utility pb-safe {
+  padding-bottom: var(--safe-bottom);
+}
+@utility pb-safe-offset {
+  padding-bottom: calc(1rem + var(--safe-bottom));
+}
+@utility mb-safe {
+  margin-bottom: var(--safe-bottom);
+}
+@utility bottom-safe {
+  bottom: var(--safe-bottom);
+}
+@utility bottom-safe-fab {
+  bottom: calc(1rem + var(--safe-bottom));
+}
+
 :root {
   --radius: 0.5rem;
   --background: oklch(0.985 0.004 255);
@@ -107,6 +150,26 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   Case 10 — reserve space for the cookie banner.
+   While the banner is visible it sets `data-cookie-consent="pending"` on
+   <html> and publishes its own rendered height as `--cookie-banner-height`.
+   When the attribute is present we push the body up by exactly that height,
+   so nothing underneath is covered.
+   The 8rem fallback covers the single frame between the banner mounting and
+   the ResizeObserver's first measurement.
+   ============================================================ */
+html[data-cookie-consent="pending"] body {
+  padding-bottom: var(--cookie-banner-height, 8rem);
+  transition: padding-bottom 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-cookie-consent="pending"] body {
+    transition: none;
   }
 }
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import React from "react";
 import { Toaster } from "sonner";
@@ -13,6 +13,21 @@ export const metadata: Metadata = {
     icons: { icon: "/favicon.ico" },
 };
 
+/**
+ * `viewportFit: "cover"` is what makes `env(safe-area-inset-bottom)` return a
+ * non-zero value on notched phones (iPhone X+, Android with gesture bar). The
+ * cookie banner and the bug FAB both read that variable to stay above the
+ * home indicator.
+ */
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+    themeColor: [
+        { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+        { media: "(prefers-color-scheme: dark)", color: "#030712" },
+    ],
+};
 
 export default function RootLayout({
                                        children,
