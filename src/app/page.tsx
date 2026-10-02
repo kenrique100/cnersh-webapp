@@ -8,7 +8,6 @@ import { getPosts, getPublicPosts, getUserActivity } from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
 import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
-import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import { getPages } from "@/app/actions/page-actions";
 import FeedLeftSidebar from "@/components/feed-left-sidebar";
@@ -22,7 +21,6 @@ export default async function Home() {
     const session = await authSession();
     const isVerifiedSession = Boolean(session?.user?.emailVerified);
 
-    // If authenticated, get user data and full interactive posts
     let navUser: {
         name: string | null;
         email: string;
@@ -35,44 +33,41 @@ export default async function Home() {
     let authPosts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
     let isAdmin = false;
 
-    // For unauthenticated users, get public posts
     let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
 
-    // Fetch dynamic pages for navbar
+    // getPages() is served from the cached "pages" tag, so this is near-free
+    // on every navigation that previously hit the DB.
     let pages: Awaited<ReturnType<typeof getPages>> = [];
-
     try {
         pages = await getPages();
     } catch (error) {
         console.error("Error fetching pages:", error);
     }
 
-    // User activity for sidebar
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
 
     if (isVerifiedSession && session) {
         try {
-            const [user, unreadCount, postsResult, activity] = await Promise.all([
-                db.user.findUnique({
-                    where: { id: session.user.id },
-                    select: { name: true, email: true, image: true, role: true, gender: true },
-                }),
+            // The session already carries name / email / image / gender /
+            // role, so no separate user query is needed.
+            navUser = {
+                name: session.user.name,
+                email: session.user.email,
+                image: session.user.image ?? null,
+                gender: session.user.gender ?? null,
+                role: session.user.role ?? null,
+            };
+            userGender = navUser.gender;
+            isAdmin = navUser.role === "admin" || navUser.role === "superadmin";
+
+            // NOTE: `getUserActivity` takes no arguments in the current
+            // action definition (the limit is hard-coded inside the action).
+            const [unreadCount, postsResult, activity] = await Promise.all([
                 getUnreadNotificationCount(),
                 getPosts(1, 20),
-                getUserActivity(8),
+                getUserActivity(),
             ]);
 
-            if (user) {
-                navUser = {
-                    name: user.name,
-                    email: user.email,
-                    image: user.image,
-                    gender: user.gender,
-                    role: user.role,
-                };
-                userGender = user.gender;
-                isAdmin = user.role === "admin" || user.role === "superadmin";
-            }
             notificationCount = unreadCount;
             authPosts = postsResult.posts;
             userActivity = activity;
@@ -81,14 +76,12 @@ export default async function Home() {
         }
     }
 
-    // Fetch public posts as fallback if not authenticated or user data is missing
     if (!navUser) {
-        publicPosts = await getPublicPosts(20);
+        publicPosts = await getPublicPosts();
     }
 
     return (
         <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
-            {/* Navbar */}
             <Navbar user={navUser} notificationCount={notificationCount} pages={pages} />
             {isVerifiedSession && session?.user?.id && (
                 <UserStorageGuard userId={session.user.id} />
@@ -96,7 +89,6 @@ export default async function Home() {
 
             <div className="mx-auto max-w-[1200px] px-1 sm:px-4 py-3 sm:py-6">
                 <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">
-                    {/* Left Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
                         {isVerifiedSession && session && navUser ? (
                             <FeedLeftSidebar
@@ -112,9 +104,7 @@ export default async function Home() {
                         )}
                     </aside>
 
-                    {/* Main Feed Column */}
                     <main className="w-full max-w-none sm:max-w-[600px] min-w-0">
-                        {/* Mobile introduction for unauthenticated users */}
                         {!isVerifiedSession && (
                             <div className="lg:hidden mb-4">
                                 <Card className="border border-blue-900 bg-blue-800 rounded-lg overflow-hidden">
@@ -152,7 +142,6 @@ export default async function Home() {
                             </div>
                         )}
 
-                        {/* Mobile Protocol Tracker - shown at top on small screens */}
                         <div className="xl:hidden mb-4">
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                                 <CardHeader className="pb-2">
@@ -170,14 +159,12 @@ export default async function Home() {
                             </Card>
                         </div>
 
-                        {/* Feed Header */}
                         <div className="flex items-center gap-3 px-2 mb-4">
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
                             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Community Feed</span>
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
                         </div>
 
-                        {/* Feed: Interactive for verified users, read-only for guests/unverified */}
                         {isVerifiedSession && session && navUser ? (
                             <FeedClient
                                 initialPosts={JSON.parse(JSON.stringify(authPosts))}
@@ -192,7 +179,6 @@ export default async function Home() {
                         )}
                     </main>
 
-                    {/* Right Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedRightSidebar
                             userActivity={JSON.parse(JSON.stringify(userActivity))}

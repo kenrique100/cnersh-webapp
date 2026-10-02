@@ -6,6 +6,7 @@ import {
     deleteTopic,
     editReply,
     getCommunityUsers,
+    getCommunityUnreadCount,
     getTopics,
     getTopicWithReplies,
     markTopicRead,
@@ -69,10 +70,6 @@ import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyCommunityActivity } from "@/lib/community-notifications";
 
-/* ------------------------------------------------------------------ */
-/* Typed handles to the mocked module surface                          */
-/* ------------------------------------------------------------------ */
-
 const mockedAuthSession = verifiedAuthSession as jest.Mock;
 const mockedNotifyCommunityActivity = notifyCommunityActivity as jest.Mock;
 
@@ -93,10 +90,6 @@ interface MockDb {
 
 const mockedDb = db as unknown as MockDb;
 
-/* ------------------------------------------------------------------ */
-/* Helpers                                                             */
-/* ------------------------------------------------------------------ */
-
 function mockSession(
     userId = "admin-1",
     name = "Test User",
@@ -111,10 +104,6 @@ function mockSession(
         },
     });
 }
-
-/* ------------------------------------------------------------------ */
-/* Fixture reset                                                       */
-/* ------------------------------------------------------------------ */
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -145,6 +134,7 @@ beforeEach(() => {
 
     mockedDb.communityReply = {
         create: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
         findUnique: jest.fn().mockResolvedValue({
             id: "r1",
             userId: "admin-1",
@@ -186,10 +176,6 @@ beforeEach(() => {
     // Default authenticated admin session.
     mockSession("admin-1", "Admin");
 });
-
-/* ================================================================== */
-/* createTopic                                                         */
-/* ================================================================== */
 
 describe("createTopic", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -308,10 +294,6 @@ describe("createTopic", () => {
     });
 });
 
-/* ================================================================== */
-/* getTopics                                                           */
-/* ================================================================== */
-
 describe("getTopics", () => {
     it("rejects ordinary users before reading community data", async () => {
         mockSession("user-1", "User", "user");
@@ -416,10 +398,6 @@ describe("getTopics", () => {
     });
 });
 
-/* ================================================================== */
-/* getTopicWithReplies                                                 */
-/* ================================================================== */
-
 describe("getTopicWithReplies", () => {
     it("returns the topic with nested replies", async () => {
         mockedDb.communityTopic.findUnique.mockResolvedValue({
@@ -444,10 +422,6 @@ describe("getTopicWithReplies", () => {
         expect(result).toBeNull();
     });
 });
-
-/* ================================================================== */
-/* markTopicRead                                                       */
-/* ================================================================== */
 
 describe("markTopicRead", () => {
     it("upserts the per-topic cursor and returns the recomputed count", async () => {
@@ -495,10 +469,6 @@ describe("markTopicRead", () => {
         );
     });
 });
-
-/* ================================================================== */
-/* addReply                                                            */
-/* ================================================================== */
 
 describe("addReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -620,10 +590,6 @@ describe("addReply", () => {
     });
 });
 
-/* ================================================================== */
-/* getCommunityUsers                                                   */
-/* ================================================================== */
-
 describe("getCommunityUsers", () => {
     it("returns list of users", async () => {
         mockedDb.user.findMany.mockResolvedValue([
@@ -649,10 +615,6 @@ describe("getCommunityUsers", () => {
         consoleErrorSpy.mockRestore();
     });
 });
-
-/* ================================================================== */
-/* deleteTopic                                                         */
-/* ================================================================== */
 
 describe("deleteTopic", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -698,10 +660,6 @@ describe("deleteTopic", () => {
         expect(mockedDb.communityTopic.update).not.toHaveBeenCalled();
     });
 });
-
-/* ================================================================== */
-/* deleteReply                                                         */
-/* ================================================================== */
 
 describe("deleteReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -753,10 +711,6 @@ describe("deleteReply", () => {
         );
     });
 });
-
-/* ================================================================== */
-/* editReply                                                           */
-/* ================================================================== */
 
 describe("editReply", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -822,10 +776,6 @@ describe("editReply", () => {
     });
 });
 
-/* ================================================================== */
-/* toggleTopicLike                                                     */
-/* ================================================================== */
-
 describe("toggleTopicLike", () => {
     it("throws Unauthorized when not authenticated", async () => {
         mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
@@ -882,10 +832,6 @@ describe("toggleTopicLike", () => {
         expect(mockedDb.communityTopicLike.update).toHaveBeenCalled();
     });
 });
-
-/* ================================================================== */
-/* voteOnPoll                                                          */
-/* ================================================================== */
 
 describe("voteOnPoll", () => {
     it("throws Unauthorized when not authenticated", async () => {
@@ -947,5 +893,118 @@ describe("voteOnPoll", () => {
 
         expect(result.success).toBe(true);
         expect(result.votes["admin-1"]).toBeUndefined();
+    });
+});
+
+describe("getCommunityUnreadCount", () => {
+    it("returns 0 when not authenticated (no throw)", async () => {
+        mockedAuthSession.mockRejectedValue(new Error("Unauthorized"));
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(0);
+        expect(mockedDb.$queryRaw).not.toHaveBeenCalled();
+    });
+
+    it("returns 0 for regular users (role check via the raw query)", async () => {
+        mockSession("user-1", "User", "user");
+        mockedDb.$queryRaw.mockResolvedValueOnce([
+            { role: "user", topicCount: BigInt(5), replyCount: BigInt(3) },
+        ]);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(0);
+        expect(mockedDb.$queryRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns 0 when the user row is missing", async () => {
+        mockSession("ghost-1", "Ghost", "admin");
+        mockedDb.$queryRaw.mockResolvedValueOnce([]);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(0);
+    });
+
+    it("sums topicCount and replyCount for an admin", async () => {
+        mockSession("admin-1", "Admin", "admin");
+        mockedDb.$queryRaw.mockResolvedValueOnce([
+            { role: "admin", topicCount: BigInt(5), replyCount: BigInt(3) },
+        ]);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(8);
+    });
+
+    it("sums topicCount and replyCount for a superadmin", async () => {
+        mockSession("super-1", "Super", "superadmin");
+        mockedDb.$queryRaw.mockResolvedValueOnce([
+            {
+                role: "superadmin",
+                topicCount: BigInt(12),
+                replyCount: BigInt(0),
+            },
+        ]);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(12);
+    });
+
+    it("issues exactly one db query (not four separate Prisma calls)", async () => {
+        mockSession("admin-1", "Admin", "admin");
+        mockedDb.$queryRaw.mockResolvedValueOnce([
+            { role: "admin", topicCount: BigInt(1), replyCount: BigInt(1) },
+        ]);
+
+        await getCommunityUnreadCount();
+
+        // The single aggregate query is the only database round trip.
+        expect(mockedDb.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(mockedDb.user.findUnique).not.toHaveBeenCalled();
+        expect(mockedDb.communityReadStatus.findUnique).not.toHaveBeenCalled();
+        expect(mockedDb.communityTopic.count).not.toHaveBeenCalled();
+        expect(mockedDb.communityReply.count).not.toHaveBeenCalled();
+    });
+
+    it("converts BigInt counts to plain numbers", async () => {
+        mockSession("admin-1", "Admin", "admin");
+        mockedDb.$queryRaw.mockResolvedValueOnce([
+            { role: "admin", topicCount: BigInt(10), replyCount: BigInt(20) },
+        ]);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(typeof result).toBe("number");
+        expect(result).toBe(30);
+    });
+
+    it("handles null role from the LEFT JOIN gracefully", async () => {
+        mockSession("admin-1", "Admin", "admin");
+        mockedDb.$queryRaw.mockResolvedValueOnce([
+            { role: null, topicCount: BigInt(0), replyCount: BigInt(0) },
+        ]);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(0);
+    });
+
+    it("returns 0 and logs when the raw query throws", async () => {
+        mockSession("admin-1", "Admin", "admin");
+        mockedDb.$queryRaw.mockRejectedValueOnce(new Error("DB down"));
+
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => undefined);
+
+        const result = await getCommunityUnreadCount();
+
+        expect(result).toBe(0);
+        expect(consoleErrorSpy).toHaveBeenCalled();
+
+        consoleErrorSpy.mockRestore();
     });
 });

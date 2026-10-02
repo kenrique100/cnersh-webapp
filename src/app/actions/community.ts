@@ -71,7 +71,7 @@ function cleanUrls(values: string[] | undefined, max: number) {
 
 type RawReactionRow = { emoji: string; userId: string };
 
-/** Group a flat list of (emoji, userId) rows into `{ emoji: [userId, …] }`. */
+/** Group a flat list of (emoji, userId) rows into `{ emoji: [userId, …]`. */
 function groupReactions(rows: RawReactionRow[] | undefined): Record<string, string[]> {
     const grouped: Record<string, string[]> = {};
     for (const row of rows ?? []) {
@@ -80,11 +80,6 @@ function groupReactions(rows: RawReactionRow[] | undefined): Record<string, stri
     return grouped;
 }
 
-/**
- * Recursively transform a Prisma reply (with `reactions` as raw rows) into
- * the shape consumed by the client: `reactions` is a `{ emoji: userId[] }`
- * map, and `children` is the same transformation applied depth-first.
- */
 function serializeReply(reply: Record<string, unknown>): Record<string, unknown> {
     const { reactions, children, ...rest } = reply;
     return {
@@ -686,8 +681,6 @@ export async function voteOnPoll(replyId: string, optionIndex: number) {
     return { success: true, votes };
 }
 
-const COMMUNITY_EPOCH = new Date(0);
-
 export async function getCommunityUnreadCount(): Promise<number> {
     let session;
     try {
@@ -696,38 +689,44 @@ export async function getCommunityUnreadCount(): Promise<number> {
         return 0;
     }
 
-    const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-    });
-    if (!isAdminRole(user?.role)) return 0;
+    const userId = session.user.id;
 
     try {
-        const status = await db.communityReadStatus.findUnique({
-            where: { userId: session.user.id },
-            select: { lastReadAt: true },
-        });
-        const lastReadAt = status?.lastReadAt ?? COMMUNITY_EPOCH;
+        const rows = await db.$queryRaw<
+            Array<{ role: string | null; topicCount: bigint; replyCount: bigint }>
+        >(
+            Prisma.sql`
+                SELECT
+                    u.role,
+                    (
+                        SELECT COUNT(*)::bigint
+                        FROM "community_topic"
+                        WHERE "deleted" = false
+                          AND "userId" <> ${userId}
+                          AND "createdAt" > COALESCE(rs."lastReadAt", '1970-01-01'::timestamp)
+                    ) AS "topicCount",
+                    (
+                        SELECT COUNT(*)::bigint
+                        FROM "community_reply" r
+                        INNER JOIN "community_topic" t ON t.id = r."topicId"
+                        WHERE r."deleted" = false
+                          AND t."deleted" = false
+                          AND r."userId" <> ${userId}
+                          AND r."createdAt" > COALESCE(rs."lastReadAt", '1970-01-01'::timestamp)
+                    ) AS "replyCount"
+                FROM "user" u
+                LEFT JOIN "community_read_status" rs ON rs."userId" = u.id
+                WHERE u.id = ${userId}
+                LIMIT 1
+            `
+        );
 
-        const [topicCount, replyCount] = await Promise.all([
-            db.communityTopic.count({
-                where: {
-                    deleted: false,
-                    createdAt: { gt: lastReadAt },
-                    userId: { not: session.user.id },
-                },
-            }),
-            db.communityReply.count({
-                where: {
-                    deleted: false,
-                    createdAt: { gt: lastReadAt },
-                    userId: { not: session.user.id },
-                    topic: { deleted: false },
-                },
-            }),
-        ]);
+        if (rows.length === 0) return 0;
 
-        return topicCount + replyCount;
+        const { role, topicCount, replyCount } = rows[0];
+        if (!isAdminRole(role)) return 0;
+
+        return Number(topicCount) + Number(replyCount);
     } catch (error) {
         console.error("Error fetching community unread count:", error);
         return 0;

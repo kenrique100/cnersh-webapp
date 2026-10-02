@@ -60,9 +60,14 @@ function getAllowedRoles(currentRole: string): readonly Role[] {
 const formSchema = z.object({
     name: z.string().min(3, "Name is required"),
     email: z.string().email("Email is required"),
-    role: z.enum(ROLE_OPTIONS, "Role is required"),
-    password: z.string().min(10, "Password must be at least 10 characters").optional(),
+    role: z.enum(ROLE_OPTIONS, { error: "Role is required" }),
+    password: z
+        .string()
+        .min(10, "Password must be at least 10 characters")
+        .optional(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface ManagementData {
     stats: {
@@ -111,16 +116,22 @@ function formatAction(action: string) {
         .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function UserManagementClient({ users, currentRole, managementData }: UserManagementClientProps) {
+export default function UserManagementClient({
+                                                 users,
+                                                 currentRole,
+                                                 managementData,
+                                             }: UserManagementClientProps) {
     const router = useRouter();
     const allowedRoles = getAllowedRoles(currentRole);
 
-    const form = useForm({
+    // Explicit generic + a valid default for `role` avoids RHF inferring the
+    // field type as `never` (which then rejects `form.setValue("role", …)`).
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
             email: "",
-            role: undefined,
+            role: "user",
         },
     });
 
@@ -141,7 +152,7 @@ export default function UserManagementClient({ users, currentRole, managementDat
         }
     }, [user, form]);
 
-    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const onSubmit = async (values: FormValues) => {
         try {
             if (!user.id) {
                 if (!values.password) {
@@ -153,7 +164,7 @@ export default function UserManagementClient({ users, currentRole, managementDat
                     name: values.name,
                     email: values.email,
                     password: values.password,
-                    role: values.role as Role,
+                    role: values.role,
                 });
 
                 toast.success("New user created successfully");
@@ -161,12 +172,12 @@ export default function UserManagementClient({ users, currentRole, managementDat
                 const result = await updateManagedUser(user.id, {
                     name: values.name,
                     email: values.email,
-                    role: values.role as Role,
+                    role: values.role,
                 });
 
                 if (result.roleChanged) {
                     toast.success(
-                        `Role changed to "${values.role}". User must sign in again to activate their new privileges.`
+                        `Role changed to "${values.role}". User must sign in again to activate their new privileges.`,
                     );
                 } else {
                     toast.success("User updated successfully");
@@ -193,7 +204,6 @@ export default function UserManagementClient({ users, currentRole, managementDat
     const stats = managementData?.stats;
     const recentActivity = managementData?.recentActivity ?? [];
 
-    // Stat cards config
     const statCards = [
         {
             title: "New Registrations",
@@ -371,8 +381,12 @@ export default function UserManagementClient({ users, currentRole, managementDat
                 {/* Page Header */}
                 <div className="flex flex-col sm:flex-row w-full justify-between gap-3 sm:items-center">
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage and monitor user accounts</p>
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                            User Management
+                        </h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Manage and monitor user accounts
+                        </p>
                     </div>
                     <Button
                         className="cursor-pointer w-full sm:w-auto h-9 sm:h-10 text-sm"
@@ -427,7 +441,9 @@ export default function UserManagementClient({ users, currentRole, managementDat
                         <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 dark:border-gray-800">
                             <div className="flex items-center gap-2">
                                 <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Recent Administrative Activity</h2>
+                                <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                                    Recent Administrative Activity
+                                </h2>
                             </div>
                             <Link
                                 href="/admin/audit-logs"
@@ -439,13 +455,18 @@ export default function UserManagementClient({ users, currentRole, managementDat
                         <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[320px] overflow-y-auto">
                             {recentActivity.length > 0 ? (
                                 recentActivity.map((log) => (
-                                    <div key={log.id} className="flex items-start gap-3 px-4 sm:px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                    <div
+                                        key={log.id}
+                                        className="flex items-start gap-3 px-4 sm:px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                                    >
                                         <div className="mt-0.5">
                                             <ActionIcon action={log.action} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
-                                                <span className="font-medium">{formatAction(log.action)}</span>
+                                                <span className="font-medium">
+                                                    {formatAction(log.action)}
+                                                </span>
                                             </p>
                                             {log.details && (
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
@@ -456,7 +477,9 @@ export default function UserManagementClient({ users, currentRole, managementDat
                                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                                     by {log.adminName ?? "System"}
                                                 </span>
-                                                <span className="text-xs text-gray-300 dark:text-gray-600">•</span>
+                                                <span className="text-xs text-gray-300 dark:text-gray-600">
+                                                    •
+                                                </span>
                                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                                     {timeAgo(log.createdAt)}
                                                 </span>
@@ -484,7 +507,9 @@ export default function UserManagementClient({ users, currentRole, managementDat
                     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
                         <div className="flex items-center gap-2 px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 dark:border-gray-800">
                             <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">System / User Health</h2>
+                            <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                                System / User Health
+                            </h2>
                         </div>
                         <div className="p-4 sm:p-5 space-y-4">
                             <HealthIndicator
@@ -513,19 +538,25 @@ export default function UserManagementClient({ users, currentRole, managementDat
                                 </h3>
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-600 dark:text-gray-400">Active Users</span>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                                            Active Users
+                                        </span>
                                         <span className="text-xs font-semibold text-gray-900 dark:text-white">
                                             {stats?.activeUsers ?? 0}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-600 dark:text-gray-400">Suspended</span>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                                            Suspended
+                                        </span>
                                         <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
                                             {stats?.bannedUsers ?? 0}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-600 dark:text-gray-400">New (30d)</span>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                                            New (30d)
+                                        </span>
                                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                                             {stats?.newRegistrations ?? 0}
                                         </span>
@@ -537,7 +568,10 @@ export default function UserManagementClient({ users, currentRole, managementDat
                 </div>
 
                 {/* User Management Table */}
-                <div id="users-table" className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div
+                    id="users-table"
+                    className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm"
+                >
                     <div className="flex flex-col sm:flex-row w-full justify-between gap-3 sm:items-center px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-gray-600 dark:text-gray-400" />
@@ -553,11 +587,11 @@ export default function UserManagementClient({ users, currentRole, managementDat
                     {/* Mobile: card list */}
                     <div className="flex flex-col gap-3 p-3 sm:hidden">
                         {users.length > 0 ? (
-                            users.map((u) => (
-                                <MobileUserCard key={u.id} user={u} />
-                            ))
+                            users.map((u) => <MobileUserCard key={u.id} user={u} />)
                         ) : (
-                            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No users found.</p>
+                            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">
+                                No users found.
+                            </p>
                         )}
                     </div>
 
@@ -590,7 +624,15 @@ function ActionIcon({ action }: { action: string }) {
 }
 
 /** System health status indicator */
-function HealthIndicator({ label, status, icon }: { label: string; status: "operational" | "warning" | "error"; icon: React.ReactNode }) {
+function HealthIndicator({
+                             label,
+                             status,
+                             icon,
+                         }: {
+    label: string;
+    status: "operational" | "warning" | "error";
+    icon: React.ReactNode;
+}) {
     const statusConfig = {
         operational: {
             color: "text-green-600 dark:text-green-400",
@@ -620,11 +662,15 @@ function HealthIndicator({ label, status, icon }: { label: string; status: "oper
                 <div className={`p-1.5 rounded-md ${config.bg} ${config.color}`}>
                     {icon}
                 </div>
-                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {label}
+                </span>
             </div>
             <div className="flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${config.dot}`} />
-                <span className={`text-xs font-medium ${config.color}`}>{config.text}</span>
+                <span className={`text-xs font-medium ${config.color}`}>
+                    {config.text}
+                </span>
             </div>
         </div>
     );
