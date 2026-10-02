@@ -3,6 +3,7 @@ import {
     createPost,
     getPosts,
     getPublicPosts,
+    getCachedPublicPosts,
     toggleLike,
     addComment,
     getPostComments,
@@ -26,6 +27,7 @@ import { db } from '@/lib/db';
 import { notifyAdmins } from '@/lib/notify-admins';
 import { sendNotificationEmail } from '@/lib/send-notification-email';
 import { enforceActionRateLimit } from '@/lib/action-rate-limit';
+import { revalidateTag } from '@/lib/revalidate';
 
 type MockTable = Record<string, jest.Mock>;
 
@@ -39,6 +41,20 @@ interface MockDb {
     postReadStatus: MockTable;
     $queryRaw: jest.Mock;
 }
+
+// Only `unstable_cache` is taken from `next/cache` — it is made transparent so
+// `getCachedPublicPosts` behaves like `getPublicPosts` inside tests.
+jest.mock('next/cache', () => ({
+    unstable_cache: <T extends (...args: any[]) => any>(fn: T) => fn,
+}));
+
+// The wrapper at `@/lib/revalidate` is the module the action imports.
+// Mocking it directly means the assertion sees the one-argument call shape
+// used in `feed.ts` (`revalidateTag("public-posts")`), not the underlying
+// two-argument call to `next/cache`.
+jest.mock('@/lib/revalidate', () => ({
+    revalidateTag: jest.fn(),
+}));
 
 jest.mock('@/lib/auth-utils', () => ({
     verifiedAuthSession: jest.fn(),
@@ -94,6 +110,7 @@ const mockedDb = db as unknown as MockDb;
 const mockedNotifyAdmins = notifyAdmins as jest.Mock;
 const mockedSendNotificationEmail = sendNotificationEmail as jest.Mock;
 const mockedEnforceActionRateLimit = enforceActionRateLimit as jest.Mock;
+const mockedRevalidateTag = revalidateTag as unknown as jest.Mock;
 
 function mockSession(userId = 'user-1', name = 'Test User'): void {
     mockedVerifiedAuthSession.mockResolvedValue({
@@ -113,6 +130,7 @@ function mockSession(userId = 'user-1', name = 'Test User'): void {
             name,
             email: `${name.toLowerCase().replace(/\s+/g, '')}@test.com`,
             emailVerified: true,
+            cnershVerified: true,
             createdAt: new Date(),
             updatedAt: new Date(),
             image: null,
@@ -368,6 +386,33 @@ describe('createPost', () => {
         );
 
         consoleErrorSpy.mockRestore();
+    });
+
+    it('invalidates the public-posts cache after a successful create', async () => {
+        mockSession();
+        const now = new Date();
+        mockedDb.post.create = jest.fn().mockResolvedValue({
+            id: 'p1',
+            content: 'Hello',
+            image: null,
+            video: null,
+            images: [],
+            videos: [],
+            tags: [],
+            linkUrl: null,
+            linkType: null,
+            commentsEnabled: true,
+            userId: 'user-1',
+            deleted: false,
+            createdAt: now,
+            updatedAt: now,
+            user: mockUser('user-1', 'Alice'),
+            _count: { comments: 0, likes: 0 },
+        });
+
+        await createPost({ content: 'Hello' });
+
+        expect(mockedRevalidateTag).toHaveBeenCalledWith('public-posts');
     });
 });
 
@@ -627,6 +672,116 @@ describe('getPublicPosts', () => {
             .mockImplementation(() => undefined);
         expect(await getPublicPosts()).toEqual([]);
         consoleErrorSpy.mockRestore();
+    });
+});
+
+describe('getCachedPublicPosts', () => {
+    it('delegates to getPublicPosts (cache is transparent in tests)', async () => {
+        mockedDb.post.findMany = jest.fn().mockResolvedValue([
+            {
+                id: 'pp1',
+                content: 'Public',
+                user: mockUser('u1', 'Alice'),
+                _count: { comments: 0, likes: 0 },
+                likes: [{ reactionType: 'Like' }],
+            },
+        ]);
+
+        const posts = await getCachedPublicPosts(20);
+
+        expect(posts).toHaveLength(1);
+        expect(posts[0].likes).toEqual([{ reactionType: 'Like' }]);
+        expect(mockedDb.post.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ take: 20 })
+        );
+    });
+
+    it('returns an empty array when the underlying query fails', async () => {
+        mockedDb.post.findMany = jest
+            .fn()
+            .mockRejectedValue(new Error('fail'));
+        const consoleErrorSpy = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
+
+        const posts = await getCachedPublicPosts(20);
+        expect(posts).toEqual([]);
+
+        consoleErrorSpy.mockRestore();
+    });
+});
+
+describe('public-posts cache invalidation', () => {
+    it('createPost invalidates the public-posts tag', async () => {
+        mockSession();
+        const now = new Date();
+        mockedDb.post.create = jest.fn().mockResolvedValue({
+            id: 'p1',
+            content: 'Hello',
+            image: null,
+            video: null,
+            images: [],
+            videos: [],
+            tags: [],
+            linkUrl: null,
+            linkType: null,
+            commentsEnabled: true,
+            userId: 'user-1',
+            deleted: false,
+            createdAt: now,
+            updatedAt: now,
+            user: mockUser('user-1', 'Alice'),
+            _count: { comments: 0, likes: 0 },
+        });
+
+        await createPost({ content: 'Hello' });
+
+        expect(mockedRevalidateTag).toHaveBeenCalledWith('public-posts');
+    });
+
+    it('updatePost invalidates the public-posts tag', async () => {
+        mockSession('user-1');
+        mockedDb.post.findUnique = jest
+            .fn()
+            .mockResolvedValue({ userId: 'user-1', deleted: false });
+        mockedDb.post.update = jest
+            .fn()
+            .mockResolvedValue({ id: 'p1', content: 'Updated' });
+
+        await updatePost('p1', { content: 'Updated' });
+
+        expect(mockedRevalidateTag).toHaveBeenCalledWith('public-posts');
+    });
+
+    it('deletePost invalidates the public-posts tag', async () => {
+        mockSession('user-1');
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-1',
+            deleted: false,
+            user: { role: 'user' },
+        });
+        mockedDb.user.findUnique = jest.fn().mockResolvedValue({ role: 'user' });
+        mockedDb.post.update = jest.fn().mockResolvedValue(undefined);
+
+        await deletePost('p1');
+
+        expect(mockedRevalidateTag).toHaveBeenCalledWith('public-posts');
+    });
+
+    it('togglePostComments invalidates the public-posts tag', async () => {
+        mockSession('user-1');
+        mockedDb.post.findUnique = jest.fn().mockResolvedValue({
+            userId: 'user-1',
+            deleted: false,
+            commentsEnabled: true,
+        });
+        mockedDb.post.update = jest
+            .fn()
+            .mockResolvedValue({ commentsEnabled: false });
+
+        await togglePostComments('p1');
+
+        expect(mockedRevalidateTag).toHaveBeenCalledWith('public-posts');
     });
 });
 

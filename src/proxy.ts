@@ -18,24 +18,25 @@ const PROTECTED_PREFIXES = [
     "/community",
     "/admin",
 ] as const;
+const AUTH_PREFIXES = [
+    "/sign-in",
+    "/sign-up",
+    "/verify-email",
+    "/request-password",
+    "/reset-password",
+] as const;
 
 function isProtectedPath(pathname: string): boolean {
     return PROTECTED_PREFIXES.some(
-        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
 
-/**
- * Better Auth's default session cookie. HTTPS deployments may use the
- * __Secure- prefix.
- *
- * The proxy only checks *presence* of the cookie. It does not authenticate
- * against Redis or the database. Authoritative verification happens in the
- * server layout via `authIsRequired()`, which uses the cached
- * `authSession()` lookup.
- *
- * @see https://better-auth.com/docs/plugins/test-utils
- */
+function isAuthPath(pathname: string): boolean {
+    return AUTH_PREFIXES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+}
 function hasSessionCookie(request: NextRequest): boolean {
     return (
         request.cookies.has("better-auth.session_token") ||
@@ -45,27 +46,31 @@ function hasSessionCookie(request: NextRequest): boolean {
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
     const { pathname } = request.nextUrl;
+    const isDevelopment = process.env.NODE_ENV !== "production";
 
-    const nonce = createCspNonce();
-    const csp = buildContentSecurityPolicy({
-        nonce,
-        isDevelopment: process.env.NODE_ENV !== "production",
-    });
+    const needsNonce = isProtectedPath(pathname) || isAuthPath(pathname);
 
+    let csp: string;
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-nonce", nonce);
+
+    if (needsNonce) {
+        const nonce = createCspNonce();
+        csp = buildContentSecurityPolicy({ nonce, isDevelopment });
+        requestHeaders.set("x-nonce", nonce);
+    } else {
+        csp = buildContentSecurityPolicy({ isDevelopment });
+    }
+
     requestHeaders.set("Content-Security-Policy", csp);
 
     if (isProtectedPath(pathname) && !hasSessionCookie(request)) {
-        // No session cookie at all → definitely unauthenticated. Redirect
-        // here so unauthenticated users never reach the layout. Everything
-        // else (invalid cookie, expired session, unverified user) is handled
-        // authoritatively by `authIsRequired()` in the layout.
         const url = request.nextUrl.clone();
         url.pathname = "/sign-in";
         url.search = "";
         url.searchParams.set("next", pathname);
-        return NextResponse.redirect(url);
+        const redirectResponse = NextResponse.redirect(url);
+        redirectResponse.headers.set("Content-Security-Policy", csp);
+        return redirectResponse;
     }
 
     const response = NextResponse.next({ request: { headers: requestHeaders } });

@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
-import { getPosts, getPublicPosts, getUserActivity } from "@/app/actions/feed";
+import {
+    getCachedPublicPosts,
+    getPosts,
+    getUserActivity,
+} from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
 import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
@@ -15,11 +19,9 @@ import UserStorageGuard from "@/components/user-storage-guard";
 import FeedRightSidebar from "@/components/feed-right-sidebar";
 import ProjectTracker from "@/components/project-tracker";
 
-export const dynamic = "force-dynamic";
-
 export default async function Home() {
     const session = await authSession();
-    const isVerifiedSession = Boolean(session?.user?.emailVerified);
+    const isVerifiedSession = Boolean(session?.user?.cnershVerified);
 
     let navUser: {
         name: string | null;
@@ -33,10 +35,10 @@ export default async function Home() {
     let authPosts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
     let isAdmin = false;
 
-    let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
+    let publicPosts: Awaited<ReturnType<typeof getCachedPublicPosts>> = [];
 
-    // getPages() is served from the cached "pages" tag, so this is near-free
-    // on every navigation that previously hit the DB.
+    // getPages() is served from the cached "pages" tag (Case 5), so this is
+    // near-free on every navigation that previously hit the DB.
     let pages: Awaited<ReturnType<typeof getPages>> = [];
     try {
         pages = await getPages();
@@ -58,10 +60,9 @@ export default async function Home() {
                 role: session.user.role ?? null,
             };
             userGender = navUser.gender;
-            isAdmin = navUser.role === "admin" || navUser.role === "superadmin";
+            isAdmin =
+                navUser.role === "admin" || navUser.role === "superadmin";
 
-            // NOTE: `getUserActivity` takes no arguments in the current
-            // action definition (the limit is hard-coded inside the action).
             const [unreadCount, postsResult, activity] = await Promise.all([
                 getUnreadNotificationCount(),
                 getPosts(1, 20),
@@ -72,17 +73,25 @@ export default async function Home() {
             authPosts = postsResult.posts;
             userActivity = activity;
         } catch (error) {
-            console.error("Error fetching authenticated homepage data:", error);
+            console.error(
+                "Error fetching authenticated homepage data:",
+                error
+            );
         }
     }
 
     if (!navUser) {
-        publicPosts = await getPublicPosts();
+        // Cached across requests — shared by every logged-out visitor.
+        publicPosts = await getCachedPublicPosts(20);
     }
 
     return (
         <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
-            <Navbar user={navUser} notificationCount={notificationCount} pages={pages} />
+            <Navbar
+                user={navUser}
+                notificationCount={notificationCount}
+                pages={pages}
+            />
             {isVerifiedSession && session?.user?.id && (
                 <UserStorageGuard userId={session.user.id} />
             )}
@@ -122,19 +131,36 @@ export default async function Home() {
                                             </div>
                                             <div>
                                                 <h1 className="text-lg font-bold text-white">
-                                                    Ethical review for health research in Cameroon
+                                                    Ethical review for health
+                                                    research in Cameroon
                                                 </h1>
                                                 <p className="text-sm text-blue-100 mt-1">
-                                                    CNERSH reviews research involving human participants to protect their rights, safety, and well-being.
+                                                    CNERSH reviews research
+                                                    involving human participants
+                                                    to protect their rights,
+                                                    safety, and well-being.
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 mt-4">
-                                            <Button asChild size="sm" className="bg-white text-blue-800 hover:bg-blue-50 text-xs font-medium">
-                                                <Link href="/sign-up">Create account</Link>
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                className="bg-white text-blue-800 hover:bg-blue-50 text-xs font-medium"
+                                            >
+                                                <Link href="/sign-up">
+                                                    Create account
+                                                </Link>
                                             </Button>
-                                            <Button asChild size="sm" variant="outline" className="border-blue-200 bg-transparent text-white hover:bg-blue-900 text-xs font-medium">
-                                                <Link href="/sign-in">Sign in</Link>
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-blue-200 bg-transparent text-white hover:bg-blue-900 text-xs font-medium"
+                                            >
+                                                <Link href="/sign-in">
+                                                    Sign in
+                                                </Link>
                                             </Button>
                                         </div>
                                     </CardContent>
@@ -150,7 +176,8 @@ export default async function Home() {
                                         Track Your Protocol
                                     </CardTitle>
                                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                        Enter your protocol tracking code to check status.
+                                        Enter your protocol tracking code to
+                                        check status.
                                     </p>
                                 </CardHeader>
                                 <CardContent className="pt-0">
@@ -161,13 +188,17 @@ export default async function Home() {
 
                         <div className="flex items-center gap-3 px-2 mb-4">
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Community Feed</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                Community Feed
+                            </span>
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
                         </div>
 
                         {isVerifiedSession && session && navUser ? (
                             <FeedClient
-                                initialPosts={JSON.parse(JSON.stringify(authPosts))}
+                                initialPosts={JSON.parse(
+                                    JSON.stringify(authPosts)
+                                )}
                                 currentUserId={session.user.id}
                                 currentUserName={navUser.name}
                                 currentUserImage={navUser.image}
@@ -175,13 +206,19 @@ export default async function Home() {
                                 isAdmin={isAdmin}
                             />
                         ) : (
-                            <PublicFeedClient posts={JSON.parse(JSON.stringify(publicPosts))} />
+                            <PublicFeedClient
+                                posts={JSON.parse(
+                                    JSON.stringify(publicPosts)
+                                )}
+                            />
                         )}
                     </main>
 
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedRightSidebar
-                            userActivity={JSON.parse(JSON.stringify(userActivity))}
+                            userActivity={JSON.parse(
+                                JSON.stringify(userActivity)
+                            )}
                             isLoggedIn={isVerifiedSession}
                         />
                     </aside>
