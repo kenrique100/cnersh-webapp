@@ -7,7 +7,10 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   transpilePackages: ["sanitize-html", "htmlparser2", "domhandler", "domutils", "dom-serializer", "domelementtype", "entities"],
-  serverExternalPackages: ["pdf-page-counter"],
+  // `pg` and `@prisma/adapter-pg` must be externalised so Next does not try
+  // to bundle them. Both use Node-native APIs that break under the
+  // Next server compiler. `pdf-page-counter` was already externalised.
+  serverExternalPackages: ["pdf-page-counter", "pg", "@prisma/adapter-pg"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
