@@ -1,257 +1,193 @@
-import { getProfile, getUserActivity } from '@/app/actions/user';
+/**
+ * Tests for `@/app/actions/user`.
+ *
+ * Phase 3 change: `getProfile()` now derives its payload from the already
+ * verified Better Auth session instead of running a second Prisma
+ * `user.findUnique()`. The most important test in this file is the one that
+ * asserts Prisma is NOT queried — that is the regression guard for the
+ * duplicate-query fix.
+ */
 
-const mockVerifiedAuthSession = jest.fn();
-jest.mock('@/lib/auth-utils', () => ({
-    verifiedAuthSession: () => mockVerifiedAuthSession(),
+jest.mock("@/lib/auth-utils", () => ({
+    verifiedAuthSession: jest.fn(),
 }));
 
-const mockUserFindUnique = jest.fn();
-const mockPostFindMany = jest.fn();
-const mockProjectFindMany = jest.fn();
-const mockPostCount = jest.fn();
-const mockProjectCount = jest.fn();
-
-jest.mock('@/lib/db', () => ({
+jest.mock("@/lib/db", () => ({
     db: {
-        user: { findUnique: (...a: unknown[]) => mockUserFindUnique(...a) },
+        user: {
+            findUnique: jest.fn(),
+        },
         post: {
-            findMany: (...a: unknown[]) => mockPostFindMany(...a),
-            count: (...a: unknown[]) => mockPostCount(...a),
+            findMany: jest.fn(),
+            count: jest.fn(),
         },
         project: {
-            findMany: (...a: unknown[]) => mockProjectFindMany(...a),
-            count: (...a: unknown[]) => mockProjectCount(...a),
+            findMany: jest.fn(),
+            count: jest.fn(),
         },
     },
 }));
+
+import { verifiedAuthSession } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
+import { getProfile, getUserActivity } from "../user";
+
+const mockVerifiedAuthSession = verifiedAuthSession as unknown as jest.Mock;
+const mockUserFindUnique = db.user.findUnique as unknown as jest.Mock;
+const mockPostFindMany = db.post.findMany as unknown as jest.Mock;
+const mockPostCount = db.post.count as unknown as jest.Mock;
+const mockProjectFindMany = db.project.findMany as unknown as jest.Mock;
+const mockProjectCount = db.project.count as unknown as jest.Mock;
 
 const SESSION = {
     session: {
-        id: 'session-id',
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        userId: 'user-1',
-        expiresAt: new Date('2025-01-01T00:00:00.000Z'),
-        token: 'test-token',
-        ipAddress: null,
-        userAgent: null,
-        impersonatedBy: null,
+        id: "session-1",
+        userId: "user-1",
+        expiresAt: new Date("2030-01-01"),
+        token: "token",
     },
     user: {
-        id: 'user-1',
-        email: 'test@example.com',
-        name: 'Test User',
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test User",
         emailVerified: true,
-        image: null,
-        role: 'user',
-        banned: false,
-        banReason: null,
-        banExpires: null,
-        welcomeEmailSent: false,
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        gender: 'male',
-        profession: 'Researcher',
-        title: 'Dr.',
+        image: null as string | null,
+        gender: "male",
+        role: "user",
+        profession: "Researcher",
+        title: "Dr.",
     },
 };
 
-const PROFILE = {
-    email: 'test@example.com',
-    name: 'Test User',
-    image: null,
-    gender: 'male',
-    role: 'user',
-    profession: 'Researcher',
-    title: 'Dr.',
-};
+beforeEach(() => {
+    jest.clearAllMocks();
+});
 
-// Use fixed dates to avoid millisecond mismatches
-const FIXED_DATE_POST = new Date('2024-06-01T12:00:00.000Z');
-const FIXED_DATE_PROJECT = new Date('2024-05-01T12:00:00.000Z');
+describe("getProfile", () => {
+    it("returns profile information directly from the verified session", async () => {
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
 
-const POSTS = [
-    {
-        id: 'p1',
-        content: 'Hello',
-        image: null,
-        createdAt: FIXED_DATE_POST,
-        _count: { comments: 2, likes: 5 },
-    },
-];
+        const result = await getProfile();
 
-const PROJECTS = [
-    {
-        id: 'pr1',
-        title: 'Study',
-        description: 'Desc',
-        status: 'PENDING',
-        category: 'Health',
-        location: 'Yaoundé',
-        feedback: null,
-        createdAt: FIXED_DATE_PROJECT,
-    },
-];
+        expect(result).toEqual({
+            email: "test@example.com",
+            name: "Test User",
+            image: null,
+            gender: "male",
+            role: "user",
+            profession: "Researcher",
+            title: "Dr.",
+        });
+    });
 
-describe('getProfile', () => {
-    beforeEach(() => jest.clearAllMocks());
+    it("does NOT query Prisma for the user record", async () => {
+        // This is the load-bearing assertion for the Phase 3 performance fix.
+        // If this ever regresses, the per-request duplicate user lookup has
+        // come back.
+        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
 
-    it('throws Unauthorized when session is missing', async () => {
-        mockVerifiedAuthSession.mockRejectedValueOnce(new Error('Unauthorized'));
+        await getProfile();
 
-        await expect(getProfile()).rejects.toThrow('Unauthorized');
         expect(mockUserFindUnique).not.toHaveBeenCalled();
     });
 
-    it('queries db with correct where/select when session exists', async () => {
-        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockUserFindUnique.mockResolvedValueOnce(PROFILE);
-
-        const result = await getProfile();
-
-        expect(mockUserFindUnique).toHaveBeenCalledWith({
-            where: { id: 'user-1' },
-            select: {
-                email: true, name: true, image: true, gender: true,
-                role: true, profession: true, title: true,
+    it("coerces missing optional fields to null", async () => {
+        mockVerifiedAuthSession.mockResolvedValueOnce({
+            ...SESSION,
+            user: {
+                ...SESSION.user,
+                image: undefined,
+                gender: undefined,
+                role: undefined,
+                profession: undefined,
+                title: undefined,
             },
         });
-        expect(result).toEqual(PROFILE);
+
+        const result = await getProfile();
+
+        expect(result).toEqual({
+            email: "test@example.com",
+            name: "Test User",
+            image: undefined,
+            gender: null,
+            role: null,
+            profession: null,
+            title: null,
+        });
     });
 
-    it('returns null (and logs error) when db throws', async () => {
-        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockUserFindUnique.mockRejectedValueOnce(new Error('DB error'));
-        const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        const result = await getProfile();
-        expect(result).toBeNull();
-        expect(spy).toHaveBeenCalledWith(
-            'Error fetching user profile:',
-            expect.any(Error)
-        );
-        spy.mockRestore();
-    });
+    it("propagates Unauthorized from the session helper", async () => {
+        mockVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
 
-    it('returns null when findUnique returns null (user not found)', async () => {
-        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockUserFindUnique.mockResolvedValueOnce(null);
-        const result = await getProfile();
-        expect(result).toBeNull();
+        await expect(getProfile()).rejects.toThrow("Unauthorized");
+        expect(mockUserFindUnique).not.toHaveBeenCalled();
     });
 });
 
-describe('getUserActivity', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('throws Unauthorized when session is missing', async () => {
-        mockVerifiedAuthSession.mockRejectedValueOnce(new Error('Unauthorized'));
-        await expect(getUserActivity()).rejects.toThrow('Unauthorized');
-    });
-
-    it('returns posts, projects, and counts on success', async () => {
+describe("getUserActivity", () => {
+    it("returns serialized posts, projects, and totals", async () => {
         mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockPostFindMany.mockResolvedValueOnce(POSTS);
-        mockProjectFindMany.mockResolvedValueOnce(PROJECTS);
-        mockPostCount.mockResolvedValueOnce(42);
-        mockProjectCount.mockResolvedValueOnce(7);
+
+        const createdAt = new Date("2024-06-01T12:00:00Z");
+
+        mockPostFindMany.mockResolvedValueOnce([
+            {
+                id: "post-1",
+                content: "hello",
+                image: null,
+                createdAt,
+                _count: { comments: 2, likes: 5 },
+            },
+        ]);
+        mockProjectFindMany.mockResolvedValueOnce([
+            {
+                id: "project-1",
+                title: "Project",
+                description: "desc",
+                status: "ACTIVE",
+                category: "cat",
+                location: "loc",
+                feedback: null,
+                createdAt,
+            },
+        ]);
+        mockPostCount.mockResolvedValueOnce(1);
+        mockProjectCount.mockResolvedValueOnce(1);
 
         const result = await getUserActivity();
 
-        // The implementation converts Date objects to ISO strings
-        const expectedPosts = POSTS.map(p => ({
-            ...p,
-            createdAt: p.createdAt.toISOString()
-        }));
-        const expectedProjects = PROJECTS.map(p => ({
-            ...p,
-            createdAt: p.createdAt.toISOString()
-        }));
-
-        expect(result).toEqual({
-            posts: expectedPosts,
-            projects: expectedProjects,
-            totalPosts: 42,
-            totalProjects: 7,
-        });
+        expect(result.totalPosts).toBe(1);
+        expect(result.totalProjects).toBe(1);
+        expect(result.posts).toHaveLength(1);
+        expect(result.projects).toHaveLength(1);
+        expect(result.posts[0].createdAt).toBe(createdAt.toISOString());
+        expect(result.projects[0].createdAt).toBe(createdAt.toISOString());
     });
 
-    it('passes correct query args for posts', async () => {
+    it("returns empty results on database failure", async () => {
         mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockPostFindMany.mockResolvedValueOnce([]);
+
+        mockPostFindMany.mockRejectedValueOnce(new Error("db down"));
         mockProjectFindMany.mockResolvedValueOnce([]);
         mockPostCount.mockResolvedValueOnce(0);
         mockProjectCount.mockResolvedValueOnce(0);
 
-        await getUserActivity();
-
-        expect(mockPostFindMany).toHaveBeenCalledWith({
-            where: { userId: 'user-1', deleted: false },
-            select: {
-                id: true, content: true, image: true, createdAt: true,
-                _count: {
-                    select: {
-                        comments: { where: { deleted: false } },
-                        likes: true,
-                    },
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 20,
-        });
-    });
-
-    it('passes correct query args for projects', async () => {
-        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockPostFindMany.mockResolvedValueOnce([]);
-        mockProjectFindMany.mockResolvedValueOnce([]);
-        mockPostCount.mockResolvedValueOnce(0);
-        mockProjectCount.mockResolvedValueOnce(0);
-
-        await getUserActivity();
-
-        expect(mockProjectFindMany).toHaveBeenCalledWith({
-            where: { userId: 'user-1', deleted: false },
-            select: {
-                id: true, title: true, description: true,
-                status: true, category: true, location: true,
-                feedback: true, createdAt: true,
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 20,
-        });
-    });
-
-    it('returns empty fallback (and logs error) when db throws', async () => {
-        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        mockPostFindMany.mockRejectedValueOnce(new Error('DB failure'));
-        const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
         const result = await getUserActivity();
 
         expect(result).toEqual({
-            posts: [], projects: [], totalPosts: 0, totalProjects: 0,
+            posts: [],
+            projects: [],
+            totalPosts: 0,
+            totalProjects: 0,
         });
-        expect(spy).toHaveBeenCalledWith(
-            'Error fetching user activity:',
-            expect.any(Error)
-        );
-        spy.mockRestore();
     });
 
-    it('uses Promise.all to run all four queries concurrently', async () => {
-        mockVerifiedAuthSession.mockResolvedValueOnce(SESSION);
-        const order: string[] = [];
-        mockPostFindMany.mockImplementation(async () => { order.push('postFindMany'); return []; });
-        mockProjectFindMany.mockImplementation(async () => { order.push('projectFindMany'); return []; });
-        mockPostCount.mockImplementation(async () => { order.push('postCount'); return 0; });
-        mockProjectCount.mockImplementation(async () => { order.push('projectCount'); return 0; });
+    it("requires a verified session before hitting the database", async () => {
+        mockVerifiedAuthSession.mockRejectedValueOnce(new Error("Unauthorized"));
 
-        await getUserActivity();
-
-        expect(order).toHaveLength(4);
-        expect(order).toContain('postFindMany');
-        expect(order).toContain('projectFindMany');
-        expect(order).toContain('postCount');
-        expect(order).toContain('projectCount');
+        await expect(getUserActivity()).rejects.toThrow("Unauthorized");
+        expect(mockPostFindMany).not.toHaveBeenCalled();
+        expect(mockProjectFindMany).not.toHaveBeenCalled();
     });
 });

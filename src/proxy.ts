@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { buildContentSecurityPolicy, createCspNonce } from "@/lib/csp";
-import { auth } from "@/lib/auth";
+
 const PROTECTED_PREFIXES = [
     "/dashboard",
     "/feeds",
@@ -24,6 +24,25 @@ function isProtectedPath(pathname: string): boolean {
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
     );
 }
+
+/**
+ * Better Auth's default session cookie. HTTPS deployments may use the
+ * __Secure- prefix.
+ *
+ * The proxy only checks *presence* of the cookie. It does not authenticate
+ * against Redis or the database. Authoritative verification happens in the
+ * server layout via `authIsRequired()`, which uses the cached
+ * `authSession()` lookup.
+ *
+ * @see https://better-auth.com/docs/plugins/test-utils
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+    return (
+        request.cookies.has("better-auth.session_token") ||
+        request.cookies.has("__Secure-better-auth.session_token")
+    );
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
     const { pathname } = request.nextUrl;
 
@@ -37,29 +56,16 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);
 
-    if (isProtectedPath(pathname)) {
-        // Authoritative check: server-side session, not a client cookie value.
-        const session = await auth.api
-            .getSession({ headers: request.headers })
-            .catch(() => null);
-
-        // Case A — unauthenticated.
-        if (!session) {
-            const url = request.nextUrl.clone();
-            url.pathname = "/sign-in";
-            url.search = "";
-            url.searchParams.set("next", pathname);
-            return NextResponse.redirect(url);
-        }
-
-        // Case B — authenticated but not verified.
-        if (!session.user.emailVerified) {
-            const url = request.nextUrl.clone();
-            url.pathname = "/verify-email";
-            url.search = "";
-            return NextResponse.redirect(url);
-        }
-
+    if (isProtectedPath(pathname) && !hasSessionCookie(request)) {
+        // No session cookie at all → definitely unauthenticated. Redirect
+        // here so unauthenticated users never reach the layout. Everything
+        // else (invalid cookie, expired session, unverified user) is handled
+        // authoritatively by `authIsRequired()` in the layout.
+        const url = request.nextUrl.clone();
+        url.pathname = "/sign-in";
+        url.search = "";
+        url.searchParams.set("next", pathname);
+        return NextResponse.redirect(url);
     }
 
     const response = NextResponse.next({ request: { headers: requestHeaders } });

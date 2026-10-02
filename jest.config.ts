@@ -10,20 +10,11 @@ const config: Config = {
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
-    // ── Path aliases ─────────────────────────────────────────────
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@/generated/prisma(.*)$": "<rootDir>/src/generated/prisma$1",
 
-    // ── Local mocks for Next.js ──────────────────────────────────
     "^next/server$": "<rootDir>/src/__mocks__/next/server.ts",
     "^next/navigation$": "<rootDir>/src/__mocks__/next/navigation.ts",
-
-    // ── ESM-only `better-auth` family ────────────────────────────
-    // Redirect every entry point the app imports to a CJS stub so
-    // Jest never has to require() the .mjs files under
-    // node_modules/better-auth/dist/.
-    //
-    // Order matters: more specific paths must come first.
     "^better-auth/plugins/admin/access$":
         "<rootDir>/src/__mocks__/better-auth-plugins-admin-access.ts",
     "^better-auth/plugins/access$":
@@ -34,7 +25,10 @@ const config: Config = {
         "<rootDir>/src/__mocks__/better-auth-prisma-adapter.ts",
     "^better-auth/next-js$":
         "<rootDir>/src/__mocks__/better-auth-next-js.ts",
-    "^better-auth$": "<rootDir>/src/__mocks__/better-auth.ts",
+    "^better-auth$":
+        "<rootDir>/src/__mocks__/better-auth.ts",
+    "^@better-auth/redis-storage$":
+        "<rootDir>/src/__mocks__/better-auth-redis-storage.ts",
   },
   transformIgnorePatterns: [
     "/node_modules/(?!(sanitize-html|htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)/)",

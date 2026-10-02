@@ -6,23 +6,15 @@ import { db } from "@/lib/db";
 export async function getProfile() {
     const session = await verifiedAuthSession();
 
-    try {
-        return await db.user.findUnique({
-            where: { id: session.user.id },
-            select: {
-                email: true,
-                name: true,
-                image: true,
-                gender: true,
-                role: true,
-                profession: true,
-                title: true,
-            },
-        });
-    } catch (error) {
-        console.error("Error fetching user profile:", error);
-        return null;
-    }
+    return {
+        email: session.user.email,
+        name: session.user.name,
+        image: session.user.image,
+        gender: session.user.gender ?? null,
+        role: session.user.role ?? null,
+        profession: session.user.profession ?? null,
+        title: session.user.title ?? null,
+    };
 }
 
 export async function getUserActivity() {

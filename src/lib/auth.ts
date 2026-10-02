@@ -7,6 +7,7 @@ import { sendResetPasswordEmail } from "./send-reset-password-email";
 import { ac, roles } from "./permissions";
 import { admin } from "better-auth/plugins";
 import { sendCnershVerificationEmail } from "@/lib/cnersh-verification";
+import { authSecondaryStorage } from "./auth-redis-storage";
 
 const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
@@ -30,6 +31,7 @@ const googleClientSecret = readEnv(
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
+  secondaryStorage: authSecondaryStorage,
   secret: authSecret,
   baseURL: authBaseUrl,
   trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
@@ -39,9 +41,6 @@ export const auth = betterAuth({
       : [authBaseUrl],
 
   session: { expiresIn: 60 * 60 * 24, updateAge: 60 * 60 * 24 },
-  // IMPORTANT: do NOT enable session.cookieCache — the requirement is that
-  // session data stays server-side and HttpOnly. Cookie caching would put
-  // session state into a second browser cookie, which is not allowed.
 
   emailAndPassword: {
     enabled: true,
