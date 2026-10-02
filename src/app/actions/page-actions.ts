@@ -1,7 +1,10 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
+import { revalidateTag } from "@/lib/revalidate";
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 async function requireAdmin() {
     const session = await verifiedAuthSession();
@@ -18,9 +21,18 @@ async function requireAdmin() {
     return session;
 }
 
-export async function getPages() {
-    try {
-        const pages = await db.page.findMany({
+/**
+ * Cached navigation-page tree.
+ *
+ * `relationLoadStrategy: "join"` collapses the previous three-level include
+ * into a single LATERAL JOIN. Requires the `relationJoins` preview flag on
+ * the Prisma generator.
+ *
+ * Tagged with CACHE_TAGS.PAGES. Every mutation below revalidates that tag.
+ */
+const getPagesCached = unstable_cache(
+    async () =>
+        db.page.findMany({
             where: { parentId: null },
             include: {
                 items: {
@@ -44,8 +56,18 @@ export async function getPages() {
                 },
             },
             orderBy: { createdAt: "asc" },
-        });
-        return pages;
+            relationLoadStrategy: "join",
+        }),
+    ["pages-tree"],
+    {
+        tags: [CACHE_TAGS.PAGES],
+        revalidate: false,
+    },
+);
+
+export async function getPages() {
+    try {
+        return await getPagesCached();
     } catch (error) {
         console.error("Error fetching pages:", error);
         return [];
@@ -76,6 +98,7 @@ export async function createPage(data: {
         include: { items: true },
     });
 
+    revalidateTag(CACHE_TAGS.PAGES);
     return page;
 }
 
@@ -89,6 +112,7 @@ export async function updatePage(pageId: string, data: { name: string }) {
         data: { name: data.name.trim() },
     });
 
+    revalidateTag(CACHE_TAGS.PAGES);
     return page;
 }
 
@@ -99,6 +123,7 @@ export async function deletePage(pageId: string) {
         where: { id: pageId },
     });
 
+    revalidateTag(CACHE_TAGS.PAGES);
     return { success: true };
 }
 
@@ -117,6 +142,7 @@ export async function addPageItem(
         },
     });
 
+    revalidateTag(CACHE_TAGS.PAGES);
     return pageItem;
 }
 
@@ -137,6 +163,7 @@ export async function updatePageItem(
         },
     });
 
+    revalidateTag(CACHE_TAGS.PAGES);
     return pageItem;
 }
 
@@ -147,5 +174,6 @@ export async function deletePageItem(itemId: string) {
         where: { id: itemId },
     });
 
+    revalidateTag(CACHE_TAGS.PAGES);
     return { success: true };
 }

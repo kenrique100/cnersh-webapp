@@ -8,8 +8,12 @@ jest.mock("next/navigation", () => ({
     useRouter: jest.fn(() => ({ push: jest.fn() })),
 }));
 
-jest.mock("@/lib/auth-client", () => ({
-    authClient: { signOut: jest.fn() },
+jest.mock("@/lib/sign-out", () => ({
+    signOutAndClearBrowserData: jest.fn(),
+}));
+
+jest.mock("sonner", () => ({
+    toast: { error: jest.fn(), success: jest.fn() },
 }));
 
 jest.mock("next/link", () => {
@@ -101,8 +105,12 @@ const { usePathname, useRouter } = jest.requireMock("next/navigation") as {
     useRouter: jest.Mock;
 };
 
-const { authClient } = jest.requireMock("@/lib/auth-client") as {
-    authClient: { signOut: jest.Mock };
+const { signOutAndClearBrowserData } = jest.requireMock("@/lib/sign-out") as {
+    signOutAndClearBrowserData: jest.Mock;
+};
+
+const { toast } = jest.requireMock("sonner") as {
+    toast: { error: jest.Mock };
 };
 
 const { markCommunityRead } = jest.requireMock("@/app/actions/community") as {
@@ -220,11 +228,21 @@ describe("DashboardSidebar", () => {
     });
 
     describe("logout", () => {
-        it("calls signOut on logout click", () => {
-            authClient.signOut.mockResolvedValueOnce(undefined);
+        it("signs out and clears the user's browser data on logout click", () => {
+            signOutAndClearBrowserData.mockResolvedValueOnce(undefined);
             render(<DashboardSidebar collapsed={false} onToggle={onToggle} />);
             fireEvent.click(screen.getByText("Logout"));
-            expect(authClient.signOut).toHaveBeenCalledTimes(1);
+            expect(signOutAndClearBrowserData).toHaveBeenCalledTimes(1);
+            expect(signOutAndClearBrowserData).toHaveBeenCalledWith("/sign-in");
+        });
+
+        it("shows an error toast when sign out fails", async () => {
+            signOutAndClearBrowserData.mockRejectedValueOnce(new Error("boom"));
+            render(<DashboardSidebar collapsed={false} onToggle={onToggle} />);
+            await act(async () => {
+                fireEvent.click(screen.getByText("Logout"));
+            });
+            expect(toast.error).toHaveBeenCalledWith("Sign out failed. Please try again.");
         });
 
         it("shows Logout text when expanded", () => {

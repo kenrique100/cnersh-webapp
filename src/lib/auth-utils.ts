@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "./auth";
@@ -13,21 +14,36 @@ const isDynamicServerUsageError = (error: unknown): boolean =>
     "digest" in error &&
     (error as { digest?: string }).digest === "DYNAMIC_SERVER_USAGE";
 
-export const authSession = async () => {
+/**
+ * One authoritative session lookup per React server render.
+ *
+ * React cache() deduplicates calls to this function during the same
+ * server render/request. API routes and independent requests still
+ * perform their own authentication checks.
+ */
+export const authSession = cache(async () => {
     try {
         const session = await auth.api.getSession({ headers: await headers() });
+
         return session ?? null;
     } catch (error) {
         // Never swallow Next.js's dynamic-rendering signal.
         if (isDynamicServerUsageError(error)) {
             throw error;
         }
+
         console.error("Session fetch failed:", error);
         return null;
     }
-};
+});
 
-export const verifiedAuthSession = async () => {
+/**
+ * Requires an authenticated and email-verified session.
+ *
+ * Uses the cached authSession(), so multiple calls during the same server
+ * render reuse a single underlying session lookup.
+ */
+export const verifiedAuthSession = cache(async () => {
     const session = await authSession();
 
     if (!session) {
@@ -39,7 +55,7 @@ export const verifiedAuthSession = async () => {
     }
 
     return session;
-};
+});
 
 export const authIsRequired = async () => {
     const session = await authSession();

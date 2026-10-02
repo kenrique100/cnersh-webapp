@@ -1,42 +1,3 @@
-/**
- * -----------------------------------------------------------------------------
- * Rate limiting — shared-store sliding window with trusted-edge IP resolution
- * -----------------------------------------------------------------------------
- *
- * DEPLOYMENT ASSUMPTION
- * ---------------------
- * The application trusts exactly ONE upstream hop to set the client IP header.
- * Whichever platform is in front of Next.js (Vercel, Cloudflare, an nginx you
- * control) MUST strip client-supplied forwarding headers and rewrite them with
- * the real peer address. If the process is reachable directly from the
- * internet — a public port, a misconfigured load balancer, a stray sidecar —
- * the header can be spoofed and every rate limit here is best-effort only.
- *
- * Selection is controlled by `TRUSTED_PROXY_MODE`:
- *
- *   "vercel"     use x-vercel-forwarded-for (rewritten by Vercel)
- *   "cloudflare" use cf-connecting-ip       (rewritten by Cloudflare)
- *   "forwarded"  use x-forwarded-for        (edge MUST overwrite this header)
- *   "none"       do not trust any header; all callers share one bucket
- *
- * When unset:
- *   - If `process.env.VERCEL` is present, default to "vercel".
- *   - Otherwise default to "forwarded". This preserves existing behavior but
- *     should be made explicit in production by setting the env var.
- *
- * There is no per-request socket peer available in Next.js, so a programmatic
- * allowlist of proxy IPs is not enforceable here — the enforcement must happen
- * at the edge. That is why this file trusts a *header*, chosen by platform,
- * rather than trying to inspect the connection.
- *
- * FAIL-CLOSED BEHAVIOR
- * ---------------------
- * If the shared store (Redis) is unreachable, requests are rejected with 503.
- * If no trusted header is present (or mode is "none"), all callers share the
- * `ip:unknown` bucket — which is blunt but never bypassable.
- * -----------------------------------------------------------------------------
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
 import { RateLimitConfig, RATE_LIMITS } from "@/lib/rate-limit-config";
@@ -73,14 +34,6 @@ function sanitizeIpCandidate(value: string | null | undefined): string | null {
     return trimmed.slice(0, MAX_IP_LENGTH);
 }
 
-/**
- * Returns the client IP according to the selected trust mode, or null when
- * no trusted source is available.
- *
- * Never reads a header unless the mode explicitly selects it. In particular,
- * "none" mode intentionally ignores x-forwarded-for / x-real-ip / cf-connecting-ip
- * / x-vercel-forwarded-for, even if the client sends them.
- */
 function getClientIp(req: NextRequest): string | null {
     switch (TRUST_MODE) {
         case "vercel":

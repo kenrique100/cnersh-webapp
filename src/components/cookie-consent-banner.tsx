@@ -39,10 +39,10 @@ function readConsent(): ConsentSnapshot {
   } catch {
     // localStorage throws when storage is disabled or partitioned; fall back to the consent cookie.
     const cookieValue = document.cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith("cookie_consent="))
-      ?.split("=")[1];
+        .split(";")
+        .map((part) => part.trim())
+        .find((part) => part.startsWith("cookie_consent="))
+        ?.split("=")[1];
 
     return cookieValue === "accepted" || cookieValue === "rejected" ? cookieValue : "unstored";
   }
@@ -65,12 +65,57 @@ export default function CookieConsentBanner() {
     banner appears immediately afterwards - without setting state from an effect.
   */
   const consent = React.useSyncExternalStore(
-    subscribeToConsent,
-    readConsent,
-    readServerConsent,
+      subscribeToConsent,
+      readConsent,
+      readServerConsent,
   );
 
   const visible = consent === "unstored";
+
+  const bannerRef = React.useRef<HTMLDivElement | null>(null);
+
+  /**
+   * While the banner is visible, mark `<html>` so globals.css can reserve
+   * bottom space on `<body>`. The attribute is removed on unmount and when
+   * the visitor records a choice.
+   */
+  React.useEffect(() => {
+    if (!visible) return;
+    const root = document.documentElement;
+    root.setAttribute("data-cookie-consent", "pending");
+    return () => {
+      root.removeAttribute("data-cookie-consent");
+    };
+  }, [visible]);
+
+  /**
+   * Publish the banner's real rendered height as `--cookie-banner-height`
+   * on `<html>`. The reservation rule in globals.css reads this variable.
+   * A ResizeObserver keeps it accurate across viewport changes, orientation
+   * changes, and font-size changes. Fallback value (8rem) lives in CSS in
+   * case the effect runs a frame late.
+   */
+  React.useEffect(() => {
+    const el = bannerRef.current;
+    if (!visible || !el) return;
+
+    const root = document.documentElement;
+    const publish = () => {
+      root.style.setProperty(
+          "--cookie-banner-height",
+          `${el.offsetHeight}px`,
+      );
+    };
+    publish();
+
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--cookie-banner-height");
+    };
+  }, [visible]);
 
   const saveChoice = (choice: ConsentChoice): void => {
     try {
@@ -92,7 +137,12 @@ export default function CookieConsentBanner() {
   if (!visible) return null;
 
   return (
-      <div className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-4">
+      <div
+          ref={bannerRef}
+          role="region"
+          aria-label="Cookie consent"
+          className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur px-4 pt-4 pb-safe-offset"
+      >
         <div className="mx-auto max-w-6xl flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             We use cookies to improve your experience. You can accept all or reject

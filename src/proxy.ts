@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { buildContentSecurityPolicy, createCspNonce } from "@/lib/csp";
-import { auth } from "@/lib/auth";
+
 const PROTECTED_PREFIXES = [
     "/dashboard",
     "/feeds",
@@ -18,48 +18,59 @@ const PROTECTED_PREFIXES = [
     "/community",
     "/admin",
 ] as const;
+const AUTH_PREFIXES = [
+    "/sign-in",
+    "/sign-up",
+    "/verify-email",
+    "/request-password",
+    "/reset-password",
+] as const;
 
 function isProtectedPath(pathname: string): boolean {
     return PROTECTED_PREFIXES.some(
-        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
+
+function isAuthPath(pathname: string): boolean {
+    return AUTH_PREFIXES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+}
+function hasSessionCookie(request: NextRequest): boolean {
+    return (
+        request.cookies.has("better-auth.session_token") ||
+        request.cookies.has("__Secure-better-auth.session_token")
+    );
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
     const { pathname } = request.nextUrl;
+    const isDevelopment = process.env.NODE_ENV !== "production";
 
-    const nonce = createCspNonce();
-    const csp = buildContentSecurityPolicy({
-        nonce,
-        isDevelopment: process.env.NODE_ENV !== "production",
-    });
+    const needsNonce = isProtectedPath(pathname) || isAuthPath(pathname);
 
+    let csp: string;
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-nonce", nonce);
+
+    if (needsNonce) {
+        const nonce = createCspNonce();
+        csp = buildContentSecurityPolicy({ nonce, isDevelopment });
+        requestHeaders.set("x-nonce", nonce);
+    } else {
+        csp = buildContentSecurityPolicy({ isDevelopment });
+    }
+
     requestHeaders.set("Content-Security-Policy", csp);
 
-    if (isProtectedPath(pathname)) {
-        // Authoritative check: server-side session, not a client cookie value.
-        const session = await auth.api
-            .getSession({ headers: request.headers })
-            .catch(() => null);
-
-        // Case A — unauthenticated.
-        if (!session) {
-            const url = request.nextUrl.clone();
-            url.pathname = "/sign-in";
-            url.search = "";
-            url.searchParams.set("next", pathname);
-            return NextResponse.redirect(url);
-        }
-
-        // Case B — authenticated but not verified.
-        if (!session.user.emailVerified) {
-            const url = request.nextUrl.clone();
-            url.pathname = "/verify-email";
-            url.search = "";
-            return NextResponse.redirect(url);
-        }
-
+    if (isProtectedPath(pathname) && !hasSessionCookie(request)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/sign-in";
+        url.search = "";
+        url.searchParams.set("next", pathname);
+        const redirectResponse = NextResponse.redirect(url);
+        redirectResponse.headers.set("Content-Security-Policy", csp);
+        return redirectResponse;
     }
 
     const response = NextResponse.next({ request: { headers: requestHeaders } });

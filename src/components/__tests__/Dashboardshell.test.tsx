@@ -2,7 +2,9 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import DashboardShell from "@/components/dashboard-shell";
 
-// Capture every prop the sidebar receives.
+// Capture every prop the sidebar receives. Assertions on this capture are the
+// most reliable way to prove that role and communityUnreadCount reach the
+// sidebar unchanged.
 const sidebarPropCapture = jest.fn();
 
 jest.mock("@/components/dashboard-sidebar", () => {
@@ -35,11 +37,8 @@ jest.mock("@/components/dashboard-sidebar", () => {
     return SidebarMock;
 });
 
-const mockUseIsMobile = jest.fn();
-jest.mock("@/hooks/use-mobile", () => ({
-    useIsMobile: () => mockUseIsMobile(),
-}));
-
+// `cn` is mocked with a simple join so class-string assertions are stable and
+// we do not pull `clsx` / `tailwind-merge` into every render.
 jest.mock("@/lib/utils", () => ({
     cn: (...classes: (string | boolean | undefined)[]) =>
         classes.filter(Boolean).join(" "),
@@ -50,11 +49,7 @@ describe("DashboardShell", () => {
         jest.clearAllMocks();
     });
 
-    describe("desktop (isMobile = false)", () => {
-        beforeEach(() => {
-            mockUseIsMobile.mockReturnValue(false);
-        });
-
+    describe("rendering", () => {
         it("renders children", () => {
             render(
                 <DashboardShell>
@@ -65,102 +60,149 @@ describe("DashboardShell", () => {
         });
 
         it("renders the sidebar", () => {
-            render(<DashboardShell><div /></DashboardShell>);
+            render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             expect(screen.getByTestId("sidebar")).toBeInTheDocument();
         });
+    });
 
-        it("passes role prop to sidebar", () => {
-            render(<DashboardShell role="admin"><div /></DashboardShell>);
-            expect(screen.getByTestId("sidebar").dataset.role).toBe("admin");
+    describe("sidebar visibility contract (CSS-only)", () => {
+        /**
+         * Mobile behaviour is now CSS-driven, not JS-driven:
+         *   - The sidebar wrapper is `hidden md:block`, so it disappears below 768px
+         *     and reappears above it — no `useIsMobile` re-render required.
+         *   - `<main>` carries `md:ml-*` classes only, which is why no margin is
+         *     applied below 768px.
+         *
+         * These assertions lock the contract in case someone reintroduces a JS
+         * width check.
+         */
+        it("wraps the sidebar in a `hidden md:block` container", () => {
+            const { container } = render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
+            const sidebar = screen.getByTestId("sidebar");
+            const wrapper = sidebar.parentElement;
+            expect(wrapper?.className).toContain("hidden");
+            expect(wrapper?.className).toContain("md:block");
+            // Sanity check that the wrapper is the direct child of the shell.
+            expect(container.firstChild?.contains(wrapper!)).toBe(true);
         });
 
-        it("starts expanded (collapsed=false) on desktop", () => {
-            render(<DashboardShell><div /></DashboardShell>);
+        it("never emits an unprefixed `ml-*` class on <main>", () => {
+            const { container } = render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
+            const main = container.querySelector("main");
+            const classes = main?.className.split(/\s+/) ?? [];
+            const hasUnprefixedLeftMargin = classes.some((c) =>
+                /^ml-/.test(c)
+            );
+            expect(hasUnprefixedLeftMargin).toBe(false);
+        });
+    });
+
+    describe("toggle behaviour", () => {
+        it("starts expanded (collapsed=false)", () => {
+            render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             expect(screen.getByTestId("sidebar").dataset.collapsed).toBe("false");
         });
 
-        it("toggles to collapsed when toggle button is clicked", () => {
-            render(<DashboardShell><div /></DashboardShell>);
+        it("toggles to collapsed when the toggle button is clicked", () => {
+            render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             expect(screen.getByTestId("sidebar").dataset.collapsed).toBe("false");
             fireEvent.click(screen.getByTestId("toggle-btn"));
             expect(screen.getByTestId("sidebar").dataset.collapsed).toBe("true");
         });
 
-        it("toggles back to expanded on second click", () => {
-            render(<DashboardShell><div /></DashboardShell>);
+        it("toggles back to expanded on a second click", () => {
+            render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             fireEvent.click(screen.getByTestId("toggle-btn"));
             fireEvent.click(screen.getByTestId("toggle-btn"));
             expect(screen.getByTestId("sidebar").dataset.collapsed).toBe("false");
         });
 
-        it("applies md:ml-64 to main when expanded", () => {
-            const { container } = render(<DashboardShell><div /></DashboardShell>);
+        it("applies md:ml-64 to <main> when expanded", () => {
+            const { container } = render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             const main = container.querySelector("main");
             expect(main?.className).toContain("md:ml-64");
         });
 
-        it("applies md:ml-16 to main when collapsed", () => {
-            const { container } = render(<DashboardShell><div /></DashboardShell>);
+        it("applies md:ml-16 to <main> when collapsed", () => {
+            const { container } = render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             fireEvent.click(screen.getByTestId("toggle-btn"));
             const main = container.querySelector("main");
             expect(main?.className).toContain("md:ml-16");
         });
     });
 
-    describe("mobile (isMobile = true)", () => {
-        beforeEach(() => {
-            mockUseIsMobile.mockReturnValue(true);
-        });
-
-        it("forces collapsed=true on mobile regardless of toggle", () => {
-            render(<DashboardShell><div /></DashboardShell>);
-            expect(screen.getByTestId("sidebar").dataset.collapsed).toBe("true");
-        });
-
-        it("stays collapsed even after toggle click on mobile", () => {
-            render(<DashboardShell><div /></DashboardShell>);
-            fireEvent.click(screen.getByTestId("toggle-btn"));
-            expect(screen.getByTestId("sidebar").dataset.collapsed).toBe("true");
-        });
-
-        it("does not apply ml margin classes on mobile", () => {
-            const { container } = render(<DashboardShell><div /></DashboardShell>);
-            const main = container.querySelector("main");
-            expect(main?.className).not.toContain("md:ml-64");
-            expect(main?.className).not.toContain("md:ml-16");
-        });
-
-        it("still renders children on mobile", () => {
+    describe("role prop forwarding", () => {
+        it("passes null role to sidebar", () => {
             render(
-                <DashboardShell>
-                    <span>Mobile content</span>
+                <DashboardShell role={null}>
+                    <div />
                 </DashboardShell>
             );
-            expect(screen.getByText("Mobile content")).toBeInTheDocument();
-        });
-    });
-
-    describe("role prop forwarding", () => {
-        beforeEach(() => {
-            mockUseIsMobile.mockReturnValue(false);
-        });
-
-        it("passes null role to sidebar", () => {
-            render(<DashboardShell role={null}><div /></DashboardShell>);
             expect(sidebarPropCapture).toHaveBeenCalledWith(
                 expect.objectContaining({ role: null })
             );
         });
 
+        it("passes admin role to sidebar", () => {
+            render(
+                <DashboardShell role="admin">
+                    <div />
+                </DashboardShell>
+            );
+            expect(sidebarPropCapture).toHaveBeenCalledWith(
+                expect.objectContaining({ role: "admin" })
+            );
+        });
+
         it("passes superadmin role to sidebar", () => {
-            render(<DashboardShell role="superadmin"><div /></DashboardShell>);
+            render(
+                <DashboardShell role="superadmin">
+                    <div />
+                </DashboardShell>
+            );
             expect(sidebarPropCapture).toHaveBeenCalledWith(
                 expect.objectContaining({ role: "superadmin" })
             );
         });
 
         it("passes undefined role when not provided", () => {
-            render(<DashboardShell><div /></DashboardShell>);
+            render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             expect(sidebarPropCapture).toHaveBeenCalledWith(
                 expect.objectContaining({ role: undefined })
             );
@@ -168,17 +210,21 @@ describe("DashboardShell", () => {
     });
 
     describe("communityUnreadCount prop forwarding", () => {
-        beforeEach(() => {
-            mockUseIsMobile.mockReturnValue(false);
-        });
-
         it("defaults communityUnreadCount to 0", () => {
-            render(<DashboardShell><div /></DashboardShell>);
+            render(
+                <DashboardShell>
+                    <div />
+                </DashboardShell>
+            );
             expect(screen.getByTestId("sidebar").dataset.community).toBe("0");
         });
 
         it("forwards an explicit communityUnreadCount to the sidebar", () => {
-            render(<DashboardShell communityUnreadCount={42}><div /></DashboardShell>);
+            render(
+                <DashboardShell communityUnreadCount={42}>
+                    <div />
+                </DashboardShell>
+            );
             expect(screen.getByTestId("sidebar").dataset.community).toBe("42");
         });
 
@@ -189,7 +235,10 @@ describe("DashboardShell", () => {
                 </DashboardShell>
             );
             expect(sidebarPropCapture).toHaveBeenCalledWith(
-                expect.objectContaining({ role: "admin", communityUnreadCount: 7 })
+                expect.objectContaining({
+                    role: "admin",
+                    communityUnreadCount: 7,
+                })
             );
         });
     });

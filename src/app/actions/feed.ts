@@ -1,5 +1,7 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
+import { revalidateTag } from "@/lib/revalidate";
 import { verifiedAuthSession } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { notifyAdmins } from "@/lib/notify-admins";
@@ -127,6 +129,10 @@ export async function createPost(data: { content: string; image?: string; video?
     } catch (error) {
         console.error("Error creating post mention notifications:", error);
     }
+
+    // Invalidate the cached public feed (Case 6). The wrapper supplies the
+    // Next 16 cache profile so call sites stay one-argument.
+    revalidateTag("public-posts");
 
     return {
         ...post,
@@ -331,6 +337,20 @@ export async function getPublicPosts(limit: number = 10) {
         return [];
     }
 }
+
+/**
+ * Cached wrapper around `getPublicPosts` (Case 6).
+ *
+ * Public posts are identical for every visitor, so they can be shared across
+ * requests. The cache is tagged `public-posts` and revalidates every 60
+ * seconds, or immediately whenever a post is created, updated, or deleted —
+ * the write actions above call `revalidateTag("public-posts")`.
+ */
+export const getCachedPublicPosts = unstable_cache(
+    async (limit: number) => getPublicPosts(limit),
+    ["public-posts"],
+    { revalidate: 60, tags: ["public-posts"] }
+);
 
 export async function toggleLike(postId: string, reactionType: string = "Like") {
     const session = await verifiedAuthSession();
@@ -584,6 +604,8 @@ export async function deletePost(postId: string) {
         data: { deleted: true },
     });
 
+    revalidateTag("public-posts");
+
     return { success: true };
 }
 
@@ -605,7 +627,7 @@ export async function updatePost(postId: string, data: { content: string; images
     if (!post || post.deleted) throw new Error("Post not found");
     if (post.userId !== session.user.id) throw new Error("Forbidden");
 
-    return db.post.update({
+    const updated = await db.post.update({
         where: { id: safePostId },
         data: {
             content: safeContent,
@@ -616,6 +638,10 @@ export async function updatePost(postId: string, data: { content: string; images
             ...(data.linkType !== undefined && { linkType: safeLinkUrl ? data.linkType : null }),
         },
     });
+
+    revalidateTag("public-posts");
+
+    return updated;
 }
 
 export async function togglePostComments(postId: string) {
@@ -630,6 +656,8 @@ export async function togglePostComments(postId: string) {
         where: { id: safePostId },
         data: { commentsEnabled: !post.commentsEnabled },
     });
+
+    revalidateTag("public-posts");
 
     return { commentsEnabled: updated.commentsEnabled };
 }

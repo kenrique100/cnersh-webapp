@@ -4,24 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchIcon } from "lucide-react";
 import { authSession } from "@/lib/auth-utils";
-import { getPosts, getPublicPosts, getUserActivity } from "@/app/actions/feed";
+import {
+    getCachedPublicPosts,
+    getPosts,
+    getUserActivity,
+} from "@/app/actions/feed";
 import PublicFeedClient from "@/components/public-feed-client";
 import FeedClient from "@/components/feed-client";
 import Navbar from "@/components/navbar";
-import { db } from "@/lib/db";
 import { getUnreadNotificationCount } from "@/app/actions/notification";
 import { getPages } from "@/app/actions/page-actions";
 import FeedLeftSidebar from "@/components/feed-left-sidebar";
+import UserStorageGuard from "@/components/user-storage-guard";
 import FeedRightSidebar from "@/components/feed-right-sidebar";
 import ProjectTracker from "@/components/project-tracker";
 
-export const dynamic = "force-dynamic";
-
 export default async function Home() {
     const session = await authSession();
-    const isVerifiedSession = Boolean(session?.user?.emailVerified);
+    const isVerifiedSession = Boolean(session?.user?.cnershVerified);
 
-    // If authenticated, get user data and full interactive posts
     let navUser: {
         name: string | null;
         email: string;
@@ -34,65 +35,69 @@ export default async function Home() {
     let authPosts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
     let isAdmin = false;
 
-    // For unauthenticated users, get public posts
-    let publicPosts: Awaited<ReturnType<typeof getPublicPosts>> = [];
+    let publicPosts: Awaited<ReturnType<typeof getCachedPublicPosts>> = [];
 
-    // Fetch dynamic pages for navbar
+    // getPages() is served from the cached "pages" tag (Case 5), so this is
+    // near-free on every navigation that previously hit the DB.
     let pages: Awaited<ReturnType<typeof getPages>> = [];
-
     try {
         pages = await getPages();
     } catch (error) {
         console.error("Error fetching pages:", error);
     }
 
-    // User activity for sidebar
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
 
     if (isVerifiedSession && session) {
         try {
-            const [user, unreadCount, postsResult, activity] = await Promise.all([
-                db.user.findUnique({
-                    where: { id: session.user.id },
-                    select: { name: true, email: true, image: true, role: true, gender: true },
-                }),
+            // The session already carries name / email / image / gender /
+            // role, so no separate user query is needed.
+            navUser = {
+                name: session.user.name,
+                email: session.user.email,
+                image: session.user.image ?? null,
+                gender: session.user.gender ?? null,
+                role: session.user.role ?? null,
+            };
+            userGender = navUser.gender;
+            isAdmin =
+                navUser.role === "admin" || navUser.role === "superadmin";
+
+            const [unreadCount, postsResult, activity] = await Promise.all([
                 getUnreadNotificationCount(),
                 getPosts(1, 20),
-                getUserActivity(8),
+                getUserActivity(),
             ]);
 
-            if (user) {
-                navUser = {
-                    name: user.name,
-                    email: user.email,
-                    image: user.image,
-                    gender: user.gender,
-                    role: user.role,
-                };
-                userGender = user.gender;
-                isAdmin = user.role === "admin" || user.role === "superadmin";
-            }
             notificationCount = unreadCount;
             authPosts = postsResult.posts;
             userActivity = activity;
         } catch (error) {
-            console.error("Error fetching authenticated homepage data:", error);
+            console.error(
+                "Error fetching authenticated homepage data:",
+                error
+            );
         }
     }
 
-    // Fetch public posts as fallback if not authenticated or user data is missing
     if (!navUser) {
-        publicPosts = await getPublicPosts(20);
+        // Cached across requests — shared by every logged-out visitor.
+        publicPosts = await getCachedPublicPosts(20);
     }
 
     return (
         <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
-            {/* Navbar */}
-            <Navbar user={navUser} notificationCount={notificationCount} pages={pages} />
+            <Navbar
+                user={navUser}
+                notificationCount={notificationCount}
+                pages={pages}
+            />
+            {isVerifiedSession && session?.user?.id && (
+                <UserStorageGuard userId={session.user.id} />
+            )}
 
             <div className="mx-auto max-w-[1200px] px-1 sm:px-4 py-3 sm:py-6">
                 <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">
-                    {/* Left Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
                         {isVerifiedSession && session && navUser ? (
                             <FeedLeftSidebar
@@ -108,9 +113,7 @@ export default async function Home() {
                         )}
                     </aside>
 
-                    {/* Main Feed Column */}
                     <main className="w-full max-w-none sm:max-w-[600px] min-w-0">
-                        {/* Mobile introduction for unauthenticated users */}
                         {!isVerifiedSession && (
                             <div className="lg:hidden mb-4">
                                 <Card className="border border-blue-900 bg-blue-800 rounded-lg overflow-hidden">
@@ -128,19 +131,36 @@ export default async function Home() {
                                             </div>
                                             <div>
                                                 <h1 className="text-lg font-bold text-white">
-                                                    Ethical review for health research in Cameroon
+                                                    Ethical review for health
+                                                    research in Cameroon
                                                 </h1>
                                                 <p className="text-sm text-blue-100 mt-1">
-                                                    CNERSH reviews research involving human participants to protect their rights, safety, and well-being.
+                                                    CNERSH reviews research
+                                                    involving human participants
+                                                    to protect their rights,
+                                                    safety, and well-being.
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 mt-4">
-                                            <Button asChild size="sm" className="bg-white text-blue-800 hover:bg-blue-50 text-xs font-medium">
-                                                <Link href="/sign-up">Create account</Link>
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                className="bg-white text-blue-800 hover:bg-blue-50 text-xs font-medium"
+                                            >
+                                                <Link href="/sign-up">
+                                                    Create account
+                                                </Link>
                                             </Button>
-                                            <Button asChild size="sm" variant="outline" className="border-blue-200 bg-transparent text-white hover:bg-blue-900 text-xs font-medium">
-                                                <Link href="/sign-in">Sign in</Link>
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-blue-200 bg-transparent text-white hover:bg-blue-900 text-xs font-medium"
+                                            >
+                                                <Link href="/sign-in">
+                                                    Sign in
+                                                </Link>
                                             </Button>
                                         </div>
                                     </CardContent>
@@ -148,7 +168,6 @@ export default async function Home() {
                             </div>
                         )}
 
-                        {/* Mobile Protocol Tracker - shown at top on small screens */}
                         <div className="xl:hidden mb-4">
                             <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
                                 <CardHeader className="pb-2">
@@ -157,7 +176,8 @@ export default async function Home() {
                                         Track Your Protocol
                                     </CardTitle>
                                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                        Enter your protocol tracking code to check status.
+                                        Enter your protocol tracking code to
+                                        check status.
                                     </p>
                                 </CardHeader>
                                 <CardContent className="pt-0">
@@ -166,17 +186,19 @@ export default async function Home() {
                             </Card>
                         </div>
 
-                        {/* Feed Header */}
                         <div className="flex items-center gap-3 px-2 mb-4">
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Community Feed</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                Community Feed
+                            </span>
                             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
                         </div>
 
-                        {/* Feed: Interactive for verified users, read-only for guests/unverified */}
                         {isVerifiedSession && session && navUser ? (
                             <FeedClient
-                                initialPosts={JSON.parse(JSON.stringify(authPosts))}
+                                initialPosts={JSON.parse(
+                                    JSON.stringify(authPosts)
+                                )}
                                 currentUserId={session.user.id}
                                 currentUserName={navUser.name}
                                 currentUserImage={navUser.image}
@@ -184,14 +206,19 @@ export default async function Home() {
                                 isAdmin={isAdmin}
                             />
                         ) : (
-                            <PublicFeedClient posts={JSON.parse(JSON.stringify(publicPosts))} />
+                            <PublicFeedClient
+                                posts={JSON.parse(
+                                    JSON.stringify(publicPosts)
+                                )}
+                            />
                         )}
                     </main>
 
-                    {/* Right Sidebar (hidden on mobile/tablet) */}
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedRightSidebar
-                            userActivity={JSON.parse(JSON.stringify(userActivity))}
+                            userActivity={JSON.parse(
+                                JSON.stringify(userActivity)
+                            )}
                             isLoggedIn={isVerifiedSession}
                         />
                     </aside>

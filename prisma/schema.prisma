@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -381,6 +382,7 @@ model CommunityReply {
   user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
+  @@index([topicId, createdAt])
   @@index([userId])
   @@index([parentId])
   @@map("community_reply")
@@ -429,8 +431,7 @@ model Notification {
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([read])
+  @@index([userId, read])
   @@index([createdAt])
   @@map("notification")
 }

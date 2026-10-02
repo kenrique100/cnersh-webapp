@@ -3,7 +3,6 @@
 import React from "react";
 import DashboardSidebar from "./dashboard-sidebar";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardShellProps {
     children: React.ReactNode;
@@ -17,17 +16,15 @@ export default function DashboardShell({
                                            role,
                                            communityUnreadCount = 0,
                                        }: DashboardShellProps) {
-    const isMobile = useIsMobile();
-    const [userCollapsed, setUserCollapsed] = React.useState(false);
-    const collapsed = isMobile ? true : userCollapsed;
+    const [collapsed, setCollapsed] = React.useState(false);
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)]">
-            <div className={cn("hidden md:block")}>
+            <div className="hidden md:block">
                 <DashboardSidebar
                     role={role}
                     collapsed={collapsed}
-                    onToggle={() => setUserCollapsed((prev) => !prev)}
+                    onToggle={() => setCollapsed((prev) => !prev)}
                     communityUnreadCount={communityUnreadCount}
                 />
             </div>
@@ -35,7 +32,7 @@ export default function DashboardShell({
             <main
                 className={cn(
                     "flex-1 transition-all duration-300",
-                    !isMobile && (collapsed ? "md:ml-16" : "md:ml-64")
+                    collapsed ? "md:ml-16" : "md:ml-64"
                 )}
             >
                 {children}

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import React from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { usePathname } from "next/navigation";
+import { signOutAndClearBrowserData } from "@/lib/sign-out";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import NotificationDropdown from "@/components/notification-dropdown";
@@ -17,13 +18,15 @@ import NavbarMobileMenu from "./navbar/NavbarMobileMenu";
 import NavbarLanguageSwitcher from "./navbar/NavbarLanguageSwitcher";
 
 export default function Navbar({ user, notificationCount = 0, pages = [] }: NavbarProps) {
-    const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleSignOut = async () => {
-        await authClient.signOut();
-        router.push("/");
+        try {
+            await signOutAndClearBrowserData("/");
+        } catch {
+            toast.error("Sign out failed. Please try again.");
+        }
     };
 
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";

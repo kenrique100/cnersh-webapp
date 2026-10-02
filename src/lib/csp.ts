@@ -1,5 +1,3 @@
-
-
 const GOOGLE_TRANSLATE_DOMAINS = [
     "https://www.google.com",
     "https://translate.google.com",
@@ -11,31 +9,38 @@ const GOOGLE_TRANSLATE_DOMAINS = [
 const UPLOADTHING_DOMAINS = ["https://*.ufs.sh", "https://utfs.io"].join(" ");
 
 export interface CspOptions {
-    /** Per-request nonce. Omit only for responses that carry no document. */
     nonce?: string;
     /** Development builds need 'unsafe-eval' for React Refresh. */
     isDevelopment?: boolean;
 }
 
-export function buildContentSecurityPolicy({ nonce, isDevelopment = false }: CspOptions = {}): string {
-    const scriptSrc = [
-        "'self'",
-        nonce ? `'nonce-${nonce}'` : null,
-        "'strict-dynamic'",
-        // React Refresh evaluates code at runtime; never enabled in production.
-        isDevelopment ? "'unsafe-eval'" : null,
-        // Development has no stable nonce for the dev overlay's inline scripts.
-        isDevelopment && !nonce ? "'unsafe-inline'" : null,
-        GOOGLE_TRANSLATE_DOMAINS,
-    ]
-        .filter(Boolean)
-        .join(" ");
+export function buildContentSecurityPolicy({
+                                               nonce,
+                                               isDevelopment = false,
+                                           }: CspOptions = {}): string {
+    const scriptSrc = nonce
+        ? [
+            "'self'",
+            `'nonce-${nonce}'`,
+            "'strict-dynamic'",
+            // React Refresh evaluates code at runtime; never enabled in prod.
+            isDevelopment ? "'unsafe-eval'" : null,
+            GOOGLE_TRANSLATE_DOMAINS,
+        ]
+            .filter(Boolean)
+            .join(" ")
+        : [
+            "'self'",
+            "'unsafe-inline'",
+            isDevelopment ? "'unsafe-eval'" : null,
+            GOOGLE_TRANSLATE_DOMAINS,
+        ]
+            .filter(Boolean)
+            .join(" ");
 
     return [
         "default-src 'self'",
         `script-src ${scriptSrc}`,
-        // Inline styles remain permitted: Next.js and the styling layer emit
-        // inline style attributes that cannot carry a nonce.
         `style-src 'self' 'unsafe-inline' ${GOOGLE_TRANSLATE_DOMAINS}`,
         `img-src 'self' data: blob: https://lh3.googleusercontent.com https://fonts.gstatic.com https://static.licdn.com ${UPLOADTHING_DOMAINS} ${GOOGLE_TRANSLATE_DOMAINS}`,
         `font-src 'self' data: https://fonts.gstatic.com ${GOOGLE_TRANSLATE_DOMAINS}`,

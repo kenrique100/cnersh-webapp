@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import React from "react";
 import {
     LayoutDashboardIcon,
@@ -24,7 +24,8 @@ import {
     BellIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { authClient } from "@/lib/auth-client";
+import { signOutAndClearBrowserData } from "@/lib/sign-out";
+import { toast } from "sonner";
 import CommunityUnreadBadge from "@/components/community/community-unread-badge";
 import { markCommunityRead } from "@/app/actions/community";
 
@@ -170,7 +171,6 @@ export default function DashboardSidebar({
                                              communityUnreadCount = 0,
                                          }: SidebarProps) {
     const pathname = usePathname();
-    const router = useRouter();
 
     const sections =
         role === "superadmin"
@@ -188,8 +188,11 @@ export default function DashboardSidebar({
     }, [pathname, communityUnreadCount]);
 
     const handleSignOut = async () => {
-        await authClient.signOut();
-        router.push("/sign-in");
+        try {
+            await signOutAndClearBrowserData("/sign-in");
+        } catch {
+            toast.error("Sign out failed. Please try again.");
+        }
     };
 
     const hideCommunityBadge = pathname === "/community";
