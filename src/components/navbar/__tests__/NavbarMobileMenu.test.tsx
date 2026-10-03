@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NavbarMobileMenu from '../NavbarMobileMenu';
 
-
 // next/link — the component uses `import Link from "next/link"` (default import)
 jest.mock('next/link', () => {
     const LinkMock = ({
@@ -51,7 +50,6 @@ jest.mock('@/components/ui/button', () => ({
         variant?: string;
         size?: string;
     }) {
-        // Swallow non-HTML props so they don't leak into the DOM
         void variant;
         void size;
         return <button {...props}>{children}</button>;
@@ -106,14 +104,9 @@ jest.mock('../NavbarDynamicPageDropdown', () => ({
     ),
 }));
 
-// NavbarLanguageSwitcher — default export
-jest.mock('../NavbarLanguageSwitcher', () => {
-    function LangSwitcherMock() {
-        return <div data-testid="lang-switcher" />;
-    }
-    LangSwitcherMock.displayName = 'LangSwitcherMock';
-    return { __esModule: true, default: LangSwitcherMock };
-});
+// NOTE: NavbarLanguageSwitcher is intentionally NOT mocked. Case 16 removed
+// it from this component (single source of truth is the top bar). Tests that
+// asserted its presence inside the sheet were removed.
 
 type MobileMenuProps = React.ComponentProps<typeof NavbarMobileMenu>;
 type NavbarUser = NonNullable<MobileMenuProps['user']>;
@@ -175,11 +168,8 @@ describe('NavbarMobileMenu', () => {
     describe('Authenticated user (regular)', () => {
         it('renders the user avatar and header info', () => {
             render(<NavbarMobileMenu {...buildProps()} />);
-            // Avatar shows the name
             expect(screen.getByTestId('user-avatar')).toHaveTextContent('John Doe');
-            // The name appears twice: once in the avatar, once in the header <p>
             expect(screen.getAllByText('John Doe')).toHaveLength(2);
-            // Email rendered in the header
             expect(screen.getByText('john@example.com')).toBeInTheDocument();
         });
 
@@ -225,11 +215,6 @@ describe('NavbarMobileMenu', () => {
             expect(handleSignOut).toHaveBeenCalledTimes(1);
         });
 
-        it('renders the language switcher', () => {
-            render(<NavbarMobileMenu {...buildProps()} />);
-            expect(screen.getByTestId('lang-switcher')).toBeInTheDocument();
-        });
-
         it('renders all top-level dropdowns', () => {
             render(<NavbarMobileMenu {...buildProps()} />);
             expect(screen.getByTestId('our-pages-dropdown')).toBeInTheDocument();
@@ -250,14 +235,12 @@ describe('NavbarMobileMenu', () => {
         it('applies active styling to the link matching pathname', () => {
             render(<NavbarMobileMenu {...buildProps({ pathname: '/dashboard' })} />);
             const link = screen.getByText('Dashboard').closest('a')!;
-            // Active class signature is exactly "bg-blue-50 text-blue-700"
             expect(link.className).toMatch(/bg-blue-50 text-blue-700/);
         });
 
         it('does not apply active styling to non-matching links', () => {
             render(<NavbarMobileMenu {...buildProps({ pathname: '/dashboard' })} />);
             const link = screen.getByText('Protocols').closest('a')!;
-            // Inactive links contain "hover:bg-blue-50" but NOT "bg-blue-50 text-blue-700"
             expect(link.className).not.toMatch(/bg-blue-50 text-blue-700/);
         });
     });
@@ -363,11 +346,6 @@ describe('NavbarMobileMenu', () => {
             expect(screen.getByTestId('resources-mobile')).toBeInTheDocument();
             expect(screen.getByTestId('ethical-mobile')).toBeInTheDocument();
             expect(screen.getByTestId('sops-dropdown')).toBeInTheDocument();
-        });
-
-        it('still renders the language switcher', () => {
-            render(<NavbarMobileMenu {...buildProps({ user: null })} />);
-            expect(screen.getByTestId('lang-switcher')).toBeInTheDocument();
         });
 
         it('calls onOpenChange(false) when Sign In is clicked', () => {

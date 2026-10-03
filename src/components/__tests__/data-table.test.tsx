@@ -34,13 +34,11 @@ jest.mock('@/components/ui/table', () => ({
     TableCell: (p: React.TdHTMLAttributes<HTMLTableCellElement>) => <td {...p} />,
 }));
 
-// Mock dropdown
 jest.mock('@/components/ui/dropdown-menu', () => {
     const ReactNS = React;
     type Ctx = { open: boolean; setOpen: React.Dispatch<React.SetStateAction<boolean>> };
     const Ctx = ReactNS.createContext<Ctx | null>(null);
 
-    // Props we expect the trigger's child to have (e.g., Button)
     type TriggerChildProps = {
         onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
         [key: string]: unknown;
@@ -100,19 +98,90 @@ jest.mock('@/components/ui/dropdown-menu', () => {
 
 import { DataTable } from '../data-table';
 
+type MockMql = {
+    matches: boolean;
+    media: string;
+    onchange: ((this: MediaQueryList, ev: MediaQueryListEvent) => unknown) | null;
+    addEventListener: (type: string, listener: () => void) => void;
+    removeEventListener: (type: string, listener: () => void) => void;
+    addListener: (listener: () => void) => void;
+    removeListener: (listener: () => void) => void;
+    dispatchEvent: () => boolean;
+    _listeners: Set<() => void>;
+};
+
+let viewportWidth = 1024;
+const mqlByQuery = new Map<string, MockMql>();
+
+function evaluateQuery(query: string): boolean {
+    const maxMatch = /\(max-width:\s*(\d+(?:\.\d+)?)px\)/.exec(query);
+    if (maxMatch) return viewportWidth <= parseFloat(maxMatch[1]);
+    const minMatch = /\(min-width:\s*(\d+(?:\.\d+)?)px\)/.exec(query);
+    if (minMatch) return viewportWidth >= parseFloat(minMatch[1]);
+    return false;
+}
+
+function getMockMql(query: string): MockMql {
+    let mql = mqlByQuery.get(query);
+    if (!mql) {
+        mql = {
+            matches: false,
+            media: query,
+            onchange: null,
+            _listeners: new Set(),
+            addEventListener(type, listener) {
+                if (type === 'change') this._listeners.add(listener);
+            },
+            removeEventListener(type, listener) {
+                if (type === 'change') this._listeners.delete(listener);
+            },
+            addListener(listener) {
+                this._listeners.add(listener);
+            },
+            removeListener(listener) {
+                this._listeners.delete(listener);
+            },
+            dispatchEvent() {
+                return false;
+            },
+        };
+        mqlByQuery.set(query, mql);
+    }
+    return mql;
+}
+
+beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: (query: string) => {
+            const mql = getMockMql(query);
+            mql.matches = evaluateQuery(query);
+            return mql as unknown as MediaQueryList;
+        },
+    });
+});
+
+const setViewportWidth = async (w: number) => {
+    viewportWidth = w;
+    await act(async () => {
+        mqlByQuery.forEach((mql, query) => {
+            const next = evaluateQuery(query);
+            const changed = next !== mql.matches;
+            mql.matches = next;
+            if (changed) {
+                mql._listeners.forEach((listener) => listener());
+            }
+        });
+    });
+};
+
 type User = {
     id: string;
     name: string;
     email: string;
     emailVerified: boolean;
     banned: boolean;
-};
-
-const resizeTo = async (w: number) => {
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: w });
-    await act(async () => {
-        window.dispatchEvent(new Event('resize'));
-    });
 };
 
 const columns: ColumnDef<User, unknown>[] = [
@@ -171,7 +240,7 @@ const manyUsers = Array.from({ length: 12 }, (_, i) => {
 });
 
 beforeEach(async () => {
-    await resizeTo(1024);
+    await setViewportWidth(1024);
 });
 
 describe('DataTable', () => {
@@ -209,21 +278,35 @@ describe('DataTable', () => {
     });
 
     test('responsive: hides select/emailVerified/banned on small screens', async () => {
-        await resizeTo(500);
+        await setViewportWidth(500);
         render(<DataTable<User, unknown> data={users} columns={columns} />);
 
-        expect(screen.queryByRole('columnheader', { name: 'Select' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email Verified' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Banned' })).not.toBeInTheDocument();
+        await waitFor(() =>
+            expect(
+                screen.queryByRole('columnheader', { name: 'Select' })
+            ).not.toBeInTheDocument()
+        );
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email Verified' })
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Banned' })
+        ).not.toBeInTheDocument();
         expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
         expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
 
-        await resizeTo(800);
+        await setViewportWidth(800);
         await waitFor(() =>
-            expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument()
+            expect(
+                screen.getByRole('columnheader', { name: 'Select' })
+            ).toBeInTheDocument()
         );
-        expect(screen.getByRole('columnheader', { name: 'Email Verified' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Banned' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Email Verified' })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Banned' })
+        ).toBeInTheDocument();
     });
 
     test('pagination: next/previous', async () => {
