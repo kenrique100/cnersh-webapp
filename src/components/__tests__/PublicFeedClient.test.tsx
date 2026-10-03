@@ -89,7 +89,8 @@ jest.mock("@/components/post-card", () => ({
     PostCard: function PostCard({ children }: { children: React.ReactNode }) {
         return <div data-testid="post-card">{children}</div>;
     },
-    PostHeader: function PostHeader({ userName }: { userName: string | null; userImage: string | null; createdAt: Date }) {
+    // FIXED: createdAt now accepts string | Date to match real component
+    PostHeader: function PostHeader({ userName }: { userName: string | null; userImage: string | null; createdAt: string | Date }) {
         return <div data-testid="post-header"><span data-testid="post-header-name">{userName}</span></div>;
     },
     PostTextContent: function PostTextContent({ content }: { content: string }) {
@@ -137,7 +138,8 @@ jest.mock("@/components/post-card", () => ({
         if (!name) return "U";
         return name.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
     },
-    formatRelativeDate: (date: Date) => new Date(date).toISOString(),
+    // FIXED: date param now accepts string | Date
+    formatRelativeDate: (date: string | Date) => new Date(date).toISOString(),
     renderPostContent: (content: string) => content,
     postHasMedia: (post: { image?: string | null; images?: string[]; video?: string | null; videos?: string[] }) =>
         !!(post.image || post.images?.length || post.video || post.videos?.length),
@@ -151,6 +153,7 @@ jest.mock("@/components/link-preview-card", () => {
     return LinkPreviewCard;
 });
 
+// FIXED: createdAt is now a string literal to match PublicPostData interface
 const basePost = {
     id: "post-1",
     content: "Hello world",
@@ -161,7 +164,7 @@ const basePost = {
     tags: [] as string[],
     linkUrl: null as string | null,
     linkType: null as string | null,
-    createdAt: new Date("2024-01-15T10:00:00Z"),
+    createdAt: "2024-01-15T10:00:00Z",
     user: { id: "user-1", name: "Alice Smith", image: null as string | null },
     _count: { comments: 2, likes: 5 },
     likes: [{ reactionType: "Like" }],

@@ -49,7 +49,7 @@ interface PublicPostData {
     tags: string[];
     linkUrl: string | null;
     linkType: string | null;
-    createdAt: string; // FIXED: Changed from Date to string to match server action ISO output
+    createdAt: string;
     user: PostUser;
     _count: { comments: number; likes: number };
     likes: { reactionType: string }[];
