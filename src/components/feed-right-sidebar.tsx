@@ -23,7 +23,12 @@ interface UserActivityItem {
   type: "post" | "comment" | "reaction";
   id: string;
   description: string;
-  createdAt: Date;
+  /**
+   * ISO 8601 string produced by the server actions (Case 13). We accept
+   * `Date` as well so any legacy in-memory caller still type-checks, but
+   * the wire format is now a string.
+   */
+  createdAt: string | Date;
 }
 
 interface FeedRightSidebarProps {
@@ -45,7 +50,7 @@ const ourPagesItems: OurPagesItem[] = [
   { href: "/membership.pdf", label: "Community Members", icon: DownloadIcon, external: true },
 ];
 
-function formatActivityDate(date: Date) {
+function formatActivityDate(date: string | Date): string {
   const d = new Date(date);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
@@ -82,7 +87,6 @@ export default function FeedRightSidebar({
 
   return (
       <div className="flex flex-col gap-4">
-        {/* Our Pages Card — PUBLIC, rendered for everyone (guest + logged-in) */}
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg overflow-hidden">
           <button
               type="button"
@@ -151,7 +155,6 @@ export default function FeedRightSidebar({
           </div>
         </Card>
 
-        {/* Protocol Tracker Card */}
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -167,7 +170,6 @@ export default function FeedRightSidebar({
           </CardContent>
         </Card>
 
-        {/* User Activity Card - shown when logged in */}
         {isLoggedIn && (
             <Card
                 className={cn(
@@ -212,7 +214,6 @@ export default function FeedRightSidebar({
             </Card>
         )}
 
-        {/* Community Highlights - only shown for guests */}
         {!isLoggedIn && (
             <Card
                 className={cn(

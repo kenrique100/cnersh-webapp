@@ -42,16 +42,10 @@ interface MockDb {
     $queryRaw: jest.Mock;
 }
 
-// Only `unstable_cache` is taken from `next/cache` — it is made transparent so
-// `getCachedPublicPosts` behaves like `getPublicPosts` inside tests.
 jest.mock('next/cache', () => ({
     unstable_cache: <T extends (...args: any[]) => any>(fn: T) => fn,
 }));
 
-// The wrapper at `@/lib/revalidate` is the module the action imports.
-// Mocking it directly means the assertion sees the one-argument call shape
-// used in `feed.ts` (`revalidateTag("public-posts")`), not the underlying
-// two-argument call to `next/cache`.
 jest.mock('@/lib/revalidate', () => ({
     revalidateTag: jest.fn(),
 }));
@@ -655,6 +649,7 @@ describe('getPublicPosts', () => {
                 user: mockUser('u1', 'Alice'),
                 _count: { comments: 0, likes: 0 },
                 likes: [{ reactionType: 'Like' }],
+                createdAt: new Date(), // FIXED: Added missing createdAt
             },
         ]);
 
@@ -684,6 +679,7 @@ describe('getCachedPublicPosts', () => {
                 user: mockUser('u1', 'Alice'),
                 _count: { comments: 0, likes: 0 },
                 likes: [{ reactionType: 'Like' }],
+                createdAt: new Date(), // FIXED: Added missing createdAt
             },
         ]);
 
@@ -746,7 +742,7 @@ describe('public-posts cache invalidation', () => {
             .mockResolvedValue({ userId: 'user-1', deleted: false });
         mockedDb.post.update = jest
             .fn()
-            .mockResolvedValue({ id: 'p1', content: 'Updated' });
+            .mockResolvedValue({ id: 'p1', content: 'Updated', createdAt: new Date(), updatedAt: new Date() });
 
         await updatePost('p1', { content: 'Updated' });
 
@@ -881,6 +877,7 @@ describe('addComment', () => {
             id: 'c1',
             content: 'Nice',
             user: { id: 'user-2', name: 'Bob', image: null, role: 'user' },
+            createdAt: new Date(), // FIXED: Added missing createdAt
         };
         mockedDb.comment.create = jest.fn().mockResolvedValue(comment);
         mockedDb.post.findUnique = jest.fn().mockResolvedValue({
@@ -912,6 +909,7 @@ describe('addComment', () => {
             id: 'c2',
             content: 'Hey @Dave',
             user: { id: 'user-2', name: 'Bob', image: null, role: 'user' },
+            createdAt: new Date(), // FIXED: Added missing createdAt
         });
         mockedDb.post.findUnique = jest.fn().mockResolvedValue({
             userId: 'user-2',
@@ -987,6 +985,7 @@ describe('getPostComments', () => {
                 commentLikes: [
                     { userId: 'u2', isDislike: false, reactionType: 'Like' },
                 ],
+                createdAt: new Date(), // FIXED: Added missing createdAt
                 replies: [
                     {
                         id: 'r1',
@@ -994,6 +993,7 @@ describe('getPostComments', () => {
                         user: mockUser('u2', 'Bob'),
                         _count: { commentLikes: 0 },
                         commentLikes: [],
+                        createdAt: new Date(), // FIXED: Added missing createdAt
                     },
                 ],
             },
@@ -1078,7 +1078,7 @@ describe('updatePost', () => {
             .mockResolvedValue({ userId: 'user-1', deleted: false });
         mockedDb.post.update = jest
             .fn()
-            .mockResolvedValue({ id: 'p1', content: 'Updated' });
+            .mockResolvedValue({ id: 'p1', content: 'Updated', createdAt: new Date(), updatedAt: new Date() }); // FIXED: Added missing dates
         await updatePost('p1', { content: 'Updated', tags: ['new'] });
         expect(mockedDb.post.update).toHaveBeenCalledWith({
             where: { id: 'p1' },
@@ -1275,7 +1275,7 @@ describe('editComment', () => {
         });
         mockedDb.comment.update = jest
             .fn()
-            .mockResolvedValue({ id: 'c1', content: 'new' });
+            .mockResolvedValue({ id: 'c1', content: 'new', createdAt: new Date() }); // FIXED: Added missing createdAt
         const result = await editComment('c1', 'new');
         expect(result).toHaveProperty('content', 'new');
     });

@@ -10,7 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function FeedsPage() {
     const session = await authIsRequired();
 
-    let user: { role: string | null; name: string | null; image: string | null; email: string; gender: string | null } | null = null;
+    let user: {
+        role: string | null;
+        name: string | null;
+        image: string | null;
+        email: string;
+        gender: string | null;
+    } | null = null;
     let posts: Awaited<ReturnType<typeof getPosts>>["posts"] = [];
     let userActivity: Awaited<ReturnType<typeof getUserActivity>> = [];
     let unreadCount = 0;
@@ -52,7 +58,7 @@ export default async function FeedsPage() {
 
                     <main className="w-full max-w-none sm:max-w-[600px] min-w-0">
                         <FeedClient
-                            initialPosts={JSON.parse(JSON.stringify(posts))}
+                            initialPosts={posts}
                             initialUnreadCount={unreadCount}
                             currentUserId={session.user.id}
                             currentUserName={user?.name}
@@ -63,7 +69,7 @@ export default async function FeedsPage() {
                     </main>
 
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
-                        <FeedRightSidebar userActivity={JSON.parse(JSON.stringify(userActivity))} isLoggedIn />
+                        <FeedRightSidebar userActivity={userActivity} isLoggedIn />
                     </aside>
                 </div>
             </div>

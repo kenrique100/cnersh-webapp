@@ -130,8 +130,6 @@ export async function createPost(data: { content: string; image?: string; video?
         console.error("Error creating post mention notifications:", error);
     }
 
-    // Invalidate the cached public feed (Case 6). The wrapper supplies the
-    // Next 16 cache profile so call sites stay one-argument.
     revalidateTag("public-posts");
 
     return {
@@ -225,6 +223,7 @@ export async function getPosts(page: number = 1, limit: number = 10) {
 
             return {
                 ...post,
+                createdAt: post.createdAt.toISOString(),
                 isUnread,
                 likes: post.likes.map((l) => ({
                     userId: l.userId,
@@ -330,6 +329,7 @@ export async function getPublicPosts(limit: number = 10) {
 
         return posts.map((post) => ({
             ...post,
+            createdAt: post.createdAt.toISOString(),
             likes: post.likes.map((l) => ({ reactionType: l.reactionType })),
         }));
     } catch (error) {
@@ -338,14 +338,6 @@ export async function getPublicPosts(limit: number = 10) {
     }
 }
 
-/**
- * Cached wrapper around `getPublicPosts` (Case 6).
- *
- * Public posts are identical for every visitor, so they can be shared across
- * requests. The cache is tagged `public-posts` and revalidates every 60
- * seconds, or immediately whenever a post is created, updated, or deleted —
- * the write actions above call `revalidateTag("public-posts")`.
- */
 export const getCachedPublicPosts = unstable_cache(
     async (limit: number) => getPublicPosts(limit),
     ["public-posts"],
@@ -545,7 +537,10 @@ export async function addComment(postId: string, content: string, parentId?: str
         console.error("Error creating comment notification:", error);
     }
 
-    return comment;
+    return {
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+    };
 }
 
 export async function getPostComments(postId: string) {
@@ -556,7 +551,7 @@ export async function getPostComments(postId: string) {
         select: { id: true, deleted: true },
     });
     if (!post || post.deleted) throw new Error("Post not found");
-    return db.comment.findMany({
+    const comments = await db.comment.findMany({
         where: { postId: safePostId, deleted: false, parentId: null },
         include: {
             user: { select: { id: true, name: true, image: true, role: true, profession: true, title: true } },
@@ -579,6 +574,15 @@ export async function getPostComments(postId: string) {
         },
         orderBy: { createdAt: "asc" },
     });
+
+    return comments.map((c) => ({
+        ...c,
+        createdAt: c.createdAt.toISOString(),
+        replies: c.replies.map((r) => ({
+            ...r,
+            createdAt: r.createdAt.toISOString(),
+        })),
+    }));
 }
 
 export async function deletePost(postId: string) {
@@ -641,7 +645,11 @@ export async function updatePost(postId: string, data: { content: string; images
 
     revalidateTag("public-posts");
 
-    return updated;
+    return {
+        ...updated,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+    };
 }
 
 export async function togglePostComments(postId: string) {
@@ -662,10 +670,6 @@ export async function togglePostComments(postId: string) {
     return { commentsEnabled: updated.commentsEnabled };
 }
 
-/**
- * Activity for the CURRENT authenticated user only.
- * Identity comes exclusively from the session — no `userId` parameter.
- */
 export async function getUserActivity(limit: number = 10) {
     const session = await verifiedAuthSession();
     const userId = session.user.id;
@@ -698,19 +702,19 @@ export async function getUserActivity(limit: number = 10) {
                 type: "post" as const,
                 id: p.id,
                 description: p.content.length > 60 ? p.content.slice(0, 60) + "…" : p.content,
-                createdAt: p.createdAt,
+                createdAt: p.createdAt.toISOString(),
             })),
             ...recentComments.map((c) => ({
                 type: "comment" as const,
                 id: c.id,
                 description: `Commented: "${c.content.length > 50 ? c.content.slice(0, 50) + "…" : c.content}"`,
-                createdAt: c.createdAt,
+                createdAt: c.createdAt.toISOString(),
             })),
             ...recentLikes.map((l) => ({
                 type: "reaction" as const,
                 id: l.id,
                 description: `Reacted ${l.reactionType} to a post: "${l.post.content.length > 50 ? l.post.content.slice(0, 50) + "…" : l.post.content}"`,
-                createdAt: l.createdAt,
+                createdAt: l.createdAt.toISOString(),
             })),
         ];
 
@@ -798,10 +802,15 @@ export async function editComment(commentId: string, content: string) {
     if (comment.post?.commentsEnabled === false) throw new Error("Comments are closed");
     if (comment.userId !== session.user.id) throw new Error("Forbidden");
 
-    return db.comment.update({
+    const updated = await db.comment.update({
         where: { id: safeCommentId },
         data: { content: parsedContent.data },
     });
+
+    return {
+        ...updated,
+        createdAt: updated.createdAt.toISOString(),
+    };
 }
 
 export async function deleteComment(commentId: string) {

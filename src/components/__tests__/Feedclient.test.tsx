@@ -228,6 +228,13 @@ class MockIntersectionObserver {
 }
 
 // ── Test data ──────────────────────────────────────────────────────
+/**
+ * Case 13 changed server actions to return `createdAt` as an ISO string.
+ * All fixtures below must therefore use strings, not `Date` objects, so
+ * they satisfy the new `PostData` / `CommentData` shapes.
+ */
+const FIXED_ISO = '2024-01-01T00:00:00.000Z';
+
 const basePost = {
     id: 'post-1',
     content: 'Hello world',
@@ -239,7 +246,7 @@ const basePost = {
     linkUrl: null as string | null,
     linkType: null as string | null,
     commentsEnabled: true,
-    createdAt: new Date('2024-01-01'),
+    createdAt: FIXED_ISO,
     user: { id: 'user-1', name: 'Alice', image: null, role: 'user', profession: 'Researcher' },
     _count: { comments: 2, likes: 3 },
     likes: [] as { userId: string; reactionType: string; userName?: string | null }[],
@@ -250,7 +257,7 @@ const SHARE_KEY = (userId: string) => `cnersh:feed:${userId}:share-counts`;
 
 const defaultProps = {
     initialPosts: [basePost],
-    initialUnreadCount: 0,                        // === NEW ===
+    initialUnreadCount: 0,
     currentUserId: 'current-user',
     currentUserName: 'Current User',
     currentUserImage: null as string | null,
@@ -273,7 +280,6 @@ import FeedClient from '@/components/feed-client';
 
 // ── Global test setup ──────────────────────────────────────────────
 beforeAll(() => {
-    // JSDOM does not ship IntersectionObserver
     (global as unknown as { IntersectionObserver: typeof MockIntersectionObserver }).IntersectionObserver =
         MockIntersectionObserver;
 });
@@ -445,14 +451,12 @@ describe('FeedClient', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchUsers.mockResolvedValue([]);
-        // Default happy-path mocks for the new actions
         mockGetPosts.mockResolvedValue({ posts: [], total: 0, pages: 0 });
         mockGetUnreadPostCount.mockResolvedValue(0);
         mockMarkPostsAsRead.mockResolvedValue({ count: 0 });
         mockRefreshFeed.mockResolvedValue({ posts: [], total: 0, pages: 0 });
     });
 
-    // ── initial render ──────────────────────────────────────────────
     describe('initial render', () => {
         it('renders the create post textarea', () => {
             setup();
@@ -488,7 +492,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── unread & refresh (NEW) ──────────────────────────────────────
     describe('unread & refresh', () => {
         it('renders the unread badge when initialUnreadCount > 0', () => {
             setup({ initialUnreadCount: 5 });
@@ -574,7 +577,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── create post ─────────────────────────────────────────────────
     describe('create post', () => {
         it('enables Post button when content is typed', async () => {
             const { user } = setup({ initialPosts: [] });
@@ -731,7 +733,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── @All mention ────────────────────────────────────────────────
     describe('@All mention', () => {
         it('calls getAllUsers and inserts mentions on @All click', async () => {
             mockGetAllUsers.mockResolvedValueOnce([
@@ -766,7 +767,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── like/reaction ───────────────────────────────────────────────
     describe('like/reaction', () => {
         it('calls toggleLike when Like button is clicked', async () => {
             mockToggleLike.mockResolvedValueOnce({ liked: true, reactionType: 'Like' });
@@ -824,7 +824,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── delete post ─────────────────────────────────────────────────
     describe('delete post', () => {
         it('renders delete button for own posts', () => {
             setup({ currentUserId: 'user-1' });
@@ -857,7 +856,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── edit post ───────────────────────────────────────────────────
     describe('edit post', () => {
         it('shows edit button for own posts', () => {
             setup({ currentUserId: 'user-1' });
@@ -951,7 +949,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── toggle post comments ────────────────────────────────────────
     describe('toggle post comments', () => {
         it('shows toggle button for own posts', () => {
             setup({ currentUserId: 'user-1' });
@@ -988,12 +985,11 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── comments ────────────────────────────────────────────────────
     describe('comments', () => {
         const comment = {
             id: 'c1',
             content: 'Great post!',
-            createdAt: new Date(),
+            createdAt: FIXED_ISO,
             user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
             _count: { commentLikes: 0, replies: 0 },
             commentLikes: [],
@@ -1038,7 +1034,7 @@ describe('FeedClient', () => {
 
         it('submits a comment via Enter key', async () => {
             mockAddComment.mockResolvedValueOnce({
-                id: 'c2', content: 'My comment', createdAt: new Date(),
+                id: 'c2', content: 'My comment', createdAt: FIXED_ISO,
                 user: { id: 'current-user', name: 'Current User', image: null, role: 'user' },
             });
             const { user } = setup();
@@ -1053,7 +1049,7 @@ describe('FeedClient', () => {
 
         it('increments comment count after successful comment', async () => {
             mockAddComment.mockResolvedValueOnce({
-                id: 'c2', content: 'My comment', createdAt: new Date(),
+                id: 'c2', content: 'My comment', createdAt: FIXED_ISO,
                 user: { id: 'current-user', name: 'Current User', image: null, role: 'user' },
             });
             const { user } = setup();
@@ -1089,7 +1085,7 @@ describe('FeedClient', () => {
         it('submits reply with parentId', async () => {
             mockGetPostComments.mockResolvedValue([comment]);
             mockAddComment.mockResolvedValueOnce({
-                id: 'r1', content: 'Reply text', createdAt: new Date(),
+                id: 'r1', content: 'Reply text', createdAt: FIXED_ISO,
                 user: { id: 'current-user', name: 'Current User', image: null, role: 'user' },
             });
             const { user } = setup();
@@ -1227,7 +1223,7 @@ describe('FeedClient', () => {
             const commentWithReply = {
                 ...comment,
                 replies: [{
-                    id: 'r1', content: 'A reply', createdAt: new Date(),
+                    id: 'r1', content: 'A reply', createdAt: FIXED_ISO,
                     user: { id: 'user-3', name: 'Charlie', image: null, role: 'user', profession: null },
                     commentLikes: [], replies: [],
                 }],
@@ -1266,13 +1262,12 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── CommentTextWithSeeMore ──────────────────────────────────────
     describe('CommentTextWithSeeMore (via long comment)', () => {
         it('shows See more for long comments', async () => {
             const longComment = {
                 id: 'c-long',
                 content: 'x'.repeat(250),
-                createdAt: new Date(),
+                createdAt: FIXED_ISO,
                 user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
                 _count: { commentLikes: 0, replies: 0 },
                 commentLikes: [], replies: [],
@@ -1287,7 +1282,7 @@ describe('FeedClient', () => {
             const longComment = {
                 id: 'c-long',
                 content: 'x'.repeat(250),
-                createdAt: new Date(),
+                createdAt: FIXED_ISO,
                 user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
                 _count: { commentLikes: 0, replies: 0 },
                 commentLikes: [], replies: [],
@@ -1302,7 +1297,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── report post ─────────────────────────────────────────────────
     describe('report post', () => {
         it('shows report button for other users posts', () => {
             setup({ currentUserId: 'other-user' });
@@ -1348,10 +1342,9 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── report comment ──────────────────────────────────────────────
     describe('report comment', () => {
         const comment = {
-            id: 'c1', content: 'A comment', createdAt: new Date(),
+            id: 'c1', content: 'A comment', createdAt: FIXED_ISO,
             user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
             _count: { commentLikes: 0, replies: 0 }, commentLikes: [], replies: [],
         };
@@ -1407,7 +1400,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── likers dialog ───────────────────────────────────────────────
     describe('likers dialog', () => {
         it('opens likers dialog on like count click', async () => {
             mockGetPostLikers.mockResolvedValueOnce([
@@ -1451,7 +1443,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── image modal ─────────────────────────────────────────────────
     describe('image modal', () => {
         it('opens image modal when image is clicked', async () => {
             const { user } = setup({
@@ -1527,7 +1518,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── share / repost ──────────────────────────────────────────────
     describe('share dialog', () => {
         it('opens repost dialog when Repost button is clicked', async () => {
             const { user } = setup();
@@ -1611,7 +1601,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── Send (copy link) ─────────────────────────────────────────────
     describe('Send (copy post link)', () => {
         it('copies post URL and shows toast', async () => {
             const clipboardSpy = jest.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
@@ -1625,7 +1614,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── post with tags and media ────────────────────────────────────
     describe('post with tags and media', () => {
         it('renders post tags', () => {
             setup({ initialPosts: [{ ...basePost, tags: ['health', 'ethics'] }] });
@@ -1652,7 +1640,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── localStorage share counts (user-scoped) ──────────────────────
     describe('localStorage', () => {
         afterEach(() => localStorage.clear());
 
@@ -1672,7 +1659,6 @@ describe('FeedClient', () => {
 
             setup({ currentUserId: 'user-b' });
 
-            // User B starts fresh and never touches user A's entry.
             expect(localStorage.getItem(SHARE_KEY('user-b'))).toBe('{}');
             expect(localStorage.getItem(SHARE_KEY('user-a'))).toBe(JSON.stringify({ 'post-1': 7 }));
         });
@@ -1686,10 +1672,9 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── comment mention search ───────────────────────────────────────
     describe('comment mention search', () => {
         const comment = {
-            id: 'c1', content: 'Great post!', createdAt: new Date(),
+            id: 'c1', content: 'Great post!', createdAt: FIXED_ISO,
             user: { id: 'user-2', name: 'Bob', image: null, role: 'user', profession: null },
             _count: { commentLikes: 0, replies: 0 }, commentLikes: [], replies: [],
         };
@@ -1728,7 +1713,6 @@ describe('FeedClient', () => {
         });
     });
 
-    // ── disabled comments post ───────────────────────────────────────
     describe('disabled comments post', () => {
         it('shows MessageCircleOff icon when comments disabled', () => {
             setup({ initialPosts: [{ ...basePost, commentsEnabled: false }] });

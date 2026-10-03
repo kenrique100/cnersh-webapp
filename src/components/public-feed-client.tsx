@@ -49,7 +49,7 @@ interface PublicPostData {
     tags: string[];
     linkUrl: string | null;
     linkType: string | null;
-    createdAt: Date;
+    createdAt: string; // FIXED: Changed from Date to string to match server action ISO output
     user: PostUser;
     _count: { comments: number; likes: number };
     likes: { reactionType: string }[];
@@ -60,7 +60,6 @@ interface PublicFeedClientProps {
 }
 
 export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
-    // Image modal state
     const [imageModalOpen, setImageModalOpen] = React.useState(false);
     const [imageModalPost, setImageModalPost] = React.useState<PublicPostData | null>(null);
     const [imageModalIndex, setImageModalIndex] = React.useState(0);
@@ -86,22 +85,18 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
             {posts.map((post) => (
                 <div key={post.id}>
                     <PostCard>
-                        {/* Post Header */}
                         <PostHeader
                             userName={post.user.name}
                             userImage={post.user.image}
                             createdAt={post.createdAt}
                         />
 
-                        {/* Post Text Content */}
                         {post.content && (
                             <PostTextContent content={post.content} />
                         )}
 
-                        {/* Post Tags */}
                         <PostTags tags={post.tags} />
 
-                        {/* Post Media Content */}
                         {(post.image || (post.images && post.images.length > 0) || post.video || (post.videos && post.videos.length > 0)) && (
                             <PostMediaContent
                                 image={post.image}
@@ -112,9 +107,8 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             />
                         )}
 
-                        {/* Link Preview Card */}
                         {post.linkUrl && (
-                            <div className="px-2 sm:px-3 py-s2">
+                            <div className="px-2 sm:px-3 py-2">
                                 <LinkPreviewCard
                                     url={post.linkUrl}
                                     linkType={post.linkType}
@@ -123,14 +117,12 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                             </div>
                         )}
 
-                        {/* Engagement Summary */}
                         <PostEngagementSummary
                             likeCount={post._count.likes}
                             commentCount={post._count.comments}
                             reactionTypes={post.likes?.map((l) => l.reactionType) || []}
                         />
 
-                        {/* Action Buttons - redirect to sign-in for guests */}
                         <PostActionBar>
                             <Link href="/sign-in" className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 md:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full justify-center">
                                 <ThumbsUpIcon className="h-4 w-4" />
@@ -149,7 +141,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                 </div>
             ))}
 
-            {/* Sign in CTA */}
             <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 rounded-lg">
                 <CardContent className="py-6 text-center">
                     <LockIcon className="h-8 w-8 text-blue-600 mx-auto mb-3" />
@@ -170,7 +161,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                 </CardContent>
             </Card>
 
-            {/* Image Modal - Shows full image, post info, and links */}
             <Dialog open={imageModalOpen} onOpenChange={(open) => {
                 if (!open) { setImageModalOpen(false); setImageModalPost(null); }
             }}>
@@ -185,7 +175,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
 
                         return (
                             <div className="flex flex-col md:flex-row h-full max-h-[85vh]">
-                                {/* Image Section */}
                                 <div className="relative flex-1 bg-black flex items-center justify-center min-h-[300px] md:min-h-[400px]">
                                     {currentImage && (
                                         <Image
@@ -197,7 +186,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                             unoptimized
                                         />
                                     )}
-                                    {/* Navigation arrows */}
                                     {hasMultiple && (
                                         <>
                                             <button
@@ -219,9 +207,7 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                     )}
                                 </div>
 
-                                {/* Post Info Sidebar */}
                                 <div className="w-full md:w-[320px] border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 overflow-y-auto max-h-[40vh] md:max-h-none">
-                                    {/* Author Header */}
                                     <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700">
@@ -244,7 +230,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         </div>
                                     </div>
 
-                                    {/* Post Content */}
                                     {imageModalPost.content && (
                                         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                                             <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
@@ -253,7 +238,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         </div>
                                     )}
 
-                                    {/* Tags */}
                                     {imageModalPost.tags && imageModalPost.tags.length > 0 && (
                                         <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800 flex flex-wrap gap-1.5">
                                             {imageModalPost.tags.map((tag, idx) => (
@@ -264,7 +248,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         </div>
                                     )}
 
-                                    {/* Link Preview Card */}
                                     {imageModalPost.linkUrl && (
                                         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                                             <LinkPreviewCard
@@ -275,7 +258,6 @@ export default function PublicFeedClient({ posts }: PublicFeedClientProps) {
                                         </div>
                                     )}
 
-                                    {/* Engagement Stats */}
                                     <div className="p-4 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                                         {imageModalPost._count.likes > 0 && (
                                             <span className="flex items-center gap-1">

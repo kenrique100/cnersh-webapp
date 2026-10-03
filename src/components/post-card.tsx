@@ -16,7 +16,7 @@ export function getInitials(name: string | null | undefined): string {
   return initials.slice(0, 2) || "U";
 }
 
-export function formatRelativeDate(date: Date): string {
+export function formatRelativeDate(date: Date | string): string {
   const now = new Date();
   const postDate = new Date(date);
   const diffMs = now.getTime() - postDate.getTime();
@@ -30,7 +30,7 @@ export function formatRelativeDate(date: Date): string {
   return postDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: postDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
 }
 
-export function formatFullDate(date: Date): string {
+export function formatFullDate(date: Date | string): string {
   const postDate = new Date(date);
   return postDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
@@ -113,7 +113,7 @@ interface PostHeaderProps {
   userImage: string | null;
   userProfession?: string | null;
   userProfessionOther?: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
   actions?: React.ReactNode;
 }
 

@@ -37,8 +37,6 @@ export default async function Home() {
 
     let publicPosts: Awaited<ReturnType<typeof getCachedPublicPosts>> = [];
 
-    // getPages() is served from the cached "pages" tag (Case 5), so this is
-    // near-free on every navigation that previously hit the DB.
     let pages: Awaited<ReturnType<typeof getPages>> = [];
     try {
         pages = await getPages();
@@ -50,8 +48,6 @@ export default async function Home() {
 
     if (isVerifiedSession && session) {
         try {
-            // The session already carries name / email / image / gender /
-            // role, so no separate user query is needed.
             navUser = {
                 name: session.user.name,
                 email: session.user.email,
@@ -60,8 +56,7 @@ export default async function Home() {
                 role: session.user.role ?? null,
             };
             userGender = navUser.gender;
-            isAdmin =
-                navUser.role === "admin" || navUser.role === "superadmin";
+            isAdmin = navUser.role === "admin" || navUser.role === "superadmin";
 
             const [unreadCount, postsResult, activity] = await Promise.all([
                 getUnreadNotificationCount(),
@@ -75,13 +70,12 @@ export default async function Home() {
         } catch (error) {
             console.error(
                 "Error fetching authenticated homepage data:",
-                error
+                error,
             );
         }
     }
 
     if (!navUser) {
-        // Cached across requests — shared by every logged-out visitor.
         publicPosts = await getCachedPublicPosts(20);
     }
 
@@ -196,9 +190,7 @@ export default async function Home() {
 
                         {isVerifiedSession && session && navUser ? (
                             <FeedClient
-                                initialPosts={JSON.parse(
-                                    JSON.stringify(authPosts)
-                                )}
+                                initialPosts={authPosts}
                                 currentUserId={session.user.id}
                                 currentUserName={navUser.name}
                                 currentUserImage={navUser.image}
@@ -206,19 +198,13 @@ export default async function Home() {
                                 isAdmin={isAdmin}
                             />
                         ) : (
-                            <PublicFeedClient
-                                posts={JSON.parse(
-                                    JSON.stringify(publicPosts)
-                                )}
-                            />
+                            <PublicFeedClient posts={publicPosts} />
                         )}
                     </main>
 
                     <aside className="hidden xl:block w-[300px] shrink-0 sticky top-[4.5rem] self-start">
                         <FeedRightSidebar
-                            userActivity={JSON.parse(
-                                JSON.stringify(userActivity)
-                            )}
+                            userActivity={userActivity}
                             isLoggedIn={isVerifiedSession}
                         />
                     </aside>
