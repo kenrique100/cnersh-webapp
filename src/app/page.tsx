@@ -80,7 +80,7 @@ export default async function Home() {
     }
 
     return (
-        <div className="min-h-screen bg-[#F3F2EF] dark:bg-gray-900">
+        <div className="min-h-dvh bg-[#F3F2EF] dark:bg-gray-900">
             <Navbar
                 user={navUser}
                 notificationCount={notificationCount}

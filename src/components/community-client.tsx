@@ -664,7 +664,7 @@ export default function CommunityClient({
     );
 
     return (
-        <div className="h-[calc(100dvh-4rem)] sm:h-[calc(100vh-6rem)] flex overflow-hidden sm:rounded-xl border-0 sm:border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
+        <div className="h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-6rem)] flex overflow-hidden sm:rounded-xl border-0 sm:border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
             <div className="hidden md:block w-60 shrink-0 border-r border-gray-200 dark:border-gray-800">
                 {channelSidebar}
             </div>

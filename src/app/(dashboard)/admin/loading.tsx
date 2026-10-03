@@ -1,6 +1,6 @@
 export default function AdminLoading() {
     return (
-        <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
+        <div className="w-full min-h-[calc(100dvh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
                 <div className="animate-pulse space-y-4 sm:space-y-6">
                     {/* Header skeleton */}

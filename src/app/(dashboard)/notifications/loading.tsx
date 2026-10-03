@@ -1,6 +1,6 @@
 export default function NotificationsLoading() {
     return (
-        <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
+        <div className="w-full min-h-[calc(100dvh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                 <div className="space-y-3">
                     {[1, 2, 3, 4, 5].map((i) => (

@@ -60,7 +60,7 @@ export default async function AuditLogsPage() {
     const { logs } = await getAuditLogs();
 
     return (
-        <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
+        <div className="w-full min-h-[calc(100dvh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="mb-8">

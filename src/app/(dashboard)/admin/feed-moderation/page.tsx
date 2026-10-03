@@ -47,7 +47,7 @@ export default async function FeedModerationPage() {
     }
 
     return (
-        <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
+        <div className="w-full min-h-[calc(100dvh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">

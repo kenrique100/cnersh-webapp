@@ -200,7 +200,7 @@ export default function DashboardSidebar({
     return (
         <aside
             className={cn(
-                "fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-40 transition-all duration-300 flex flex-col",
+                "fixed left-0 top-16 h-[calc(100dvh-4rem)] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-40 transition-all duration-300 flex flex-col",
                 collapsed ? "w-16" : "w-64"
             )}
         >

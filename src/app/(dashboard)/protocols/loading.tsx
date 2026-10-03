@@ -1,6 +1,6 @@
 export default function ProjectsLoading() {
     return (
-        <div className="w-full min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
+        <div className="w-full min-h-[calc(100dvh-4rem)] bg-gray-50 dark:bg-gray-900">
             <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header skeleton */}
                 <div className="flex items-center justify-between mb-8 animate-pulse">

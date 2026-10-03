@@ -19,7 +19,7 @@ export default function DashboardShell({
     const [collapsed, setCollapsed] = React.useState(false);
 
     return (
-        <div className="flex min-h-[calc(100vh-4rem)]">
+        <div className="flex min-h-[calc(100dvh-4rem)]">
             <div className="hidden md:block">
                 <DashboardSidebar
                     role={role}

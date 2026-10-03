@@ -46,7 +46,7 @@ export default async function DashboardLayout({
     };
 
     return (
-        <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="w-full min-h-dvh bg-gray-50 dark:bg-gray-900">
             <UserStorageGuard userId={session.user.id} />
             <Navbar
                 user={{
