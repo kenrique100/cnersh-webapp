@@ -69,13 +69,10 @@ export default function Navbar({ user, notificationCount = 0, pages = [] }: Navb
                     <div className="flex items-center gap-1.5 sm:gap-3">
 
                         {/*
-                         * Language switcher is always visible in the navbar bar.
-                         *
-                         * xs (< 640 px): compact EN/FR pill sits directly in the bar
-                         *                so users don't need to open the hamburger.
-                         * sm+ (≥ 640 px): same pill, slightly more spacing.
-                         * The mobile sheet (NavbarMobileMenu) ALSO shows the full-width
-                         * switcher inside the drawer for convenience.
+                         * Case 16: single language switcher, always rendered in the
+                         * navbar bar. It is compact on phones and slightly larger on
+                         * sm+. The mobile sheet (NavbarMobileMenu) does NOT render a
+                         * second copy anymore — one switcher per viewport.
                          */}
                         <NavbarLanguageSwitcher />
 

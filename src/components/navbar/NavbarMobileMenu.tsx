@@ -29,7 +29,6 @@ import { ResourcesMobileDropdown } from "./NavbarResourcesDropdown";
 import { EthicalClearanceMobileDropdown } from "./NavbarEthicalClearanceDropdown";
 import { SOPsDropdown } from "./NavbarSOPsDropdown";
 import { MobileDynamicPageDropdown } from "./NavbarDynamicPageDropdown";
-import NavbarLanguageSwitcher from "./NavbarLanguageSwitcher";
 import UserAvatar from "@/components/user-avatar";
 
 const userMobileNavItems: NavItem[] = [
@@ -165,9 +164,6 @@ export default function NavbarMobileMenu({
                                 ))}
                             </div>
 
-                            {/* Language Switcher - Mobile */}
-                            <NavbarLanguageSwitcher mobile />
-
                             {/* Logout */}
                             <div className="border-t border-gray-200 dark:border-gray-800 pt-2 mt-1">
                                 <Button
@@ -207,9 +203,6 @@ export default function NavbarMobileMenu({
                                     <MobileDynamicPageDropdown key={page.id} page={page} onNavigate={() => onOpenChange(false)} />
                                 ))}
                             </div>
-
-                            {/* Language Switcher - Mobile (unauthenticated) */}
-                            <NavbarLanguageSwitcher mobile />
                         </>
                     )}
                 </div>
