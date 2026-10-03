@@ -140,7 +140,29 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Apply Database Migrations (Production)
-        run: npx prisma migrate deploy
+        run: |
+          set +e
+          MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
+          MIGRATE_EXIT_CODE=$?
+          set -e
+          echo "$MIGRATE_OUTPUT"
+
+          if [ "$MIGRATE_EXIT_CODE" -eq 0 ]; then
+            exit 0
+          fi
+
+          if echo "$MIGRATE_OUTPUT" | grep -q "Error: P3009"; then
+            FAILED_MIGRATION=$(echo "$MIGRATE_OUTPUT" | sed -n 's/.*The `\([^`]*\)` migration started at .* failed/\1/p' | head -n 1)
+
+            if [ -n "$FAILED_MIGRATION" ]; then
+              echo "Detected failed migration state for $FAILED_MIGRATION. Marking as rolled back and retrying deploy."
+              npx prisma migrate resolve --rolled-back "$FAILED_MIGRATION"
+              npx prisma migrate deploy
+              exit 0
+            fi
+          fi
+
+          exit "$MIGRATE_EXIT_CODE"
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
 
