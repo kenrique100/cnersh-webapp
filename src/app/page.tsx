@@ -90,7 +90,7 @@ export default async function Home() {
                 <UserStorageGuard userId={session.user.id} />
             )}
 
-            <div className="mx-auto max-w-[1200px] px-1 sm:px-4 py-3 sm:py-6">
+            <div className="mx-auto max-w-[1200px] px-4 sm:px-6 py-3 sm:py-6">
                 <div className="flex gap-2 sm:gap-4 lg:gap-6 justify-center">
                     <aside className="hidden lg:block w-[225px] shrink-0 sticky top-[4.5rem] self-start">
                         {isVerifiedSession && session && navUser ? (
