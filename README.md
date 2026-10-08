@@ -70,13 +70,13 @@ BETTER_AUTH_SECRET="a-random-secret-at-least-32-characters"
 BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:3000"
 GOOGLE_CLIENT_ID="..."
 GOOGLE_CLIENT_SECRET="..."
-UPLOADTHING_SECRET="sk_..."
+UPLOADTHING_TOKEN="eyJ..."
 REDIS_URL="redis://..."
 CRON_SECRET="a-random-cron-secret"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-Never commit real credentials. Production must not start without shared Redis, and UploadThing v6 requires `UPLOADTHING_SECRET` beginning with `sk_`.
+Never commit real credentials. Production must not start without shared Redis, and UploadThing v7 requires `UPLOADTHING_TOKEN`.
 
 ### Database
 

@@ -158,6 +158,12 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
   }
 
   let uploadResult;
+  const uploadthingToken = process.env.UPLOADTHING_TOKEN;
+  if (!uploadthingToken) {
+    console.error("[upload] UploadThing is not configured: missing UPLOADTHING_TOKEN");
+    return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+  }
+
   try {
     const uploadFile = new File(
         [new Uint8Array(fileBuffer)],
@@ -170,16 +176,15 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     uploadResult = await utapi.uploadFiles(uploadFile, { acl: "private" });
   } catch (err) {
     console.error("[upload] UploadThing upload failed:", err);
-    const message =
-        err instanceof Error && /MISSING_ENV|invalid API key/i.test(err.message)
-            ? "Storage is not configured"
-            : "Failed to upload file to storage";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 500 });
   }
 
   if (uploadResult.error) {
-    console.error("[upload] UploadThing error:", uploadResult.error);
-    return NextResponse.json({ error: "Upload service error" }, { status: 502 });
+    console.error(
+      "[upload] UploadThing error:",
+      JSON.stringify(uploadResult.error, null, 2)
+    );
+    return NextResponse.json({ error: "Upload service error" }, { status: 500 });
   }
 
   const uploadedData = uploadResult.data as typeof uploadResult.data & {
@@ -223,6 +228,7 @@ async function uploadHandler(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       fileId:   stored.id,
       viewUrl,
+      url: viewUrl,
       name:     stored.filename,
       type:     stored.mimeType,
       size:     stored.size,

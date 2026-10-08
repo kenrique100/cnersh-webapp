@@ -1,11 +1,27 @@
 const mockConstruct = jest.fn();
 const mockUploadFiles = jest.fn().mockResolvedValue("uploaded");
 const mockDeleteFiles = jest.fn().mockResolvedValue("deleted");
+const mockGenerateSignedURL = jest.fn();
+const mockGenerateSignedUrl = jest.fn();
+const mockGetSignedUrl = jest.fn();
+const mockApi: {
+    uploadFiles: typeof mockUploadFiles;
+    deleteFiles: typeof mockDeleteFiles;
+    generateSignedURL?: typeof mockGenerateSignedURL;
+    generateSignedUrl?: typeof mockGenerateSignedUrl;
+    getSignedUrl?: typeof mockGetSignedUrl;
+} = {
+    uploadFiles: mockUploadFiles,
+    deleteFiles: mockDeleteFiles,
+    generateSignedURL: mockGenerateSignedURL,
+    generateSignedUrl: mockGenerateSignedUrl,
+    getSignedUrl: mockGetSignedUrl,
+};
 
 jest.mock("uploadthing/server", () => ({
     UTApi: jest.fn().mockImplementation((...args: unknown[]) => {
         mockConstruct(...args);
-        return { uploadFiles: mockUploadFiles, deleteFiles: mockDeleteFiles };
+        return mockApi;
     }),
 }));
 
@@ -15,6 +31,12 @@ describe("uploadthing client", () => {
         mockConstruct.mockClear();
         mockUploadFiles.mockClear();
         mockDeleteFiles.mockClear();
+        mockGenerateSignedURL.mockReset();
+        mockGenerateSignedUrl.mockReset();
+        mockGetSignedUrl.mockReset();
+        mockApi.generateSignedURL = mockGenerateSignedURL;
+        mockApi.generateSignedUrl = mockGenerateSignedUrl;
+        mockApi.getSignedUrl = mockGetSignedUrl;
     });
 
     it("does not construct the client when the module is imported", async () => {
@@ -73,5 +95,25 @@ describe("uploadthing client", () => {
         await utapi.uploadFiles(f1, opts);
 
         expect(mockUploadFiles).toHaveBeenCalledWith(f1, opts);
+    });
+
+    it("prefers generateSignedURL for URL signing", async () => {
+        const { getSignedUrl } = await import("@/lib/uploadthing");
+        mockGenerateSignedURL.mockResolvedValueOnce("https://signed.example/file");
+
+        await expect(getSignedUrl("key-1", 120)).resolves.toBe("https://signed.example/file");
+        expect(mockGenerateSignedURL).toHaveBeenCalledWith("key-1", { expiresIn: 120 });
+        expect(mockGenerateSignedUrl).not.toHaveBeenCalled();
+        expect(mockGetSignedUrl).not.toHaveBeenCalled();
+    });
+
+    it("falls back to getSignedUrl when generateSignedURL methods are absent", async () => {
+        const { getSignedUrl } = await import("@/lib/uploadthing");
+        mockApi.generateSignedURL = undefined;
+        mockApi.generateSignedUrl = undefined;
+        mockGetSignedUrl.mockResolvedValueOnce({ url: "https://signed.example/fallback" });
+
+        await expect(getSignedUrl("key-2", 180)).resolves.toBe("https://signed.example/fallback");
+        expect(mockGetSignedUrl).toHaveBeenCalledWith("key-2", { expiresIn: 180 });
     });
 });

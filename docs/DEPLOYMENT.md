@@ -6,7 +6,7 @@
 - PostgreSQL with pooled `DATABASE_URL` and migration-safe `DIRECT_URL`
 - Shared Redis through `REDIS_URL`
 - Better Auth base URL, secret, trusted origins, and Google OAuth credentials
-- UploadThing v6 `UPLOADTHING_SECRET` beginning with `sk_`
+- UploadThing v7 `UPLOADTHING_TOKEN` (JWT-style token beginning with `eyJ`)
 - Resend credentials and sender identity
 - Sentry project configuration
 - A strong `CRON_SECRET`
@@ -15,7 +15,7 @@ Use `.env.example` as the canonical variable list.
 
 ### Build time versus run time
 
-`next build` runs with `NODE_ENV=production` and imports every route while collecting page data, but it serves no requests. The build therefore needs only `DATABASE_URL` (for `prisma generate`) and the Sentry upload settings; the UploadThing client is created on first use and the Redis guard is skipped during the build phase, so a missing `UPLOADTHING_SECRET` or `REDIS_URL` no longer fails the build.
+`next build` runs with `NODE_ENV=production` and imports every route while collecting page data, but it serves no requests. The build therefore needs only `DATABASE_URL` (for `prisma generate`) and the Sentry upload settings; the UploadThing client is created on first use and the Redis guard is skipped during the build phase, so a missing `UPLOADTHING_TOKEN` or `REDIS_URL` no longer fails the build.
 
 At run time the following are checked when `src/lib/auth.ts` is first imported, which happens on every page that reads the session, including the home page. If any is missing the whole site answers 500, not just sign-in:
 
@@ -23,7 +23,7 @@ At run time the following are checked when `src/lib/auth.ts` is first imported, 
 - `BETTER_AUTH_URL`
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 
-`REDIS_URL` is required at run time for every route that imports the rate limiter, cache, or idempotency store, and `UPLOADTHING_SECRET` for the first upload or deletion.
+`REDIS_URL` is required at run time for every route that imports the rate limiter, cache, or idempotency store, and `UPLOADTHING_TOKEN` for the first upload or deletion.
 
 On Vercel, tick each variable for both Production and Preview, and trigger a new deployment after saving: variables are read at build time, so an existing deployment does not pick them up. The 500 page Next renders in this state is prerendered at build time and cannot carry the per-request CSP nonce, so the browser console also shows nonce violations. Those are a symptom of the 500; fix the variable and they disappear. The runtime log for the failing request names the missing variable directly.
 
@@ -111,4 +111,3 @@ After adding the domain in the hosting provider and configuring DNS:
 3. Prefer a forward database migration over destructive down migrations.
 4. Restore from backup only when forward repair is unsafe.
 5. Preserve logs and audit records for incident review.
-

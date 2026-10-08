@@ -26,12 +26,13 @@ export const utapi: Pick<UTApi, LazyMethod> = {
  * Signs a private UploadThing object for a short-lived, direct read.
  *
  * The method used to sign varies by SDK version:
- *   - uploadthing v7+      : utapi.getSignedUrl(key, { expiresIn })
- *   - some earlier builds  : utapi.generateSignedUrl(key, { expiresIn })
+ *   - uploadthing v7       : utapi.generateSignedURL(key, { expiresIn })
+ *   - some builds          : utapi.generateSignedUrl(key, { expiresIn })
+ *   - compatibility helper : utapi.getSignedUrl(key, { expiresIn })
  *   - very early builds    : no built-in signing; you must sign via the
  *                            UFS client or a manual HMAC.
  *
- * This helper calls the v7 form and fails safely if it is not present.
+ * This helper prefers the v7 form and fails safely if no signing method exists.
  * When null is returned, callers MUST NOT fall back to the raw object URL
  * for private files, or the object would be exposed unsigned.
  */
@@ -40,15 +41,28 @@ export async function getSignedUrl(
     expiresInSeconds: number,
 ): Promise<string | null> {
     const api = getUtapi() as unknown as {
+        generateSignedURL?: (
+            key: string,
+            opts: { expiresIn: number },
+        ) => Promise<string | { url?: string }>;
+        generateSignedUrl?: (
+            key: string,
+            opts: { expiresIn: number },
+        ) => Promise<string | { url?: string }>;
         getSignedUrl?: (
             key: string,
             opts: { expiresIn: number },
-        ) => Promise<string>;
+        ) => Promise<string | { url?: string }>;
     };
 
-    if (typeof api.getSignedUrl !== "function") {
+    const signer =
+        api.generateSignedURL ??
+        api.generateSignedUrl ??
+        api.getSignedUrl;
+
+    if (typeof signer !== "function") {
         console.error(
-            "[uploadthing] getSignedUrl is not available in the installed SDK. " +
+            "[uploadthing] no URL signing method is available in the installed SDK. " +
             "Private file access cannot be signed. Verify the `uploadthing` " +
             "version in package.json exposes a signing method.",
         );
@@ -56,7 +70,14 @@ export async function getSignedUrl(
     }
 
     try {
-        return await api.getSignedUrl(storageKey, { expiresIn: expiresInSeconds });
+        const signed = await signer(storageKey, { expiresIn: expiresInSeconds });
+        if (typeof signed === "string") {
+            return signed;
+        }
+        if (signed && typeof signed.url === "string") {
+            return signed.url;
+        }
+        return null;
     } catch (err) {
         console.error("[uploadthing] failed to sign URL for key:", storageKey, err);
         return null;
