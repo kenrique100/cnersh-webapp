@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { z } from "zod";
 
 export const uploadthingEnvSchema = z.object({
-    UPLOADTHING_TOKEN: z.string().startsWith("eyJ", "UPLOADTHING_TOKEN must be a v6 JWT token"),
+    UPLOADTHING_TOKEN: z.string().startsWith("eyJ", "UPLOADTHING_TOKEN must be a v7 token starting with eyJ"),
 });
 
 function normalizeSslMode(url: string): string {
